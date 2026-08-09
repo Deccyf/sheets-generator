@@ -97,9 +97,9 @@ function tabbed(panes) {
 }
 
 /* ---------------- fleet sprites ---------------- */
-/* Stylised side profiles in the Southeastern manner: white metro/mainline
-   stock with a charcoal window band and yellow ends; dark blue Javelin.
-   Decorative only — everything is inline SVG so the file stays offline. */
+/* Stylised side profiles in the Southeastern manner: dark blue Electrostars
+   and Javelins with yellow ends, white Networker metro stock. Decorative
+   only — everything is inline SVG so the file stays offline. */
 function sprite(cls) {
   const wheels =
     '<circle cx="20" cy="27" r="3" fill="#23282C"/>' +
@@ -129,14 +129,14 @@ function sprite(cls) {
       '<rect x="94" y="9" width="9" height="15" fill="#AEB4AE"/>' +
       wheels + rail + "</svg>";
   }
-  // 375 Electrostar
+  // 375 Electrostar — Southeastern's dark blue livery, yellow warning end
   return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 375 Electrostar">' +
-    '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+    '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E"/>' +
     '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
-    '<rect x="4" y="6" width="112" height="2.6" fill="#C8CBC4"/>' +
-    '<rect x="10" y="10" width="102" height="6.4" rx="1.6" fill="#3A4348"/>' +
-    '<rect x="40" y="9" width="8" height="15" fill="#9FA6A1"/>' +
-    '<rect x="88" y="9" width="8" height="15" fill="#9FA6A1"/>' +
+    '<rect x="4" y="6" width="112" height="2.6" fill="#18244F"/>' +
+    '<rect x="10" y="10" width="102" height="6.4" rx="1.6" fill="#9DACD9"/>' +
+    '<rect x="40" y="9" width="8" height="15" fill="#3D4F94"/>' +
+    '<rect x="88" y="9" width="8" height="15" fill="#3D4F94"/>' +
     wheels + rail + "</svg>";
 }
 const lineupEl = $("#lineup");
@@ -170,7 +170,7 @@ function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, 
   rline.className = "reviewline" + (reviewCount ? "" : " clean");
   rline.textContent = reviewCount
     ? reviewCount + " review item" + (reviewCount === 1 ? "" : "s") +
-      " — read before the sheet goes out"
+      " — read before the sheets go out"
     : "Nothing flagged for review.";
   const acts = document.createElement("div");
   acts.className = "acts";
@@ -271,9 +271,11 @@ function reviewPane(items) {
     built = books;
     allbar.hidden = false;
     allnote.textContent = Object.values(res.labels).join(", ") +
-      " · built by Sheets Generator v" + VERSION;
-    const rv = res.review.length
-      ? " " + res.review.length + " item(s) for a human eye are on the Review tab."
+      " · Sheets Generator v" + VERSION;
+    const n = res.review.length;
+    const rv = n
+      ? (n === 1 ? " 1 item for a human eye is on the Review tab."
+                 : " " + n + " items for a human eye are on the Review tab.")
       : " Nothing needed a human eye.";
     say("Books built — look them over below, then save." + rv,
         res.review.length ? "warn" : "go");
@@ -297,7 +299,7 @@ function reviewPane(items) {
       else if (/Diagram Detail Report/i.test(t)) kind = "det";
     } catch (e) {}
     if (kind === "?") {
-      say("“" + file.name + "” doesn't look like a Genius report — print the Diagram Summary and Diagram Detail reports from Genius and drop both here.", "err");
+      say("“" + file.name + "” doesn't look like a Genius report — save the Diagram Summary and Diagram Detail reports from Genius as PDFs and drop both here.", "err");
       return;
     }
     have[kind] = u8;
@@ -346,7 +348,7 @@ function reviewPane(items) {
           '<span class="road-sprite" aria-hidden="true">' +
           sprite(SPRITE_FOR[b.road] || "375") + "</span></div>" +
           '<p style="margin:14px 0 0;color:#79818A">No ' + escHtml(b.label) +
-          " diagrams in this week's prints — nothing to berth.</p>";
+          " diagrams in this weekend's prints — nothing to berth.</p>";
         roadsEl.appendChild(art);
         return;
       }
@@ -365,7 +367,7 @@ function reviewPane(items) {
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;
     allnote.textContent = res.banner + " · " + res.diagrams +
-      " diagrams read · built by Sheets Generator v" + VERSION;
+      " diagrams read · Sheets Generator v" + VERSION;
   }
 
   function rebuildFromLoaded() {

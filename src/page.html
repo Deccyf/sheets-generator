@@ -97,8 +97,8 @@
           it, units listed rear-first with their three-digit diagram numbers,
           AM and PM columns showing where each unit goes next and where it ends
           its day, SPLITS and SPLITS PM flags, siding notes such as EAST
-          SIDINGS, ATTACHMENT notes, and the end markers at Dover Priory and
-          Folkestone East.</p>
+          SIDINGS, ATTACHMENT notes, and the end markers at Dover Priory,
+          Folkestone East, Hastings and West Marina.</p>
         <p>Empty moves to a berth with no passenger work afterwards are left
           off, the same as the hand-built sheets — each one is named on the
           review list so nothing disappears silently.</p>
@@ -109,9 +109,9 @@
       <summary>If something looks wrong</summary>
       <div class="explain-body">
         <dl>
-          <dt>"No Diagram Summary rows found" or "no Detail itineraries"</dt>
+          <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
           <dd>One of the two reports is missing or the wrong kind. Both PDFs
-            must be dropped, printed for the same date.</dd>
+            must be dropped, saved for the same date.</dd>
           <dt>A location comes up under its own heading</dt>
           <dd>A unit berthed somewhere the section list doesn't know. It gets
             its own section in alphabetical order and a note on the review
@@ -126,25 +126,7 @@
     </details>
   </section>
 </div>
-<script>
-  /* ES5 only: runs even where the modern code below won't parse */
-  (function(){
-    var ok = !!(window.Promise && window.FileReader && window.Blob &&
-                window.TextDecoder && window.URL && window.URL.createObjectURL);
-    if (!ok) {
-      var el = document.getElementById("oldbrowser");
-      if (el) el.hidden = false;
-      var b = document.getElementById("berth");
-      if (b) b.style.display = "none";
-    }
-  })();
-</script>
 <section id="wePanel" class="wrap" style="padding-top:0">
-  <p id="we_oldbrowser" hidden style="border:2px solid #9B2226;padding:14px;
-    font-family:var(--mono);font-size:13px">This browser is too old to build the
-    sheets. Right-click the file, choose Open with, and pick Edge, Chrome or
-    Firefox.</p>
-
   <section class="platform" aria-labelledby="we-h">
     <span class="sign">Weekend · Sat &amp; Sun</span>
     <h2 id="we-h">Saturday &amp; Sunday sheets from the diagram prints</h2>
@@ -169,7 +151,7 @@
     <div class="roads" id="we_roads"></div>
 
     <div class="allbar" id="we_allbar" hidden>
-      <button class="btn" id="we_dlall" type="button">Save all three sheets</button>
+      <button class="btn" id="we_dlall" type="button">Save all sheets</button>
       <button class="btn" id="we_dlupd" type="button" hidden>Save updated prints (.docx)</button>
       <button class="btn" id="we_clearall" type="button">Start over</button>
       <span class="note" id="we_allnote"></span>
@@ -179,8 +161,8 @@
       <summary>What the tool does with the prints</summary>
       <div class="explain-body">
         <p>It reads each diagram's day from the prints, merges any reissues over
-          the originals, and builds three workbooks in the house format —
-          Mainline, Metro and High Speed. Use <em>Look at it</em> on each book
+          the originals, and builds a workbook for each fleet in the house
+          format — Mainline, Metro and High Speed. Use <em>Look at it</em> on each book
           to see the finished sheet on screen before saving. When a reissue has
           been merged, an updated prints document is offered as well.</p>
       </div>
@@ -226,14 +208,30 @@
     <p>These are drafting tools: check the books against the reports and
       prints before they are sent out or printed.</p>
     <p class="checknote"><b>Always double-check</b>Errors and bad uploads
-      happen — always double check generated sheets against ACWNs for
-      inconsistencies.</p>
+      happen — check every generated sheet against the ACWNs for
+      inconsistencies before it goes out.</p>
     <p class="smallprint">Everything runs inside this file, in the browser, on
       this computer. No report, print or sheet leaves the machine, and the
       page works without an internet connection.</p>
-    <p class="version">Sheets Generator <span id="ver"></span> — build stamped for traceability.</p>
+    <p class="version">Sheets Generator <span id="ver"></span></p>
   </footer>
 </section>
+<script>
+  /* ES5 only: runs even where the modern code below won't parse */
+  (function(){
+    var ok = !!(window.Promise && window.FileReader && window.Blob &&
+                window.TextDecoder && window.URL && window.URL.createObjectURL);
+    if (!ok) {
+      var el = document.getElementById("oldbrowser");
+      if (el) el.hidden = false;
+      var ids = ["berth", "we_berth"];
+      for (var i = 0; i < ids.length; i++) {
+        var b = document.getElementById(ids[i]);
+        if (b) b.style.display = "none";
+      }
+    }
+  })();
+</script>
 {{SCRIPTS}}
 </body>
 </html>
