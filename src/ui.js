@@ -13,7 +13,6 @@ if (document.readyState === "loading") {
 }
 function init() {
 const $ = s => document.querySelector(s);
-const VERSION = typeof SHEETS_VERSION !== "undefined" ? SHEETS_VERSION : "dev";
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const DOCX_MIME =
@@ -146,9 +145,6 @@ if (lineupEl) {
       "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
       "</figcaption></figure>").join("");
 }
-const verEl = $("#ver");
-if (verEl) verEl.textContent = "v" + VERSION;
-
 /* A road card: header + animated unit + review line + actions + panel. */
 function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
   const art = document.createElement("article");
@@ -270,8 +266,7 @@ function reviewPane(items) {
     });
     built = books;
     allbar.hidden = false;
-    allnote.textContent = Object.values(res.labels).join(", ") +
-      " · Sheets Generator v" + VERSION;
+    allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
       ? (n === 1 ? " 1 item for a human eye is on the Review tab."
@@ -367,7 +362,7 @@ function reviewPane(items) {
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;
     allnote.textContent = res.banner + " · " + res.diagrams +
-      " diagrams read · Sheets Generator v" + VERSION;
+      " diagrams read";
   }
 
   function rebuildFromLoaded() {

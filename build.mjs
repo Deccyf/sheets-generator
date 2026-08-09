@@ -19,8 +19,6 @@ const modules = [
 ];
 
 const scripts =
-  `<script>\n"use strict";\nconst SHEETS_VERSION = ${JSON.stringify(version)};\n` +
-  `if (typeof globalThis !== "undefined") globalThis.SHEETS_VERSION = SHEETS_VERSION;\n</script>\n` +
   modules.map(m => "<script>\n" + read("./" + m).trimEnd() + "\n</script>").join("\n");
 
 const html = read("./src/page.html")

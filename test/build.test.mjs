@@ -11,7 +11,6 @@ test("the built file is self-contained and lean", () => {
     "no external references");
   assert.ok(!html.includes("/*! ExcelJS"), "ExcelJS bundle is gone");
   assert.ok(!html.includes("pako_inflate.umd"), "pako bundle is gone");
-  assert.match(html, /const SHEETS_VERSION = "/, "version stamped");
   assert.match(html, /id="lineup"/, "fleet lineup present");
   assert.match(html, /Class 395 Javelin/, "sprites present");
 });

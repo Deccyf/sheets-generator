@@ -231,6 +231,4 @@
   .road-sprite{margin-left:14px; align-self:center}
   .road-sprite svg{height:20px; width:auto; display:block}
   .unit svg{height:16px; width:auto; display:block}
-  .version{margin:12px 0 0; font-family:var(--mono); font-size:11px;
-    color:var(--chalk); letter-spacing:.08em}
 

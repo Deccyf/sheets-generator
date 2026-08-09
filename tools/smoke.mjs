@@ -50,7 +50,6 @@ await page.locator("#we_roads .road .btn", { hasText: "Look at it" }).first().cl
 await page.waitForSelector("#we_roads .road .view table.sheet");
 console.log("weekend preview table rendered ✓");
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
-console.log("version line:", await page.textContent("#ver"));
 
 await page.screenshot({ path: "tools/smoke-top.png", clip: { x: 0, y: 0, width: 860, height: 900 } });
 await page.locator("#roads").scrollIntoViewIfNeeded();
