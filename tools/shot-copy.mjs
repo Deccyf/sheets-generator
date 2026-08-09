@@ -1,0 +1,16 @@
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+const require = createRequire("/opt/node22/lib/node_modules/playwright/");
+const { chromium } = require("playwright");
+const BUILT = fileURLToPath(new URL("../Sheets Generator.html", import.meta.url));
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const page = await browser.newPage({ viewport: { width: 794, height: 560 } });
+await page.goto("file://" + BUILT.replace(/ /g, "%20"));
+await page.evaluate(() => window.scrollTo(0, 0));
+await page.waitForTimeout(150);
+await page.screenshot({ path: "tools/shot-5-lede.png" });
+await page.locator("footer").scrollIntoViewIfNeeded();
+await page.waitForTimeout(150);
+await page.screenshot({ path: "tools/shot-6-smallprint.png" });
+await browser.close();
+console.log("copy shots done");
