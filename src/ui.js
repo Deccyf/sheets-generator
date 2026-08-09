@@ -36,6 +36,12 @@ function download(name, data, mime) {
 function escHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
 }
+/* One zip beats a burst of separate downloads the browser may block. */
+function downloadZip(name, files) {
+  const bag = {};
+  for (const [n, bytes] of files) bag[n] = bytes;
+  download(name, fflate.zipSync(bag, { level: 6 }), "application/zip");
+}
 const paint = () => new Promise(r => setTimeout(r, 30));
 
 /* Drag-and-drop + click wiring shared by both berths. */
@@ -69,11 +75,13 @@ function tabbed(panes) {
   tabs.className = "tabs"; tabs.setAttribute("role", "tablist");
   const view = document.createElement("div");
   view.className = "view";
+  view.setAttribute("role", "tabpanel");
   const cache = {};
   const btns = panes.map(([name, htmlFn], ix) => {
     const tb = document.createElement("button");
     tb.type = "button"; tb.className = "tab"; tb.textContent = name;
     tb.setAttribute("role", "tab");
+    tb.tabIndex = ix === 0 ? 0 : -1;
     tb.addEventListener("click", () => select(ix));
     tabs.appendChild(tb);
     return { tb, htmlFn };
@@ -82,13 +90,19 @@ function tabbed(panes) {
     if (cache[ix] === undefined) cache[ix] = btns[ix].htmlFn();
     view.innerHTML = cache[ix];
     view.scrollTop = 0; view.scrollLeft = 0;
-    btns.forEach((b, j) =>
-      b.tb.setAttribute("aria-selected", j === ix ? "true" : "false"));
+    btns.forEach((b, j) => {
+      b.tb.setAttribute("aria-selected", j === ix ? "true" : "false");
+      b.tb.tabIndex = j === ix ? 0 : -1;
+    });
   }
   tabs.addEventListener("keydown", e => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     const cur = btns.findIndex(b => b.tb.getAttribute("aria-selected") === "true");
-    const next = (cur + (e.key === "ArrowRight" ? 1 : btns.length - 1)) % btns.length;
+    let next = null;
+    if (e.key === "ArrowRight") next = (cur + 1) % btns.length;
+    else if (e.key === "ArrowLeft") next = (cur + btns.length - 1) % btns.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = btns.length - 1;
+    if (next === null) return;
     btns[next].tb.focus(); select(next);
     e.preventDefault();
   });
@@ -204,6 +218,13 @@ function reviewPane(items) {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
         dlall = $("#dlall");
+  const zoneStrong = document.querySelector("#berth .berth-txt strong");
+  const zoneSub = document.querySelector("#berth .berth-txt span");
+  const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
+  function zone(strong, sub) {
+    zoneStrong.textContent = strong;
+    zoneSub.textContent = sub;
+  }
   let built = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
@@ -264,6 +285,18 @@ function reviewPane(items) {
         res.review.length, panes,
         [["Save book", () => download(b.name, b.bytes, XLSX_MIME)]]));
     });
+    if (!hsAny) {
+      const art = document.createElement("article");
+      art.className = "road";
+      art.innerHTML = '<div class="road-head"><span class="road-no">Road 4</span>' +
+        '<h2 class="road-name">HS SHEETS</h2>' +
+        '<span class="road-fleet">High Speed 395</span>' +
+        '<span class="road-sprite" aria-hidden="true">' + sprite("395") + "</span></div>" +
+        '<p style="margin:14px 0 0;color:#79818A">No High Speed diagrams in ' +
+        "these reports — nothing to berth. (A High Speed Control Cycle must " +
+        "exist in Genius for its diagrams to appear.)</p>";
+      roadsEl.appendChild(art);
+    }
     built = books;
     allbar.hidden = false;
     allnote.textContent = Object.values(res.labels).join(", ");
@@ -280,6 +313,10 @@ function reviewPane(items) {
     const nm = file.name.toLowerCase();
     if (nm.endsWith(".docx") || nm.endsWith(".doc")) {
       say("Weekend diagram prints go in the weekend panel below — drop them there.", "err");
+      return;
+    }
+    if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) {
+      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius Diagram Summary & Detail reports, saved as PDFs.", "err");
       return;
     }
     if (!nm.endsWith(".pdf")) {
@@ -305,16 +342,20 @@ function reviewPane(items) {
         say("Genius build failed: " + err.message, "err");
       }
       delete have.sum; delete have.det;
+      zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
     } else {
-      say((kind === "sum" ? "Summary" : "Detail") +
-          " report loaded ✓ — now drop the " +
-          (kind === "sum" ? "Diagram Detail" : "Diagram Summary") + " report.");
+      const got = kind === "sum" ? "Summary" : "Detail";
+      const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
+      say(got + " report loaded ✓ — now drop the " + want + " report.");
+      zone("Diagram " + got + " loaded ✓",
+           "now drop the " + want + " report · or click to choose it");
     }
   }
 
   dlall.addEventListener("click", () => {
     if (!built) return;
-    for (const b of built) download(b.name, b.bytes, XLSX_MIME);
+    downloadZip(built[0].name.replace(/^SHEETS_/, "SHEETS_BOOKS_")
+      .replace(/\.xlsx$/, ".zip"), built.map(b => [b.name, b.bytes]));
   });
   // Files are read one after another so a Summary + Detail pair dropped
   // together can't race the build.
@@ -431,10 +472,8 @@ function reviewPane(items) {
   });
   $("#we_dlall").addEventListener("click", () => {
     if (!built) return;
-    for (const b of built.books) {
-      if (b.skipped) continue;
-      download(b.name, b.xlsx, XLSX_MIME);
-    }
+    downloadZip("SHEETS_" + built.stamp + ".zip",
+      built.books.filter(b => !b.skipped).map(b => [b.name, b.xlsx]));
   });
 })();
 }

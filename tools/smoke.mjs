@@ -27,12 +27,23 @@ page.on("pageerror", e => { console.error("PAGE ERROR:", e.message); process.exi
 page.on("console", m => { if (m.type() === "error") console.error("CONSOLE:", m.text()); });
 await page.goto("file://" + BUILT.replace(/ /g, "%20"));
 
-// Weekday: drop both PDFs at once (exercises the sequential queue).
-await page.setInputFiles("#file", [sumPdf, detPdf]);
+// Weekday: Summary first — the drop zone should start guiding.
+await page.setInputFiles("#file", [sumPdf]);
+await page.waitForFunction(() =>
+  document.querySelector("#berth .berth-txt strong").textContent.includes("Summary loaded"),
+  null, { timeout: 10000 });
+await page.screenshot({ path: "tools/shot-7-zone.png",
+  clip: { x: 0, y: 240, width: 860, height: 330 } });
+console.log("zone guidance:", await page.textContent("#berth .berth-txt strong"));
+await page.setInputFiles("#file", [detPdf]);
 await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("zone reset:", await page.textContent("#berth .berth-txt strong"));
 console.log("weekday status:", await page.textContent("#status"));
 console.log("weekday roads:", await page.locator("#roads .road").count());
+const dl = page.waitForEvent("download", { timeout: 10000 });
+await page.locator("#dlall").click();
+console.log("save-all zip:", (await dl).suggestedFilename());
 await page.locator("#roads .road .btn", { hasText: "Look at it" }).first().click();
 await page.waitForSelector("#roads .road .view table.sheet");
 console.log("weekday preview table rendered ✓");

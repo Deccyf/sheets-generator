@@ -64,7 +64,7 @@ has two drop panels, one per workflow.
    browse for the files.
 4. The books are built immediately: look them over in the on-screen preview
    (per-day tables for Mainline, Metro and High Speed, plus the Review tab),
-   then save each book, or all of them at once.
+   then save each book, or all of them at once as a single zip.
 
 If the reports cover several weekday dates, one day tab is built per date
 (MON…FRI) inside each workbook. Dates that fall on a weekend are skipped with
