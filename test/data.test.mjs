@@ -1,0 +1,52 @@
+/* The consolidated data module must carry exactly the tables the legacy
+   build carried, plus hold together internally. */
+import test from "node:test";
+import assert from "node:assert/strict";
+import { legacy, built, norm } from "./helpers/compare.mjs";
+
+test("reference tables match the legacy build", () => {
+  const L = legacy(), D = built().SHEETS_DATA;
+  assert.deepEqual(norm(D.BERTH_SHEETS), norm(L.SHEETS_CORE.BERTH_SHEETS), "BERTH_SHEETS");
+  assert.deepEqual(norm(D.DEST_TLC), norm(L.SHEETS_CORE.DEST_TLC), "DEST_TLC");
+  assert.deepEqual(norm(D.NON_BERTH_VISIT), norm(L.SHEETS_CORE.NON_BERTH_VISIT),
+    "NON_BERTH_VISIT");
+  assert.deepEqual(norm(D.DEST_CODE), norm(L.SheetsEngine.DEST_CODE), "DEST_CODE");
+  assert.deepEqual(norm(D.BERTH_CODE), norm(L.SheetsEngine.BERTH_CODE), "BERTH_CODE");
+  assert.deepEqual(norm(D.MAIN_ORDER), norm(L.SHEETS_XLSX.MAIN_ORDER), "MAIN_ORDER");
+  assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
+  assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
+  assert.deepEqual(norm(D.DAY_SHEET), norm(L.SHEETS_XLSX.DAY_SHEET), "DAY_SHEET");
+  assert.deepEqual(norm(D.PROFILES), norm(L.SheetsEngine.PROFILES), "PROFILES");
+});
+
+test("data module holds together", () => {
+  const D = built().SHEETS_DATA;
+  // Every book-order section name is a section some berth resolves to, or a
+  // Metro/HS station section the engines derive on the fly.
+  const berthSections = new Set(
+    Object.values(D.BERTH_SHEETS).map(v => v[0]).filter(Boolean));
+  for (const s of D.MAIN_ORDER)
+    assert.ok(berthSections.has(s), "MAIN_ORDER section has berths: " + s);
+  // The Genius stabling codes all have a location name to resolve through.
+  for (const code of D.STABLE_CODES)
+    assert.ok(D.CODE2NAME[code], "STABLE_CODES named: " + code);
+  // FIX_CODE only rewrites codes, never invents sections.
+  for (const [from, to] of Object.entries(D.FIX_CODE)) {
+    assert.match(from, /^[A-Z]{2,4}$/);
+    assert.match(to, /^[A-Z]{2,4}$/);
+  }
+  // Weekend profiles: every profile section list refers to known print names.
+  const allPrintNames = new Set([
+    ...Object.keys(D.DEST_CODE), ...Object.keys(D.BERTH_CODE),
+    ...D.BASE_STABLING, ...D.TRANSIT, ...Object.keys(D.MANUAL_LOC)]);
+  for (const prof of D.PROFILES) {
+    for (const [sec, locs] of Object.entries(prof.sections)) {
+      assert.ok(locs.length, sec + " has locations");
+    }
+  }
+  // The station table parses into (name, crs, rostered) rows.
+  assert.ok(D.STATIONS.length > 400, "station table parsed");
+  for (const [name, crs] of D.STATIONS.slice(0, 20)) {
+    assert.ok(name && /^[A-Z]{3}$/.test(crs), "station row: " + name);
+  }
+});

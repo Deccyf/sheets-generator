@@ -13,8 +13,9 @@ in and the house drafting conventions applied automatically.
 
 Everything runs inside the one file, in the browser, on the local machine. No
 report, print or sheet ever leaves the computer, and the page works without an
-internet connection — every library it needs (ExcelJS, pako, fflate) is
-bundled into the file itself.
+internet connection — the only library it needs (fflate, for zip and inflate)
+is bundled into the file itself. The deliverable is about **200 KB**; the
+source lives in `src/` and is assembled by `node build.mjs`.
 
 > **These are drafting tools.** Every build produces a review list naming
 > anything the rules had to decide for themselves. Always read it, and always
@@ -31,15 +32,15 @@ bundled into the file itself.
 - [The review list](#the-review-list)
 - [Troubleshooting](#troubleshooting)
 - [How it works](#how-it-works)
-  - [File layout](#file-layout)
+  - [Repository layout](#repository-layout)
   - [Weekday pipeline (Genius PDFs)](#weekday-pipeline-genius-pdfs)
   - [Weekend pipeline (diagram prints)](#weekend-pipeline-diagram-prints)
   - [The house rulebook](#the-house-rulebook)
-  - [Workbook writers and the preview](#workbook-writers-and-the-preview)
-  - [The legacy ACWN core](#the-legacy-acwn-core)
+  - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
 - [Requirements and privacy](#requirements-and-privacy)
-- [Development notes](#development-notes)
+- [Building and testing](#building-and-testing)
+- [The 2.0 overhaul](#the-20-overhaul)
 
 ---
 
@@ -200,28 +201,29 @@ entries:
 
 ## How it works
 
-The whole application is one HTML file: markup and styling, three vendored
-libraries, and roughly 4,000 lines of application JavaScript organised as
-self-contained modules (each also guards `module.exports`, so the engines can
-be exercised under Node).
+The deliverable is one HTML file, but the source is a small set of modules in
+`src/`, assembled by `node build.mjs`. Each module also guards
+`module.exports`, so every engine runs under plain Node — that is how the
+test suite drives them.
 
-### File layout
+### Repository layout
 
-Script blocks in file order (line numbers are as of this writing and will
-drift):
-
-| Lines (approx.) | Block |
+| Path | What it is |
 |---|---|
-| 1–348 | CSS and page markup: header, quick-start, the weekday drop panel. |
-| 349–361 | ES5 capability probe — shows the "browser too old" notice and hides the drop zone when `Promise`/`FileReader`/`Blob`/`TextDecoder`/`URL` are missing. |
-| 362–406 | **ExcelJS** (bundled, 2023-10-19 build) — reads and writes `.xlsx` for the weekday books. |
-| 407–2387 | **`SHEETS_CORE`** — the sheet-building rulebook and the legacy ACWN pipeline, a faithful JS port of a validated Python pipeline (`acwn_parser` + `tracer3` + `builder3`). Exports the reference tables (`BERTH_SHEETS`, `DEST_TLC`, …) and helpers used by everything else. |
-| 2388–2815 | **`SHEETS_XLSX`** — ExcelJS glue: reads an ACWN workbook into a neutral grid, lays each day's sheet out as row descriptors, writes the weekday workbooks, and renders the same rows as the in-page HTML preview. |
-| 2816–2819 | **pako** (inflate only) — decompresses the Flate streams inside the Genius PDFs. |
-| 2820–3443 | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing, and the application of the house rulebook to the Genius itineraries. |
-| 3444–5020 | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, its own minimal `.xlsx` writer, the reissue merge, and the weekend panel's UI wiring. Bundles **fflate** (zip/unzip) at the top of the block. |
-| 5021–5439 | Weekday panel UI wiring: classifies dropped PDFs, drives `GENIUS.build`, writes the books through `SHEETS_XLSX`, renders previews and save buttons. |
-| 5440–5534 | Weekend panel markup, the "What comes back" book list, and the footer. |
+| `Sheets Generator.html` | **The built deliverable** — committed so it can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. |
+| `src/page.html` | The page shell: markup for both panels, the quick start, the ES5 capability probe, and the `{{CSS}}`/`{{SCRIPTS}}` placeholders. Scripts sit at the *end* of `<body>` (see [the 2.0 overhaul](#the-20-overhaul)). |
+| `src/styles.css` | All page styling, including the fleet-sprite styles. |
+| `src/data.js` | **`SHEETS_DATA`** — every reference table for every engine in one module: berths, destination codes, section orders, fleet profiles, the station table, end-marker rules. Corrections belong here. |
+| `src/core.js` | **`SHEETS_CORE`** — shared helpers: name normalisation, destination codes, time formatting, and the berth AM/PM rule (`amPm`). |
+| `src/rulebook.js` | **`SHEETS_RULEBOOK`** — the day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`) and the stop-collapsing walk both engines share. |
+| `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. |
+| `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
+| `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing, and the house rulebook applied to Genius itineraries. |
+| `src/ui.js` | Page wiring for both panels, the fleet sprites, and the tabbed previews. |
+| `src/vendor/fflate.js` | fflate (MIT), the only third-party code left: zip/unzip for docx and xlsx, zlib inflate for the PDF streams. |
+| `build.mjs` | Assembles `src/` into the single file and stamps the version from `package.json`. |
+| `test/` | The golden test suite (see [Building and testing](#building-and-testing)). `test/fixtures/legacy.html` is the frozen pre-overhaul build the suite compares against. |
+| `tools/` | Development utilities: the one-shot extraction scripts that produced `src/` from the monolith, and the Playwright smoke test. |
 
 ### Weekday pipeline (Genius PDFs)
 
@@ -231,7 +233,7 @@ drift):
    builds as soon as it has one of each.
 2. **PDF text extraction** (`GENIUS.pdfText`). No PDF library is used.
    The extractor scans the raw bytes for `stream … endstream` sections,
-   inflates them with pako, and interprets just enough of the PDF content
+   inflates them with fflate, and interprets just enough of the PDF content
    stream — `Tm`/`Td`/`TD` text positioning, `Tf` font size, `Tj`/`TJ` text
    showing — to place each string at an (x, y) coordinate. Strings are then
    bucketed into lines by y (2-unit tolerance), sorted by x, and joined with
@@ -257,8 +259,8 @@ drift):
 5. **Writing.** The weekday UI writes the books with
    `SHEETS_XLSX.writeBooks`: SHEETS (Ramsgate split out), RAM_SHEETS
    (Ramsgate only), METRO_SHEETS, and HS_SHEETS when any High Speed diagrams
-   exist. A combined on-screen preview shows every day and fleet plus the
-   review list.
+   exist. Each book gets its own road card with per-day previews rendered
+   from the exact cell layout that is saved, plus the review list.
 
 ### Weekend pipeline (diagram prints)
 
@@ -286,11 +288,9 @@ drift):
    overnight stands at unlisted platforms — "the Strood starter") earn
    auto-sections via the station resolver; formation cross-references from the
    prints' `fm` column resolve which unit is which in multi-unit departures.
-5. **Writing.** The weekend engine has its **own minimal xlsx writer** (a
-   `StyleBook` that registers fonts/borders on demand, hand-built sheet XML,
-   zipped with fflate) — the weekend path does not use ExcelJS at all. The
-   sheet is laid out once (`layoutBook`) and both the writer and the HTML
-   preview render that same layout, so what you look at is what you save.
+5. **Writing.** The sheet is laid out once (`layoutBook`) and handed to the
+   shared writer in `src/xlsx.js`; the HTML preview renders that same layout,
+   so what you look at is what you save.
    Each book also gets a plain-text report (`buildReport`) summarising the
    review items; its lines feed the *Review list* tab.
 
@@ -323,50 +323,36 @@ ones, all commented at the point of implementation:
   field); Folkestone East lists front-first because the Train Roads point one
   way.
 
-### Workbook writers and the preview
+### The workbook writer and the preview
 
-The weekday writer (`SHEETS_XLSX.writeBooks`) builds one worksheet per day
-(A4 portrait, Arial, fixed column widths taken from the ruled sheets), a
-medium box around each section, medium verticals after the diagram, D and
-remarks columns, a thin rule under every entry, the flag column merged across
-each multi-unit entry, and a double rule at the section's biggest time gap
-(≥ 2 h) — the weekend writer instead rules the section off where it crosses
-midday and 20:00, matching how the sheet is read across a shift. Both writers
-share their layout rows with an HTML preview renderer so the preview is
-pixel-for-cell faithful to the saved file.
+Both panels' books go through the same writer (`SHEETS_XLSX.writeWorkbook`):
+a hand-built SpreadsheetML emitter with a `StyleBook` that registers fonts and
+borders as they are needed, zipped with fflate. It writes the house grid —
+A4 portrait, Arial, the ruled sheets' fixed column widths, a medium box around
+each section, medium verticals after the diagram / D / remarks columns, a
+thin rule under every entry, the flag column merged across each multi-unit
+entry. The weekday layout adds a double rule at the section's biggest time gap
+(≥ 2 h); the weekend layout rules the section off where it crosses midday and
+20:00, matching how the sheet is read across a shift.
 
-### The legacy ACWN core
-
-`SHEETS_CORE` contains a complete, older pipeline that builds the same books
-directly from an **ACWN workbook** (`.xlsx`, one sheet per location, columns
-A–N, including the Friday single-day variant): grid → events
-(departures/arrivals with unit slots, day codes like `MTWO`/`THX`,
-cross-references) → a `Network` that traces each unit's day across sheets
-(matching by train id, origin + time, reference bridges, and a last-resort
-orphan matcher) → per-day sections. Its tracer marks anything uncertain with
-audit flags (`brokenref`, `loop`, `inferred`, `remote_attach`, `deep`,
-`stub`) that surface on the review list.
-
-The UI path that fed this pipeline an ACWN `.xlsx` is currently disabled (the
-weekday drop handler returns before it and only accepts the Genius PDFs), but
-the module is still live: the Genius pipeline leans on its reference tables
-and helpers (`BERTH_SHEETS`, `DEST_TLC`, `norm`, `destTlc`, `amPm`,
-`fmtTime`), and `SHEETS_XLSX.workbookToGrid` remains the entry point if the
-ACWN flow is ever re-enabled.
+There is likewise one preview renderer, and it draws the *same cell layout*
+the writer saves — so on both panels, what you look at is what you get.
 
 ## Reference data — where the knowledge lives
 
-All of the tool's local knowledge is in plain JavaScript tables, so
-corrections are one-line edits:
+All of the tool's local knowledge lives in **one module — `src/data.js`
+(`SHEETS_DATA`)** — so corrections are one-line edits in one place. A test
+(`test/data.test.mjs`) checks the tables against the frozen legacy build and
+cross-checks them against each other. What's in there:
 
-| Table | Module | What it holds |
-|---|---|---|
-| `BERTH_SHEETS` | `SHEETS_CORE` | Berthing location → [section, code, siding note, TLC] for every known berth, siding, shed and signal-stand. |
-| `DEST_TLC` | `SHEETS_CORE` | Destination name → three-letter code for column A. |
-| `NON_BERTH_VISIT`, `SIDING_CLASS_RE` | `SHEETS_CORE` | Which locations never count as berths; what a siding looks like by name. |
-| `MAIN_ORDER` / `METRO_ORDER` / `HS_ORDER`, `HEADCODE_SECTIONS`, `SIDING_NOTES`, `END_STYLE`, `GP_ROAD` | `SHEETS_XLSX` | Section order per book, which sections quote headcodes, the siding notes, the end-marker styles, Grove Park road labels. |
-| `CODE2NAME`, `STABLE_CODES`, `MINOR_SPUR`, `NAME_CODE`, `FIX_CODE`, `PROFILES_G`, `END_MARKERS`, `GROUP_EXTRA` | `GENIUS` | Genius location codes → names, which codes are stabling, the shunt spurs needing a long stay, hand-learned code corrections, the fleet profiles, the end-lead rules, and section members that aren't berths (e.g. West Marina's shunt neck). |
-| `DEST_CODE`, `BERTH_CODE`, `NOTE_FROM_BERTH`, `BASE_STABLING`, `TRANSIT`, `MANUAL_LOC`, `STATION_TABLE`, `MAINLINE`/`METRO`/`HIGHSPEED`, `PROFILES` | `SheetsEngine` | The weekend engine's curated code tables, siding notes, stabling set, transit-only places, manual locations, the full station-name → CRS resolver table (with Southeastern roster marks), the section membership lists and the fleet profiles. |
+| Table | What it holds |
+|---|---|
+| `BERTH_SHEETS` | Berthing location → [section, code, siding note, TLC] for every known berth, siding, shed and signal-stand. |
+| `DEST_TLC` | Destination name → three-letter code for column A. |
+| `NON_BERTH_VISIT`, `SIDING_CLASS_RE` | Which locations never count as berths; what a siding looks like by name. |
+| `MAIN_ORDER` / `METRO_ORDER` / `HS_ORDER`, `HEADCODE_SECTIONS`, `SIDING_NOTES`, `END_STYLE`, `GP_ROAD`, `DAY_SHEET` | Section order per book, which sections quote headcodes, the siding notes, the end-marker styles, Grove Park road labels, the day-tab names. |
+| `CODE2NAME`, `STABLE_CODES`, `MINOR_SPUR`, `NAME_CODE`, `FIX_CODE`, `PROFILES_G`, `END_MARKERS_GENIUS`, `GROUP_EXTRA` | Genius location codes → names, which codes are stabling, the shunt spurs needing a long stay, hand-learned code corrections, the fleet profiles, the end-lead rules, and section members that aren't berths (e.g. West Marina's shunt neck). |
+| `DEST_CODE`, `BERTH_CODE`, `NOTE_FROM_BERTH`, `BASE_STABLING`, `TRANSIT`, `MANUAL_LOC`, `STATION_TABLE`, `END_MARKERS_PRINTS`, `MAINLINE`/`METRO`/`HIGHSPEED`, `PROFILES` | The weekend engine's curated code tables, siding notes, stabling set, transit-only places, manual locations, the full station-name → CRS resolver table (with Southeastern roster marks), the prints' end-marker rules, the section membership lists and the fleet profiles. |
 
 The station resolver (`resolveStation`) is a last resort behind the curated
 tables: prints abbreviate by dropping letters, so it matches abbreviations
@@ -384,21 +370,76 @@ written to the review list so it can be checked and, if right, promoted into
   Files are read with `FileReader`, workbooks are handed back as `Blob`
   downloads. Nothing is uploaded anywhere.
 
-## Development notes
+## Building and testing
 
-* **Everything is in `Sheets Generator.html`** — there is no build step.
-  Edit the file, refresh the browser.
-* The engines are UMD-style modules with `module.exports` guards:
-  `SHEETS_CORE`, `SHEETS_XLSX`, `GENIUS` and `SheetsEngine` can be loaded
-  under Node for testing (`SHEETS_XLSX` expects `exceljs` and the core as
-  requires; `GENIUS.build` accepts raw PDF byte buffers; `SheetsEngine.run`
-  takes `{name, bytes}` inputs plus unzip/zip functions such as fflate's).
-* The code is a **faithful port of validated Python pipelines**
-  (`acwn_parser` + `tracer3` + `builder3` for the core, `make_sheets.py` for
-  the weekend engine) — many comments cite the hand-built sheets or "the
-  manual" as the authority for a rule (e.g. the Ashford 14+41/15+43/16 27
-  rows, the Maidstone West turnround mistake, the 07 55 ATTACHMENT row).
-  When changing a rule, keep that provenance in mind: the quirks are the
-  spec.
-* Vendored third-party code: **ExcelJS** (MIT), **pako** inflate (MIT/zlib)
-  and **fflate** (MIT), each embedded as a minified script block.
+```
+node build.mjs     # assemble src/ into "Sheets Generator.html"
+npm test           # build, then run the golden test suite (no dependencies)
+```
+
+There are no npm dependencies at all — the tests run on Node's built-in
+runner, and the pre-overhaul monolith frozen at `test/fixtures/legacy.html`
+serves as both the oracle and the test-only xlsx reader (its bundled ExcelJS
+is used to read workbooks back).
+
+The suite is built around **golden equivalence**: both the frozen legacy
+build and the freshly built file are loaded into separate Node `vm`
+sandboxes, fed the same synthetic fixtures (a fabricated pair of Genius
+report PDFs, generated prints `.docx` files, a reissue), and their outputs
+compared deeply —
+
+* `test/genius.test.mjs` — the weekday pipeline, from PDF text extraction to
+  finished sections, must match the legacy output structure for structure;
+* `test/engine.test.mjs` — the weekend pipeline: layouts, reports, the
+  reissue merge, the updated prints document, and the error guard-rails;
+* `test/xlsx.test.mjs` — workbooks from the new writer are read back with
+  ExcelJS and must match the legacy ExcelJS-written books **cell for cell**:
+  values, fonts, alignment, borders, merges, widths, heights, page setup;
+* `test/data.test.mjs` — the consolidated tables equal the legacy tables;
+* `test/build.test.mjs` — the artifact is lean, self-contained, versioned,
+  and free of the removed dead code.
+
+`tools/smoke.mjs` additionally drives the real page in the pre-installed
+Chromium via Playwright — drops files on both panels through the actual file
+inputs and checks the previews render. CI (`.github/workflows/ci.yml`) builds
+the file, runs the suite, and uploads the artifact.
+
+Development notes:
+
+* Edit `src/`, run `node build.mjs`, refresh the browser. Never edit the
+  built file directly.
+* The code is a **faithful port of validated Python pipelines** (`make_sheets.py`
+  for the weekend engine; the Genius pipeline applies the same rulebook) —
+  many comments cite the hand-built sheets or "the manual" as the authority
+  for a rule (e.g. the Ashford 14+41/15+43/16 27 rows, the Maidstone West
+  turnround mistake, the 07 55 ATTACHMENT row). When changing a rule, keep
+  that provenance in mind: the quirks are the spec.
+* Vendored third-party code: **fflate** (MIT) only.
+
+## The 2.0 overhaul
+
+Version 2.0.0 restructured the tool without changing what it produces — the
+golden suite pins the outputs to the pre-overhaul build. What changed:
+
+* **~83% smaller.** ExcelJS (~948 KB, three quarters of the old file) and
+  pako are gone; the weekday books now go through the same hand-built
+  SpreadsheetML writer the weekend books always used, extended to multi-sheet
+  workbooks. The deliverable went from ~1.24 MB to ~206 KB.
+* **Dead code removed.** The retired ACWN-workbook pipeline (`tracer3` /
+  `builder3`, the Friday variant, `docHealth`, the disabled weekday `.xlsx`
+  path and its orphaned UI) is deleted — it survives in git history.
+* **One source of truth.** All reference tables were consolidated into
+  `src/data.js`; the two engines share the stop-collapsing walk and day-shape
+  constants (`src/rulebook.js`), one xlsx writer and one preview renderer.
+* **A real bug fixed.** The legacy file wired the weekend panel before its
+  markup existed; in a fresh browser load that crashed and left the weekend
+  drop zone dead. Scripts now sit at the end of `<body>` and the UI waits for
+  the DOM.
+* **Weekday previews now show the sheet itself** — the same ruled house grid
+  that is saved — instead of a simplified table, and each book has its own
+  road card. Files dropped together are processed sequentially (no racing
+  builds), the tabs are keyboard-navigable, and the build is stamped with the
+  version for traceability.
+* **A fleet lineup** — stylised class 375 / 465 / 395 sprites in the
+  Southeastern manner — marks the books' fleets on screen. Decorative, inline
+  SVG, still fully offline.
