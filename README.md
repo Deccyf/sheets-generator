@@ -15,8 +15,9 @@ in and the house drafting conventions applied automatically.
 Everything runs inside the one file, in the browser, on the local machine. No
 report, print or sheet ever leaves the computer, and the page works without an
 internet connection — the only library it needs (fflate, for zip and inflate)
-is bundled into the file itself. The deliverable is about **200 KB**; the
-source lives in `src/` and is assembled by `node build.mjs`.
+is bundled into the file itself. The deliverable is about **300 KB** (a third
+of it the how-to screenshots in the quick start); the source lives in `src/`
+and is assembled by `node build.mjs`.
 
 > **These are drafting tools.** Every build produces a review list naming
 > anything the rules had to decide for themselves. Always read it, and always
@@ -63,6 +64,21 @@ The weekday panel reads either planning system:
   date. Activity markers (ATTACH/DETACH/STABLD) are understood, stable-all-day
   placeholder diagrams are left out with a review note, and headcodes mangled
   by spreadsheet number formatting (`2.00E+05`) are recovered as `2E05`.
+
+  The summary file: open the **Stock Diagrams** list, click **[GO→]** without
+  selecting a filter, click **[Export To Excel]**, then save it in a sensible
+  folder under a sensible name with **File Type** set to **.csv**.
+
+  The detail file: open the **Stock Diagrams** list and click **[GO→]** again,
+  still without a filter; click **Stock Diagram Detail Report** on the
+  toolbar; when the dialog opens at the bottom of the screen click **[…]**
+  under **Output Path**; pick the same folder, give it a sensible name,
+  **File Type .csv** again, **[Save]**; then **[OK]** (you may have to scroll
+  down to see it). It takes a minute or so and tells you when it is done.
+
+  The same steps, with screenshots of the two toolbar buttons and the output
+  dialog, are behind *Getting the two CSVs out of Integrale* in the page's own
+  quick start.
 
 3. Drop **both files** on the first panel (*Weekdays · Mon – Fri*), together
    or one after the other — the tool recognises which report is which from
