@@ -62,15 +62,33 @@ test("per-book review lists carry only their own fleet's items", async () => {
   const res = await N.GENIUS.build(pdfs(N));
   assert.ok(res.reviews, "per-book lists returned");
   // The Faversham ECS suppression belongs to the mainline book alone…
-  assert.ok(res.reviews.main.some(x => /FAVERSHAM/.test(x)), "main has its item");
-  assert.ok(!res.reviews.metro.some(x => /FAVERSHAM/.test(x)), "metro clean of it");
-  assert.ok(!res.reviews.hs.some(x => /FAVERSHAM/.test(x)), "hs clean of it");
+  assert.ok(res.reviews.main.some(x => /FAVERSHAM/.test(x.msg)), "main has its item");
+  assert.ok(!res.reviews.metro.some(x => /FAVERSHAM/.test(x.msg)), "metro clean of it");
+  assert.ok(!res.reviews.hs.some(x => /FAVERSHAM/.test(x.msg)), "hs clean of it");
   // …and the unknown Belvedere Sidings berth to the metro book alone.
-  assert.ok(res.reviews.metro.some(x => /Belvedere/.test(x)), "metro has its item");
-  assert.ok(!res.reviews.main.some(x => /Belvedere/.test(x)), "main clean of it");
+  assert.ok(res.reviews.metro.some(x => /Belvedere/.test(x.msg)), "metro has its item");
+  assert.ok(!res.reviews.main.some(x => /Belvedere/.test(x.msg)), "main clean of it");
   // Together the per-book lists are exactly the combined list.
   assert.deepEqual(
-    norm([...res.reviews.main, ...res.reviews.metro, ...res.reviews.hs].sort()),
+    norm([...res.reviews.main, ...res.reviews.metro, ...res.reviews.hs]
+      .map(x => x.msg).sort()),
     norm([...res.review].sort()),
     "partition covers the combined list");
+});
+
+test("warnings carry their section, and the Ramsgate cut works", async () => {
+  const N = built();
+  const res = await N.GENIUS.build(pdfs(N));
+  const fav = res.reviews.main.find(x => /suppressed: FAVERSHAM/.test(x.msg));
+  assert.equal(fav.sec, "FAVERSHAM", "suppression tagged with its section");
+  const ramItem = res.reviews.main.find(x => /suppressed: RAMSGATE/.test(x.msg));
+  assert.equal(ramItem.sec, "RAMSGATE", "Ramsgate suppression tagged");
+  const bel = res.reviews.metro.find(x => /Belvedere/.test(x.msg));
+  assert.equal(bel.sec, "BELVEDERE", "auto-section tagged with its section");
+  // The Ramsgate card's filter: RAMSGATE items and general items only.
+  const ram = res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE");
+  assert.ok(ram.some(x => /suppressed: RAMSGATE/.test(x.msg)),
+    "Ramsgate card keeps its own item");
+  assert.ok(!ram.some(x => /FAVERSHAM/.test(x.msg)),
+    "Ramsgate card clean of other sections' items");
 });

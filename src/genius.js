@@ -135,7 +135,8 @@ const GENIUS = (() => {
     const c = se.codeFor(name, table, local, where);
     for (const w of local)
       if (!(w[0] === "resolved" && (w[2] === "high" || w[2] === "manual")))
-        warn.push(w.map(x => x == null ? "" : x).join(" ").trim());
+        warn.push({ sec: null,
+                    msg: w.map(x => x == null ? "" : x).join(" ").trim() });
     return c;
   }
   function destCode(name, warn, where) {
@@ -235,8 +236,8 @@ const GENIUS = (() => {
         const r = se ? se.resolveStation(locName(stop)) : null;
         const secName = ((r && r.name) || locName(stop)).toUpperCase();
         autoSec.set(nm, secName);
-        warn.push(date + " " + locName(stop) +
-                  " is not in the section list - listed under " + secName);
+        warn.push({ sec: secName, msg: date + " " + locName(stop) +
+                  " is not in the section list - listed under " + secName });
       }
       return autoSec.get(nm);
     };
@@ -244,7 +245,7 @@ const GENIUS = (() => {
     for (const [diag, raw] of details) {
       const sr = summ.get(diag);
       if (!sr || !(sr.fleet in prof.fleets)) continue;
-      if (!raw.length) { warn.push(date + " " + diag + ": no detail itinerary"); continue; }
+      if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
       const bnd = boundaries(stops);
       const stints = [];
@@ -397,8 +398,8 @@ const GENIUS = (() => {
         if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
         else if (mk.cbeLeads.has(dest) || e.route.includes(mk.cbeVia)) {
           lead = mk.cbe; rear = mk.fke;
-        } else warn.push(e.sec + " " + e.tmin + " to " + dest +
-                         " - no rule for which end leads");
+        } else warn.push({ sec: e.sec, msg: e.sec + " " + e.tmin + " to " + dest +
+                         " - no rule for which end leads" });
         if (lead) { blocks[0].end = lead; blocks[blocks.length - 1].end = rear; }
       }
       e.dest = destCode(locName(e.destStop), warn, e.sec + " " + e.tmin);
@@ -438,9 +439,10 @@ const GENIUS = (() => {
                    String(t % 60).padStart(2, "0") + " ARR";
         for (let bi = 1; bi < e.blocks.length - 1; bi++)
           if (!e.blocks[bi].end) e.blocks[bi].end = ex;
-        warn.push("FOLKESTONE EAST " + fmtT(e.tmin, e.hc) + ": " + ex +
+        warn.push({ sec: "FOLKESTONE EAST",
+                  msg: "FOLKESTONE EAST " + fmtT(e.tmin, e.hc) + ": " + ex +
                   " is taken from tonight's Train Roads arrivals - double" +
-                  " check the ACWN and change it if the times differ");
+                  " check the ACWN and change it if the times differ" });
       });
     }
     // D cross-reference: only point at entries that exist
@@ -453,8 +455,9 @@ const GENIUS = (() => {
       const pairs = new Set(e.blocks.map(x => x.D + "\u0000" + x.E));
       e.splits_pm = !e.splits && e.blocks.length > 1 && pairs.size > 1;
       if (e.suppress)
-        warn.push("suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-                  e.blocks.map(x => x.diag).join("+") + ") - empty move to a berth");
+        warn.push({ sec: e.sec,
+                  msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+                  e.blocks.map(x => x.diag).join("+") + ") - empty move to a berth" });
     }
     // writer-shaped sections
     const secs = new Map();
@@ -500,7 +503,8 @@ const GENIUS = (() => {
     const reviews = { main: [], metro: [], hs: [] };
     const noteAll = m => {
       review.push(m);
-      reviews.main.push(m); reviews.metro.push(m); reviews.hs.push(m);
+      const tagged = { sec: null, msg: m };
+      reviews.main.push(tagged); reviews.metro.push(tagged); reviews.hs.push(tagged);
     };
     let sumRows = [];
     const byDate = new Map();
@@ -532,9 +536,8 @@ const GENIUS = (() => {
                                  [warnMetro, reviews.metro],
                                  [warnHs, reviews.hs]]) {
         for (const w of warn) {
-          const m = typeof w === "string" ? w : w.join(" ");
-          review.push(m);
-          bag.push(m);
+          review.push(w.msg);
+          bag.push(w);
         }
       }
     }

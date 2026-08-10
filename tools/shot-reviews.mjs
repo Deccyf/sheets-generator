@@ -35,6 +35,7 @@ async function openReview(cardIx, shot) {
   await card.locator(".btn", { hasText: "Close" }).click();
 }
 await openReview(0, "tools/shot-8-review-main.png");   // SHEETS
+await openReview(1, "tools/shot-10-review-ram.png");   // RAM SHEETS
 await openReview(2, "tools/shot-9-review-metro.png");  // METRO SHEETS
 await browser.close();
 console.log("review shots done");

@@ -238,9 +238,17 @@ function reviewPane(items) {
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
     const hsAny = Object.values(res.hsSecs || {}).some(m => m && m.size);
-    // Each book carries its own fleet's review items; the Ramsgate book is
-    // cut from the mainline build, so it shares the mainline list.
-    const revs = res.reviews || { main: res.review, metro: res.review, hs: res.review };
+    // Each book carries its own fleet's review items. The Ramsgate book is
+    // cut from the mainline build, so it keeps the mainline items tagged
+    // RAMSGATE plus the section-less general ones (unreadable diagrams,
+    // date notices, location look-ups).
+    const msgs = list => list.map(x => x.msg);
+    const revs = {
+      main: msgs(res.reviews.main),
+      ram: msgs(res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE")),
+      metro: msgs(res.reviews.metro),
+      hs: msgs(res.reviews.hs),
+    };
     const books = [
       { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
         name: "SHEETS_" + res.tag + ".xlsx",
@@ -249,7 +257,7 @@ function reviewPane(items) {
       { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
         name: "RAM_SHEETS_" + res.tag + ".xlsx",
         bytes: X.writeBooks(res.secsByDay, res.labels, true),
-        secs: res.secsByDay, ram: true, order: null, review: revs.main },
+        secs: res.secsByDay, ram: true, order: null, review: revs.ram },
       { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
         name: "METRO_SHEETS_" + res.tag + ".xlsx",
         bytes: X.writeBooks(res.metroSecs, res.labels, false,
