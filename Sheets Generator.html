@@ -242,13 +242,19 @@
 
   /* ---------- per-book options ---------- */
   .opts{
-    margin:14px 0 0; padding:10px 14px 11px; border:1px solid var(--apron-dk);
-    background:var(--paper); display:flex; gap:18px; align-items:center;
+    margin:14px 0 0; padding:9px 14px 11px; border:1px solid var(--apron-dk);
+    background:var(--paper); display:flex; gap:9px 18px; align-items:center;
     flex-wrap:wrap;
   }
+  /* the legend sits on the border, so it stays short enough never to wrap */
   .opts legend{
     font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
     text-transform:uppercase; color:var(--chalk); padding:0 6px;
+    white-space:nowrap;
+  }
+  .opts .opts-hint{
+    flex:0 0 100%; margin:0; font-size:12.5px; line-height:1.45;
+    color:var(--chalk);
   }
   .opts label{
     font-family:var(--mono); font-size:12px; letter-spacing:.05em;
@@ -333,8 +339,10 @@
     <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
     <fieldset class="opts">
-      <legend>Every headcode in the notes column — ECS and platform
-        starters, Victoria &amp; Grove Park style. Off = the house rules.</legend>
+      <legend>Headcodes</legend>
+      <p class="opts-hint">Put every headcode in the notes column — empty
+        moves and platform starters alike, Victoria &amp; Grove Park style.
+        Left off, each book keeps the house rules.</p>
       <label><input type="checkbox" id="hc_main"> Mainline</label>
       <label><input type="checkbox" id="hc_metro"> Metro</label>
       <label><input type="checkbox" id="hc_hs"> High Speed</label>
@@ -409,8 +417,10 @@
     <input type="file" id="we_file" accept=".docx,.doc" multiple hidden>
 
     <fieldset class="opts">
-      <legend>Every headcode in the notes column — ECS and platform
-        starters, Victoria &amp; Grove Park style. Off = the house rules.</legend>
+      <legend>Headcodes</legend>
+      <p class="opts-hint">Put every headcode in the notes column — empty
+        moves and platform starters alike, Victoria &amp; Grove Park style.
+        Left off, each book keeps the house rules.</p>
       <label><input type="checkbox" id="we_hc_main"> Mainline</label>
       <label><input type="checkbox" id="we_hc_metro"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs"> High Speed</label>
