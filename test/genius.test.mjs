@@ -116,12 +116,17 @@ test("Integrale quirks: mangled headcodes, stable placeholders, uncovered note",
     "stable placeholder dropped with a note");
   assert.ok(res.review.some(m => /1 headcode\(s\) recovered.*2E05/.test(m)),
     "mangled headcode noted");
-  assert.ok(res.review.some(m => /1 of 2 diagrams are marked Uncovered/.test(m)),
+  assert.ok(res.review.some(m => /1 of 3 diagrams are marked Uncovered/.test(m)),
     "uncovered count noted");
   const ash = res.secsByDay.M.get("ASHFORD");
   assert.ok(ash && ash.some(e => e.headcode === "2E05"),
     "recovered headcode reaches the entry");
   assert.ok(!("T" in res.labels), "the next-day placeholder builds no TUE tab");
+  // Plumstead and Bellingham use their own codes on the sheets now
+  const bell = res.metroSecs.M.get("BELLINGHAM SIDING");
+  assert.ok(bell && bell.length, "Bellingham entry present");
+  assert.equal(bell[0].units[0].am, "PLU", "Plumstead berths code PLU");
+  assert.equal(bell[0].units[0].pm, "BGM", "Bellingham berths code BGM");
 });
 
 test("mixed-format pairs are refused by the sniffers", () => {

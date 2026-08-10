@@ -261,7 +261,8 @@ export const INTEGRALE_QUIRKS_SUMMARY =
   "Diagram Comments,Coverage Notes\r\n" +
   "QQ901,Covered,375/6,,0,10/08/2026 06:00,1,2E05,ASHFDNS,10/08/2026 06:05,ASHFKY,1,,,,,,QQ901,,\r\n" +
   "QQ902,Covered,465/9,,0,11/08/2026 00:01,,,GRVPKUS,11/08/2026 23:59,GRVPKUS,0,,,,,,QQ902,,\r\n" +
-  "QQ903,Uncovered,395/0,,0,10/08/2026 07:00,1,5D01,RAMSGTD,10/08/2026 07:05,RAMSGTE,2,,,,,,QQ903,,";
+  "QQ903,Uncovered,395/0,,0,10/08/2026 07:00,1,5D01,RAMSGTD,10/08/2026 07:05,RAMSGTE,2,,,,,,QQ903,,\r\n" +
+  "QQ904,Covered,465/9,,0,10/08/2026 06:30,1,5G01,BELNGMS,10/08/2026 17:00,BELNGMS,9,,,,,,QQ904,,";
 
 export const INTEGRALE_QUIRKS_DETAIL =
   "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
@@ -269,4 +270,8 @@ export const INTEGRALE_QUIRKS_DETAIL =
   "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works\r\n" +
   "QQ901,10/08/2026,,1,ASHFDNS,Ashford Down Sidings,06:00:00,,2.00E+05,0,,ASHFKY,Ashford International,06:05:00,,\r\n" +
   "QQ902,11/08/2026,,0,GRVPKUS,Grove Park Up C.H.S.,00:01:00,STABLD,,0,,GRVPKUS,Grove Park Up C.H.S.,00:01:00,,\r\n" +
-  "QQ903,10/08/2026,,2,RAMSGTD,Ramsgate E.M.U.D.,07:00:00,,5D01,0,,RAMSGTE,Ramsgate,07:05:00,,";
+  "QQ903,10/08/2026,,2,RAMSGTD,Ramsgate E.M.U.D.,07:00:00,,5D01,0,,RAMSGTE,Ramsgate,07:05:00,,\r\n" +
+  "QQ904,10/08/2026,,9,BELNGMS,Bellingham Siding,06:30:00,,5G01,0,,SLADEGN,Slade Green,06:50:00,,\r\n" +
+  "QQ904,10/08/2026,,9,SLADEGN,Slade Green,06:55:00,,2G01,0,,PLMSTCS,Plumstead C.H.S.,07:10:00,,\r\n" +
+  "QQ904,10/08/2026,,9,PLMSTCS,Plumstead C.H.S.,16:00:00,,5G05,0,,SLADEGN,Slade Green,16:10:00,,\r\n" +
+  "QQ904,10/08/2026,,9,SLADEGN,Slade Green,16:15:00,,2G06,0,,BELNGMS,Bellingham Siding,17:00:00,,";

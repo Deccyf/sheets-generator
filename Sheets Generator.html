@@ -675,10 +675,10 @@ const SIDING_CLASS_RE = new RegExp(
   // corrections learned from the hand-built sheets: these beat whatever
   // the tables or the resolver come back with
   const NAME_CODE = { "DARTFORD UP SIDINGS": "DFU", "GILLINGHAM UP SDGS": "GIU",
-    "BELLINGHAM SIDING": "BLM", "PLUMSTEAD C H S": "PLM",
+    "BELLINGHAM SIDING": "BGM", "PLUMSTEAD C.H.S": "PLU",
     "FOLKESTONE EAST": "FKE", "FOLKESTONE ETR": "FKE", "MINSTER THANET": "MSR",
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
-  const FIX_CODE = { GLU: "GIU", PLU: "PLM", BGM: "BLM" };
+  const FIX_CODE = { GLU: "GIU" };
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
@@ -755,7 +755,7 @@ const BERTH_CODE = {
  "S Gn Dep":"SG","S Gn U Sd":"SGU","SldGrDEHs":"SG","S Gn":"SG",
  "Orp":"ORP","Orp Dn Sd":"ORP","C St":"CST",
  "Maid W":"MDW","Dart":"DFD","Dart USd":"DFD","Dart DSd":"DFD",
- "Gend":"GRV","Sevenoaks":"SEV","Plum Sdg":"PLU","Bell Sd":"BEL",
+ "Gend":"GRV","Sevenoaks":"SEV","Plum Sdg":"PLU","Bell Sd":"BGM",
 };
 const NOTE_FROM_BERTH = {
  "Ton DMS":"DNM","TonbJubS":"JUB","Hast Pk S":"PARK",

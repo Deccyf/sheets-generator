@@ -11,7 +11,11 @@ test("reference tables match the legacy build", () => {
   assert.deepEqual(norm(D.NON_BERTH_VISIT), norm(L.SHEETS_CORE.NON_BERTH_VISIT),
     "NON_BERTH_VISIT");
   assert.deepEqual(norm(D.DEST_CODE), norm(L.SheetsEngine.DEST_CODE), "DEST_CODE");
-  assert.deepEqual(norm(D.BERTH_CODE), norm(L.SheetsEngine.BERTH_CODE), "BERTH_CODE");
+  // Deliberate divergence: Bellingham berths code BGM on the sheets now
+  // (the legacy tables said BEL), matching the weekday books' PLU/BGM.
+  const legacyBerth = { ...L.SheetsEngine.BERTH_CODE, "Bell Sd": "BGM" };
+  assert.deepEqual(norm(D.BERTH_CODE), norm(legacyBerth),
+    "BERTH_CODE (with the Bellingham BGM change)");
   assert.deepEqual(norm(D.MAIN_ORDER), norm(L.SHEETS_XLSX.MAIN_ORDER), "MAIN_ORDER");
   assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
   assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
