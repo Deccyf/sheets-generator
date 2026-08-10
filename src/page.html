@@ -22,8 +22,9 @@
     <p class="eyebrow">Fleet &amp; depot · unit berthing</p>
     <h1>Berthing sheets<span class="sub">the week's books, built from the plans</span></h1>
     <p class="lede">This page turns the planning paperwork into the unit berthing
-      books. Weekday books are built from the Genius Summary and Detail
-      reports; Saturday and Sunday sheets from the weekend diagram prints.
+      books. Weekday books are built from the Diagram Summary and Detail
+      reports — Genius PDFs or Integrale CSVs; Saturday and Sunday sheets
+      from the weekend diagram prints.
       The page reads the dropped files, works out where every unit berths and
       ends its day, and writes the books in the house format — diagram
       numbers, AM and PM columns, flags and notes filled in — ready to check
@@ -34,10 +35,10 @@
     <div class="quick">
       <h2>Quick start</h2>
       <ol class="steps">
-        <li><strong>Get the paperwork as files.</strong> For a weekday: the Genius
-          <em>Diagram Summary</em> and <em>Diagram Detail</em> reports, both saved
-          as PDF for the same date. For the weekend: the diagram prints Word
-          document(s).
+        <li><strong>Get the paperwork as files.</strong> For a weekday: the
+          <em>Diagram Summary</em> and <em>Diagram Detail</em> reports for the
+          date — from Genius as PDFs, or from Integrale as the two CSV exports.
+          For the weekend: the diagram prints Word document(s).
           <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
             In Genius, a <strong>Control Cycle</strong> must be created before the
             Diagram Summary and Diagram Detail reports can be run &mdash; and if
@@ -65,21 +66,21 @@
   <section class="platform" aria-labelledby="wk-h">
     <span class="sign">Weekdays · Mon – Fri</span>
     <h2 id="wk-h">Daily sheets from the Genius reports</h2>
-    <p class="whatfor">Needs <strong>both</strong> PDF reports for the date —
+    <p class="whatfor">Needs <strong>both</strong> reports for the date —
       the Diagram Summary (one line per diagram) and the Diagram Detail (every
-      stop of every diagram). Drop the pair together; a Monday pair builds the
-      Monday books.</p>
+      stop of every diagram) — as Genius PDFs or as Integrale CSV exports.
+      Drop the pair together; a Monday pair builds the Monday books.</p>
 
     <button class="berth" id="berth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
-          <strong>Drop the Genius Summary &amp; Detail PDFs here</strong>
-          <span>both reports for the same date · or click to choose the files</span>
+          <strong>Drop the Summary &amp; Detail reports here</strong>
+          <span>Genius PDFs or Integrale CSVs · both for the same date · or click to choose</span>
         </span>
       </span>
     </button>
-    <input type="file" id="file" accept=".pdf" multiple hidden>
+    <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
     <p class="status" id="status" role="status" aria-live="polite"></p>
 
@@ -112,8 +113,9 @@
       <div class="explain-body">
         <dl>
           <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
-          <dd>One of the two reports is missing or the wrong kind. Both PDFs
-            must be dropped, saved for the same date.</dd>
+          <dd>One of the two reports is missing or the wrong kind. Both must
+            be dropped, saved for the same date — two Genius PDFs or two
+            Integrale CSVs (a mixed pair won't build).</dd>
           <dt>A location comes up under its own heading</dt>
           <dd>A unit berthed somewhere the section list doesn't know. It gets
             its own section in alphabetical order and a note on the review

@@ -189,3 +189,84 @@ export function makeDocx(lines, fflate) {
   };
   return fflate.zipSync(files, { level: 6 });
 }
+
+/* ---- Integrale CSV exports encoding the SAME schedule as the PDF
+   fixtures, so either format must build identical books. ---- */
+
+const LONG_DATE = d => d.slice(0, 6) + "20" + d.slice(6);
+
+function fixtureDiagrams() {
+  const diags = [];
+  let cur = null;
+  for (const l of DETAIL_LINES.slice(1)) {
+    const dm = /^Diagram ([A-Z]{2}) ?(\d) ?(\d) ?(\d) On (\d\d\/\d\d\/\d\d)$/.exec(l);
+    if (dm) {
+      cur = { code: dm[1] + dm[2] + dm[3] + dm[4], date: dm[5], stops: [] };
+      diags.push(cur);
+      continue;
+    }
+    const t = l.split(/\s{2,}/);
+    const times = t.filter(v => /^\d\d:\d\d$/.test(v));
+    const hc = t.find(v => /^\d[A-Z]\d\d$/.test(v)) || null;
+    const name = t.slice(1, t.indexOf(times[0])).join(" ");
+    let arr = null, dep = null;
+    if (times.length >= 2) { arr = times[0]; dep = times[1]; }
+    else if (!cur.stops.length) dep = times[0];
+    else arr = times[0];
+    cur.stops.push({ code: t[0], name, arr, dep, hc });
+  }
+  return diags;
+}
+
+export function integraleSummaryCsv() {
+  const rows = ["Code,Cov,Type,Allocate Resource,Stock,Start Time,Position," +
+    "First Train,Start Location,End Time,End Location,Distance," +
+    "First Train Note,Start Stock,Last Train,Last Train Note,End Stock," +
+    "Pre-assignment,Diagram Comments,Coverage Notes"];
+  for (const l of SUMMARY_LINES.slice(2)) {
+    const t = l.split(/\s{2,}/);
+    const [diag, fleet, , pos, start, from, to, end] = t;
+    // one quoted, comma-carrying note to exercise the CSV parser
+    const note = diag === "GT101" ? '"Via   ASHFKY , TONBDG"' : "";
+    rows.push([diag, "Covered", fleet, "", "000000000000",
+      LONG_DATE("03/08/26") + " " + start, pos, "0X00", from,
+      LONG_DATE("03/08/26") + " " + end, to, "0", note, "", "0X99", "", "",
+      diag, "", ""].join(","));
+  }
+  return "\uFEFF" + rows.join("\r\n");
+}
+
+export function integraleDetailCsv() {
+  const rows = ["Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+    "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+    "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time," +
+    "Off Diagram,Works"];
+  for (const d of fixtureDiagrams()) {
+    for (let i = 0; i + 1 < d.stops.length; i++) {
+      const a = d.stops[i], b = d.stops[i + 1];
+      rows.push([d.code, LONG_DATE(d.date), "", "0", a.code, a.name,
+        a.dep + ":00", "", a.hc || "", "0", "", b.code, b.name,
+        b.arr + ":00", "", ""].join(","));
+    }
+  }
+  return rows.join("\r\n");
+}
+
+/* A separate mini pair exercising the Integrale quirks: an Excel-mangled
+   headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
+export const INTEGRALE_QUIRKS_SUMMARY =
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes\r\n" +
+  "QQ901,Covered,375/6,,0,10/08/2026 06:00,1,2E05,ASHFDNS,10/08/2026 06:05,ASHFKY,1,,,,,,QQ901,,\r\n" +
+  "QQ902,Covered,465/9,,0,11/08/2026 00:01,,,GRVPKUS,11/08/2026 23:59,GRVPKUS,0,,,,,,QQ902,,\r\n" +
+  "QQ903,Uncovered,395/0,,0,10/08/2026 07:00,1,5D01,RAMSGTD,10/08/2026 07:05,RAMSGTE,2,,,,,,QQ903,,";
+
+export const INTEGRALE_QUIRKS_DETAIL =
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works\r\n" +
+  "QQ901,10/08/2026,,1,ASHFDNS,Ashford Down Sidings,06:00:00,,2.00E+05,0,,ASHFKY,Ashford International,06:05:00,,\r\n" +
+  "QQ902,11/08/2026,,0,GRVPKUS,Grove Park Up C.H.S.,00:01:00,STABLD,,0,,GRVPKUS,Grove Park Up C.H.S.,00:01:00,,\r\n" +
+  "QQ903,10/08/2026,,2,RAMSGTD,Ramsgate E.M.U.D.,07:00:00,,5D01,0,,RAMSGTE,Ramsgate,07:05:00,,";

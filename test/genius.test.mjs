@@ -92,3 +92,41 @@ test("warnings carry their section, and the Ramsgate cut works", async () => {
   assert.ok(!ram.some(x => /FAVERSHAM/.test(x.msg)),
     "Ramsgate card clean of other sections' items");
 });
+
+test("Integrale CSVs build the same books as the Genius PDFs", async () => {
+  const N = built();
+  const { integraleSummaryCsv, integraleDetailCsv } =
+    await import("./helpers/synth.mjs");
+  const pdfRes = await N.GENIUS.build(pdfs(N));
+  const csvRes = N.GENIUS.buildIntegrale([integraleSummaryCsv(), integraleDetailCsv()]);
+  assert.deepEqual(norm(csvRes.secsByDay), norm(pdfRes.secsByDay), "mainline sections");
+  assert.deepEqual(norm(csvRes.metroSecs), norm(pdfRes.metroSecs), "metro sections");
+  assert.deepEqual(norm(csvRes.hsSecs), norm(pdfRes.hsSecs), "high speed sections");
+  assert.deepEqual(norm(csvRes.labels), norm(pdfRes.labels), "labels");
+  assert.equal(csvRes.tag, pdfRes.tag, "tag");
+  assert.deepEqual(norm(csvRes.reviews), norm(pdfRes.reviews), "review lists");
+});
+
+test("Integrale quirks: mangled headcodes, stable placeholders, uncovered note", async () => {
+  const N = built();
+  const { INTEGRALE_QUIRKS_SUMMARY, INTEGRALE_QUIRKS_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([INTEGRALE_QUIRKS_SUMMARY, INTEGRALE_QUIRKS_DETAIL]);
+  assert.ok(res.review.some(m => /1 stable-all-day.*QQ902/.test(m)),
+    "stable placeholder dropped with a note");
+  assert.ok(res.review.some(m => /1 headcode\(s\) recovered.*2E05/.test(m)),
+    "mangled headcode noted");
+  assert.ok(res.review.some(m => /1 of 2 diagrams are marked Uncovered/.test(m)),
+    "uncovered count noted");
+  const ash = res.secsByDay.M.get("ASHFORD");
+  assert.ok(ash && ash.some(e => e.headcode === "2E05"),
+    "recovered headcode reaches the entry");
+  assert.ok(!("T" in res.labels), "the next-day placeholder builds no TUE tab");
+});
+
+test("mixed-format pairs are refused by the sniffers", () => {
+  const N = built();
+  assert.equal(N.GENIUS.sniffIntegrale("Code,Cov,Type,x,x,x,Position,First Train,y"), "sum");
+  assert.equal(N.GENIUS.sniffIntegrale("Diagram Code,Diagram Date,Notes,Start Tiploc"), "det");
+  assert.equal(N.GENIUS.sniffIntegrale("some,other,csv"), null);
+});

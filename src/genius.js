@@ -496,7 +496,9 @@ const GENIUS = (() => {
     return s;
   }
 
-  async function build(buffers) {
+  /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
+     over parsed summary rows + detail itineraries, whatever their source. */
+  function assemble(sumRows, byDate, extraNotes) {
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)
@@ -506,19 +508,7 @@ const GENIUS = (() => {
       const tagged = { sec: null, msg: m };
       reviews.main.push(tagged); reviews.metro.push(tagged); reviews.hs.push(tagged);
     };
-    let sumRows = [];
-    const byDate = new Map();
-    for (const buf of buffers) {
-      const txt = pdfText(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
-      if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt));
-      if (/Diagram Detail Report/i.test(txt))
-        for (const [d, m] of parseDetail(txt)) {
-          if (!byDate.has(d)) byDate.set(d, new Map());
-          for (const [k, v] of m) byDate.get(d).set(k, v);
-        }
-    }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found - upload the Summary report PDF as well.");
-    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - upload the Detail report PDF as well.");
+    for (const m of (extraNotes || [])) noteAll(m);
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {};
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
@@ -546,7 +536,189 @@ const GENIUS = (() => {
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
-  return { build, pdfText, parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
+  async function build(buffers) {
+    let sumRows = [];
+    const byDate = new Map();
+    for (const buf of buffers) {
+      const txt = pdfText(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
+      if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt));
+      if (/Diagram Detail Report/i.test(txt))
+        for (const [d, m] of parseDetail(txt)) {
+          if (!byDate.has(d)) byDate.set(d, new Map());
+          for (const [k, v] of m) byDate.get(d).set(k, v);
+        }
+    }
+    if (!sumRows.length) throw new Error("No Diagram Summary rows found - upload the Summary report PDF as well.");
+    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - upload the Detail report PDF as well.");
+    return assemble(sumRows, byDate);
+  }
+
+
+  // ---- Integrale CSV exports (Diagram Summary + Diagrams) ----
+  // The successor planning system exports the same facts as the Genius
+  // reports, but as CSVs: the summary one line per diagram, the diagrams
+  // file one line per LEG (from-location/time -> to-location/time with the
+  // headcode), plus activity marker rows (ATTACH/DETACH/STABLD). The
+  // adapter translates both into the shapes assemble() already consumes,
+  // so either source produces the same books through the same rulebook.
+  function csvParse(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const rows = [];
+    let row = [], field = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else q = false;
+        } else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    row.push(field);
+    if (row.length > 1 || row[0] !== "") rows.push(row);
+    return rows;
+  }
+  // Excel-mangled headcodes: "2.00E+05" was 2E05 before the spreadsheet
+  // read it as a number. The mapping back is unambiguous.
+  const HC_MANGLED = /^(\d)\.00E\+(\d{2})$/;
+  function fixHc(h) {
+    const m = HC_MANGLED.exec(h || "");
+    return m ? m[1] + "E" + m[2] : (h || null);
+  }
+  const shortDate = d => {
+    const m = /^(\d\d\/\d\d\/)\d\d(\d\d)$/.exec(d || "");
+    return m ? m[1] + m[2] : d;
+  };
+  function headerIndex(rows, wanted) {
+    const hdr = rows[0].map(x => x.trim());
+    const idx = {};
+    for (const w of wanted) {
+      idx[w] = hdr.indexOf(w);
+      if (idx[w] < 0) return null;
+    }
+    return idx;
+  }
+  function sniffIntegrale(text) {
+    const rows = csvParse(text.slice(0, 4000));
+    if (!rows.length) return null;
+    const hdr = rows[0].map(x => x.trim());
+    if (hdr.includes("Code") && hdr.includes("Type") && hdr.includes("First Train"))
+      return "sum";
+    if (hdr.includes("Diagram Code") && hdr.includes("Start Tiploc"))
+      return "det";
+    return null;
+  }
+  function parseSummaryCsv(text) {
+    const rows = csvParse(text);
+    const c = headerIndex(rows, ["Code", "Cov", "Type", "Start Time",
+      "Position", "Start Location", "End Time", "End Location"]);
+    if (!c) throw new Error("That CSV doesn't look like the Integrale Diagram Summary export.");
+    const out = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const code = (r[c["Code"]] || "").trim();
+      if (!/^[A-Z]{2}\d{3}$/.test(code)) continue;
+      const st = (r[c["Start Time"]] || "").split(" ");
+      const et = (r[c["End Time"]] || "").split(" ");
+      out.push({
+        date: shortDate(st[0]),
+        diag: code,
+        fleet: (r[c["Type"]] || "").trim(),
+        pos: parseInt(r[c["Position"]], 10) || 1,
+        start: st[1] ? mins(st[1]) : 0,
+        from: (r[c["Start Location"]] || "").trim(),
+        to: (r[c["End Location"]] || "").trim(),
+        end: et[1] ? mins(et[1]) : 0,
+        uncovered: (r[c["Cov"]] || "").trim().toUpperCase() === "UNCOVERED",
+      });
+    }
+    return out;
+  }
+  function parseDetailCsv(text) {
+    const rows = csvParse(text);
+    const c = headerIndex(rows, ["Diagram Code", "Diagram Date", "Start Tiploc",
+      "Start Location Name", "Start Time", "Activity", "Headcode",
+      "End Tiploc", "End Location Name", "End Time"]);
+    if (!c) throw new Error("That CSV doesn't look like the Integrale Diagrams export.");
+    const diags = new Map();     // code -> {date, legs, stabledOnly}
+    let mangled = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const code = (r[c["Diagram Code"]] || "").trim();
+      if (!code) continue;
+      if (!diags.has(code))
+        diags.set(code, { date: shortDate((r[c["Diagram Date"]] || "").trim()), legs: [] });
+      const act = (r[c["Activity"]] || "").trim();
+      if (act) continue;         // ATTACH/DETACH/STABLD markers, not movements
+      const raw = (r[c["Headcode"]] || "").trim();
+      const hc = fixHc(raw);
+      if (raw && hc !== raw) mangled++;
+      diags.get(code).legs.push({
+        sT: (r[c["Start Tiploc"]] || "").trim(),
+        sN: (r[c["Start Location Name"]] || "").trim(),
+        sTime: r[c["Start Time"]] || "",
+        eT: (r[c["End Tiploc"]] || "").trim(),
+        eN: (r[c["End Location Name"]] || "").trim(),
+        eTime: r[c["End Time"]] || "",
+        hc: hc ? hc.slice(0, 4) : null,
+      });
+    }
+    // legs -> the itinerary rows assemble()/buildDate expect, with the
+    // same past-midnight rolling parseDetail applies
+    const byDate = new Map();
+    const stabled = [];
+    for (const [code, d] of diags) {
+      if (!d.legs.length) { stabled.push(code); continue; }
+      let prev = -1;
+      const roll = v => { while (v < prev - 60) v += 1440; prev = Math.max(prev, v); return v; };
+      const out = [];
+      for (const leg of d.legs) {
+        out.push({ code: leg.sT, name: leg.sN, arr: null,
+                   dep: roll(mins(leg.sTime)), hc: leg.hc });
+        out.push({ code: leg.eT, name: leg.eN, arr: roll(mins(leg.eTime)),
+                   dep: null, hc: null });
+      }
+      if (!byDate.has(d.date)) byDate.set(d.date, new Map());
+      byDate.get(d.date).set(code, out);
+    }
+    return { byDate, stabled, mangled };
+  }
+  function buildIntegrale(texts) {
+    let sumRows = null, det = null;
+    for (const t of texts) {
+      const kind = sniffIntegrale(t);
+      if (kind === "sum") sumRows = parseSummaryCsv(t);
+      else if (kind === "det") det = parseDetailCsv(t);
+    }
+    if (!sumRows) throw new Error("No Integrale Diagram Summary rows found - drop the Diagram Summary CSV export as well.");
+    if (!det) throw new Error("No Integrale diagram legs found - drop the Diagrams CSV export as well.");
+    const notes = [];
+    if (det.stabled.length) {
+      const drop = new Set(det.stabled);
+      sumRows = sumRows.filter(r => !drop.has(r.diag));
+      notes.push(det.stabled.length + " stable-all-day diagram(s) with no " +
+        "movements left out: " + det.stabled.join(", "));
+    }
+    if (det.mangled)
+      notes.push(det.mangled + " headcode(s) recovered from spreadsheet " +
+        "number formatting (e.g. 2.00E+05 read back as 2E05) - re-export " +
+        "the CSV with text columns to avoid this");
+    const uncovered = sumRows.filter(r => r.uncovered).length;
+    if (uncovered)
+      notes.push(uncovered + " of " + sumRows.length +
+        " diagrams are marked Uncovered in the plan");
+    return assemble(sumRows, det.byDate, notes);
+  }
+
+  return { build, buildIntegrale, sniffIntegrale, pdfText, parseSummary,
+           parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
 if (typeof globalThis !== "undefined") globalThis.GENIUS = GENIUS;

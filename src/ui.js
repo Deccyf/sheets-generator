@@ -230,8 +230,10 @@ function reviewPane(items) {
   let queue = Promise.resolve();
 
   async function buildGenius() {
-    say("Reading Genius reports …"); await paint();
-    const res = await GENIUS.build([have.sum, have.det]);
+    say("Reading the reports …"); await paint();
+    const res = have.sum.fmt === "csv"
+      ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
+      : await GENIUS.build([have.sum.data, have.det.data]);
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
@@ -327,11 +329,22 @@ function reviewPane(items) {
       return;
     }
     if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) {
-      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius Diagram Summary & Detail reports, saved as PDFs.", "err");
+      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius PDF reports or the Integrale CSV exports.", "err");
+      return;
+    }
+    if (nm.endsWith(".csv")) {
+      const text = new TextDecoder("utf-8").decode(await file.arrayBuffer());
+      let kind = null;
+      try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
+      if (!kind) {
+        say("“" + file.name + "” doesn't look like an Integrale export — drop the Diagram Summary and Diagrams CSVs from Integrale.", "err");
+        return;
+      }
+      await stash(kind, "csv", text);
       return;
     }
     if (!nm.endsWith(".pdf")) {
-      say("This tool reads the Genius Diagram Summary & Detail reports (.pdf) for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
+      say("This tool reads the Genius Diagram Summary & Detail PDFs or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
       return;
     }
     const u8 = new Uint8Array(await file.arrayBuffer());
@@ -345,21 +358,34 @@ function reviewPane(items) {
       say("“" + file.name + "” doesn't look like a Genius report — save the Diagram Summary and Diagram Detail reports from Genius as PDFs and drop both here.", "err");
       return;
     }
-    have[kind] = u8;
+    await stash(kind, "pdf", u8);
+  }
+
+  const srcName = fmt => fmt === "csv" ? "Integrale" : "Genius";
+  async function stash(kind, fmt, data) {
+    have[kind] = { fmt, data };
     if (have.sum && have.det) {
+      if (have.sum.fmt !== have.det.fmt) {
+        say("The Summary is from " + srcName(have.sum.fmt) + " but the Detail is from " +
+            srcName(have.det.fmt) + " — drop a matching pair: two Genius PDFs or two Integrale CSVs.", "err");
+        zone("Mixed sources loaded",
+             "drop a matching pair — two Genius PDFs or two Integrale CSVs");
+        return;
+      }
       try {
         await buildGenius();
       } catch (err) {
-        say("Genius build failed: " + err.message, "err");
+        say("Build failed: " + err.message, "err");
       }
       delete have.sum; delete have.det;
       zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
     } else {
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
-      say(got + " report loaded ✓ — now drop the " + want + " report.");
-      zone("Diagram " + got + " loaded ✓",
-           "now drop the " + want + " report · or click to choose it");
+      const what = fmt === "csv" ? "CSV" : "report";
+      say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want + " " + what + ".");
+      zone("Diagram " + got + " loaded ✓ (" + srcName(fmt) + ")",
+           "now drop the " + want + " " + what + " · or click to choose it");
     }
   }
 

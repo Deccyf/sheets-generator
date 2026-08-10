@@ -5,8 +5,9 @@ planning paperwork into the daily **unit berthing books** ("SHEETS") for a
 Southeastern-style fleet and depot operation, with every diagram number filled
 in and the house drafting conventions applied automatically.
 
-* **Weekday books (Mon–Fri)** are built from two **Genius** reports saved as
-  PDF — the *Diagram Summary* and the *Diagram Detail* for the same date(s).
+* **Weekday books (Mon–Fri)** are built from the *Diagram Summary* and
+  *Diagram Detail* reports for the date — as **Genius** PDFs or as
+  **Integrale** CSV exports; both sources produce identical books.
 * **Weekend sheets (Sat & Sun)** are built from the weekend **diagram prints**
   Word document (`.docx` or legacy `.doc`), with automatic merging of
   reissued prints.
@@ -50,18 +51,23 @@ Open `Sheets Generator.html` in a modern browser (Edge, Chrome or Firefox —
 just double-click the file; no server, install or sign-in is needed). The page
 has two drop panels, one per workflow.
 
-### Weekday books — from the Genius reports
+### Weekday books — from the Genius reports or the Integrale exports
 
-1. **In Genius**, make sure a **Control Cycle** exists for the date — the
-   Diagram Summary and Diagram Detail reports cannot be run without one. If
-   the Metro and High Speed books are wanted too, Control Cycles must exist
-   for those fleets as well.
-2. Run **Diagrams → Summary Report…** and **Diagrams → Detail Report…** and
-   save each as a **PDF** for the same date.
-3. Drop **both PDFs** on the first panel (*Weekdays · Mon – Fri*), together or
-   one after the other — the tool recognises which report is which from its
-   contents and waits until it has the pair. You can also click the panel to
-   browse for the files.
+The weekday panel reads either planning system:
+
+* **Genius**: make sure a **Control Cycle** exists for the date (and for the
+  Metro / High Speed fleets if those books are wanted), then run
+  **Diagrams → Summary Report…** and **Diagrams → Detail Report…** and save
+  each as a **PDF**.
+* **Integrale**: export the **Diagram Summary** and **Diagrams** CSVs for the
+  date. Activity markers (ATTACH/DETACH/STABLD) are understood, stable-all-day
+  placeholder diagrams are left out with a review note, and headcodes mangled
+  by spreadsheet number formatting (`2.00E+05`) are recovered as `2E05`.
+
+3. Drop **both files** on the first panel (*Weekdays · Mon – Fri*), together
+   or one after the other — the tool recognises which report is which from
+   its contents and waits until it has a matching pair (two PDFs or two
+   CSVs). You can also click the panel to browse for the files.
 4. The books are built immediately: look them over in the on-screen preview
    (per-day tables for Mainline, Metro and High Speed, plus the Review tab),
    then save each book, or all of them at once as a single zip.
