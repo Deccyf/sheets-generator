@@ -495,6 +495,13 @@ const GENIUS = (() => {
 
   async function build(buffers) {
     const review = [];
+    // per-book lists: the combined `review` keeps the legacy order, these
+    // carry each fleet's own items (date-level notices go to every book)
+    const reviews = { main: [], metro: [], hs: [] };
+    const noteAll = m => {
+      review.push(m);
+      reviews.main.push(m); reviews.metro.push(m); reviews.hs.push(m);
+    };
     let sumRows = [];
     const byDate = new Map();
     for (const buf of buffers) {
@@ -512,19 +519,27 @@ const GENIUS = (() => {
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
-      if (!dk) { review.push(date + ": falls on a weekend - use the weekend prints panel"); continue; }
+      if (!dk) { noteAll(date + ": falls on a weekend - use the weekend prints panel"); continue; }
       const det = byDate.get(date);
-      if (!det) { review.push(date + ": summary given but no detail report for this date"); continue; }
+      if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       const rows = sumRows.filter(r => r.date === date);
-      const warn = [];
-      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warn);
-      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warn);
-      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warn);
+      const warnMain = [], warnMetro = [], warnHs = [];
+      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain);
+      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro);
+      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
-      for (const w of warn) review.push(typeof w === "string" ? w : w.join(" "));
+      for (const [warn, bag] of [[warnMain, reviews.main],
+                                 [warnMetro, reviews.metro],
+                                 [warnHs, reviews.hs]]) {
+        for (const w of warn) {
+          const m = typeof w === "string" ? w : w.join(" ");
+          review.push(m);
+          bag.push(m);
+        }
+      }
     }
     if (!Object.keys(secsByDay).length) throw new Error("No weekday dates found in the reports.");
-    return { secsByDay, metroSecs, hsSecs, labels, review,
+    return { secsByDay, metroSecs, hsSecs, labels, review, reviews,
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 

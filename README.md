@@ -437,7 +437,8 @@ golden suite pins the outputs to the pre-overhaul build. What changed:
   the DOM.
 * **Weekday previews now show the sheet itself** — the same ruled house grid
   that is saved — instead of a simplified table, and each book has its own
-  road card. Files dropped together are processed sequentially (no racing
+  road card and its own review list (mainline items on the mainline book,
+  metro items on the metro book, and so on). Files dropped together are processed sequentially (no racing
   builds) and the tabs are keyboard-navigable.
 * **A fleet lineup** — stylised class 375 / 465 / 395 sprites in the
   Southeastern manner — marks the books' fleets on screen. Decorative, inline

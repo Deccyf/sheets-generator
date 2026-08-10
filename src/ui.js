@@ -238,20 +238,23 @@ function reviewPane(items) {
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
     const hsAny = Object.values(res.hsSecs || {}).some(m => m && m.size);
+    // Each book carries its own fleet's review items; the Ramsgate book is
+    // cut from the mainline build, so it shares the mainline list.
+    const revs = res.reviews || { main: res.review, metro: res.review, hs: res.review };
     const books = [
       { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
         name: "SHEETS_" + res.tag + ".xlsx",
         bytes: X.writeBooks(res.secsByDay, res.labels, false),
-        secs: res.secsByDay, ram: false, order: mainOrder },
+        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main },
       { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
         name: "RAM_SHEETS_" + res.tag + ".xlsx",
         bytes: X.writeBooks(res.secsByDay, res.labels, true),
-        secs: res.secsByDay, ram: true, order: null },
+        secs: res.secsByDay, ram: true, order: null, review: revs.main },
       { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
         name: "METRO_SHEETS_" + res.tag + ".xlsx",
         bytes: X.writeBooks(res.metroSecs, res.labels, false,
           { baseOrder: X.METRO_ORDER, splitRamsgate: false }),
-        secs: res.metroSecs, ram: false, order: metroOrder },
+        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro },
     ];
     if (hsAny) {
       books.push({ road: "HS SHEETS", label: "High Speed 395", spriteCls: "395",
@@ -259,7 +262,7 @@ function reviewPane(items) {
         bytes: X.writeBooks(res.hsSecs, res.labels, false,
           { baseOrder: [], splitRamsgate: false }),
         secs: res.hsSecs, ram: false,
-        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false) });
+        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs });
     }
     roadsEl.textContent = "";
     books.forEach((b, i) => {
@@ -268,8 +271,8 @@ function reviewPane(items) {
         if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
         return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order);
       }]);
-      panes.push(["Review" + (res.review.length ? " (" + res.review.length + ")" : ""),
-                  () => reviewPane(res.review)]);
+      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
+                  () => reviewPane(b.review)]);
       let entries = 0;
       const secNames = new Set();
       const splitByRamsgate = b.secs === res.secsByDay;
@@ -282,7 +285,7 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        res.review.length, panes,
+        b.review.length, panes,
         [["Save book", () => download(b.name, b.bytes, XLSX_MIME)]]));
     });
     if (!hsAny) {
@@ -302,8 +305,8 @@ function reviewPane(items) {
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
-      ? (n === 1 ? " 1 item for a human eye is on the Review tab."
-                 : " " + n + " items for a human eye are on the Review tab.")
+      ? (n === 1 ? " 1 item for a human eye is on its book's Review tab."
+                 : " " + n + " items for a human eye are on the books' Review tabs.")
       : " Nothing needed a human eye.";
     say("Books built — look them over below, then save." + rv,
         res.review.length ? "warn" : "go");

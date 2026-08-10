@@ -56,3 +56,21 @@ test("both reports are still required", async () => {
   await assert.rejects(() => N.GENIUS.build([makePdf(DETAIL_LINES, N.fflate)]),
     /Summary report/);
 });
+
+test("per-book review lists carry only their own fleet's items", async () => {
+  const N = built();
+  const res = await N.GENIUS.build(pdfs(N));
+  assert.ok(res.reviews, "per-book lists returned");
+  // The Faversham ECS suppression belongs to the mainline book alone…
+  assert.ok(res.reviews.main.some(x => /FAVERSHAM/.test(x)), "main has its item");
+  assert.ok(!res.reviews.metro.some(x => /FAVERSHAM/.test(x)), "metro clean of it");
+  assert.ok(!res.reviews.hs.some(x => /FAVERSHAM/.test(x)), "hs clean of it");
+  // …and the unknown Belvedere Sidings berth to the metro book alone.
+  assert.ok(res.reviews.metro.some(x => /Belvedere/.test(x)), "metro has its item");
+  assert.ok(!res.reviews.main.some(x => /Belvedere/.test(x)), "main clean of it");
+  // Together the per-book lists are exactly the combined list.
+  assert.deepEqual(
+    norm([...res.reviews.main, ...res.reviews.metro, ...res.reviews.hs].sort()),
+    norm([...res.review].sort()),
+    "partition covers the combined list");
+});
