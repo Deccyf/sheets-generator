@@ -159,16 +159,35 @@ if (lineupEl) {
       "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
       "</figcaption></figure>").join("");
 }
-/* A road card: header + animated unit + review line + actions + panel. */
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
-  const art = document.createElement("article");
-  art.className = "road";
+/* The head of a road card, shared by the built and the empty ones. */
+function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
   head.className = "road-head";
   head.innerHTML = '<span class="road-no">Road ' + (i + 1) + "</span>" +
     '<h2 class="road-name">' + escHtml(road) + "</h2>" +
     '<span class="road-fleet">' + escHtml(fleetLabel) + "</span>" +
     '<span class="road-sprite" aria-hidden="true">' + sprite(spriteCls) + "</span>";
+  return head;
+}
+
+/* A road with nothing on it: same head, one line saying why. Every book
+   with no diagrams gets this, so an empty Metro road reads like an empty
+   High Speed one rather than offering an empty workbook to save. */
+function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
+  const art = document.createElement("article");
+  art.className = "road";
+  const p = document.createElement("p");
+  p.className = "nothing";
+  p.textContent = why;
+  art.append(roadHead(i, road, fleetLabel, spriteCls), p);
+  return art;
+}
+
+/* A road card: header + animated unit + review line + actions + panel. */
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
+  const art = document.createElement("article");
+  art.className = "road";
+  const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
   track.className = "track";
   const unit = document.createElement("div");
@@ -225,7 +244,7 @@ function reviewPane(items) {
     zoneStrong.textContent = strong;
     zoneSub.textContent = sub;
   }
-  let built = null;
+  let built = null, zipName = "SHEETS_BOOKS.zip";
   let lastRes = null;        // kept so the headcode toggles can rebuild
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
@@ -249,7 +268,6 @@ function reviewPane(items) {
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
-    const hsAny = Object.values(res.hsSecs || {}).some(m => m && m.size);
     // Each book carries its own fleet's review items. The Ramsgate book is
     // cut from the mainline build, so it keeps the mainline items tagged
     // RAMSGATE plus the section-less general ones (unreadable diagrams,
@@ -261,41 +279,31 @@ function reviewPane(items) {
       metro: msgs(res.reviews.metro),
       hs: msgs(res.reviews.hs),
     };
-    const books = [
-      { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
-        name: "SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
-        bytes: X.writeBooks(res.secsByDay, res.labels, false,
-          { allHeadcodes: hcOn("main") }),
-        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main },
-      { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
-        name: "RAM_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
-        bytes: X.writeBooks(res.secsByDay, res.labels, true,
-          { allHeadcodes: hcOn("main") }),
-        secs: res.secsByDay, ram: true, order: null, review: revs.ram },
-      { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
-        name: "METRO_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("metro"),
-        bytes: X.writeBooks(res.metroSecs, res.labels, false,
-          { baseOrder: X.METRO_ORDER, splitRamsgate: false,
-            allHeadcodes: hcOn("metro") }),
-        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro },
-    ];
-    if (hsAny) {
-      books.push({ road: "HS SHEETS", label: "High Speed 395", spriteCls: "395",
-        name: "HS_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("hs"),
-        bytes: X.writeBooks(res.hsSecs, res.labels, false,
-          { baseOrder: [], splitRamsgate: false, allHeadcodes: hcOn("hs") }),
+    // Every fleet gets a road whether or not the reports carry its diagrams.
+    // What it holds is decided below by the entry count, so an empty Metro
+    // road reads exactly like an empty High Speed one.
+    const plan = [
+      { road: "SHEETS", fleet: "Mainline", label: "Mainline 375/376/377",
+        spriteCls: "375", file: "SHEETS_", hc: "main",
+        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main,
+        opts: {} },
+      { road: "RAM SHEETS", fleet: "Ramsgate", label: "Ramsgate",
+        spriteCls: "375", file: "RAM_SHEETS_", hc: "main",
+        secs: res.secsByDay, ram: true, order: null, review: revs.ram,
+        opts: {} },
+      { road: "METRO SHEETS", fleet: "Metro", label: "Metro 465/466/707",
+        spriteCls: "465", file: "METRO_SHEETS_", hc: "metro", cycle: true,
+        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
+        opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
+      { road: "HS SHEETS", fleet: "High Speed", label: "High Speed 395",
+        spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
         secs: res.hsSecs, ram: false,
-        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs });
-    }
+        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
+        opts: { baseOrder: [], splitRamsgate: false } },
+    ];
     roadsEl.textContent = "";
-    books.forEach((b, i) => {
-      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
-        const secs = b.secs[d];
-        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, b.allHc);
-      }]);
-      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
-                  () => reviewPane(b.review)]);
+    const books = [];
+    plan.forEach((b, i) => {
       let entries = 0;
       const secNames = new Set();
       const splitByRamsgate = b.secs === res.secsByDay;
@@ -305,26 +313,35 @@ function reviewPane(items) {
           if (list.length) { secNames.add(name); entries += list.length; }
         }
       }
+      if (!entries) {
+        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label, b.spriteCls,
+          "No " + b.fleet + " diagrams in these reports — nothing to berth." +
+          (b.cycle ? " (A " + b.fleet + " Control Cycle must exist in Genius" +
+                     " for its diagrams to appear.)" : "")));
+        return;
+      }
+      const allHc = hcOn(b.hc);
+      const opts = { allHeadcodes: allHc };
+      for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
+      const book = { road: b.road, name: b.file + res.tag + ".xlsx",
+        bytes: X.writeBooks(b.secs, res.labels, b.ram, opts) };
+      books.push(book);
+      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
+        const secs = b.secs[d];
+        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
+        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc);
+      }]);
+      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
+                  () => reviewPane(b.review)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes,
-        [["Save book", () => download(b.name, b.bytes, XLSX_MIME)]]));
+        [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]]));
     });
-    if (!hsAny) {
-      const art = document.createElement("article");
-      art.className = "road";
-      art.innerHTML = '<div class="road-head"><span class="road-no">Road 4</span>' +
-        '<h2 class="road-name">HS SHEETS</h2>' +
-        '<span class="road-fleet">High Speed 395</span>' +
-        '<span class="road-sprite" aria-hidden="true">' + sprite("395") + "</span></div>" +
-        '<p style="margin:14px 0 0;color:#79818A">No High Speed diagrams in ' +
-        "these reports — nothing to berth. (A High Speed Control Cycle must " +
-        "exist in Genius for its diagrams to appear.)</p>";
-      roadsEl.appendChild(art);
-    }
     built = books;
-    allbar.hidden = false;
+    zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
+    allbar.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -403,9 +420,8 @@ function reviewPane(items) {
   }
 
   dlall.addEventListener("click", () => {
-    if (!built) return;
-    downloadZip(built[0].name.replace(/^SHEETS_/, "SHEETS_BOOKS_")
-      .replace(/\.xlsx$/, ".zip"), built.map(b => [b.name, b.bytes]));
+    if (!built || !built.length) return;
+    downloadZip(zipName, built.map(b => [b.name, b.bytes]));
   });
   for (const k of Object.keys(hcToggles)) {
     if (!hcToggles[k]) continue;
@@ -437,15 +453,10 @@ function reviewPane(items) {
     roadsEl.textContent = "";
     res.books.forEach((b, i) => {
       if (b.skipped) {
-        const art = document.createElement("article");
-        art.className = "road";
-        art.innerHTML = '<div class="road-head"><span class="road-no">Road ' + (i + 1) +
-          '</span><h2 class="road-name">' + escHtml(b.road) + "</h2>" +
-          '<span class="road-sprite" aria-hidden="true">' +
-          sprite(SPRITE_FOR[b.road] || "375") + "</span></div>" +
-          '<p style="margin:14px 0 0;color:#79818A">No ' + escHtml(b.label) +
-          " diagrams in this weekend's prints — nothing to berth.</p>";
-        roadsEl.appendChild(art);
+        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label,
+          SPRITE_FOR[b.road] || "375",
+          "No " + b.road + " diagrams in this weekend's prints — nothing" +
+          " to berth."));
         return;
       }
       const items = b.report.split("\n").filter(l => l.startsWith("- "))

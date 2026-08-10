@@ -88,6 +88,12 @@ The weekday panel reads either planning system:
    (per-day tables for Mainline, Metro and High Speed, plus the Review tab),
    then save each book, or all of them at once as a single zip.
 
+Four roads are always shown — **SHEETS**, **RAM SHEETS**, **METRO SHEETS** and
+**HS SHEETS**. A road whose fleet has no diagrams in the reports says so
+(*"nothing to berth"*) instead of offering an empty workbook to save; for
+Metro and High Speed it also reminds you that Genius needs a Control Cycle
+for that fleet. The *Save all* zip holds only the books that were built.
+
 If the reports cover several weekday dates, one day tab is built per date
 (MON…FRI) inside each workbook. Dates that fall on a weekend are skipped with
 a note pointing at the weekend panel.
@@ -102,8 +108,9 @@ a note pointing at the weekend panel.
    reissue; its diagrams **replace** the matching originals (and new diagrams
    are added) before anything is built.
 3. Three workbooks are built — **Mainline**, **Metro** and **High Speed** —
-   each with a *Look at it* preview and its own review list. A book marked
-   *skipped* simply has no diagrams for that fleet in this weekend's prints.
+   each with a *Look at it* preview and its own review list. A fleet with no
+   diagrams in this weekend's prints says *"nothing to berth"*, the same way
+   the weekday panel does.
 4. When a reissue has been merged and the base prints are a `.docx`, an
    **updated prints document** (`…_UPDATED.docx`) is offered as well, with the
    reissued diagrams spliced into the original file.
@@ -219,7 +226,7 @@ entries:
 | A location comes up under its own heading | A unit berthed somewhere the section list doesn't know. It gets its own section in alphabetical order and a review note — check it, and if it should live under an existing section, add it to the tables (see [Reference data](#reference-data--where-the-knowledge-lives)). |
 | A train is missing | Check the review list first: empty moves to a berth are left off deliberately and each one is named there. If it isn't listed, trace the diagram number. |
 | *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
-| A weekend book says *skipped* | No diagrams for that fleet exist in this weekend's prints — nothing to build, nothing wrong. |
+| A road says *nothing to berth* | No diagrams for that fleet are in the reports or prints — nothing to build, nothing wrong. In Genius, check a Control Cycle exists for that fleet. |
 | *"That looks like a reissue on its own"* | A reissue was dropped without the full weekly prints — drop the full prints with it (or first). |
 | Reissue rejected for its date | The reissue is dated differently from the base prints — it belongs to a different day. |
 | Page says the browser is too old / scripting is off | Open the file in a current Edge, Chrome or Firefox with JavaScript enabled. |
