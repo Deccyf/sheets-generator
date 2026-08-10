@@ -3,7 +3,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { legacy, built, norm } from "./helpers/compare.mjs";
-import { makeDocx, PRINTS_LINES, REISSUE_LINES } from "./helpers/synth.mjs";
+import { makeDocx, PRINTS_LINES, REISSUE_LINES, METRO_MOVE_PRINTS }
+  from "./helpers/synth.mjs";
 
 function inputs(ctx, withReissue) {
   const docs = [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(PRINTS_LINES, ctx.fflate) }];
@@ -83,6 +84,21 @@ test("guard rails are unchanged", () => {
       { name: "late reissue.docx", bytes: makeDocx(otherDay, N.fflate) },
     ], zip.un, zip.z),
     /belongs to a different day/);
+});
+
+test("weekend metro sheets are timed off the first move too", () => {
+  const N = built();
+  const res = N.SheetsEngine.run(
+    [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(METRO_MOVE_PRINTS, N.fflate) }],
+    b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 }));
+  const metro = res.books.find(b => b.road === "Metro");
+  const times = metro.layout.cells
+    .filter(c => c.c === 1 && /^\d\d:\d\d/.test(String(c.v)))
+    .sort((a, b) => a.r - b.r).map(c => String(c.v));
+  // GN611 empty out of the up sidings at 05:52 for the 06:00 off the
+  // platform; GN612 starts in the platform and keeps its own time. Both
+  // still show where the service they form is going.
+  assert.deepEqual(norm(times), ["05:52 CST", "06:20 CST"]);
 });
 
 test("all-headcodes toggle works per book on the weekend panel", () => {

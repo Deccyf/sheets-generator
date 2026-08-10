@@ -134,7 +134,7 @@ round, because the Train Roads point one way). The columns are:
 
 | Col | Content |
 |---|---|
-| A | Departure time and destination code — `06 45 CHX` for a passenger working, `05+32 VIC` for empty stock (the `+` is the ECS convention). Where a working runs through the station platform, the time is taken off the platform, not the siding. |
+| A | Departure time and destination code — `06 45 CHX` for a passenger working, `05+32 VIC` for empty stock (the `+` is the ECS convention). Where a working runs through the station platform, the time is taken off the platform, not the siding — except in the Metro book, which is timed off the first time the unit moves (see the rulebook below). |
 | B | Unit type, e.g. `4 375`, `2 466`, `6 395` (cars + class). |
 | C | The unit's three-digit diagram number. |
 | D | **AM** — where the unit goes next (its next berth) during the day. |
@@ -315,6 +315,15 @@ ones, all commented at the point of implementation:
   a call; other sections anchor on their platform whenever run through.
   In *first-departure sections* (Grove Park, Slade Green) the entry is timed
   off the first movement of the stint instead.
+* **The Metro first-move rule.** The Metro book — weekday and weekend alike —
+  is timed off the first time the unit moves, in every section. A unit that
+  runs empty out of the sidings at 05+52 for the 06 00 off the platform is
+  listed at 05+52 with the empty move's headcode; a platform starter's first
+  move *is* its platform departure, so those keep the platform time. The
+  destination stays with the working leg out of the section, so that entry
+  still reads `05+52 CST` rather than pointing at the platform next door.
+  Grove Park and Slade Green keep their own long-standing destination
+  wording. The Mainline and High Speed books are untouched by this rule.
 * **Run-round suppression.** A hop out of the section and straight back
   (≤ 60 min) with nothing worked in between is a run-round, not a departure —
   the movement is listed on the following departure and noted for review.

@@ -20,7 +20,12 @@ test("reference tables match the legacy build", () => {
   assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
   assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
   assert.deepEqual(norm(D.DAY_SHEET), norm(L.SHEETS_XLSX.DAY_SHEET), "DAY_SHEET");
-  assert.deepEqual(norm(D.PROFILES), norm(L.SheetsEngine.PROFILES), "PROFILES");
+  // Deliberate divergence: the metro book is timed off the first move now,
+  // which the profile carries as first_dep_all.
+  const legacyProfiles = L.SheetsEngine.PROFILES.map(p =>
+    p.road === "Metro" ? { ...p, first_dep_all: true } : p);
+  assert.deepEqual(norm(D.PROFILES), norm(legacyProfiles),
+    "PROFILES (with the metro first-move rule)");
 });
 
 test("data module holds together", () => {

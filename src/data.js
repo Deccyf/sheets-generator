@@ -211,6 +211,11 @@ const SIDING_CLASS_RE = new RegExp(
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
         "466/0": "2 466", "707/0": "5 707" },
+      // metro house rule: every entry is timed off the first time the unit
+      // moves, so an empty run out of the sidings is the time on the sheet.
+      // A platform starter's first move IS its platform departure, so those
+      // keep the platform time.
+      firstDepAll: true,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
@@ -383,6 +388,8 @@ const PROFILES = [
   fleets:{"465/9":"4 465","466/0":"2 466","707/0":"5 707"},
   sections:METRO,
   headcode_sections:new Set(["GILLINGHAM","GROVE PARK","SLADE GREEN","VICTORIA"]),
+  // metro house rule: time every entry off the first move (see PROFILES_G)
+  first_dep_all:true,
   first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
   ecs_only_ok:new Set(["GROVE PARK","SLADE GREEN"])},
  {tag:"395", label:"395", road:"High Speed",

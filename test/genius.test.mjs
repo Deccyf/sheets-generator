@@ -129,6 +129,34 @@ test("Integrale quirks: mangled headcodes, stable placeholders, uncovered note",
   assert.equal(bell[0].units[0].pm, "BGM", "Bellingham berths code BGM");
 });
 
+test("metro sheets are timed off the first move; the mainline is not", async () => {
+  const N = built();
+  const { METRO_MOVE_SUMMARY, METRO_MOVE_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([METRO_MOVE_SUMMARY, METRO_MOVE_DETAIL]);
+  const dart = res.metroSecs.M.get("DARTFORD");
+  assert.ok(dart && dart.length === 2, "both Dartford entries listed");
+  // MM801 leaves the up sidings empty at 05 52 and forms the 06 00 off the
+  // platform: the sheet shows the berth move, still bound for Cannon Street.
+  const [moved, starter] = dart;
+  assert.equal(moved.time, 5 * 60 + 52, "timed off the first move");
+  assert.equal(moved.time_kind, "ecs", "an empty move, so a + time");
+  assert.equal(moved.headcode, "5B05", "the empty move's headcode");
+  assert.equal(moved.dest, "CST", "destination stays with the working leg");
+  // MM802 starts in the platform, so the platform time is the first move.
+  assert.equal(starter.time, 6 * 60 + 20, "platform starter keeps its time");
+  assert.equal(starter.time_kind, "pax");
+  assert.equal(starter.headcode, "2B07");
+  // The mainline book keeps the legacy rule: GT101 runs empty out of the
+  // Ashford down sidings at 05 30 but is listed off the platform at 05 45.
+  const pdfRes = await N.GENIUS.build(pdfs(N));
+  const ash = pdfRes.secsByDay.M.get("ASHFORD");
+  assert.ok(ash.some(e => e.time === 5 * 60 + 45 && e.headcode === "2A01"),
+    "mainline listed off the platform call");
+  assert.ok(!ash.some(e => e.time === 5 * 60 + 30),
+    "mainline not moved back to the sidings departure");
+});
+
 test("mixed-format pairs are refused by the sniffers", () => {
   const N = built();
   assert.equal(N.GENIUS.sniffIntegrale("Code,Cov,Type,x,x,x,Position,First Train,y"), "sum");

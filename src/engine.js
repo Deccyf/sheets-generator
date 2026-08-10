@@ -508,17 +508,23 @@ function generate(diags, prof, stabling, warn){
         if (onPlat) leaveStop = onPlat;
       }
       let exitStop = leaveStop;
-      if (prof.first_dep.has(sec)){
+      if (prof.first_dep_all || prof.first_dep.has(sec)){
         for (let k = a; k <= b; k++)
           if (stops[k].dep_idx !== null){ exitStop = stops[k]; break; }
       }
       const fmRow = rows[leaveStop.dep_idx];
       const ei = exitStop.dep_idx, er = rows[ei];
+      // The metro book is timed off the first move, but a unit that only
+      // runs empty into the platform alongside still shows where the
+      // service it forms is going. The two depot sections keep their own
+      // long-standing wording.
+      const di = (prof.first_dep_all && !prof.first_dep.has(sec))
+                 ? leaveStop.dep_idx : ei;
       const key = sec + "\u0000" + mins(er.dep) + "\u0000" + er.hc;
       let e = entries.get(key);
       if (!e){
         e = {sec, key, tmin:mins(er.dep), time_raw:er.dep, hc:er.hc,
-             dest_loc:legEnd(rows, ei), units:[], origins:new Set(),
+             dest_loc:legEnd(rows, di), units:[], origins:new Set(),
              exit_fm:new Map()};
         entries.set(key, e);
       }

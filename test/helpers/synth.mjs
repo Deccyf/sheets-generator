@@ -163,6 +163,22 @@ export const REISSUE_LINES = printsLines([
   "\t\tDover PSd\t23:40\t\t\t#\t\t",
 ]);
 
+/* The same first-move pair as a weekend print: GN611 runs empty out of the
+   Dartford up sidings into the platform, GN612 starts in the platform. */
+export const METRO_MOVE_PRINTS = printsLines([
+  "Diagram:\tGN\t611\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tDart USd\t\t05:52\t5B05\t\t\t",
+  "\t\tDart\t05:55\t06:00\t2B05\t\t\t",
+  "\t\tC St\t06:48\t\t\t#\t\t",
+  "Diagram:\tGN\t612\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tDart\t\t06:20\t2B07\t\t\t",
+  "\t\tC St\t07:10\t\t\t#\t\t",
+]);
+
 function xmlEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -251,6 +267,25 @@ export function integraleDetailCsv() {
   }
   return rows.join("\r\n");
 }
+
+/* A mini pair for the metro first-move rule: MM801 runs empty out of the
+   Dartford up sidings and forms a Cannon Street service off the platform
+   alongside, MM802 is a platform starter with nothing before it. */
+export const METRO_MOVE_SUMMARY =
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes\r\n" +
+  "MM801,Covered,465/9,,0,10/08/2026 05:52,1,5B05,DARTFUS,10/08/2026 06:48,CANONST,17,,,,,,MM801,,\r\n" +
+  "MM802,Covered,465/9,,0,10/08/2026 06:20,1,2B07,DARTFD,10/08/2026 07:10,CANONST,17,,,,,,MM802,,";
+
+export const METRO_MOVE_DETAIL =
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works\r\n" +
+  "MM801,10/08/2026,,17,DARTFUS,Dartford Up Sidings,05:52:00,,5B05,0,,DARTFD,Dartford,05:55:00,,\r\n" +
+  "MM801,10/08/2026,,17,DARTFD,Dartford,06:00:00,,2B05,3,,CANONST,Cannon Street,06:48:00,,\r\n" +
+  "MM802,10/08/2026,,17,DARTFD,Dartford,06:20:00,,2B07,0,,CANONST,Cannon Street,07:10:00,,";
 
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */

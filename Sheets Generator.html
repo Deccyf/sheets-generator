@@ -721,6 +721,11 @@ const SIDING_CLASS_RE = new RegExp(
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
         "466/0": "2 466", "707/0": "5 707" },
+      // metro house rule: every entry is timed off the first time the unit
+      // moves, so an empty run out of the sidings is the time on the sheet.
+      // A platform starter's first move IS its platform departure, so those
+      // keep the platform time.
+      firstDepAll: true,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
@@ -893,6 +898,8 @@ const PROFILES = [
   fleets:{"465/9":"4 465","466/0":"2 466","707/0":"5 707"},
   sections:METRO,
   headcode_sections:new Set(["GILLINGHAM","GROVE PARK","SLADE GREEN","VICTORIA"]),
+  // metro house rule: time every entry off the first move (see PROFILES_G)
+  first_dep_all:true,
   first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
   ecs_only_ok:new Set(["GROVE PARK","SLADE GREEN"])},
  {tag:"395", label:"395", road:"High Speed",
@@ -2063,17 +2070,23 @@ function generate(diags, prof, stabling, warn){
         if (onPlat) leaveStop = onPlat;
       }
       let exitStop = leaveStop;
-      if (prof.first_dep.has(sec)){
+      if (prof.first_dep_all || prof.first_dep.has(sec)){
         for (let k = a; k <= b; k++)
           if (stops[k].dep_idx !== null){ exitStop = stops[k]; break; }
       }
       const fmRow = rows[leaveStop.dep_idx];
       const ei = exitStop.dep_idx, er = rows[ei];
+      // The metro book is timed off the first move, but a unit that only
+      // runs empty into the platform alongside still shows where the
+      // service it forms is going. The two depot sections keep their own
+      // long-standing wording.
+      const di = (prof.first_dep_all && !prof.first_dep.has(sec))
+                 ? leaveStop.dep_idx : ei;
       const key = sec + "\u0000" + mins(er.dep) + "\u0000" + er.hc;
       let e = entries.get(key);
       if (!e){
         e = {sec, key, tmin:mins(er.dep), time_raw:er.dep, hc:er.hc,
-             dest_loc:legEnd(rows, ei), units:[], origins:new Set(),
+             dest_loc:legEnd(rows, di), units:[], origins:new Set(),
              exit_fm:new Map()};
         entries.set(key, e);
       }
@@ -2855,16 +2868,23 @@ const GENIUS = (() => {
         leaveIdx = lastGood;
         if (leaveIdx === null) continue;
         let exitIdx = leaveIdx;
-        if (prof.firstDep.has(sec)) {
+        if (prof.firstDepAll || prof.firstDep.has(sec)) {
           for (let k = a; k <= b; k++) if (stops[k].dep !== null) { exitIdx = k; break; }
         }
+        // The metro book is timed off the first move, but a unit that only
+        // runs empty from its berth into the platform alongside still shows
+        // where the service it forms is going - the destination and the
+        // route stay with the working leg out of the section. The two depot
+        // sections keep their own long-standing wording.
+        const destIdx = prof.firstDepAll && !prof.firstDep.has(sec)
+          ? leaveIdx : exitIdx;
         const er = stops[exitIdx];
         const key = sec + "\u0000" + (er.dep % 1440) + "\u0000" + (er.hcOut || "");
         let e = entries.get(key);
         if (!e) {
           e = { sec, tmin: er.dep, hc: er.hcOut, hc0: stops[a].hcOut,
-                destStop: legEnd(stops, exitIdx),
-                route: legRoute(stops, exitIdx), units: [], origins: new Set() };
+                destStop: legEnd(stops, destIdx),
+                route: legRoute(stops, destIdx), units: [], origins: new Set() };
           entries.set(key, e);
         }
         e.units.push({ diag, si, exitIdx });

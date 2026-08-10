@@ -299,16 +299,23 @@ const GENIUS = (() => {
         leaveIdx = lastGood;
         if (leaveIdx === null) continue;
         let exitIdx = leaveIdx;
-        if (prof.firstDep.has(sec)) {
+        if (prof.firstDepAll || prof.firstDep.has(sec)) {
           for (let k = a; k <= b; k++) if (stops[k].dep !== null) { exitIdx = k; break; }
         }
+        // The metro book is timed off the first move, but a unit that only
+        // runs empty from its berth into the platform alongside still shows
+        // where the service it forms is going - the destination and the
+        // route stay with the working leg out of the section. The two depot
+        // sections keep their own long-standing wording.
+        const destIdx = prof.firstDepAll && !prof.firstDep.has(sec)
+          ? leaveIdx : exitIdx;
         const er = stops[exitIdx];
         const key = sec + "\u0000" + (er.dep % 1440) + "\u0000" + (er.hcOut || "");
         let e = entries.get(key);
         if (!e) {
           e = { sec, tmin: er.dep, hc: er.hcOut, hc0: stops[a].hcOut,
-                destStop: legEnd(stops, exitIdx),
-                route: legRoute(stops, exitIdx), units: [], origins: new Set() };
+                destStop: legEnd(stops, destIdx),
+                route: legRoute(stops, destIdx), units: [], origins: new Set() };
           entries.set(key, e);
         }
         e.units.push({ diag, si, exitIdx });
