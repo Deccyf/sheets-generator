@@ -66,3 +66,30 @@ test("unified preview renders every saved cell", async () => {
     }
   }
 });
+
+test("all-headcodes toggle puts every headcode in the notes column (weekday)", async () => {
+  const N = built();
+  const rN = await geniusRes(N);
+  const X = N.SHEETS_XLSX;
+  const order = X.bookOrder(rN.secsByDay, X.MAIN_ORDER, true);
+  const day = Object.keys(rN.labels)[0];
+  const noteFor = (rows, headStart) => {
+    const flat = [...rows];
+    const i = flat.findIndex(r => r.kind === "data" &&
+      String(r.vals[1] || "").startsWith(headStart));
+    return i < 0 ? null : String(flat[i].vals[8] || "");
+  };
+  const on = X.layoutSheet(rN.secsByDay[day], rN.labels[day], false, order, true);
+  const off = X.layoutSheet(rN.secsByDay[day], rN.labels[day], false, order);
+  // ASHFORD is not a headcode section: the platform starter's passenger
+  // headcode appears only with the toggle on…
+  assert.match(noteFor(on, "05 45"), /2A01/, "pax starter headcode on");
+  assert.doesNotMatch(noteFor(off, "05 45") || "", /2A01/, "legacy rules off");
+  // …and so does an ECS departure's headcode (the Belvedere berth exit
+  // in the metro book, which is not a headcode section either).
+  const mOrder = X.bookOrder(rN.metroSecs, X.METRO_ORDER, false);
+  const mOn = X.layoutSheet(rN.metroSecs[day], rN.labels[day], false, mOrder, true);
+  const mOff = X.layoutSheet(rN.metroSecs[day], rN.labels[day], false, mOrder);
+  assert.match(noteFor(mOn, "06+20"), /5E01/, "ECS headcode on");
+  assert.doesNotMatch(noteFor(mOff, "06+20") || "", /5E01/, "legacy rules off");
+});

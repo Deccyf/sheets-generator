@@ -84,3 +84,19 @@ test("guard rails are unchanged", () => {
     ], zip.un, zip.z),
     /belongs to a different day/);
 });
+
+test("all-headcodes toggle works per book on the weekend panel", () => {
+  const L = legacy(), N = built();
+  const zipFns = [b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 })];
+  const docs = inputs(N, false);
+  const on = N.SheetsEngine.run(docs, ...zipFns, { allHeadcodes: { Mainline: true } });
+  const off = N.SheetsEngine.run(docs, ...zipFns);
+  const noteCells = book => book.layout.cells
+    .filter(c => c.c === 8 && c.v).map(c => String(c.v)).join(" | ");
+  // ASHFORD is not a mainline headcode section: 2A01 shows only when on.
+  assert.match(noteCells(on.books[0]), /2A01/, "Mainline notes gain the headcode");
+  assert.doesNotMatch(noteCells(off.books[0]), /2A01/, "off = house rules");
+  // The Metro book was not toggled and keeps its legacy notes exactly.
+  assert.equal(noteCells(on.books[1]), noteCells(off.books[1]),
+    "untouched book unchanged");
+});

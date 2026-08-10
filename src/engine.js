@@ -701,7 +701,7 @@ const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
 const DAY_BREAKS = [12 * 60, 20 * 60];
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
-function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
+function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc){
   const banner = dateBits(dateStr).banner;
   const cells = [], merges = [], rowHeights = new Map();
   const at = new Map();                       // "r,c" -> cell
@@ -748,7 +748,7 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
         if (u.E) put(r, 5, u.E, 4);
         const parts = [];
         if (i === 0){
-          if (headcodeSections.has(sec) && e.hc) parts.push(e.hc);
+          if ((allHc || headcodeSections.has(sec)) && e.hc) parts.push(e.hc);
           if (e.attachment) parts.push("ATTACHMENT");
           if (e.note) parts.push(e.note);
         }
@@ -929,7 +929,8 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   return {name: nm, bytes: zipped};
 }
 
-function run(input, unzipFn, zipFn){
+function run(input, unzipFn, zipFn, opts){
+  const allHeadcodes = (opts && opts.allHeadcodes) || {};
   const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
   const mg = mergeDocs(inputs, unzipFn);
   const diags = mg.merged;
@@ -975,7 +976,8 @@ function run(input, unzipFn, zipFn){
     if (n === 0){ books.push({label:prof.label, road:prof.road, skipped:true}); continue; }
     const tag = prof.tag ? "_" + prof.tag : "";
     const name = "SHEETS" + tag + "_" + stamp + ".xlsx";
-    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr);
+    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr,
+                              !!allHeadcodes[prof.road]);
     const xlsx = buildBook(layout, zipFn);
     const nSecs = Object.keys(secs).length;
     books.push({label:prof.label, road:prof.road, name, xlsx, layout,

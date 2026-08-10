@@ -226,14 +226,24 @@ function reviewPane(items) {
     zoneSub.textContent = sub;
   }
   let built = null;
+  let lastRes = null;        // kept so the headcode toggles can rebuild
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
+  const hcToggles = {
+    main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
+  };
+  const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
 
   async function buildGenius() {
     say("Reading the reports …"); await paint();
     const res = have.sum.fmt === "csv"
       ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
       : await GENIUS.build([have.sum.data, have.det.data]);
+    lastRes = res;
+    await renderBooks(res);
+  }
+
+  async function renderBooks(res) {
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
@@ -253,24 +263,27 @@ function reviewPane(items) {
     };
     const books = [
       { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
-        name: "SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, false),
+        name: "SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
+        bytes: X.writeBooks(res.secsByDay, res.labels, false,
+          { allHeadcodes: hcOn("main") }),
         secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main },
       { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
-        name: "RAM_SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, true),
+        name: "RAM_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
+        bytes: X.writeBooks(res.secsByDay, res.labels, true,
+          { allHeadcodes: hcOn("main") }),
         secs: res.secsByDay, ram: true, order: null, review: revs.ram },
       { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
-        name: "METRO_SHEETS_" + res.tag + ".xlsx",
+        name: "METRO_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("metro"),
         bytes: X.writeBooks(res.metroSecs, res.labels, false,
-          { baseOrder: X.METRO_ORDER, splitRamsgate: false }),
+          { baseOrder: X.METRO_ORDER, splitRamsgate: false,
+            allHeadcodes: hcOn("metro") }),
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro },
     ];
     if (hsAny) {
       books.push({ road: "HS SHEETS", label: "High Speed 395", spriteCls: "395",
-        name: "HS_SHEETS_" + res.tag + ".xlsx",
+        name: "HS_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("hs"),
         bytes: X.writeBooks(res.hsSecs, res.labels, false,
-          { baseOrder: [], splitRamsgate: false }),
+          { baseOrder: [], splitRamsgate: false, allHeadcodes: hcOn("hs") }),
         secs: res.hsSecs, ram: false,
         order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs });
     }
@@ -279,7 +292,7 @@ function reviewPane(items) {
       const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
         const secs = b.secs[d];
         if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order);
+        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, b.allHc);
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
@@ -394,6 +407,16 @@ function reviewPane(items) {
     downloadZip(built[0].name.replace(/^SHEETS_/, "SHEETS_BOOKS_")
       .replace(/\.xlsx$/, ".zip"), built.map(b => [b.name, b.bytes]));
   });
+  for (const k of Object.keys(hcToggles)) {
+    if (!hcToggles[k]) continue;
+    hcToggles[k].addEventListener("change", () => {
+      if (!lastRes) return;
+      queue = queue.then(async () => {
+        await renderBooks(lastRes);
+        say("Books rebuilt with the new headcode setting — save them again if needed.", "go");
+      });
+    });
+  }
   // Files are read one after another so a Summary + Detail pair dropped
   // together can't race the build.
   wireDrop($("#berth"), $("#file"), files => {
@@ -443,10 +466,18 @@ function reviewPane(items) {
       " diagrams read";
   }
 
+  const weHc = {
+    Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
+    "High Speed": $("#we_hc_hs"),
+  };
   function rebuildFromLoaded() {
+    const allHeadcodes = {};
+    for (const road of Object.keys(weHc))
+      allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b),
-      f => fflate.zipSync(f, { level: 6 }));
+      f => fflate.zipSync(f, { level: 6 }),
+      { allHeadcodes });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
@@ -494,6 +525,16 @@ function reviewPane(items) {
   }
 
   wireDrop($("#we_berth"), $("#we_file"), build);
+  for (const road of Object.keys(weHc)) {
+    if (!weHc[road]) continue;
+    weHc[road].addEventListener("change", () => {
+      if (!loadedDocs.length) return;
+      try {
+        rebuildFromLoaded();
+        say("Sheets rebuilt with the new headcode setting — save them again if needed.", "go");
+      } catch (e) { /* keep previous view */ }
+    });
+  }
   $("#we_dlupd").addEventListener("click", () => {
     if (built && built.updated)
       download(built.updated.name, built.updated.bytes, DOCX_MIME);

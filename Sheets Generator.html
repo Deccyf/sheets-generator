@@ -238,6 +238,24 @@
   .road-sprite{margin-left:14px; align-self:center}
   .road-sprite svg{height:20px; width:auto; display:block}
   .unit svg{height:16px; width:auto; display:block}
+
+
+  /* ---------- per-book options ---------- */
+  .opts{
+    margin:14px 0 0; padding:10px 14px 11px; border:1px solid var(--apron-dk);
+    background:var(--paper); display:flex; gap:18px; align-items:center;
+    flex-wrap:wrap;
+  }
+  .opts legend{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); padding:0 6px;
+  }
+  .opts label{
+    font-family:var(--mono); font-size:12px; letter-spacing:.05em;
+    color:var(--steel); display:flex; gap:6px; align-items:center;
+    cursor:pointer;
+  }
+  .opts input[type="checkbox"]{accent-color:var(--signal); width:14px; height:14px}
 </style>
 </head>
 <body>
@@ -314,6 +332,14 @@
     </button>
     <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
+    <fieldset class="opts">
+      <legend>Every headcode in the notes column — ECS and platform
+        starters, Victoria &amp; Grove Park style. Off = the house rules.</legend>
+      <label><input type="checkbox" id="hc_main"> Mainline</label>
+      <label><input type="checkbox" id="hc_metro"> Metro</label>
+      <label><input type="checkbox" id="hc_hs"> High Speed</label>
+    </fieldset>
+
     <p class="status" id="status" role="status" aria-live="polite"></p>
 
     <div class="roads" id="roads"></div>
@@ -381,6 +407,14 @@
       </span>
     </button>
     <input type="file" id="we_file" accept=".docx,.doc" multiple hidden>
+
+    <fieldset class="opts">
+      <legend>Every headcode in the notes column — ECS and platform
+        starters, Victoria &amp; Grove Park style. Off = the house rules.</legend>
+      <label><input type="checkbox" id="we_hc_main"> Mainline</label>
+      <label><input type="checkbox" id="we_hc_metro"> Metro</label>
+      <label><input type="checkbox" id="we_hc_hs"> High Speed</label>
+    </fieldset>
 
     <p class="status" id="we_status" role="status" aria-live="polite"></p>
 
@@ -1303,13 +1337,13 @@ function previewHtml(layout){
 }
 
 /* ==== weekday layout (ex ExcelJS glue) ==== */
-  function* entryRows(e, section) {
+  function* entryRows(e, section, allHc) {
     const src = e.units.length ? e.units[0].src_sheet : null;
     const stn = norm(sheetStation(src || e.pub.sheet));
     let originNote = SIDING_NOTES[stn] || "";
     if (section === "ORPINGTON") originNote = "";
     let hc = "";
-    if (HEADCODE_SECTIONS.has(section) && e.headcode) {
+    if ((allHc || HEADCODE_SECTIONS.has(section)) && e.headcode) {
       hc = e.headcode;
       const road = GP_ROAD[stn] || "";
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
@@ -1355,7 +1389,7 @@ function previewHtml(layout){
     });
   }
 
-  function sectionRows(rows, name, dateLbl, entries) {
+  function sectionRows(rows, name, dateLbl, entries, allHc) {
     rows.push({ kind: "hdr", name, date: dateLbl, merge: true });
     const flat = [];
     const tkey = e => {
@@ -1379,7 +1413,7 @@ function previewHtml(layout){
       if (e.flag && e.units.length > 1) {
         flagSpans.push([flat.length, e.units.length]);
       }
-      for (const v of entryRows(e, name)) flat.push(v);
+      for (const v of entryRows(e, name, allHc)) flat.push(v);
     });
     const spanStart = new Map(flagSpans);
     flat.forEach((v, idx) => {
@@ -1398,7 +1432,7 @@ function previewHtml(layout){
     rows.push({ kind: "gap" });
   }
 
-  function layoutSheet(secs, dateLbl, ram, fullOrder) {
+  function layoutSheet(secs, dateLbl, ram, fullOrder, allHc) {
     const rows = [];
     const order = ram ? ["RAMSGATE"] : (fullOrder || MAIN_ORDER);
     for (const name of order) {
@@ -1414,10 +1448,10 @@ function previewHtml(layout){
       if (name === "GROVE PARK") {
         const firstB = entries.filter(e => e.overnight);
         const second = entries.filter(e => !e.overnight);
-        if (firstB.length) sectionRows(rows, name, dateLbl, firstB);
-        if (second.length) sectionRows(rows, name, dateLbl, second);
+        if (firstB.length) sectionRows(rows, name, dateLbl, firstB, allHc);
+        if (second.length) sectionRows(rows, name, dateLbl, second, allHc);
       } else {
-        sectionRows(rows, name, dateLbl, entries);
+        sectionRows(rows, name, dateLbl, entries, allHc);
       }
     }
     return rows;
@@ -1499,15 +1533,16 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const splitRamsgate = opts.splitRamsgate !== false;
   const fullOrder = bookOrder(secsByDay, base, splitRamsgate);
   const dayKeys = ["M", "T", "W", "TH", "F"].filter(d => d in dateLabels);
+  const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
-    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder)),
+    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc)),
   }));
   return writeWorkbook(sheets, opts.zipFn || (f => fflate.zipSync(f, { level: 6 })));
 }
 
-function dayPreviewHtml(secs, label, ram, order) {
-  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order)));
+function dayPreviewHtml(secs, label, ram, order, allHc) {
+  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order, allHc)));
 }
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
@@ -2221,7 +2256,7 @@ const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
 const DAY_BREAKS = [12 * 60, 20 * 60];
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
-function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
+function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc){
   const banner = dateBits(dateStr).banner;
   const cells = [], merges = [], rowHeights = new Map();
   const at = new Map();                       // "r,c" -> cell
@@ -2268,7 +2303,7 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
         if (u.E) put(r, 5, u.E, 4);
         const parts = [];
         if (i === 0){
-          if (headcodeSections.has(sec) && e.hc) parts.push(e.hc);
+          if ((allHc || headcodeSections.has(sec)) && e.hc) parts.push(e.hc);
           if (e.attachment) parts.push("ATTACHMENT");
           if (e.note) parts.push(e.note);
         }
@@ -2449,7 +2484,8 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   return {name: nm, bytes: zipped};
 }
 
-function run(input, unzipFn, zipFn){
+function run(input, unzipFn, zipFn, opts){
+  const allHeadcodes = (opts && opts.allHeadcodes) || {};
   const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
   const mg = mergeDocs(inputs, unzipFn);
   const diags = mg.merged;
@@ -2495,7 +2531,8 @@ function run(input, unzipFn, zipFn){
     if (n === 0){ books.push({label:prof.label, road:prof.road, skipped:true}); continue; }
     const tag = prof.tag ? "_" + prof.tag : "";
     const name = "SHEETS" + tag + "_" + stamp + ".xlsx";
-    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr);
+    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr,
+                              !!allHeadcodes[prof.road]);
     const xlsx = buildBook(layout, zipFn);
     const nSecs = Object.keys(secs).length;
     books.push({label:prof.label, road:prof.road, name, xlsx, layout,
@@ -3471,14 +3508,24 @@ function reviewPane(items) {
     zoneSub.textContent = sub;
   }
   let built = null;
+  let lastRes = null;        // kept so the headcode toggles can rebuild
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
+  const hcToggles = {
+    main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
+  };
+  const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
 
   async function buildGenius() {
     say("Reading the reports …"); await paint();
     const res = have.sum.fmt === "csv"
       ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
       : await GENIUS.build([have.sum.data, have.det.data]);
+    lastRes = res;
+    await renderBooks(res);
+  }
+
+  async function renderBooks(res) {
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
@@ -3498,24 +3545,27 @@ function reviewPane(items) {
     };
     const books = [
       { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
-        name: "SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, false),
+        name: "SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
+        bytes: X.writeBooks(res.secsByDay, res.labels, false,
+          { allHeadcodes: hcOn("main") }),
         secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main },
       { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
-        name: "RAM_SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, true),
+        name: "RAM_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("main"),
+        bytes: X.writeBooks(res.secsByDay, res.labels, true,
+          { allHeadcodes: hcOn("main") }),
         secs: res.secsByDay, ram: true, order: null, review: revs.ram },
       { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
-        name: "METRO_SHEETS_" + res.tag + ".xlsx",
+        name: "METRO_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("metro"),
         bytes: X.writeBooks(res.metroSecs, res.labels, false,
-          { baseOrder: X.METRO_ORDER, splitRamsgate: false }),
+          { baseOrder: X.METRO_ORDER, splitRamsgate: false,
+            allHeadcodes: hcOn("metro") }),
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro },
     ];
     if (hsAny) {
       books.push({ road: "HS SHEETS", label: "High Speed 395", spriteCls: "395",
-        name: "HS_SHEETS_" + res.tag + ".xlsx",
+        name: "HS_SHEETS_" + res.tag + ".xlsx", allHc: hcOn("hs"),
         bytes: X.writeBooks(res.hsSecs, res.labels, false,
-          { baseOrder: [], splitRamsgate: false }),
+          { baseOrder: [], splitRamsgate: false, allHeadcodes: hcOn("hs") }),
         secs: res.hsSecs, ram: false,
         order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs });
     }
@@ -3524,7 +3574,7 @@ function reviewPane(items) {
       const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
         const secs = b.secs[d];
         if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order);
+        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, b.allHc);
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
@@ -3639,6 +3689,16 @@ function reviewPane(items) {
     downloadZip(built[0].name.replace(/^SHEETS_/, "SHEETS_BOOKS_")
       .replace(/\.xlsx$/, ".zip"), built.map(b => [b.name, b.bytes]));
   });
+  for (const k of Object.keys(hcToggles)) {
+    if (!hcToggles[k]) continue;
+    hcToggles[k].addEventListener("change", () => {
+      if (!lastRes) return;
+      queue = queue.then(async () => {
+        await renderBooks(lastRes);
+        say("Books rebuilt with the new headcode setting — save them again if needed.", "go");
+      });
+    });
+  }
   // Files are read one after another so a Summary + Detail pair dropped
   // together can't race the build.
   wireDrop($("#berth"), $("#file"), files => {
@@ -3688,10 +3748,18 @@ function reviewPane(items) {
       " diagrams read";
   }
 
+  const weHc = {
+    Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
+    "High Speed": $("#we_hc_hs"),
+  };
   function rebuildFromLoaded() {
+    const allHeadcodes = {};
+    for (const road of Object.keys(weHc))
+      allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b),
-      f => fflate.zipSync(f, { level: 6 }));
+      f => fflate.zipSync(f, { level: 6 }),
+      { allHeadcodes });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
@@ -3739,6 +3807,16 @@ function reviewPane(items) {
   }
 
   wireDrop($("#we_berth"), $("#we_file"), build);
+  for (const road of Object.keys(weHc)) {
+    if (!weHc[road]) continue;
+    weHc[road].addEventListener("change", () => {
+      if (!loadedDocs.length) return;
+      try {
+        rebuildFromLoaded();
+        say("Sheets rebuilt with the new headcode setting — save them again if needed.", "go");
+      } catch (e) { /* keep previous view */ }
+    });
+  }
   $("#we_dlupd").addEventListener("click", () => {
     if (built && built.updated)
       download(built.updated.name, built.updated.bytes, DOCX_MIME);

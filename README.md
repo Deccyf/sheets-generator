@@ -144,6 +144,11 @@ round, because the Train Roads point one way). The columns are:
 
 **Notes column (H)** carries the house annotations:
 
+* A per-book **toggle** above each drop zone (Mainline / Metro / High Speed)
+  puts **every** entry's headcode in the notes column — ECS and platform
+  starters alike, Victoria & Grove Park style. Off (the default) keeps the
+  house rules below. Flipping a toggle after a build rebuilds the books in
+  place.
 * The **ECS headcode** in the sections that quote it (Gillingham, Victoria,
   Grove Park — plus Slade Green in the weekend Metro book). At Grove Park the
   road is appended (`SD` / `DN` / `UP`); at Victoria the headcode shown is the
