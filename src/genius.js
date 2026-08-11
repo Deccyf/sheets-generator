@@ -5,7 +5,7 @@
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, PROFILES_G } = SHEETS_DATA;
+          MINOR_SPUR, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
@@ -370,6 +370,15 @@ const GENIUS = (() => {
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      // A formation the books say the reports get the wrong way round: the
+      // order is taken verbatim (see ORDER_FIX).
+      {
+        const key = e.sec + "|" +
+          blocks.map(x => x.diag.slice(2)).sort().join(",");
+        const fix = ORDER_FIX[key];
+        if (fix) blocks.sort((x, y) =>
+          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
+      }
       // Two units on the same Position started the day in different
       // formations, so the reports cannot say which way round they go.
       if (blocks.length > 1 &&

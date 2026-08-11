@@ -379,13 +379,14 @@ ones, all commented at the point of implementation:
   Ashford and Victoria on the same day. The list is house knowledge, like the
   berth tables, and was taken from the 10/08 books section by section.
 
-  **Four entries on 10/08 disagree with their own section** and no field in
-  the export separates them: Dover Priory 04 30 (`RM013`/`RM014`), and Grove
-  Park 05+14 (`SG805`/`SG806`), 05+48 and 15+12 (`SG813`/`SG814`). The last
-  is the clearest proof that the reports are not enough on their own — Grove
-  Park 05+19 (`SG809`/`SG810`) and 05+48 (`SG813`/`SG814`) are identical in
-  every field of both exports (same fleet, same siding, Positions 1 and 2,
-  same route note) and want opposite orders.
+  **Formations the reports cannot place** go in `ORDER_FIX`, keyed by section
+  and diagram numbers, and their order is taken verbatim. Grove Park 05+19
+  (`SG809`/`SG810`) and 05+48 (`SG813`/`SG814`) are identical in every field
+  of both exports — same fleet, same siding, Positions 1 and 2, same route
+  note, and both the first move of their diagram — and want opposite orders.
+  Nothing in the paperwork says which way round a formation was left
+  standing, so where the books disagree with the section, the entry is named
+  here. Three keys cover the four entries known on 10/08.
 
   Diagram number breaks a tie, and mirrors with the rest of the ordering; it
   carries no meaning of its own. Two units on the **same** Position started

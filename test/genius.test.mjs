@@ -207,6 +207,12 @@ test("which unit leads is per section, from the fleet profile", async () => {
   assert.ok(sg && sg.length === 1, "one Slade Green departure");
   assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
     "metro unchanged");
+  // …and a formation the books say is the other way round beats the section
+  // rule (Grove Park lists lowest first, but not this pair).
+  const gp = res.secsByDay.M.get("GROVE PARK");
+  assert.ok(gp && gp.length === 1, "one Grove Park departure");
+  assert.deepEqual(norm(gp[0].units.map(u => u.diag)), ["814", "813"],
+    "ORDER_FIX beats the section rule");
 });
 
 test("units the reports cannot order are named on the review list", async () => {

@@ -203,6 +203,20 @@ const SIDING_CLASS_RE = new RegExp(
     "FOLKESTONE EAST": "FKE", "FOLKESTONE ETR": "FKE", "MINSTER THANET": "MSR",
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
+  // Formations the reports cannot place. Position says where a unit sits in
+  // its own diagram's formation, not which way that formation is facing, and
+  // nothing in either export says which way round it was left standing:
+  // Grove Park 05+19 (SG809/SG810) and 05+48 (SG813/SG814) are identical in
+  // every field of both exports and want opposite orders. Where the books
+  // disagree with the section's rule, name the diagrams here and the order is
+  // taken verbatim. Key: section, then the diagram numbers as the sheet
+  // prints them, sorted.
+  const ORDER_FIX = {
+    "DOVER PRIORY|013,014": ["014", "013"],
+    "GROVE PARK|805,806": ["806", "805"],
+    "GROVE PARK|813,814": ["814", "813"],
+  };
+
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
   // posAsc: sections that list units LOWEST Summary Position first. The rest
   // list highest first.
@@ -424,7 +438,7 @@ return {
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, END_MARKERS_GENIUS,
+  PROFILES_G, MINOR_SPUR, END_MARKERS_GENIUS, ORDER_FIX,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   MAINLINE, METRO, HIGHSPEED, PROFILES,
