@@ -152,9 +152,9 @@ section, slotted in alphabetically, and a note on the review list.
 
 Each section is a ruled box headed by the section name and the date. Within
 it, one **entry** per departure, one row per **unit**, listed the way the
-hand-built books list them (rear unit first; Folkestone East, Victoria and
-Ramsgate the other way round, because the formation turns end for end there).
-The columns are:
+hand-built books list them — the mainline book lowest Summary `Position`
+first, the metro and High Speed books highest first (see
+[the house rulebook](#the-house-rulebook)). The columns are:
 
 | Col | Content |
 |---|---|
@@ -365,14 +365,26 @@ ones, all commented at the point of implementation:
   each suppression is named on the review list.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
-* **Coupling order.** Units are listed rear-first — highest Summary
-  `Position` first — except in the sections where the formation turns end for
-  end, which list lowest `Position` first. A unit's Position is fixed for the
-  whole day, so wherever the train reverses, the listing reverses with it: the
-  Folkestone East Train Roads point one way, and everything leaving Victoria
-  or Ramsgate has reversed there, so the unit at the back out of Ashford leads
-  out of Victoria. The list is `posAsc` on each fleet profile in `src/data.js`
-  — it currently applies to the mainline book only.
+* **Coupling order.** Which unit leads comes from the Summary's `Position`
+  field, and the direction is per book (`posAsc` in the fleet profiles):
+  * The **mainline book** lists **lowest Position first**, in every section.
+    This was checked against the 10/08 books at Ashford, Dover Priory,
+    Faversham, Gillingham, Grove Park, Hastings, Ramsgate, Slade Green,
+    Victoria and West Marina; Folkestone East had always been written this
+    way, so it is no longer an exception.
+  * The **metro and High Speed books** still list highest Position first.
+    Nobody has reported those the wrong way round — if they are, it is one
+    flag each.
+
+  Diagram number breaks a tie, and mirrors with the rest of the ordering; it
+  carries no meaning of its own. Two units on the **same** Position started
+  the day in different formations, so the reports genuinely cannot say which
+  way round they go — those entries are named on the review list rather than
+  quietly guessed at.
+
+  The **end markers** name the physical ends of the train and are written
+  against the first and last row of an entry, so they stay in their rows when
+  the unit order changes.
 
 ### The workbook writer and the preview
 

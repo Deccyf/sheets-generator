@@ -37,11 +37,33 @@ test("stop collapsing and berth boundaries are unchanged", () => {
   }
 });
 
+/* The mainline book lists lowest Position first now, so its entries are the
+   legacy ones with the unit rows (and the publisher's slots) mirrored. The
+   end markers name the physical ends of the train and are written against
+   the first and last row of the entry, so they stay where they are. */
+function mirrorUnits(v) {
+  if (Array.isArray(v)) return v.map(mirrorUnits);
+  if (v && typeof v === "object") {
+    const o = {};
+    for (const k of Object.keys(v)) {
+      if (k === "slots") o[k] = mirrorUnits(v[k]).slice().reverse();
+      else if (k === "units") {
+        const ends = v[k].map(u => u.end);
+        o[k] = mirrorUnits(v[k]).slice().reverse()
+          .map((u, i) => ({ ...u, end: ends[i] }));
+      } else o[k] = mirrorUnits(v[k]);
+    }
+    return o;
+  }
+  return v;
+}
+
 test("GENIUS.build output is identical to the legacy build", async () => {
   const L = legacy(), N = built();
   const resL = await L.GENIUS.build(pdfs(L));
   const resN = await N.GENIUS.build(pdfs(N));
-  assert.deepEqual(norm(resN.secsByDay), norm(resL.secsByDay), "mainline sections");
+  assert.deepEqual(norm(resN.secsByDay), mirrorUnits(norm(resL.secsByDay)),
+    "mainline sections (unit order mirrored, everything else identical)");
   assert.deepEqual(norm(resN.metroSecs), norm(resL.metroSecs), "metro sections");
   assert.deepEqual(norm(resN.hsSecs), norm(resL.hsSecs), "high speed sections");
   assert.deepEqual(norm(resN.labels), norm(resL.labels), "labels");
@@ -157,27 +179,38 @@ test("metro sheets are timed off the first move; the mainline is not", async () 
     "mainline not moved back to the sidings departure");
 });
 
-test("Victoria and Ramsgate list the formation the other way round", async () => {
+test("the mainline book lists lowest Position first, the metro book highest",
+  async () => {
+    const N = built();
+    const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
+      await import("./helpers/synth.mjs");
+    const res = N.GENIUS.buildIntegrale(
+      [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
+    // Position 1 leads, wherever the section is.
+    for (const [sec, want] of [["VICTORIA", ["901", "902"]],
+                               ["RAMSGATE", ["903", "904"]],
+                               ["ASHFORD", ["905", "906"]]]) {
+      const list = res.secsByDay.M.get(sec);
+      assert.ok(list && list.length === 1, "one " + sec + " departure");
+      assert.deepEqual(norm(list[0].units.map(u => u.diag)), want, sec);
+    }
+    // The metro book has not been reported the wrong way round, so it still
+    // lists highest Position first.
+    const sg = res.metroSecs.M.get("SLADE GREEN");
+    assert.ok(sg && sg.length === 1, "one Slade Green departure");
+    assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
+      "metro unchanged");
+  });
+
+test("units the reports cannot order are named on the review list", async () => {
   const N = built();
-  const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
+  const { TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL } =
     await import("./helpers/synth.mjs");
-  const res = N.GENIUS.buildIntegrale(
-    [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
-  // The unit at the back on the way in is at the front on the way out, so
-  // Position 1 leads at both places.
-  for (const [sec, want] of [["VICTORIA", ["901", "902"]],
-                             ["RAMSGATE", ["903", "904"]]]) {
-    const list = res.secsByDay.M.get(sec);
-    assert.ok(list && list.length === 1, "one " + sec + " departure");
-    assert.deepEqual(norm(list[0].units.map(u => u.diag)), want, sec);
-  }
-  // Everywhere else keeps rear-first — highest Position first. GT101 is
-  // Position 1 and GT102 Position 2 on the same 05 45 off Ashford.
-  const pdfRes = await N.GENIUS.build(pdfs(N));
-  const ash = pdfRes.secsByDay.M.get("ASHFORD")
-    .find(e => e.time === 5 * 60 + 45);
-  assert.deepEqual(norm(ash.units.map(u => u.diag)), ["102", "101"],
-    "Ashford still lists rear first");
+  const res = N.GENIUS.buildIntegrale([TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL]);
+  assert.ok(res.reviews.main.some(x =>
+    /two units share a Position/.test(x.msg) &&
+    /RM910/.test(x.msg) && /RM911/.test(x.msg)),
+    "the tie is flagged rather than quietly guessed at");
 });
 
 test("mixed-format pairs are refused by the sniffers", () => {

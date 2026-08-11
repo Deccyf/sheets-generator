@@ -287,30 +287,70 @@ export const METRO_MOVE_DETAIL =
   "MM801,10/08/2026,,17,DARTFD,Dartford,06:00:00,,2B05,3,,CANONST,Cannon Street,06:48:00,,\r\n" +
   "MM802,10/08/2026,,17,DARTFD,Dartford,06:20:00,,2B07,0,,CANONST,Cannon Street,07:10:00,,";
 
-/* Sections that turn end for end. VC901/VC902 form one departure out of
-   Victoria off the Grosvenor Shed; RG903/RG904 form one out of Ramsgate off
-   the depot. In each pair the lower Position is the one that leads. */
-export const REVERSED_ORDER_SUMMARY =
+/* Which unit leads. VC901/VC902 form one departure out of Victoria off the
+   Grosvenor Shed, RG903/RG904 one out of Ramsgate off the depot, AF905/AF906
+   one off the Ashford down sidings — and MT907/MT908 one metro departure off
+   Slade Green depot. In the mainline book the lower Position leads; the
+   metro book still puts the higher one first. */
+export const REVERSED_ORDER_SUMMARY = [
   "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
   "Start Location,End Time,End Location,Distance,First Train Note," +
   "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
-  "Diagram Comments,Coverage Notes\r\n" +
-  "VC901,Covered,377/5,,0,10/08/2026 06:00,1,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC901,,\r\n" +
-  "VC902,Covered,377/5,,0,10/08/2026 06:00,2,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC902,,\r\n" +
-  "RG903,Covered,375/6,,0,10/08/2026 06:00,1,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG903,,\r\n" +
-  "RG904,Covered,375/6,,0,10/08/2026 06:00,2,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG904,,";
+  "Diagram Comments,Coverage Notes",
+  "VC901,Covered,377/5,,0,10/08/2026 06:00,1,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC901,,",
+  "VC902,Covered,377/5,,0,10/08/2026 06:00,2,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC902,,",
+  "RG903,Covered,375/6,,0,10/08/2026 06:00,1,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG903,,",
+  "RG904,Covered,375/6,,0,10/08/2026 06:00,2,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG904,,",
+  "AF905,Covered,375/6,,0,10/08/2026 06:00,1,5A20,ASHFDNS,10/08/2026 07:20,DOVERP,30,,,,,,AF905,,",
+  "AF906,Covered,375/6,,0,10/08/2026 06:00,2,5A20,ASHFDNS,10/08/2026 07:20,DOVERP,30,,,,,,AF906,,",
+  "MT907,Covered,465/9,,0,10/08/2026 06:00,1,5C40,SLADEGD,10/08/2026 07:00,CANONST,18,,,,,,MT907,,",
+  "MT908,Covered,465/9,,0,10/08/2026 06:00,2,5C40,SLADEGD,10/08/2026 07:00,CANONST,18,,,,,,MT908,,",
+].join("\r\n");
+
+const orderLeg = (d, miles, a, an, at, hc, b, bn, bt) =>
+  d + ",10/08/2026,," + miles + "," + a + "," + an + "," + at + ",," + hc +
+  ",0,," + b + "," + bn + "," + bt + ",,";
 
 export const REVERSED_ORDER_DETAIL = [
   "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
   "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
   "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
   ...["VC901", "VC902"].flatMap(d => [
-    d + ",10/08/2026,,56,VICTGCS,Victoria Grosvenor Shed,06:00:00,,5N89,0,,VICTRIE,Victoria,06:10:00,,",
-    d + ",10/08/2026,,56,VICTRIE,Victoria,06:20:00,,2N89,2,,ASHFKY,Ashford,07:40:00,,",
+    orderLeg(d, 56, "VICTGCS", "Victoria Grosvenor Shed", "06:00:00", "5N89", "VICTRIE", "Victoria", "06:10:00"),
+    orderLeg(d, 56, "VICTRIE", "Victoria", "06:20:00", "2N89", "ASHFKY", "Ashford", "07:40:00"),
   ]),
   ...["RG903", "RG904"].flatMap(d => [
-    d + ",10/08/2026,,38,RAMSGTD,Ramsgate E.M.U.D,06:00:00,,5A14,0,,RAMSGTE,Ramsgate,06:10:00,,",
-    d + ",10/08/2026,,38,RAMSGTE,Ramsgate,06:20:00,,2A14,2,,ASHFKY,Ashford,07:30:00,,",
+    orderLeg(d, 38, "RAMSGTD", "Ramsgate E.M.U.D", "06:00:00", "5A14", "RAMSGTE", "Ramsgate", "06:10:00"),
+    orderLeg(d, 38, "RAMSGTE", "Ramsgate", "06:20:00", "2A14", "ASHFKY", "Ashford", "07:30:00"),
+  ]),
+  ...["AF905", "AF906"].flatMap(d => [
+    orderLeg(d, 30, "ASHFDNS", "Ashford Down Sidings", "06:00:00", "5A20", "ASHFKY", "Ashford", "06:10:00"),
+    orderLeg(d, 30, "ASHFKY", "Ashford", "06:20:00", "2A20", "DOVERP", "Dover Priory", "07:20:00"),
+  ]),
+  ...["MT907", "MT908"].flatMap(d => [
+    orderLeg(d, 18, "SLADEGD", "Slade Green T&R.S.M.D", "06:00:00", "5C40", "SLADEGN", "Slade Green", "06:10:00"),
+    orderLeg(d, 18, "SLADEGN", "Slade Green", "06:20:00", "2C40", "CANONST", "Cannon Street", "07:00:00"),
+  ]),
+].join("\r\n");
+
+/* Two units that started the day in different formations and are both
+   Position 2 when they couple: the reports cannot say which way round. */
+export const TIED_POSITION_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM910,Covered,375/6,,0,10/08/2026 06:00,2,5A30,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM910,,",
+  "RM911,Covered,375/6,,0,10/08/2026 06:00,2,5A30,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM911,,",
+].join("\r\n");
+
+export const TIED_POSITION_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["RM910", "RM911"].flatMap(d => [
+    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "06:00:00", "5A30", "DOVERP", "Dover Priory", "06:10:00"),
+    orderLeg(d, 30, "DOVERP", "Dover Priory", "06:20:00", "2A30", "ASHFKY", "Ashford", "07:20:00"),
   ]),
 ].join("\r\n");
 

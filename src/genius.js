@@ -363,12 +363,20 @@ const GENIUS = (() => {
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }
-      // rear unit first, which is highest Position first - except where the
-      // formation turns end for end (see posAsc in the fleet profiles)
-      if (prof.posAsc && prof.posAsc.has(e.sec))
-        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag < y.diag ? -1 : 1));
+      // Which unit leads: the whole ordering mirrors with the book's posAsc
+      // (see the fleet profiles), diagram number included - it is only a
+      // fallback for units the Position field cannot separate.
+      if (prof.posAsc)
+        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      // Two units on the same Position started the day in different
+      // formations, so the reports cannot say which way round they go.
+      if (blocks.length > 1 &&
+          new Set(blocks.map(x => x.pos)).size !== blocks.length)
+        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+          blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
+          " the reports cannot say which way round they go, so check the order" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
       // (the manual's 07 55 row: GT117 listed, GT116 attaching from the

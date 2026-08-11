@@ -388,9 +388,13 @@ const children = [
   h2("8. Reading a sheet"),
   p("Each section — ASHFORD, GILLINGHAM, SLADE GREEN and so on — is a ruled box " +
     "with the section name and the date at the top. Inside it, one **entry** " +
-    "per departure and one row per unit, listed **rear first** the way the " +
-    "hand-built books do it. Folkestone East is the other way round, because " +
-    "the Train Roads only point one way."),
+    "per departure and one row per unit."),
+  p("Which unit comes first is taken from the diagram's **Position** in the " +
+    "Summary. The mainline book lists the lowest Position first; the metro and " +
+    "High Speed books list the highest first. Where two units share a Position " +
+    "— they started the day in different formations — the reports cannot say " +
+    "which way round they go, and the entry is named on the review list for " +
+    "you to check."),
   sheetSample(),
   caption("The 06:45 to Charing Cross: a four-car 375 on diagram 117, off to " +
     "Dartford Up Sidings next and finishing the day at Slade Green."),

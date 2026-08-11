@@ -199,8 +199,11 @@ Each section — ASHFORD, GILLINGHAM, SLADE GREEN and so on — is a ruled box w
 the section name and the date at the top. Inside it, one **entry** per
 departure, and one row per unit.
 
-Units are listed **rear first**, the way the hand-built books do it. Folkestone
-East is the other way round, because the Train Roads only point one way.
+Which unit is listed first comes from the diagram's **Position** in the
+Summary. The mainline book puts the lowest Position first; the metro and High
+Speed books put the highest first. Where two units share a Position — they
+started the day in different formations — the reports can't say which way round
+they go, and the entry is named on the review list for you to check.
 
 | Column | What it says | Example |
 |---|---|---|

@@ -767,16 +767,17 @@ const SIDING_CLASS_RE = new RegExp(
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
-  // posAsc: sections listed lowest Position first instead of the usual
-  // rear-first. A unit's Position is fixed for the whole day, so wherever
-  // the formation turns end for end the listing turns with it: the Train
-  // Roads at Folkestone East point one way, and everything leaving Victoria
-  // has reversed there, so the unit at the back out of Ashford leads out of
-  // Victoria.
+  // posAsc: the book lists units lowest Summary Position first. The mainline
+  // book does this throughout - checked against the 10/08 books at every
+  // section that couples (Ashford, Dover Priory, Faversham, Gillingham,
+  // Grove Park, Hastings, Ramsgate, Slade Green, Victoria, West Marina), and
+  // Folkestone East had always been written this way. The metro and High
+  // Speed books still list highest Position first; nobody has reported those
+  // the wrong way round.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      posAsc: new Set(["FOLKESTONE EAST", "VICTORIA", "RAMSGATE"]),
+      posAsc: true,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
@@ -786,11 +787,11 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
-      posAsc: new Set(),
+      posAsc: false,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
-      posAsc: new Set(),
+      posAsc: false,
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity
@@ -2994,12 +2995,20 @@ const GENIUS = (() => {
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }
-      // rear unit first, which is highest Position first - except where the
-      // formation turns end for end (see posAsc in the fleet profiles)
-      if (prof.posAsc && prof.posAsc.has(e.sec))
-        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag < y.diag ? -1 : 1));
+      // Which unit leads: the whole ordering mirrors with the book's posAsc
+      // (see the fleet profiles), diagram number included - it is only a
+      // fallback for units the Position field cannot separate.
+      if (prof.posAsc)
+        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      // Two units on the same Position started the day in different
+      // formations, so the reports cannot say which way round they go.
+      if (blocks.length > 1 &&
+          new Set(blocks.map(x => x.pos)).size !== blocks.length)
+        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+          blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
+          " the reports cannot say which way round they go, so check the order" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
       // (the manual's 07 55 row: GT117 listed, GT116 attaching from the

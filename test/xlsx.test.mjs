@@ -15,7 +15,7 @@ async function geniusRes(ctx) {
 
 test("weekday books: new writer matches the ExcelJS output cell for cell", async () => {
   const L = legacy(), N = built();
-  const rL = await geniusRes(L), rN = await geniusRes(N);
+  const rL = await geniusRes(L);
   const variants = [
     ["SHEETS", s => s.secsByDay, false, undefined],
     ["RAM_SHEETS", s => s.secsByDay, true, undefined],
@@ -24,9 +24,13 @@ test("weekday books: new writer matches the ExcelJS output cell for cell", async
     ["HS_SHEETS", s => s.hsSecs, false, () => ({ baseOrder: [], splitRamsgate: false })],
   ];
   for (const [name, pick, ram, opts] of variants) {
-    const bytesL = await L.SHEETS_XLSX.writeBooks(pick(rL), rL.labels, ram,
+    // Both writers get the same sections: what the engines produce is
+    // compared in genius.test.mjs (the mainline book's unit order has moved
+    // on since the legacy build), and this test is about the writer.
+    const secs = pick(rL), labels = rL.labels;
+    const bytesL = await L.SHEETS_XLSX.writeBooks(secs, labels, ram,
       opts ? opts(L) : undefined);
-    const bytesN = N.SHEETS_XLSX.writeBooks(pick(rN), rN.labels, ram,
+    const bytesN = N.SHEETS_XLSX.writeBooks(secs, labels, ram,
       opts ? opts(N) : undefined);
     const wbL = await normalizeWorkbook(L, bytesL);
     const wbN = await normalizeWorkbook(L, bytesN);

@@ -204,16 +204,17 @@ const SIDING_CLASS_RE = new RegExp(
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
-  // posAsc: sections listed lowest Position first instead of the usual
-  // rear-first. A unit's Position is fixed for the whole day, so wherever
-  // the formation turns end for end the listing turns with it: the Train
-  // Roads at Folkestone East point one way, and everything leaving Victoria
-  // has reversed there, so the unit at the back out of Ashford leads out of
-  // Victoria.
+  // posAsc: the book lists units lowest Summary Position first. The mainline
+  // book does this throughout - checked against the 10/08 books at every
+  // section that couples (Ashford, Dover Priory, Faversham, Gillingham,
+  // Grove Park, Hastings, Ramsgate, Slade Green, Victoria, West Marina), and
+  // Folkestone East had always been written this way. The metro and High
+  // Speed books still list highest Position first; nobody has reported those
+  // the wrong way round.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      posAsc: new Set(["FOLKESTONE EAST", "VICTORIA", "RAMSGATE"]),
+      posAsc: true,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
@@ -223,11 +224,11 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
-      posAsc: new Set(),
+      posAsc: false,
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
-      posAsc: new Set(),
+      posAsc: false,
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity
