@@ -260,3 +260,27 @@ test("mixed-format pairs are refused by the sniffers", () => {
   assert.equal(N.GENIUS.sniffIntegrale("Diagram Code,Diagram Date,Notes,Start Tiploc"), "det");
   assert.equal(N.GENIUS.sniffIntegrale("some,other,csv"), null);
 });
+
+test("a late evening move only keeps the berth inside its own area", async () => {
+  const N = built();
+  const { LATE_MOVE_SUMMARY, LATE_MOVE_DETAIL } = await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([LATE_MOVE_SUMMARY, LATE_MOVE_DETAIL]);
+  const one = sec => {
+    const list = res.secsByDay.M.get(sec);
+    assert.ok(list && list.length, sec + " built");
+    return list;
+  };
+  // shunted out of the shed to Hastings for the night: still a shed unit
+  assert.equal(norm(one("WEST MARINA")[0].units[0].pm), "XSE",
+    "St Leonards shed keeps its unit");
+  // run off the east sidings to the Folkestone Train Roads: gone home
+  assert.equal(norm(one("ASHFORD")[0].units[0].pm), "FKE",
+    "Ashford east sidings hand theirs to Folkestone");
+  // and the same shape across to Grove Park
+  const sg = one("SLADE GREEN");
+  assert.equal(norm(sg[0].units[0].pm), "GPD", "Slade Green hands its unit over");
+  // a train booked into the depot is destined GPD, one into the station GPK
+  const dests = norm(sg.map(e => e.dest));
+  assert.ok(dests.includes("GPD"), "depot arrival destined GPD: " + dests);
+  assert.ok(dests.includes("GPK"), "station arrival destined GPK: " + dests);
+});

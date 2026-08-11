@@ -429,3 +429,47 @@ export const INTEGRALE_QUIRKS_DETAIL =
   "QQ904,10/08/2026,,9,SLADEGN,Slade Green,06:55:00,,2G01,0,,PLMSTCS,Plumstead C.H.S.,07:10:00,,\r\n" +
   "QQ904,10/08/2026,,9,PLMSTCS,Plumstead C.H.S.,16:00:00,,5G05,0,,SLADEGN,Slade Green,16:10:00,,\r\n" +
   "QQ904,10/08/2026,,9,SLADEGN,Slade Green,16:15:00,,2G06,0,,BELNGMS,Bellingham Siding,17:00:00,,";
+
+/* Where the PM berth lands when the unit is moved late in the evening.
+   XS930 comes off the St Leonards shed at 22 40 and is shunted round to
+   Hastings for the night: still a shed unit, PM XSE. AF931 does the same
+   shape out of the Ashford east sidings but runs to the Folkestone Train
+   Roads, another berthing area - it has gone home, PM FKE. SG932 finishes in
+   the Grove Park depot, so the entry that takes it there is destined GPD;
+   SG933 terminates at the station, destined GPK. */
+export const LATE_MOVE_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "XS930,Covered,375/6,,0,10/08/2026 06:00,1,5X01,STLNWCS,10/08/2026 23:05,HASTING,60,,,,,,XS930,,",
+  "AF931,Covered,375/6,,0,10/08/2026 06:00,1,5Y01,ASHFEBS,10/08/2026 23:10,FLKSETR,60,,,,,,AF931,,",
+  "SG932,Covered,376/0,,0,10/08/2026 06:00,1,5S01,SLADEGD,10/08/2026 23:20,GRVPKDS,40,,,,,,SG932,,",
+  "SG933,Covered,376/0,,0,10/08/2026 06:05,1,5S05,SLADEGD,10/08/2026 23:30,GRVPK,40,,,,,,SG933,,",
+].join("\r\n");
+
+export const LATE_MOVE_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  orderLeg("XS930", 60, "STLNWCS", "St. Leonards W.M. C.S.D", "06:00:00", "5X01", "HASTING", "Hastings", "06:20:00"),
+  orderLeg("XS930", 60, "HASTING", "Hastings", "06:30:00", "2X01", "TONBDG", "Tonbridge", "07:30:00"),
+  orderLeg("XS930", 60, "TONBDG", "Tonbridge", "17:00:00", "2X02", "HASTING", "Hastings", "18:00:00"),
+  orderLeg("XS930", 60, "HASTING", "Hastings", "18:10:00", "5X03", "STLNWCS", "St. Leonards W.M. C.S.D", "18:30:00"),
+  orderLeg("XS930", 60, "STLNWCS", "St. Leonards W.M. C.S.D", "22:40:00", "5X04", "HASTING", "Hastings", "23:05:00"),
+  orderLeg("AF931", 60, "ASHFEBS", "Ashford East Bth Sdgs", "06:00:00", "5Y01", "ASHFKY", "Ashford", "06:10:00"),
+  orderLeg("AF931", 60, "ASHFKY", "Ashford", "06:20:00", "2Y01", "DOVERP", "Dover Priory", "07:20:00"),
+  orderLeg("AF931", 60, "DOVERP", "Dover Priory", "17:00:00", "2Y02", "ASHFKY", "Ashford", "18:00:00"),
+  orderLeg("AF931", 60, "ASHFKY", "Ashford", "18:10:00", "5Y03", "ASHFEBS", "Ashford East Bth Sdgs", "18:20:00"),
+  orderLeg("AF931", 60, "ASHFEBS", "Ashford East Bth Sdgs", "22:40:00", "5Y04", "FLKSETR", "Folkestone ETR", "23:10:00"),
+  orderLeg("SG932", 40, "SLADEGD", "Slade Green T&R.S.M.D", "06:00:00", "5S01", "SLADEGN", "Slade Green", "06:05:00"),
+  orderLeg("SG932", 40, "SLADEGN", "Slade Green", "06:10:00", "2S01", "CANONST", "Cannon Street", "07:00:00"),
+  orderLeg("SG932", 40, "CANONST", "Cannon Street", "17:00:00", "2S02", "SLADEGN", "Slade Green", "17:50:00"),
+  orderLeg("SG932", 40, "SLADEGN", "Slade Green", "18:00:00", "5S03", "SLADEGD", "Slade Green T&R.S.M.D", "18:10:00"),
+  orderLeg("SG932", 40, "SLADEGD", "Slade Green T&R.S.M.D", "22:40:00", "5S04", "GRVPKDS", "Grove Park Down CHS", "23:20:00"),
+  orderLeg("SG933", 40, "SLADEGD", "Slade Green T&R.S.M.D", "06:05:00", "5S05", "SLADEGN", "Slade Green", "06:10:00"),
+  orderLeg("SG933", 40, "SLADEGN", "Slade Green", "06:15:00", "2S05", "CANONST", "Cannon Street", "07:05:00"),
+  orderLeg("SG933", 40, "CANONST", "Cannon Street", "17:10:00", "2S06", "SLADEGN", "Slade Green", "18:05:00"),
+  orderLeg("SG933", 40, "SLADEGN", "Slade Green", "18:15:00", "5S07", "SLADEGD", "Slade Green T&R.S.M.D", "18:25:00"),
+  orderLeg("SG933", 40, "SLADEGD", "Slade Green T&R.S.M.D", "22:45:00", "5S08", "GRVPK", "Grove Park", "23:30:00"),
+].join("\r\n");

@@ -5,7 +5,7 @@
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
+          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
@@ -123,6 +123,15 @@ const GENIUS = (() => {
   // ---- locations ----
   const locName = s => CODE2NAME[s.code] || s.name;
   const berthInfo = s => SHEETS_CORE.BERTH_SHEETS[SHEETS_CORE.norm(locName(s))] || null;
+  // The section a location berths into, without asking the resolver - used
+  // only to compare two locations, so an unknown name standing for itself is
+  // as good an answer as any.
+  const areaOf = s => {
+    const bi = berthInfo(s);
+    return (bi && bi[0]) || SHEETS_CORE.norm(locName(s));
+  };
+  const sameArea = (a, b) =>
+    a === b || BERTH_AREAS.some(g => g.has(a) && g.has(b));
   const SE = () => (typeof SheetsEngine !== "undefined" ? SheetsEngine : null);
   // Sidings, depots and sheds only — see data.js STABLE_CODES.
   const isStabling = s => STABLE_CODES.has(s.code) ||
@@ -349,14 +358,17 @@ const GENIUS = (() => {
         const m = meta.get(u.diag);
         const { stops, stints, sum, sums } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
-        // finalBerth: still on a berth at 20 00 = the PM end point
+        // finalBerth: still on a berth at 20 00 = the PM end point, as long
+        // as the late working keeps the unit in the same berthing area (see
+        // BERTH_AREAS). A run out of the area is the unit going home for the
+        // night, and the sheets follow it there.
         const lastStint = stints[stints.length - 1];
         const lb = stops[lastStint[0]], lastStop = stops[stops.length - 1];
-        let fbLoc = lastStop, insteadOf = null;
-        if (stints.length && core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
-            lb.dep !== null && sortkey(lb.dep) >= PM_BREAK) {
-          fbLoc = lb; insteadOf = lastStop;
-        }
+        const lateMove = !!stints.length &&
+          core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
+          lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
+        const fbLoc = lateMove && sameArea(areaOf(lb), areaOf(lastStop))
+          ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
@@ -367,7 +379,9 @@ const GENIUS = (() => {
         } else {
           D = secOf(later[0], false) !== null ? bcode(locName(later[0]), warn, u.diag) : "";
           E = fc;
-          if (insteadOf && u.si + 1 === stints.length - 1) D = "";
+          // The berth the unit sits on into the night is its PM one wherever
+          // it ends up afterwards, so the AM column stays empty for it.
+          if (lateMove && u.si + 1 === stints.length - 1) D = "";
         }
         let paxAfter = false;
         for (let i = u.exitIdx + 1; i < stops.length; i++) {

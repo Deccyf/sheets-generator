@@ -614,11 +614,16 @@ const BERTH_SHEETS = {
   "GILLINGHAM UP SDGS": ["GILLINGHAM", "GI", "UP SDGS", "GI"],
   "GILLINGHAM UP SIDINGS": ["GILLINGHAM", "GI", "UP SDGS", "GI"],
   "GILLINGHAM": ["GILLINGHAM", "GLM", null, "GLM"],
-  "GROVE PARK C.S.D": ["GROVE PARK", "GP", "SD", "GPK"],
-  "GROVE PARK DOWN CHS": ["GROVE PARK", "GPD", "DN", "GPK"],
-  "GROVE PARK UP C.H.S": ["GROVE PARK", "GPU", "UP", "GPK"],
-  "GROVE PARK UP HEADSHUNT": ["GROVE PARK", "GP", null, "GPK"],
-  "GROVE PARK DPT CTRY ED EXT": ["GROVE PARK", "GP", null, "GPK"],
+  // A train booked into one of the depot roads is destined GPD - Grove Park
+  // depot. GPK is Grove Park the station, and only a service that terminates
+  // there gets it (the books use both: SLADE GREEN 18+04 and 22+35 print GPD
+  // for the depot, GROVE PARK 15+32 prints GPK for the station).
+  "GROVE PARK C.S.D": ["GROVE PARK", "GP", "SD", "GPD"],
+  "GROVE PARK DOWN CHS": ["GROVE PARK", "GPD", "DN", "GPD"],
+  "GROVE PARK UP C.H.S": ["GROVE PARK", "GPU", "UP", "GPD"],
+  "GROVE PARK UP HEADSHUNT": ["GROVE PARK", "GP", null, "GPD"],
+  "GROVE PARK DPT CTRY ED EXT": ["GROVE PARK", "GP", null, "GPD"],
+  "GROVE PARK DPT LNDN ED EXT": ["GROVE PARK", "GP", null, "GPD"],
   "GROVE PARK": ["GROVE PARK", "GP", null, "GPK"],
   "HASTINGS": ["HASTINGS", "HGS", null, "HGS"],
   "HASTINGS PARK SIDINGS": ["HASTINGS", "HGS", null, "HGS"],
@@ -736,6 +741,13 @@ const SIDING_CLASS_RE = new RegExp(
     TONBDMS: "Tonbridge DM Siding", TONBPMY: "Tonbridge Jub Sdgs",
     TONBDG: "Tonbridge", GRVPCSD: "Grove Park C.S.D",
     GRVPKDS: "Grove Park Down CHS", GRVPKUS: "Grove Park Up C.H.S",
+    // The depot extensions and headshunts: the CSV export truncates their
+    // names to 16 characters ("Grove Park Dpt C", "Slade Green Dpt"), which
+    // matches nothing, so name them here as the berth tables spell them.
+    GRVPDCE: "Grove Park Dpt Ctry Ed Ext",
+    GRVPDLE: "Grove Park Dpt Lndn Ed Ext",
+    GRVPUHS: "Grove Park Up Headshunt",
+    SLADGEH: "Slade Green Dpt East Hshnt",
     SLADEGD: "Slade Green T&R.S.M.D", SLADGUS: "Slade Green Up C.H.S",
     DARTFUS: "Dartford Up Sidings", DARTFDS: "Dartford Down Sidings",
     DARTFD: "Dartford", PLMSTCS: "Plumstead C.H.S", ORPNGTN: "Orpington",
@@ -758,7 +770,8 @@ const SIDING_CLASS_RE = new RegExp(
   const STABLE_CODES = new Set(["ASHFDNS", "ASHFUPS", "ASHFEBS", "ASHFDYW",
     "ASHFDY", "VICTGCS", "GLNGDEP", "GLNGMUS", "RAMSGTD", "RAMSNEW",
     "DOVERPS", "FAVRUPS", "FAVRBRD", "HASTPSD", "STLNWCS", "TONBDMS",
-    "TONBPMY", "GRVPCSD", "GRVPKDS", "GRVPKUS", "SLADEGD", "SLADGUS",
+    "TONBPMY", "GRVPCSD", "GRVPKDS", "GRVPKUS", "GRVPDCE", "GRVPDLE",
+    "GRVPUHS", "SLADGEH", "SLADEGD", "SLADGUS",
     "DARTFUS", "DARTFDS", "PLMSTCS", "ORPNDSG", "BELNGMS", "SIDCUPS",
     "FLKSETR"]);
   // corrections learned from the hand-built sheets: these beat whatever
@@ -831,6 +844,15 @@ const SIDING_CLASS_RE = new RegExp(
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
+  /* Sections that share one berthing area. A unit still on a berth at 20 00
+     has ended its day there whatever a late working does with it afterwards -
+     but only while it stays in the area: a unit shut in the St Leonards shed
+     and shunted out to Hastings for the night is still a shed unit, and the
+     12/08 book prints XSE for all twelve of them. A late run OUT of the area
+     is the unit going home, and the book follows it: GT105/GT106 off Ashford
+     East to the Folkestone Train Roads print FKE, and RM301 off Ramsgate to
+     Gillingham prints GI. */
+  const BERTH_AREAS = [new Set(["WEST MARINA", "HASTINGS"])];
   const END_MARKERS_GENIUS = {
     "DOVER PRIORY": {
       fke: "FKE END", cbe: "CBE END",
@@ -1008,7 +1030,7 @@ return {
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, END_MARKERS_GENIUS, ORDER_FIX,
+  PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   MAINLINE, METRO, HIGHSPEED, PROFILES,
@@ -2667,7 +2689,7 @@ root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
+          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
@@ -2785,6 +2807,15 @@ const GENIUS = (() => {
   // ---- locations ----
   const locName = s => CODE2NAME[s.code] || s.name;
   const berthInfo = s => SHEETS_CORE.BERTH_SHEETS[SHEETS_CORE.norm(locName(s))] || null;
+  // The section a location berths into, without asking the resolver - used
+  // only to compare two locations, so an unknown name standing for itself is
+  // as good an answer as any.
+  const areaOf = s => {
+    const bi = berthInfo(s);
+    return (bi && bi[0]) || SHEETS_CORE.norm(locName(s));
+  };
+  const sameArea = (a, b) =>
+    a === b || BERTH_AREAS.some(g => g.has(a) && g.has(b));
   const SE = () => (typeof SheetsEngine !== "undefined" ? SheetsEngine : null);
   // Sidings, depots and sheds only — see data.js STABLE_CODES.
   const isStabling = s => STABLE_CODES.has(s.code) ||
@@ -3011,14 +3042,17 @@ const GENIUS = (() => {
         const m = meta.get(u.diag);
         const { stops, stints, sum, sums } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
-        // finalBerth: still on a berth at 20 00 = the PM end point
+        // finalBerth: still on a berth at 20 00 = the PM end point, as long
+        // as the late working keeps the unit in the same berthing area (see
+        // BERTH_AREAS). A run out of the area is the unit going home for the
+        // night, and the sheets follow it there.
         const lastStint = stints[stints.length - 1];
         const lb = stops[lastStint[0]], lastStop = stops[stops.length - 1];
-        let fbLoc = lastStop, insteadOf = null;
-        if (stints.length && core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
-            lb.dep !== null && sortkey(lb.dep) >= PM_BREAK) {
-          fbLoc = lb; insteadOf = lastStop;
-        }
+        const lateMove = !!stints.length &&
+          core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
+          lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
+        const fbLoc = lateMove && sameArea(areaOf(lb), areaOf(lastStop))
+          ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
@@ -3029,7 +3063,9 @@ const GENIUS = (() => {
         } else {
           D = secOf(later[0], false) !== null ? bcode(locName(later[0]), warn, u.diag) : "";
           E = fc;
-          if (insteadOf && u.si + 1 === stints.length - 1) D = "";
+          // The berth the unit sits on into the night is its PM one wherever
+          // it ends up afterwards, so the AM column stays empty for it.
+          if (lateMove && u.si + 1 === stints.length - 1) D = "";
         }
         let paxAfter = false;
         for (let i = u.exitIdx + 1; i < stops.length; i++) {
