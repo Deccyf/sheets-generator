@@ -1,0 +1,328 @@
+# How to use the Sheets Generator
+
+A plain-English guide to building the unit berthing books.
+No training needed — if you can find the reports, the page does the rest.
+
+---
+
+## Contents
+
+1. [What this is](#1-what-this-is)
+2. [The two-minute version](#2-the-two-minute-version)
+3. [Opening the page](#3-opening-the-page)
+4. [Getting the paperwork](#4-getting-the-paperwork)
+5. [Building the weekday books](#5-building-the-weekday-books-mon--fri)
+6. [Building the weekend sheets](#6-building-the-weekend-sheets-sat--sun)
+7. [What you get](#7-what-you-get)
+8. [Reading a sheet](#8-reading-a-sheet)
+9. [The review list — always read it](#9-the-review-list--always-read-it)
+10. [The headcode switches](#10-the-headcode-switches)
+11. [When something looks wrong](#11-when-something-looks-wrong)
+12. [Before the books go out](#12-before-the-books-go-out)
+
+---
+
+## 1. What this is
+
+`Sheets Generator.html` is one file that turns the planning paperwork into the
+**unit berthing books** — the SHEETS — with every diagram number, AM/PM column,
+flag and note filled in the way the hand-built books do them.
+
+You give it:
+
+* **Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports for
+  the date, either as Genius PDFs or as Integrale CSV exports.
+* **Saturday and Sunday** — the weekend *diagram prints* Word document, plus any
+  reissues.
+
+You get finished Excel workbooks, ready to check and send out.
+
+**Nothing leaves your computer.** The page does all the work in the browser on
+your own machine. No internet connection, no login, no upload, nothing
+installed. You can use it on a train with no signal.
+
+---
+
+## 2. The two-minute version
+
+1. Double-click **`Sheets Generator.html`**.
+2. Drop the **two weekday reports** on the top panel (or the **weekend prints**
+   on the bottom one).
+3. The books appear straight away. Click **Look at it** on each and read the
+   **Review** tab.
+4. Click **Save book** on each, or **Save all books (.zip)** for the lot.
+
+That's the whole job. The rest of this guide is detail for when you want it.
+
+---
+
+## 3. Opening the page
+
+Double-click the file. It opens in your browser like any web page.
+
+* Use **Edge, Chrome or Firefox**. If it opens in something older and says the
+  browser is too old, right-click the file → **Open with** → pick Edge.
+* Keep the file wherever suits you — desktop, a network drive, a memory stick.
+  It works the same from any of them.
+* There is nothing to install and nothing to sign into. If you have been sent a
+  newer copy of the file, just use that instead; there is no update to run.
+
+The page has **two panels**, one above the other:
+
+| Panel | Sign at the top | What it takes |
+|---|---|---|
+| Top | **Weekdays · Mon – Fri** | the two Diagram reports (PDFs or CSVs) |
+| Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc) |
+
+Drop your files on the matching one. If you put weekend prints on the weekday
+panel by mistake it will tell you, politely, and point you downstairs.
+
+---
+
+## 4. Getting the paperwork
+
+### From Genius (PDFs)
+
+1. Make sure a **Control Cycle** exists for the date. If you want the Metro and
+   High Speed books as well, Control Cycles must exist for those fleets too —
+   this is the usual reason a book comes up empty.
+2. Run **Diagrams → Summary Report…** and save it as a **PDF**.
+3. Run **Diagrams → Detail Report…** and save that as a **PDF** too.
+
+Save both from Genius itself. A scan or a photo of a printout can't be read.
+
+### From Integrale (CSVs)
+
+**The Diagram Summary file**
+
+1. Open the **Stock Diagrams** list and click **[GO→]** without selecting a
+   filter.
+2. Click **[Export To Excel]**.
+3. Save it in a sensible folder under a sensible name, with **File Type** set to
+   **.csv**, and click **[Save]**.
+
+**The Diagram Detail file**
+
+1. Open the **Stock Diagrams** list and click **[GO→]** again, still without a
+   filter.
+2. Click **Stock Diagram Detail Report** on the toolbar.
+3. The dialog opens at the bottom of the screen — click **[…]** under **Output
+   Path**.
+4. Pick the same folder as the Summary, give it a sensible name, **File Type
+   .csv** again, then **[Save]**.
+5. Click **[OK]** — you may have to scroll down to see it. It takes a minute or
+   so, then tells you it's done.
+
+The same steps, with screenshots, are inside the page itself: look for
+*Getting the two CSVs out of Integrale* in the quick start at the top.
+
+> **Genius and Integrale both work, and both give the same books.** What you
+> can't do is mix them — a Genius Summary with an Integrale Detail won't build,
+> and the page will say so.
+
+### The weekend prints
+
+Get the weekend **diagram prints** Word document — `.docx`, or an older `.doc`.
+If **reissued** prints have come out, get those too. Any file with *reissue* or
+*re-issue* in its name is treated as a reissue.
+
+---
+
+## 5. Building the weekday books (Mon – Fri)
+
+1. **Drop both reports** on the top panel — together, or one and then the other.
+   You can also click the panel to browse for them.
+2. The page works out which report is which by reading it, so the order doesn't
+   matter. Drop one and it tells you what it's still waiting for — *"Genius
+   Summary loaded ✓ — now drop the Diagram Detail report."* — and the drop zone
+   itself changes to match.
+3. As soon as it has the pair, the books are built. You'll see
+   *"Books built — look them over below, then save."*
+4. **Look them over.** Click **Look at it** on a book to see the finished sheet
+   on screen, day by day, exactly as it will print. Tabs across the top are the
+   days (MON, TUE…) plus **Review**.
+5. **Save.** Either **Save book** on each one, or **Save all books (.zip)** at
+   the bottom for everything in a single zip.
+
+**Several dates at once.** If the reports cover a whole week, you get one tab
+per date inside each workbook — MON to FRI. Dates that fall on a weekend are
+skipped, with a note telling you to use the weekend panel.
+
+**A book with nothing in it** says so — *"No Metro diagrams in these reports —
+nothing to berth"* — instead of giving you an empty workbook. For Metro and High
+Speed it reminds you to check the Control Cycle.
+
+---
+
+## 6. Building the weekend sheets (Sat & Sun)
+
+1. **Drop the prints** on the bottom panel.
+2. **Drop the reissues too**, if there are any — with the prints, or in a later
+   drop once you've already built. Reissued diagrams **replace** their originals
+   and new ones are added, then everything is rebuilt. The status line tells you
+   how many were replaced.
+3. **Look each sheet over** and save it, the same as the weekday books.
+4. If a reissue was merged and the prints were a `.docx`, you also get **Save
+   updated prints (.docx)** — the original prints document with the reissued
+   diagrams spliced in, so there is one clean copy to circulate.
+5. **Start over** clears everything and lets you begin again.
+
+A reissue dropped on its own won't build — the page needs the full prints with
+it (or first), and says so. A reissue for a different date is refused too.
+
+---
+
+## 7. What you get
+
+### Weekdays — four roads
+
+| Road | File | What's in it |
+|---|---|---|
+| **SHEETS** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
+| **RAM SHEETS** | `RAM_SHEETS_…xlsx` | Ramsgate's own book, cut from the same day's work |
+| **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s |
+| **HS SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s |
+
+### Weekends — three books
+
+One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
+plus the updated prints document when a reissue has been merged.
+
+The file names carry the date, so `SHEETS_MON-03-08.xlsx` and
+`SHEETS_SAT_02_AUG.xlsx` never get mixed up in a folder.
+
+---
+
+## 8. Reading a sheet
+
+Each section — ASHFORD, GILLINGHAM, SLADE GREEN and so on — is a ruled box with
+the section name and the date at the top. Inside it, one **entry** per
+departure, and one row per unit.
+
+Units are listed **rear first**, the way the hand-built books do it. Folkestone
+East is the other way round, because the Train Roads only point one way.
+
+| Column | What it says | Example |
+|---|---|---|
+| **A** | Time and where it's going | `06 45 CHX` |
+| **B** | What the unit is — cars and class | `4 375` |
+| **C** | The three-digit diagram number | `117` |
+| **D** | **AM** — the unit's next berth during the day | `DFU` |
+| **E** | **PM** — where it finishes the day | `SG` |
+| **G** | Flag — `SPLITS` or `SPLITS PM` | |
+| **H** | Notes — sidings, attachments, end markers, headcodes | `EAST SIDINGS` |
+
+**Times.** A plain space is a passenger working: `06 45`. A **`+`** means empty
+stock: `05+32`. That's the usual house convention.
+
+**Reading a row.** `06 45 CHX │ 4 375 │ 117 │ DFU │ SG` says: the 06:45 to
+Charing Cross, a four-car 375 on diagram 117, which goes to Dartford Up Sidings
+next and finishes the day at Slade Green.
+
+**SPLITS** means the units on this departure part company during the day.
+**SPLITS PM** means they only part in the evening — the AM and PM columns tell
+you who ends up where.
+
+**Notes** carry the house annotations: which siding a unit comes off
+(`EAST SIDINGS`, `UP SIDINGS`, `JUB`…), `ATTACHMENT` when another unit joins the
+departure, the end markers where the ends of a train are named for the way out
+(`FKE END` / `CBE END` at Dover Priory, and so on), and the headcode in the
+sections that quote it.
+
+**A few things are left off on purpose.** Empty moves into a berth with no
+passenger work afterwards aren't listed — the same as the hand-built sheets. Any
+that are left off are **named on the review list**, so nothing disappears
+quietly.
+
+**Metro timings.** The Metro book is timed off the **first time the unit moves**.
+A unit that runs empty out of the sidings at 05+52 to form the 06 00 off the
+platform is listed at **05+52**, with the empty move's headcode, still showing
+where the service it forms is going. A train that starts in the platform keeps
+its platform time. The Mainline and High Speed books are timed off the platform
+call as always.
+
+---
+
+## 9. The review list — always read it
+
+Every build produces a **review list**: everything the rules had to decide for
+themselves, named openly rather than quietly guessed at. It's the **Review** tab
+on each book, and each book only shows its own fleet's items.
+
+The status line tells you how many there are, and the line above the buttons on
+each road says either *"Nothing flagged for review"* or *"3 review items — read
+before the sheets go out"*.
+
+Typical items:
+
+* **A location the section list doesn't know.** It gets its own heading in
+  alphabetical order and a note. Check it's in the right place — and say if it
+  ought to live under an existing section, so the tables can be corrected.
+* **Empty moves left off.** Each suppressed move is named with its diagram
+  number, so you can confirm it should be off.
+* **A diagram whose page didn't read cleanly**, or a date with no matching
+  detail report.
+* **An end marker with no rule to fit.** Rather than guess which end leads, the
+  tool says so and leaves it for you.
+* **The Folkestone East Train Roads arrivals**, worked out last-in-first-out
+  from tonight's arrivals. Always double-check these against the ACWN.
+
+A clean review list is normal on a straightforward day. A long one isn't a
+fault — it's the tool showing its working.
+
+---
+
+## 10. The headcode switches
+
+Above each drop zone there's a box marked **HEADCODES** with three tick-boxes:
+**Mainline**, **Metro**, **High Speed**.
+
+* **Left off** (how they start) each book follows the house rules — headcodes
+  appear only in the sections that have always quoted them: Gillingham, Victoria
+  and Grove Park.
+* **Ticked**, that book puts **every** headcode in the notes column — empty moves
+  and platform starters alike, the way Victoria and Grove Park have always read.
+
+They're per book, so you can have all the headcodes on the Metro sheets and the
+usual rules on the Mainline.
+
+**You can change your mind after building.** Tick or untick and the books are
+rebuilt on the spot — you don't have to drop the files again. Just remember to
+save them again afterwards; it'll remind you.
+
+---
+
+## 11. When something looks wrong
+
+| What you see | What it means |
+|---|---|
+| *"No Diagram Summary rows found"* / *"No Detail itineraries found"* | One of the two reports is missing or is the wrong kind. Both are needed, for the same date. |
+| *"The Summary is from Genius but the Detail is from Integrale"* | The pair have to come from the same system. Two PDFs, or two CSVs. |
+| *"…doesn't look like a Genius report"* | The PDF's text couldn't be read — make sure it was saved from Genius, not scanned or photographed. |
+| *"…doesn't look like an Integrale export"* | The CSV isn't one of the two Integrale exports. Check you exported the Stock Diagrams list and the Stock Diagram Detail Report. |
+| A road says *"nothing to berth"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
+| A location has its own heading | A unit berthed somewhere the section list has never heard of. It's on the review list; check where it should live. |
+| A train seems to be missing | Read the review list first — empty moves into a berth are left off deliberately and each one is named. If it isn't there, note the diagram number and report it. |
+| *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
+| *"That looks like a reissue on its own"* | Drop the full weekly prints with it, or first. |
+| *"…belongs to a different day"* | The reissue's date doesn't match the prints it was dropped with. |
+| The page says the browser is too old | Right-click the file → **Open with** → Edge, Chrome or Firefox. |
+| Nothing happens when you drop a file | Click the panel instead and browse for the file — some setups block drag-and-drop. |
+
+---
+
+## 12. Before the books go out
+
+* **Read the review list.** Every time. It exists to be read.
+* **Check the sheets against the ACWNs** — especially the Folkestone East Train
+  Roads notes, which are worked out from last night's arrivals and flagged for
+  exactly this reason.
+* **Check the date on the tab** matches the day you meant to build.
+* Remember this is a **drafting tool**. It applies the house rules faithfully and
+  tells you where it had to make a call — but the books are yours, and a human
+  signs them off.
+
+---
+
+*Questions, or a rule that doesn't match how your patch does it? Say so — the
+rules live in one place and can be corrected.*
