@@ -237,6 +237,12 @@ const SIDING_CLASS_RE = new RegExp(
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
+      // Tonbridge and Faversham look like first-departure sections in the
+      // book - it times them off the berth, not the platform a minute later
+      // - but firstDep is the wrong tool: it takes the first move of the
+      // whole stint, and RM302 comes off the Back Road at 05:29 before the
+      // Up Sidings departure at 05:36 that the book actually uses. Adding
+      // them here costs more entries than it wins.
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
