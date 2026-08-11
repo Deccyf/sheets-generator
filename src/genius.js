@@ -224,7 +224,26 @@ const GENIUS = (() => {
   function buildDate(date, sumRows, details, prof, warn) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
-    for (const r of sumRows) summ.set(r.diag, r);
+    // The Genius summary carries one row per working, and a unit's Position
+    // changes as the day goes on - it can be first out of the sidings and
+    // second by the time it leaves the platform. Keep every row, in order.
+    for (const r of sumRows) {
+      if (!summ.has(r.diag)) summ.set(r.diag, []);
+      summ.get(r.diag).push(r);
+    }
+    for (const rows of summ.values())
+      rows.sort((x, y) => sortkey(x.start) - sortkey(y.start));
+    // Position for a working that departs at t: the row covering it, else the
+    // last one to have started. (An Integrale export has a single row per
+    // diagram, so this always lands on it.)
+    const posAt = (rows, t) => {
+      const k = sortkey(t);
+      for (const r of rows)
+        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r.pos;
+      let best = rows[0];
+      for (const r of rows) if (sortkey(r.start) <= k) best = r;
+      return best.pos;
+    };
     const autoSec = new Map();
     const secOf = (stop, endpoint) => {
       const bi = berthInfo(stop);
@@ -243,14 +262,15 @@ const GENIUS = (() => {
     };
     // scope + stints
     for (const [diag, raw] of details) {
-      const sr = summ.get(diag);
+      const srs = summ.get(diag);
+      const sr = srs && srs[0];
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
       const bnd = boundaries(stops);
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
-      meta.set(diag, { stops, stints, sum: sr });
+      meta.set(diag, { stops, stints, sum: sr, sums: srs });
     }
     const entries = new Map();
     for (const [diag, m] of meta) {
@@ -327,7 +347,7 @@ const GENIUS = (() => {
       const blocks = [];
       for (const u of e.units) {
         const m = meta.get(u.diag);
-        const { stops, stints, sum } = m;
+        const { stops, stints, sum, sums } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
         // finalBerth: still on a berth at 20 00 = the PM end point
         const lastStint = stints[stints.length - 1];
@@ -359,7 +379,7 @@ const GENIUS = (() => {
         // later parting is SPLITS PM business, settled by D/E
         const bEnd = stops[stints[u.si][1]];
         const path = bEnd.code + "@" + (bEnd.arr !== null ? bEnd.arr : bEnd.dep);
-        blocks.push({ diag: u.diag, si: u.si, pos: sum.pos, D, E,
+        blocks.push({ diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }

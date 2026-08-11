@@ -365,6 +365,15 @@ ones, all commented at the point of implementation:
   each suppression is named on the review list.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
+* **Position changes during the day.** The Genius Summary carries one row per
+  working, and a unit's `Position` moves with the formation — it can be first
+  out of the sidings and second by the time it leaves the platform. On 12/08,
+  64 of 303 diagrams change Position during the day (SG813 is Position 1 on
+  the 05:48 off the Grove Park down CHS and Position 2 on the 15:12 off the up
+  CHS, swapping with SG814). Each entry takes the Position from the row
+  covering its own working. An **Integrale** export has one row per diagram
+  and cannot express this, so on Integrale data every entry gets the one value
+  the export gives.
 * **Coupling order.** Which unit leads comes from the Summary's `Position`
   field, and the direction is **per section** (`posAsc` in the fleet
   profiles). In the mainline book these list the *lowest* Position first —
