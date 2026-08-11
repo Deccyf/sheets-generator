@@ -157,6 +157,29 @@ test("metro sheets are timed off the first move; the mainline is not", async () 
     "mainline not moved back to the sidings departure");
 });
 
+test("Victoria and Ramsgate list the formation the other way round", async () => {
+  const N = built();
+  const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale(
+    [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
+  // The unit at the back on the way in is at the front on the way out, so
+  // Position 1 leads at both places.
+  for (const [sec, want] of [["VICTORIA", ["901", "902"]],
+                             ["RAMSGATE", ["903", "904"]]]) {
+    const list = res.secsByDay.M.get(sec);
+    assert.ok(list && list.length === 1, "one " + sec + " departure");
+    assert.deepEqual(norm(list[0].units.map(u => u.diag)), want, sec);
+  }
+  // Everywhere else keeps rear-first — highest Position first. GT101 is
+  // Position 1 and GT102 Position 2 on the same 05 45 off Ashford.
+  const pdfRes = await N.GENIUS.build(pdfs(N));
+  const ash = pdfRes.secsByDay.M.get("ASHFORD")
+    .find(e => e.time === 5 * 60 + 45);
+  assert.deepEqual(norm(ash.units.map(u => u.diag)), ["102", "101"],
+    "Ashford still lists rear first");
+});
+
 test("mixed-format pairs are refused by the sniffers", () => {
   const N = built();
   assert.equal(N.GENIUS.sniffIntegrale("Code,Cov,Type,x,x,x,Position,First Train,y"), "sum");

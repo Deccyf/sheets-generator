@@ -152,8 +152,9 @@ section, slotted in alphabetically, and a note on the review list.
 
 Each section is a ruled box headed by the section name and the date. Within
 it, one **entry** per departure, one row per **unit**, listed the way the
-hand-built books list them (rear unit first; Folkestone East the other way
-round, because the Train Roads point one way). The columns are:
+hand-built books list them (rear unit first; Folkestone East, Victoria and
+Ramsgate the other way round, because the formation turns end for end there).
+The columns are:
 
 | Col | Content |
 |---|---|
@@ -364,9 +365,14 @@ ones, all commented at the point of implementation:
   each suppression is named on the review list.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
-* **Coupling order.** Units are listed rear-first (by the Summary's position
-  field); Folkestone East lists front-first because the Train Roads point one
-  way.
+* **Coupling order.** Units are listed rear-first — highest Summary
+  `Position` first — except in the sections where the formation turns end for
+  end, which list lowest `Position` first. A unit's Position is fixed for the
+  whole day, so wherever the train reverses, the listing reverses with it: the
+  Folkestone East Train Roads point one way, and everything leaving Victoria
+  or Ramsgate has reversed there, so the unit at the back out of Ashford leads
+  out of Victoria. The list is `posAsc` on each fleet profile in `src/data.js`
+  — it currently applies to the mainline book only.
 
 ### The workbook writer and the preview
 

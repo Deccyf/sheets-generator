@@ -287,6 +287,33 @@ export const METRO_MOVE_DETAIL =
   "MM801,10/08/2026,,17,DARTFD,Dartford,06:00:00,,2B05,3,,CANONST,Cannon Street,06:48:00,,\r\n" +
   "MM802,10/08/2026,,17,DARTFD,Dartford,06:20:00,,2B07,0,,CANONST,Cannon Street,07:10:00,,";
 
+/* Sections that turn end for end. VC901/VC902 form one departure out of
+   Victoria off the Grosvenor Shed; RG903/RG904 form one out of Ramsgate off
+   the depot. In each pair the lower Position is the one that leads. */
+export const REVERSED_ORDER_SUMMARY =
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes\r\n" +
+  "VC901,Covered,377/5,,0,10/08/2026 06:00,1,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC901,,\r\n" +
+  "VC902,Covered,377/5,,0,10/08/2026 06:00,2,5N89,VICTGCS,10/08/2026 07:40,ASHFKY,56,,,,,,VC902,,\r\n" +
+  "RG903,Covered,375/6,,0,10/08/2026 06:00,1,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG903,,\r\n" +
+  "RG904,Covered,375/6,,0,10/08/2026 06:00,2,5A14,RAMSGTD,10/08/2026 07:30,ASHFKY,38,,,,,,RG904,,";
+
+export const REVERSED_ORDER_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["VC901", "VC902"].flatMap(d => [
+    d + ",10/08/2026,,56,VICTGCS,Victoria Grosvenor Shed,06:00:00,,5N89,0,,VICTRIE,Victoria,06:10:00,,",
+    d + ",10/08/2026,,56,VICTRIE,Victoria,06:20:00,,2N89,2,,ASHFKY,Ashford,07:40:00,,",
+  ]),
+  ...["RG903", "RG904"].flatMap(d => [
+    d + ",10/08/2026,,38,RAMSGTD,Ramsgate E.M.U.D,06:00:00,,5A14,0,,RAMSGTE,Ramsgate,06:10:00,,",
+    d + ",10/08/2026,,38,RAMSGTE,Ramsgate,06:20:00,,2A14,2,,ASHFKY,Ashford,07:30:00,,",
+  ]),
+].join("\r\n");
+
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
 export const INTEGRALE_QUIRKS_SUMMARY =

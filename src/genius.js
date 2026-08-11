@@ -363,7 +363,9 @@ const GENIUS = (() => {
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }
-      if (e.sec === "FOLKESTONE EAST")
+      // rear unit first, which is highest Position first - except where the
+      // formation turns end for end (see posAsc in the fleet profiles)
+      if (prof.posAsc && prof.posAsc.has(e.sec))
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag < y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));

@@ -767,9 +767,16 @@ const SIDING_CLASS_RE = new RegExp(
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
+  // posAsc: sections listed lowest Position first instead of the usual
+  // rear-first. A unit's Position is fixed for the whole day, so wherever
+  // the formation turns end for end the listing turns with it: the Train
+  // Roads at Folkestone East point one way, and everything leaving Victoria
+  // has reversed there, so the unit at the back out of Ashford leads out of
+  // Victoria.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
+      posAsc: new Set(["FOLKESTONE EAST", "VICTORIA", "RAMSGATE"]),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
@@ -779,9 +786,11 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
+      posAsc: new Set(),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
+      posAsc: new Set(),
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity
@@ -2985,7 +2994,9 @@ const GENIUS = (() => {
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }
-      if (e.sec === "FOLKESTONE EAST")
+      // rear unit first, which is highest Position first - except where the
+      // formation turns end for end (see posAsc in the fleet profiles)
+      if (prof.posAsc && prof.posAsc.has(e.sec))
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag < y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
