@@ -359,22 +359,27 @@ function reviewPane(items) {
       return;
     }
     if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) {
-      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius PDF reports or the Integrale CSV exports.", "err");
+      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius reports (PDF or CSV) or the Integrale CSV exports.", "err");
       return;
     }
     if (nm.endsWith(".csv")) {
       const text = new TextDecoder("utf-8").decode(await file.arrayBuffer());
-      let kind = null;
+      let kind = null, fmt = "csv";
       try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
       if (!kind) {
-        say("“" + file.name + "” doesn't look like an Integrale export — drop the Diagram Summary and Diagrams CSVs from Integrale.", "err");
+        try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {}
+      }
+      if (!kind) {
+        say("“" + file.name + "” isn't a report this reads — it takes the " +
+            "Diagram Summary and Diagrams CSVs from Integrale, or the " +
+            "Diagram Summary and Detail reports from Genius saved as CSV.", "err");
         return;
       }
-      await stash(kind, "csv", text);
+      await stash(kind, fmt, text);
       return;
     }
     if (!nm.endsWith(".pdf")) {
-      say("This tool reads the Genius Diagram Summary & Detail PDFs or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
+      say("This tool reads the Genius Diagram Summary & Detail reports (PDF or CSV) or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
       return;
     }
     const u8 = new Uint8Array(await file.arrayBuffer());
@@ -391,15 +396,18 @@ function reviewPane(items) {
     await stash(kind, "pdf", u8);
   }
 
+  // Genius comes as the report PDFs or as CSV exports of the same two
+  // reports; either pairs with the other, so they are one source.
   const srcName = fmt => fmt === "csv" ? "Integrale" : "Genius";
+  const family = fmt => fmt === "csv" ? "integrale" : "genius";
   async function stash(kind, fmt, data) {
     have[kind] = { fmt, data };
     if (have.sum && have.det) {
-      if (have.sum.fmt !== have.det.fmt) {
+      if (family(have.sum.fmt) !== family(have.det.fmt)) {
         say("The Summary is from " + srcName(have.sum.fmt) + " but the Detail is from " +
-            srcName(have.det.fmt) + " — drop a matching pair: two Genius PDFs or two Integrale CSVs.", "err");
+            srcName(have.det.fmt) + " — drop a matching pair: both from Genius, or both from Integrale.", "err");
         zone("Mixed sources loaded",
-             "drop a matching pair — two Genius PDFs or two Integrale CSVs");
+             "drop a matching pair — both from Genius, or both from Integrale");
         return;
       }
       try {
@@ -412,7 +420,7 @@ function reviewPane(items) {
     } else {
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
-      const what = fmt === "csv" ? "CSV" : "report";
+      const what = family(fmt) === "integrale" ? "CSV" : "report";
       say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want + " " + what + ".");
       zone("Diagram " + got + " loaded ✓ (" + srcName(fmt) + ")",
            "now drop the " + want + " " + what + " · or click to choose it");

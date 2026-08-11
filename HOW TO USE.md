@@ -31,7 +31,7 @@ flag and note filled in the way the hand-built books do them.
 You give it:
 
 * **Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports for
-  the date, either as Genius PDFs or as Integrale CSV exports.
+  the date: from Genius as PDFs or CSVs, or from Integrale as its two CSVs.
 * **Saturday and Sunday** — the weekend *diagram prints* Word document, plus any
   reissues.
 
@@ -71,7 +71,7 @@ The page has **two panels**, one above the other:
 
 | Panel | Sign at the top | What it takes |
 |---|---|---|
-| Top | **Weekdays · Mon – Fri** | the two Diagram reports (PDFs or CSVs) |
+| Top | **Weekdays · Mon – Fri** | the two Diagram reports — Genius (.pdf or .csv) or Integrale (.csv) |
 | Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc) |
 
 Drop your files on the matching one. If you put weekend prints on the weekday
@@ -81,15 +81,17 @@ panel by mistake it will tell you, politely, and point you downstairs.
 
 ## 4. Getting the paperwork
 
-### From Genius (PDFs)
+### From Genius (PDF or CSV)
 
 1. Make sure a **Control Cycle** exists for the date. If you want the Metro and
    High Speed books as well, Control Cycles must exist for those fleets too —
    this is the usual reason a book comes up empty.
-2. Run **Diagrams → Summary Report…** and save it as a **PDF**.
-3. Run **Diagrams → Detail Report…** and save that as a **PDF** too.
+2. Run **Diagrams → Summary Report…** and save it as a **PDF** or a **CSV**.
+3. Run **Diagrams → Detail Report…** and save that the same way.
 
-Save both from Genius itself. A scan or a photo of a printout can't be read.
+Either format is read, and you can mix them — a PDF summary with a CSV detail
+builds fine. Save both from Genius itself; a scan or a photo of a printout
+can't be read.
 
 ### From Integrale (CSVs)
 
@@ -117,8 +119,9 @@ The same steps, with screenshots, are inside the page itself: look for
 *Getting the two CSVs out of Integrale* in the quick start at the top.
 
 > **Genius and Integrale both work, and both give the same books.** What you
-> can't do is mix them — a Genius Summary with an Integrale Detail won't build,
-> and the page will say so.
+> can't do is mix the two systems — a Genius Summary with an Integrale Detail
+> won't build, and the page will say so. Mixing a Genius PDF with a Genius CSV
+> is fine.
 
 ### The weekend prints
 

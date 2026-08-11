@@ -582,20 +582,30 @@ const GENIUS = (() => {
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
-  async function build(buffers) {
+  /* Genius input: the report PDFs (bytes), the CSV exports (strings), or one
+     of each - they carry the same two reports and merge into the same pair. */
+  async function build(inputs) {
     let sumRows = [];
     const byDate = new Map();
-    for (const buf of buffers) {
-      const txt = pdfText(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
+    const mergeDetail = m1 => {
+      for (const [d, m] of m1) {
+        if (!byDate.has(d)) byDate.set(d, new Map());
+        for (const [k, v] of m) byDate.get(d).set(k, v);
+      }
+    };
+    for (const inp of inputs) {
+      if (typeof inp === "string") {
+        const kind = sniffGeniusCsv(inp);
+        if (kind === "sum") sumRows = sumRows.concat(parseSummaryCsvG(inp));
+        else if (kind === "det") mergeDetail(parseDetailCsvG(inp));
+        continue;
+      }
+      const txt = pdfText(inp instanceof Uint8Array ? inp : new Uint8Array(inp));
       if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt));
-      if (/Diagram Detail Report/i.test(txt))
-        for (const [d, m] of parseDetail(txt)) {
-          if (!byDate.has(d)) byDate.set(d, new Map());
-          for (const [k, v] of m) byDate.get(d).set(k, v);
-        }
+      if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found - upload the Summary report PDF as well.");
-    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - upload the Detail report PDF as well.");
+    if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
+    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
     return assemble(sumRows, byDate);
   }
 
@@ -736,6 +746,75 @@ const GENIUS = (() => {
     }
     return { byDate, stabled, mangled };
   }
+  // ---- Genius CSV exports (the same two reports, saved as CSV) ----
+  // Every line repeats the whole report header and carries its data at the
+  // end, so the columns are found by their label rather than by position.
+  // The summary has one line per WORKING, which is where the changing
+  // Position comes from; the detail has one line per leg, with the arrival
+  // and departure at the leg's origin.
+  function afterLabel(row, label) {
+    for (let i = row.length - 1; i >= 0; i--)
+      if ((row[i] || "").trim() === label) return i + 1;
+    return -1;
+  }
+  function sniffGeniusCsv(text) {
+    const rows = csvParse(text.slice(0, 4000));
+    if (!rows.length) return null;
+    const first = rows[0].map(x => (x || "").trim());
+    if (first.indexOf("DIAGRAM SUMMARY REPORT") >= 0) return "sum";
+    if (first.indexOf("Diagram Detail Report") >= 0) return "det";
+    return null;
+  }
+  function parseSummaryCsvG(text) {
+    const out = [], seen = new Set();
+    for (const r of csvParse(text)) {
+      const di = afterLabel(r, "Diagram Summary for:"), ni = afterLabel(r, "NOTES");
+      if (di < 0 || ni < 0) continue;
+      const f = r.slice(ni).map(x => (x || "").trim());
+      // code, units, fleet, start fuel, POS, at, from, to, at, …
+      if (!/^[A-Z]{2}\d{3}$/.test(f[0] || "")) continue;
+      if (!TM.test(f[5] || "") || !TM.test(f[8] || "")) continue;
+      const key = f[0] + "\u0000" + f[5];
+      if (seen.has(key)) continue;          // the export repeats rows per page
+      seen.add(key);
+      out.push({ date: (r[di] || "").trim(), diag: f[0], fleet: f[2],
+                 pos: parseInt(f[4], 10) || 1, start: mins(f[5]),
+                 from: f[6], to: f[7], end: mins(f[8]) });
+    }
+    return out;
+  }
+  function parseDetailCsvG(text) {
+    const byDate = new Map(), state = new Map();
+    for (const r of csvParse(text)) {
+      const gi = afterLabel(r, "Diagram"), oi = afterLabel(r, "On"),
+            fi = afterLabel(r, "Fuel Miles");
+      if (gi < 0 || oi < 0 || fi < 0) continue;
+      const diag = (r[gi] || "").trim(), date = (r[oi] || "").trim();
+      if (!/^[A-Z]{2}\d{3}$/.test(diag)) continue;
+      const f = r.slice(fi).map(x => (x || "").trim());
+      // from, name, arr, dep, activity, headcode, miles, fuel, to, name, arr
+      const key = date + "\u0000" + diag;
+      if (!state.has(key)) state.set(key, { out: [], prev: -1 });
+      const st = state.get(key);
+      const roll = v => {
+        while (v < st.prev - 60) v += 1440;
+        st.prev = Math.max(st.prev, v);
+        return v;
+      };
+      const arr = TM.test(f[2]) ? roll(mins(f[2])) : null;
+      const dep = TM.test(f[3]) ? roll(mins(f[3])) : null;
+      if (arr === null && dep === null) continue;
+      st.out.push({ code: f[0], name: f[1], arr, dep,
+                    hc: f[5] ? f[5].slice(0, 4) : null });
+      if (TM.test(f[10]))
+        st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
+                      dep: null, hc: null });
+      if (!byDate.has(date)) byDate.set(date, new Map());
+      byDate.get(date).set(diag, st.out);
+    }
+    return byDate;
+  }
+
   function buildIntegrale(texts) {
     let sumRows = null, det = null;
     for (const t of texts) {
@@ -763,8 +842,8 @@ const GENIUS = (() => {
     return assemble(sumRows, det.byDate, notes);
   }
 
-  return { build, buildIntegrale, sniffIntegrale, pdfText, parseSummary,
-           parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
+  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
+           parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
 if (typeof globalThis !== "undefined") globalThis.GENIUS = GENIUS;

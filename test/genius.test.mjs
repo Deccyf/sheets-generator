@@ -137,6 +137,33 @@ test("Integrale CSVs build the same books as the Genius PDFs", async () => {
   assert.deepEqual(norm(csvRes.reviews), norm(pdfRes.reviews), "review lists");
 });
 
+test("the Genius CSV exports build the same books as the PDFs", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
+  const pdfRes = await N.GENIUS.build(pdfs(N));
+  const csvRes = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv()]);
+  assert.deepEqual(norm(csvRes.secsByDay), norm(pdfRes.secsByDay), "mainline sections");
+  assert.deepEqual(norm(csvRes.metroSecs), norm(pdfRes.metroSecs), "metro sections");
+  assert.deepEqual(norm(csvRes.hsSecs), norm(pdfRes.hsSecs), "high speed sections");
+  assert.deepEqual(norm(csvRes.labels), norm(pdfRes.labels), "labels");
+  assert.equal(csvRes.tag, pdfRes.tag, "tag");
+  // and either report pairs with the other: a PDF summary with a CSV detail
+  const mixed = await N.GENIUS.build(
+    [makePdf(SUMMARY_LINES, N.fflate), geniusDetailCsv()]);
+  assert.deepEqual(norm(mixed.secsByDay), norm(pdfRes.secsByDay), "mixed pair");
+});
+
+test("the sniffers tell the three report formats apart", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv, integraleSummaryCsv } =
+    await import("./helpers/synth.mjs");
+  assert.equal(N.GENIUS.sniffGeniusCsv(geniusSummaryCsv()), "sum");
+  assert.equal(N.GENIUS.sniffGeniusCsv(geniusDetailCsv()), "det");
+  assert.equal(N.GENIUS.sniffGeniusCsv(integraleSummaryCsv()), null);
+  assert.equal(N.GENIUS.sniffIntegrale(geniusSummaryCsv()), null);
+  assert.equal(N.GENIUS.sniffIntegrale(geniusDetailCsv()), null);
+});
+
 test("Integrale quirks: mangled headcodes, stable placeholders, uncovered note", async () => {
   const N = built();
   const { INTEGRALE_QUIRKS_SUMMARY, INTEGRALE_QUIRKS_DETAIL } =

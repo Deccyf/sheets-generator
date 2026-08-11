@@ -6,8 +6,9 @@ Southeastern-style fleet and depot operation, with every diagram number filled
 in and the house drafting conventions applied automatically.
 
 * **Weekday books (Mon–Fri)** are built from the *Diagram Summary* and
-  *Diagram Detail* reports for the date — as **Genius** PDFs or as
-  **Integrale** CSV exports; both sources produce identical books.
+  *Diagram Detail* reports for the date — from **Genius** as PDFs or as CSV
+  exports, or from **Integrale** as its two CSVs; every source produces the
+  same books through the same rulebook.
 * **Weekend sheets (Sat & Sun)** are built from the weekend **diagram prints**
   Word document (`.docx` or legacy `.doc`), with automatic merging of
   reissued prints.
@@ -58,8 +59,10 @@ The weekday panel reads either planning system:
 
 * **Genius**: make sure a **Control Cycle** exists for the date (and for the
   Metro / High Speed fleets if those books are wanted), then run
-  **Diagrams → Summary Report…** and **Diagrams → Detail Report…** and save
-  each as a **PDF**.
+  **Diagrams → Summary Report…** and **Diagrams → Detail Report…**. Save each
+  as a **PDF** or as a **CSV** — both are read, and a PDF summary pairs with a
+  CSV detail if that is what you have. The CSV carries one line per *working*,
+  so it keeps the Position changes the PDF also shows.
 * **Integrale**: export the **Diagram Summary** and **Diagrams** CSVs for the
   date. Activity markers (ATTACH/DETACH/STABLD) are understood, stable-all-day
   placeholder diagrams are left out with a review note, and headcodes mangled
@@ -255,7 +258,7 @@ test suite drives them.
 | `src/rulebook.js` | **`SHEETS_RULEBOOK`** — the day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`) and the stop-collapsing walk both engines share. |
 | `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. |
 | `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
-| `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing, and the house rulebook applied to Genius itineraries. |
+| `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/ui.js` | Page wiring for both panels, the fleet sprites, and the tabbed previews. |
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code left: zip/unzip for docx and xlsx, zlib inflate for the PDF streams. |
 | `build.mjs` | Assembles `src/` into the single file. |

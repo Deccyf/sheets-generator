@@ -109,6 +109,50 @@ export const DETAIL_LINES = [
   "RAMSGTD  Ramsgate E.M.U.D  22:30",
 ];
 
+/* ---- The same Genius reports, saved as CSV ----
+   Every line repeats the report header and carries its data at the end; the
+   summary is one line per working, the detail one line per leg with the
+   arrival and departure at the leg's origin. Built from the PDF fixture so
+   both readings of the same day must produce the same books. */
+
+const GHEAD = '"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,' +
+  '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+  '"Diagram Summary for:"," 03/08/26","DIAGRAM","UNITS","FLEET","OFF",' +
+  '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",' +
+  '"TOT. FUEL  MILES","NOTES","NOTES",';
+
+export function geniusSummaryCsv() {
+  return SUMMARY_LINES.slice(2).map(l => {
+    const t = l.split(/\s{2,}/);
+    const [diag, fleet, , pos, start, from, to, end] = t;
+    return GHEAD + ['"' + diag + '"', "", '"' + fleet + '"', "0.00", pos,
+      '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
+      "-0.60", "100.00", "100.00", "", ""].join(",");
+  }).join("\r\n");
+}
+
+const GDET = '"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,' +
+  '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+  '"Diagram Details for:"," 03/08/26",';
+
+export function geniusDetailCsv() {
+  const out = [];
+  for (const d of fixtureDiagrams()) {
+    const head = GDET + '"Diagram","' + d.code + '","On","' + d.date +
+      '","Notes",,"Miles","Fuel Miles",';
+    for (let i = 0; i + 1 < d.stops.length; i++) {
+      const a = d.stops[i], b = d.stops[i + 1];
+      out.push(head + ['"' + a.code + '"', '"' + a.name + '"',
+        a.arr ? '"' + a.arr + '"' : "", a.dep ? '"' + a.dep + '"' : "", "",
+        '"' + (a.hc || "") + '"', "1.00", "1.00",
+        '"' + b.code + '"', '"' + b.name + '"',
+        '"' + (b.arr || b.dep) + '"', '"Off Diagram"', '"  000"',
+        '"Works"', '"  000"'].join(","));
+    }
+  }
+  return out.join("\r\n");
+}
+
 /* ---- Weekend diagram prints (Saturday 01/08/2026) ---- */
 
 function printsLines(rows) {

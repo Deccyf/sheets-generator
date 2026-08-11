@@ -279,15 +279,17 @@ const children = [
     "panel by mistake and it will say so, and point you downstairs."),
 
   h2("4. Getting the paperwork"),
-  h3("From Genius — two PDFs"),
+  h3("From Genius — two reports, PDF or CSV"),
   ...steps([
     "Make sure a **Control Cycle** exists for the date. For the Metro and High " +
       "Speed books, Control Cycles must exist for those fleets too — this is " +
       "the usual reason a book comes up empty.",
-    "Run **Diagrams → Summary Report…** and save it as a **PDF**.",
-    "Run **Diagrams → Detail Report…** and save that as a PDF as well.",
+    "Run **Diagrams → Summary Report…** and save it as a **PDF** or a **CSV**.",
+    "Run **Diagrams → Detail Report…** and save that the same way.",
   ]),
-  p("Save both from Genius itself — a scan or a photo of a printout cannot be read."),
+  p("Either format is read, and you can mix them — a PDF summary with a CSV " +
+    "detail builds fine. Save both from Genius itself; a scan or a photo of a " +
+    "printout cannot be read."),
 
   h3("From Integrale — two CSVs"),
   p("**The Diagram Summary file**"),
