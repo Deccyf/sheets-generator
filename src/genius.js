@@ -366,7 +366,7 @@ const GENIUS = (() => {
       // Which unit leads: the whole ordering mirrors with the book's posAsc
       // (see the fleet profiles), diagram number included - it is only a
       // fallback for units the Position field cannot separate.
-      if (prof.posAsc)
+      if (prof.posAsc.has(e.sec))
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));

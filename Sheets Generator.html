@@ -767,17 +767,26 @@ const SIDING_CLASS_RE = new RegExp(
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
-  // posAsc: the book lists units lowest Summary Position first. The mainline
-  // book does this throughout - checked against the 10/08 books at every
-  // section that couples (Ashford, Dover Priory, Faversham, Gillingham,
-  // Grove Park, Hastings, Ramsgate, Slade Green, Victoria, West Marina), and
-  // Folkestone East had always been written this way. The metro and High
-  // Speed books still list highest Position first; nobody has reported those
-  // the wrong way round.
+  // posAsc: sections that list units LOWEST Summary Position first. The rest
+  // list highest first.
+  //
+  // The sheets list a formation in physical order, and a unit's Position is
+  // fixed to its diagram for the whole day - so which end of the formation
+  // carries Position 1 depends on which way it is facing, and that turns out
+  // to be a property of the section. The same pair reads ascending at Dover
+  // Priory and descending at Ashford and Victoria. This list is what the
+  // 10/08 books say, section by section; nothing in the reports predicts it,
+  // so it is house knowledge like the berth tables.
+  //
+  // Four entries on 10/08 disagree with their own section and are noted in
+  // the README - Dover Priory 04 30, and Grove Park 05+14, 05+48 and 15+12.
+  // The metro and High Speed books have not been checked; they list highest
+  // Position first throughout.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      posAsc: true,
+      posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "GILLINGHAM",
+        "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
@@ -787,11 +796,11 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
-      posAsc: false,
+      posAsc: new Set(),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
-      posAsc: false,
+      posAsc: new Set(),
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity
@@ -2998,7 +3007,7 @@ const GENIUS = (() => {
       // Which unit leads: the whole ordering mirrors with the book's posAsc
       // (see the fleet profiles), diagram number included - it is only a
       // fallback for units the Position field cannot separate.
-      if (prof.posAsc)
+      if (prof.posAsc.has(e.sec))
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));

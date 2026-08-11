@@ -37,33 +37,41 @@ test("stop collapsing and berth boundaries are unchanged", () => {
   }
 });
 
-/* The mainline book lists lowest Position first now, so its entries are the
-   legacy ones with the unit rows (and the publisher's slots) mirrored. The
-   end markers name the physical ends of the train and are written against
-   the first and last row of the entry, so they stay where they are. */
-function mirrorUnits(v) {
-  if (Array.isArray(v)) return v.map(mirrorUnits);
-  if (v && typeof v === "object") {
-    const o = {};
-    for (const k of Object.keys(v)) {
-      if (k === "slots") o[k] = mirrorUnits(v[k]).slice().reverse();
-      else if (k === "units") {
-        const ends = v[k].map(u => u.end);
-        o[k] = mirrorUnits(v[k]).slice().reverse()
-          .map((u, i) => ({ ...u, end: ends[i] }));
-      } else o[k] = mirrorUnits(v[k]);
-    }
-    return o;
+/* Sections listed lowest Position first (see PROFILES_G in src/data.js).
+   Their entries are the legacy ones with the unit rows (and the publisher's
+   slots) mirrored; every other section is untouched. The end markers name
+   the physical ends of the train and are written against the first and last
+   row of an entry, so they stay in their rows. */
+const POS_ASC = new Set(["DOVER PRIORY", "FAVERSHAM", "GILLINGHAM",
+  "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]);
+
+function mirrorEntry(e) {
+  const o = {};
+  for (const k of Object.keys(e)) {
+    if (k === "slots") o[k] = e[k].slice().reverse();
+    else if (k === "units") {
+      const ends = e[k].map(u => u.end);
+      o[k] = e[k].slice().reverse().map((u, i) => ({ ...u, end: ends[i] }));
+    } else o[k] = e[k] && typeof e[k] === "object" && !Array.isArray(e[k])
+      ? mirrorEntry(e[k]) : e[k];
   }
-  return v;
+  return o;
+}
+
+function mirrorAscSections(days) {
+  const out = {};
+  for (const [day, secs] of Object.entries(days))
+    out[day] = { "«map»": secs["«map»"].map(([sec, entries]) =>
+      [sec, POS_ASC.has(sec) ? entries.map(mirrorEntry) : entries]) };
+  return out;
 }
 
 test("GENIUS.build output is identical to the legacy build", async () => {
   const L = legacy(), N = built();
   const resL = await L.GENIUS.build(pdfs(L));
   const resN = await N.GENIUS.build(pdfs(N));
-  assert.deepEqual(norm(resN.secsByDay), mirrorUnits(norm(resL.secsByDay)),
-    "mainline sections (unit order mirrored, everything else identical)");
+  assert.deepEqual(norm(resN.secsByDay), mirrorAscSections(norm(resL.secsByDay)),
+    "mainline sections (lowest-Position-first sections mirrored, rest identical)");
   assert.deepEqual(norm(resN.metroSecs), norm(resL.metroSecs), "metro sections");
   assert.deepEqual(norm(resN.hsSecs), norm(resL.hsSecs), "high speed sections");
   assert.deepEqual(norm(resN.labels), norm(resL.labels), "labels");
@@ -179,28 +187,27 @@ test("metro sheets are timed off the first move; the mainline is not", async () 
     "mainline not moved back to the sidings departure");
 });
 
-test("the mainline book lists lowest Position first, the metro book highest",
-  async () => {
-    const N = built();
-    const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
-      await import("./helpers/synth.mjs");
-    const res = N.GENIUS.buildIntegrale(
-      [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
-    // Position 1 leads, wherever the section is.
-    for (const [sec, want] of [["VICTORIA", ["901", "902"]],
-                               ["RAMSGATE", ["903", "904"]],
-                               ["ASHFORD", ["905", "906"]]]) {
-      const list = res.secsByDay.M.get(sec);
-      assert.ok(list && list.length === 1, "one " + sec + " departure");
-      assert.deepEqual(norm(list[0].units.map(u => u.diag)), want, sec);
-    }
-    // The metro book has not been reported the wrong way round, so it still
-    // lists highest Position first.
-    const sg = res.metroSecs.M.get("SLADE GREEN");
-    assert.ok(sg && sg.length === 1, "one Slade Green departure");
-    assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
-      "metro unchanged");
-  });
+test("which unit leads is per section, from the fleet profile", async () => {
+  const N = built();
+  const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale(
+    [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
+  // Ramsgate lists Position 1 first; Ashford and Victoria list it last.
+  for (const [sec, want] of [["RAMSGATE", ["903", "904"]],
+                             ["ASHFORD", ["906", "905"]],
+                             ["VICTORIA", ["902", "901"]]]) {
+    const list = res.secsByDay.M.get(sec);
+    assert.ok(list && list.length === 1, "one " + sec + " departure");
+    assert.deepEqual(norm(list[0].units.map(u => u.diag)), want, sec);
+  }
+  // The metro book has not been checked, so it lists highest Position first
+  // throughout.
+  const sg = res.metroSecs.M.get("SLADE GREEN");
+  assert.ok(sg && sg.length === 1, "one Slade Green departure");
+  assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
+    "metro unchanged");
+});
 
 test("units the reports cannot order are named on the review list", async () => {
   const N = built();

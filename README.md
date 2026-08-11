@@ -152,9 +152,9 @@ section, slotted in alphabetically, and a note on the review list.
 
 Each section is a ruled box headed by the section name and the date. Within
 it, one **entry** per departure, one row per **unit**, listed the way the
-hand-built books list them — the mainline book lowest Summary `Position`
-first, the metro and High Speed books highest first (see
-[the house rulebook](#the-house-rulebook)). The columns are:
+hand-built books list them — which unit leads is per section, from the
+Summary's `Position` field (see [the house rulebook](#the-house-rulebook)).
+The columns are:
 
 | Col | Content |
 |---|---|
@@ -366,15 +366,26 @@ ones, all commented at the point of implementation:
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
 * **Coupling order.** Which unit leads comes from the Summary's `Position`
-  field, and the direction is per book (`posAsc` in the fleet profiles):
-  * The **mainline book** lists **lowest Position first**, in every section.
-    This was checked against the 10/08 books at Ashford, Dover Priory,
-    Faversham, Gillingham, Grove Park, Hastings, Ramsgate, Slade Green,
-    Victoria and West Marina; Folkestone East had always been written this
-    way, so it is no longer an exception.
-  * The **metro and High Speed books** still list highest Position first.
-    Nobody has reported those the wrong way round — if they are, it is one
-    flag each.
+  field, and the direction is **per section** (`posAsc` in the fleet
+  profiles). In the mainline book these list the *lowest* Position first —
+  Dover Priory, Faversham, Gillingham, Grove Park, Hastings, Ramsgate, Slade
+  Green — and the rest list the highest first.
+
+  There is no rule in the reports that predicts this. A unit's Position is
+  fixed to its diagram for the whole day while the formation turns end for
+  end as it works, so which end carries Position 1 depends on which way it is
+  facing — and that lands as a property of the section. The same pair,
+  `RM011`/`RM012`, reads lowest-first at Dover Priory and highest-first at
+  Ashford and Victoria on the same day. The list is house knowledge, like the
+  berth tables, and was taken from the 10/08 books section by section.
+
+  **Four entries on 10/08 disagree with their own section** and no field in
+  the export separates them: Dover Priory 04 30 (`RM013`/`RM014`), and Grove
+  Park 05+14 (`SG805`/`SG806`), 05+48 and 15+12 (`SG813`/`SG814`). The last
+  is the clearest proof that the reports are not enough on their own — Grove
+  Park 05+19 (`SG809`/`SG810`) and 05+48 (`SG813`/`SG814`) are identical in
+  every field of both exports (same fleet, same siding, Positions 1 and 2,
+  same route note) and want opposite orders.
 
   Diagram number breaks a tie, and mirrors with the rest of the ordering; it
   carries no meaning of its own. Two units on the **same** Position started
