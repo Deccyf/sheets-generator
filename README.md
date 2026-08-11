@@ -391,6 +391,12 @@ ones, all commented at the point of implementation:
   Ashford and Victoria on the same day. The list is house knowledge, like the
   berth tables, and was taken from the 10/08 books section by section.
 
+  A **road** can face the other way to the rest of its section, and then
+  `roadPosAsc` names it and beats the section rule — but only when the whole
+  formation came off that one road. Ashford is the case the 12/08 book
+  proves: all ten coupled departures off its Down Sidings list the highest
+  Position first, and all three off its Up Sidings list the lowest first.
+
   **Formations the reports cannot place** go in `ORDER_FIX`, keyed by section
   and diagram numbers, and their order is taken verbatim. Grove Park 05+19
   (`SG809`/`SG810`) and 05+48 (`SG813`/`SG814`) are identical in every field
@@ -398,7 +404,22 @@ ones, all commented at the point of implementation:
   note, and both the first move of their diagram — and want opposite orders.
   Nothing in the paperwork says which way round a formation was left
   standing, so where the books disagree with the section, the entry is named
-  here. Three keys cover the four entries known on 10/08.
+  here.
+
+  The key takes an optional time — `"ASHFORD 15+43|101,102"` — which is
+  looked up before the plain `"ASHFORD|101,102"`. Use it only where the same
+  formation reads one way earlier in the day and the other way later, since
+  the plain key keeps working when the timetable moves a departure by a
+  minute or two. `RM101`/`RM102` need it: they leave Ashford 102-first at
+  05 05 and 101-first at 15+43.
+
+  **When the timetable changes**, run the mark-up sheet —
+  `node tools/order-check.mjs out.csv summary.csv diagrams.csv` — which lists
+  every coupled departure in all three books both ways round. Tick A or B
+  against the hand-written book; each row carries the exact `ORDER_FIX` line
+  to paste for B, with the time included where the formation needs it. This
+  is the only way a new working's order can be established, for the reasons
+  under *What the reports cannot say* below.
 
   Diagram number breaks a tie, and mirrors with the rest of the ordering; it
   carries no meaning of its own. Two units on the **same** Position started
@@ -409,6 +430,43 @@ ones, all commented at the point of implementation:
   The **end markers** name the physical ends of the train and are written
   against the first and last row of an entry, so they stay in their rows when
   the unit order changes.
+
+#### What the reports cannot say
+
+The obvious idea — follow the unit round the network and work out which way it
+is pointing — has been tried and measured against the real 12/08 books, on the
+77 coupled entries where the tool and the books agree on which units are in the
+formation. The figures below are each model's *best possible* fit: every group
+scored as if the majority answer within it were always taken.
+
+| What decides which end leads | Best possible fit |
+|---|---|
+| Direction of travel (London-bound or not) | 44/77 |
+| Direction from the headcode's number parity | 44/77 |
+| Turn-rounds counted through the journey | 46/77 |
+| **The section** (what the tool does) | **64/77** |
+| Section and direction together | 66/77 |
+| **The road it comes off** | **67/77** |
+
+Direction is barely better than a coin toss, and the two points that combining
+it wins come from splitting sections into groups of one — fitting the sample,
+not finding a rule. Ashford settles it: seventeen of its eighteen coupled
+entries have made *no* turn-round at all, so every unit is in the identical
+state, and the books still split six one way and eleven the other.
+
+Carrying the answer forward from a formation's first appearance fares no
+better. Of the 37 pairs the 12/08 books couple more than once, 19 keep their
+order and 18 print both ways round, and predicting which from the reversals
+between the two appearances lands on 19 of 40 — a coin toss again. Building a
+map out of the reports (every consecutive pair of stops in every itinerary is
+a link; 108 locations, 191 links) does not rescue it: a unit running out and
+back does not physically turn round, the driver changes ends, so a reversal is
+not the thing that flips the order.
+
+What flips it is how the formation was left standing, and which shunt moves it
+made on the depot — neither of which the Summary or the Detail records. That
+is why the residue is a list of formations rather than a rule, and why the
+mark-up sheet exists.
 
 ### The workbook writer and the preview
 

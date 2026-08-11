@@ -410,11 +410,13 @@ const GENIUS = (() => {
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
       // A formation the books say the reports get the wrong way round: the
-      // order is taken verbatim (see ORDER_FIX).
+      // order is taken verbatim (see ORDER_FIX). A formation that reads one
+      // way in the morning and the other in the afternoon is named with its
+      // time; one that holds all day is named without.
       {
-        const key = e.sec + "|" +
-          blocks.map(x => x.diag.slice(2)).sort().join(",");
-        const fix = ORDER_FIX[key];
+        const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
+        const fix = ORDER_FIX[e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags] ||
+                    ORDER_FIX[e.sec + "|" + diags];
         if (fix) blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
       }

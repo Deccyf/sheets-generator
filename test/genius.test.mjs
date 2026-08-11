@@ -298,3 +298,19 @@ test("a road that faces the other way reads the other way round", async () => {
   // …and the Up Sidings, which the profile names, the other way round
   assert.deepEqual(norm(up.units.map(u => u.diag)), ["953", "954"], "off the Up Sidings");
 });
+
+test("the order list can name one departure without moving the others", async () => {
+  const N = built();
+  const { TIMED_FIX_SUMMARY, TIMED_FIX_DETAIL } = await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([TIMED_FIX_SUMMARY, TIMED_FIX_DETAIL]);
+  const list = res.secsByDay.M.get("ASHFORD");
+  assert.ok(list && list.length === 2, "both Ashford departures built");
+  const at = t => list.find(e => N.SHEETS_CORE.fmtTime(e.time,
+    e.time_kind === "pax" ? "pax" : "ecs") === t);
+  assert.ok(at("05 05") && at("15+43"), "times: " +
+    list.map(e => e.time + "/" + e.time_kind).join(" "));
+  assert.deepEqual(norm(at("05 05").units.map(u => u.diag)), ["102", "101"],
+    "the morning departure keeps the section rule");
+  assert.deepEqual(norm(at("15+43").units.map(u => u.diag)), ["101", "102"],
+    "the afternoon one is named in the order list");
+});

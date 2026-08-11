@@ -502,3 +502,29 @@ export const ASHFORD_ROADS_DETAIL = [
     orderLeg(d, 30, "ASHFKY", "Ashford", "06:50:00", "2A62", "DOVERP", "Dover Priory", "07:50:00"),
   ]),
 ].join("\r\n");
+
+/* RM101 and RM102 leave Ashford twice: 102 leads off the Down Sidings at
+   05 05, and 101 leads when they come back out at 15+43. The order list
+   names the afternoon one with its time, so the morning departure keeps the
+   section rule. */
+export const TIMED_FIX_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM101,Covered,375/6,,0,10/08/2026 04:55,1,5A02,ASHFDNS,10/08/2026 16:50,DOVERP,90,,,,,,RM101,,",
+  "RM102,Covered,375/6,,0,10/08/2026 04:55,2,5A02,ASHFDNS,10/08/2026 16:50,DOVERP,90,,,,,,RM102,,",
+].join("\r\n");
+
+export const TIMED_FIX_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["RM101", "RM102"].flatMap(d => [
+    orderLeg(d, 90, "ASHFDNS", "Ashford Down Sidings", "04:55:00", "5A02", "ASHFKY", "Ashford", "05:00:00"),
+    orderLeg(d, 90, "ASHFKY", "Ashford", "05:05:00", "2A06", "DOVERP", "Dover Priory", "06:05:00"),
+    orderLeg(d, 90, "DOVERP", "Dover Priory", "13:00:00", "2A40", "ASHFKY", "Ashford", "14:00:00"),
+    orderLeg(d, 90, "ASHFKY", "Ashford", "14:10:00", "5A52", "ASHFDNS", "Ashford Down Sidings", "14:20:00"),
+    orderLeg(d, 90, "ASHFDNS", "Ashford Down Sidings", "15:43:00", "5A54", "DOVERP", "Dover Priory", "16:50:00"),
+  ]),
+].join("\r\n");

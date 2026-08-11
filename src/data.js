@@ -216,16 +216,35 @@ const SIDING_CLASS_RE = new RegExp(
     "FOLKESTONE EAST": "FKE", "FOLKESTONE ETR": "FKE", "MINSTER THANET": "MSR",
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
-  // Formations the reports cannot place. Position says where a unit sits in
-  // its own diagram's formation, not which way that formation is facing, and
-  // nothing in either export says which way round it was left standing:
-  // Grove Park 05+19 (SG809/SG810) and 05+48 (SG813/SG814) are identical in
-  // every field of both exports and want opposite orders. Where the books
-  // disagree with the section's rule, name the diagrams here and the order is
-  // taken verbatim. Key: section, then the diagram numbers as the sheet
-  // prints them, sorted.
+  /* Formations the reports cannot place. Position says where a unit sits in
+     its own diagram's formation, not which way that formation is facing, and
+     nothing in either export says which way round it was left standing:
+     Grove Park 05+19 (SG809/SG810) and 05+48 (SG813/SG814) are identical in
+     every field of both exports and want opposite orders. Where the books
+     disagree with the section's rule, name the diagrams here and the order is
+     taken verbatim.
+
+     Key: the section, optionally a space and the entry's own time, then "|"
+     and the diagram numbers as the sheet prints them, sorted. The timed form
+     is looked up first. Give a time only when the same formation reads one
+     way earlier in the day and the other way later - RM101/RM102 leave
+     Ashford 102 first at 05 05 and 101 first at 15+43, and GT127/GT128 leave
+     Victoria 128 first at 05+50 and 127 first at 17 14. Everything else
+     holds all day and is better named without a time, so it still applies
+     when the timetable moves the working by a few minutes.
+
+     Taken from the real books for 12/08. */
   const ORDER_FIX = {
+    "ASHFORD|004,905": ["004", "905"],
+    "ASHFORD|114,115": ["115", "114"],
+    "ASHFORD|301,901,902": ["901", "902", "301"],
+    "ASHFORD 15+43|101,102": ["101", "102"],
     "DOVER PRIORY|013,014": ["014", "013"],
+    "FAVERSHAM|019,020": ["020", "019"],
+    "GROVE PARK|021,022": ["022", "021"],
+    "GROVE PARK|118,119": ["118", "119"],
+    "HASTINGS|029,030": ["030", "029"],
+    "VICTORIA 17 14|127,128": ["127", "128"],
   };
 
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
