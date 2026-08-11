@@ -1,2 +1,5 @@
 node_modules/
 tools/*.png
+
+# the mark-up sheet is built from live plan data
+UNIT ORDER CHECK.csv
