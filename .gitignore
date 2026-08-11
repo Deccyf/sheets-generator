@@ -3,3 +3,6 @@ tools/*.png
 
 # the mark-up sheet is built from live plan data
 UNIT ORDER CHECK.csv
+
+# derived from live plan data
+BERTH ENDS.csv
