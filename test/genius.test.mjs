@@ -314,3 +314,20 @@ test("the order list can name one departure without moving the others", async ()
   assert.deepEqual(norm(at("15+43").units.map(u => u.diag)), ["101", "102"],
     "the afternoon one is named in the order list");
 });
+
+test("SPLITS follows where the units part, over the whole day", async () => {
+  const N = built();
+  const { SPLITS_SUMMARY, SPLITS_DETAIL } = await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([SPLITS_SUMMARY, SPLITS_DETAIL]);
+  const list = res.secsByDay.M.get("ASHFORD");
+  assert.ok(list && list.length >= 3, "the three departures were built");
+  const flagOf = diag => {
+    const e = list.find(x => x.units.some(u => u.diag === diag));
+    return e ? e.flag : "(not built)";
+  };
+  // they run as one train to Maidstone East and sit there together: the old
+  // stint-end test saw no split at all
+  assert.equal(norm(flagOf("971")), "SPLITS", "parting at 18 12");
+  assert.equal(norm(flagOf("973")), "SPLITS PM", "parting at 20 55");
+  assert.equal(norm(flagOf("975")), "", "never parting");
+});

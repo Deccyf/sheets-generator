@@ -7,7 +7,7 @@ const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
           MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
-  const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
+  const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
   function latin(u8) {
@@ -351,6 +351,25 @@ const GENIUS = (() => {
         e.origins.add(core.norm(locName(origin)));
       }
     }
+    /* Where these units part company: the first point their itineraries stop
+       being the same train. Two diagrams worked as one formation carry
+       identical rows until they divide, so the first row that differs is the
+       parting - and if one simply runs out first, that is where it left. */
+    function partsAt(diags) {
+      const seqs = diags.map(d => (meta.get(d) || {}).stops).filter(Boolean);
+      if (seqs.length !== diags.length || seqs.length < 2) return null;
+      const key = s => s.code + "@" + s.arr + "/" + s.dep + "/" + (s.hcOut || "");
+      const n = Math.min(...seqs.map(s => s.length));
+      for (let i = 0; i < n; i++)
+        if (new Set(seqs.map(s => key(s[i]))).size !== 1) {
+          const s = seqs[0][i];
+          return s.dep !== null ? s.dep : s.arr;
+        }
+      if (new Set(seqs.map(s => s.length)).size === 1) return null;
+      const short = seqs.reduce((a, b) => a.length <= b.length ? a : b);
+      const last = short[short.length - 1];
+      return last.arr !== null ? last.arr : last.dep;
+    }
     // per-unit derivations
     for (const e of entries.values()) {
       const blocks = [];
@@ -436,12 +455,20 @@ const GENIUS = (() => {
         e.blocks = blocks.filter(x => x.si === 0);
         e.attachment = true;
       } else e.blocks = blocks;
-      let splits = false;
-      if (blocks.length > 1) {
-        const p0 = blocks[0].path;
-        if (!blocks.every(x => x.path === p0)) splits = true;
+      // SPLITS is about the units parting company, and the books take that
+      // from the whole day rather than from where this stint happens to end:
+      // GT107/GT108 run as one train from Ashford at 06 40 to the same berth
+      // and back out again, and part at Maidstone East at 18 12 - the book
+      // flags the 06 40. "PM" says the parting is still to come this
+      // evening, so an entry that is itself in the afternoon just says
+      // SPLITS.
+      {
+        const t = partsAt(e.blocks.map(x => x.diag));
+        const parting = t !== null && sortkey(t) > sortkey(e.tmin);
+        e.splits_pm = parting && sortkey(t) >= PM_BREAK &&
+                      sortkey(e.tmin) < AM_CUTOFF;
+        e.splits = parting && !e.splits_pm;
       }
-      e.splits = splits;
       e.attachment = e.attachment || e.origins.size > 1;
       if (!e.attachment) {
         const inUnits = new Set(e.units.map(u => u.diag));
@@ -519,8 +546,6 @@ const GENIUS = (() => {
     for (const e of entries.values()) {
       for (const x of e.blocks)
         if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";
-      const pairs = new Set(e.blocks.map(x => x.D + "\u0000" + x.E));
-      e.splits_pm = !e.splits && e.blocks.length > 1 && pairs.size > 1;
       if (e.suppress)
         warn.push({ sec: e.sec,
                   msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +

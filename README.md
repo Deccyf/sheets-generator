@@ -359,9 +359,15 @@ ones, all commented at the point of implementation:
 * **AM / PM (D / E) columns.** Where the unit's next berth is, and where it
   is still sitting in the evening (a berth still occupied at 20:00 is the PM
   end point, even if the diagram technically ends elsewhere).
-* **SPLITS / SPLITS PM.** Units on one departure that end their stints at
-  different places split during the day (`SPLITS`); units whose stints end
-  together but whose D/E pairs differ only part in the evening (`SPLITS PM`).
+* **SPLITS / SPLITS PM.** The flag follows where the units of a departure
+  part company, read off their whole day rather than off this stint: two
+  diagrams worked as one train carry identical rows until they divide, so the
+  first row that differs is the parting. `SPLITS PM` is for a morning
+  departure whose units only part after 20:00; everything else that parts is
+  `SPLITS`, an afternoon departure included — by then the parting is not
+  "PM", it is now. `GT107`/`GT108` prove why the stint is the wrong window:
+  they leave Ashford as one train at 06 40, berth together, go out together
+  again, and part at Maidstone East at 18 12, and the book flags the 06 40.
 * **ECS suppression.** An ECS departure ending at a berth in its own section
   with no passenger work after it is left off (except in sections where
   ECS-only entries belong, such as West Marina, Grove Park and Slade Green) —
@@ -420,6 +426,12 @@ ones, all commented at the point of implementation:
   to paste for B, with the time included where the formation needs it. This
   is the only way a new working's order can be established, for the reasons
   under *What the reports cannot say* below.
+
+  The Metro entries in that list come from a book this tool produced for
+  10/08 and someone then put right by hand — six formations, each moved the
+  same way everywhere it appears, which is what an orientation correction
+  looks like. A marked-up copy of the tool's own output is the most useful
+  thing to feed back.
 
   Diagram number breaks a tie, and mirrors with the rest of the ordering; it
   carries no meaning of its own. Two units on the **same** Position started

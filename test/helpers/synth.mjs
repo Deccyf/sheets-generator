@@ -528,3 +528,36 @@ export const TIMED_FIX_DETAIL = [
     orderLeg(d, 90, "ASHFDNS", "Ashford Down Sidings", "15:43:00", "5A54", "DOVERP", "Dover Priory", "16:50:00"),
   ]),
 ].join("\r\n");
+
+/* Three Ashford departures that run as one train and part at different times
+   of day. AA971/AA972 part at Maidstone East at 18 12 - still to come, but
+   not this evening, so SPLITS. AA973/AA974 part at 20 55, which is what
+   SPLITS PM means. AA975/AA976 never part at all. */
+export const SPLITS_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  ...[["AA971", "05:50", "19:20"], ["AA972", "05:50", "19:50"],
+      ["AA973", "06:20", "22:00"], ["AA974", "06:20", "22:40"],
+      ["AA975", "06:50", "18:10"], ["AA976", "06:50", "18:10"]].map(([d, s, e], i) =>
+    d + ",Covered,375/6,,0,10/08/2026 " + s + "," + (i % 2 + 1) +
+    ",5S71,ASHFDNS,10/08/2026 " + e + ",ASHFDNS,60,,,,,," + d + ",,"),
+].join("\r\n");
+
+export const SPLITS_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...[["AA971", "05:50", "05:55", "06:00", "2S71", "18:12", "19:20"],
+      ["AA972", "05:50", "05:55", "06:00", "2S71", "18:40", "19:50"],
+      ["AA973", "06:20", "06:25", "06:30", "2S77", "20:55", "22:00"],
+      ["AA974", "06:20", "06:25", "06:30", "2S77", "21:30", "22:40"],
+      ["AA975", "06:50", "06:55", "07:00", "2S83", "17:00", "18:10"],
+      ["AA976", "06:50", "06:55", "07:00", "2S83", "17:00", "18:10"]].flatMap(
+    ([d, out, arr, dep, hc, back, home]) => [
+      orderLeg(d, 60, "ASHFDNS", "Ashford Down Sidings", out + ":00", "5S70", "ASHFKY", "Ashford", arr + ":00"),
+      orderLeg(d, 60, "ASHFKY", "Ashford", dep + ":00", hc, "MSTONEE", "Maidstone East", "07:30:00"),
+      orderLeg(d, 60, "MSTONEE", "Maidstone East", back + ":00", "5S99", "ASHFDNS", "Ashford Down Sidings", home + ":00"),
+    ]),
+].join("\r\n");

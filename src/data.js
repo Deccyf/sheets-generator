@@ -233,7 +233,12 @@ const SIDING_CLASS_RE = new RegExp(
      holds all day and is better named without a time, so it still applies
      when the timetable moves the working by a few minutes.
 
-     Taken from the real books for 12/08. */
+     The mainline entries are taken from the hand-written book for 12/08. The
+     Metro ones are corrections marked on a book this tool produced for 10/08
+     and then put right by hand: six formations, each moved the same way
+     everywhere it appears, which is what an orientation correction looks
+     like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
+     ones, so the shared section names are safe. */
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
@@ -245,6 +250,18 @@ const SIDING_CLASS_RE = new RegExp(
     "GROVE PARK|118,119": ["118", "119"],
     "HASTINGS|029,030": ["030", "029"],
     "VICTORIA 17 14|127,128": ["127", "128"],
+    // Metro, from the marked-up 10/08 book
+    "BELLINGHAM SIDING|461,462": ["461", "462"],
+    "CANNON STREET|403,404": ["403", "404"],
+    "CANNON STREET|405,406": ["405", "406"],
+    "GILLINGHAM|201,422": ["422", "201"],
+    "GROVE PARK|204,440,441": ["204", "440", "441"],
+    "SLADE GREEN|201,422": ["422", "201"],
+    "SLADE GREEN|204,440,441": ["204", "440", "441"],
+    "SLADE GREEN|403,404": ["403", "404"],
+    "SLADE GREEN|405,406": ["405", "406"],
+    "SLADE GREEN|461,462": ["461", "462"],
+    "SLADE GREEN|465,466": ["465", "466"],
   };
 
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
