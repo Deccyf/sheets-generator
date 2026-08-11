@@ -7,7 +7,19 @@
      node tools/make-guide-docx.mjs "HOW TO USE.docx"
 
    Edit HOW TO USE.md and this script together — the Word file is generated,
-   not edited by hand. */
+   not edited by hand.
+
+   To check the result, render it the way Word would:
+
+     apt-get install -y --no-install-recommends libreoffice-writer \
+       poppler-utils fonts-crosextra-carlito
+     soffice --headless --convert-to pdf "HOW TO USE.docx"
+     pdftoppm -jpeg -r 100 "HOW TO USE.pdf" page
+
+   A bare libreoffice-core cannot open any document at all - it fails with
+   "source file could not be loaded" even on a text file - so Writer has to
+   be there. Carlito has Calibri's metrics, which is what the guide is set
+   in, so the line breaks land where Word puts them. */
 import { createRequire } from "node:module";
 import { writeFileSync } from "node:fs";
 
@@ -16,7 +28,12 @@ const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle,
   Table, TableRow, TableCell, WidthType, ShadingType, LevelFormat, Footer,
   PositionalTab, PositionalTabAlignment, PositionalTabLeader, PageNumber,
+  LineRuleType,
 } = require("docx");
+
+/* Line spacing has to say AUTO: a bare w:line is taken as a fixed leading,
+   which collides the lines of anything set larger than the body text. */
+const LINE = { line: 276, lineRule: LineRuleType.AUTO };
 
 /* ---- house palette, taken from the tool itself ---- */
 const INK = "262E33", INK2 = "3C464D", CHALK = "79818A",
@@ -51,7 +68,7 @@ function runs(text, base = {}) {
 }
 
 const p = (text, opts = {}) => new Paragraph({
-  children: runs(text), spacing: { after: 140, line: 276 }, ...opts });
+  children: runs(text), spacing: { after: 140, ...LINE }, ...opts });
 
 const h1 = text => new Paragraph({
   children: [new TextRun({ text, font: HEAD, size: 56, bold: true, color: INK })],
@@ -90,7 +107,7 @@ const steps = list => {
   return list.map(t => new Paragraph({
     children: runs(t),
     numbering: { reference: "steps", level: 0, instance },
-    spacing: { after: 110, line: 276 },
+    spacing: { after: 110, ...LINE },
   }));
 };
 
@@ -100,7 +117,7 @@ const bullets = list => {
   return list.map(t => new Paragraph({
     children: runs(t),
     numbering: { reference: "dots", level: 0, instance },
-    spacing: { after: 110, line: 276 },
+    spacing: { after: 110, ...LINE },
   }));
 };
 
@@ -127,7 +144,7 @@ function callout(title, text, colour = SIGNAL) {
                                    characterSpacing: 24 })],
           spacing: { after: 70 },
         }),
-        new Paragraph({ children: runs(text), spacing: { line: 276 } }),
+        new Paragraph({ children: runs(text), spacing: { ...LINE } }),
       ],
     })] })],
   });
@@ -148,7 +165,7 @@ function grid(widths, head, rows, mono = []) {
         : (mono.includes(i)
             ? [new TextRun({ text, font: MONO, size: 18, color: INK })]
             : runs(text)),
-      spacing: { line: 264 },
+      spacing: { line: 264, lineRule: LineRuleType.AUTO },
     })],
   });
   return new Table({
@@ -241,7 +258,8 @@ const children = [
     "the paperwork you already produce."),
   ...bullets([
     "**Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports " +
-      "for the date, as Genius PDFs or as Integrale CSV exports.",
+      "for the date: from Genius as PDFs or CSVs, or from Integrale as its " +
+      "two CSVs.",
     "**Saturday and Sunday** — the weekend *diagram prints* Word document, plus " +
       "any reissues.",
   ]),
@@ -554,7 +572,7 @@ const doc = new Document({
   styles: {
     default: {
       document: { run: { font: BODY, size: 21, color: INK },
-                  paragraph: { spacing: { line: 276 } } },
+                  paragraph: { spacing: { ...LINE } } },
     },
   },
   sections: [{
