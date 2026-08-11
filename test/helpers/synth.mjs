@@ -473,3 +473,32 @@ export const LATE_MOVE_DETAIL = [
   orderLeg("SG933", 40, "SLADEGN", "Slade Green", "18:15:00", "5S07", "SLADEGD", "Slade Green T&R.S.M.D", "18:25:00"),
   orderLeg("SG933", 40, "SLADEGD", "Slade Green T&R.S.M.D", "22:45:00", "5S08", "GRVPK", "Grove Park", "23:30:00"),
 ].join("\r\n");
+
+/* Two Ashford departures, half an hour apart, differing only in the road they
+   come off. The section lists highest Position first, but the Up Sidings face
+   the other way and read the other way round - which is what the 12/08 book
+   says for all three of its Up Sidings departures. */
+export const ASHFORD_ROADS_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "AD951,Covered,375/6,,0,10/08/2026 06:00,1,5A60,ASHFDNS,10/08/2026 07:20,DOVERP,30,,,,,,AD951,,",
+  "AD952,Covered,375/6,,0,10/08/2026 06:00,2,5A60,ASHFDNS,10/08/2026 07:20,DOVERP,30,,,,,,AD952,,",
+  "AU953,Covered,375/6,,0,10/08/2026 06:30,1,5A62,ASHFUPS,10/08/2026 07:50,DOVERP,30,,,,,,AU953,,",
+  "AU954,Covered,375/6,,0,10/08/2026 06:30,2,5A62,ASHFUPS,10/08/2026 07:50,DOVERP,30,,,,,,AU954,,",
+].join("\r\n");
+
+export const ASHFORD_ROADS_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["AD951", "AD952"].flatMap(d => [
+    orderLeg(d, 30, "ASHFDNS", "Ashford Down Sidings", "06:00:00", "5A60", "ASHFKY", "Ashford", "06:10:00"),
+    orderLeg(d, 30, "ASHFKY", "Ashford", "06:20:00", "2A60", "DOVERP", "Dover Priory", "07:20:00"),
+  ]),
+  ...["AU953", "AU954"].flatMap(d => [
+    orderLeg(d, 30, "ASHFUPS", "Ashford Up Sidings", "06:30:00", "5A62", "ASHFKY", "Ashford", "06:40:00"),
+    orderLeg(d, 30, "ASHFKY", "Ashford", "06:50:00", "2A62", "DOVERP", "Dover Priory", "07:50:00"),
+  ]),
+].join("\r\n");

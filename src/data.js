@@ -245,11 +245,18 @@ const SIDING_CLASS_RE = new RegExp(
   // Victoria, West Marina, Orpington and Ashford list highest first.
   // The metro and High Speed books have not been checked; they list highest
   // Position first throughout.
+  //
+  // roadPosAsc: individual berthing roads that face the other way to the rest
+  // of their section, and so read the other way round. A road named here
+  // beats its section's rule. Ashford's Up Sidings are the case the 12/08
+  // book proves: every departure off the Down Sidings lists highest Position
+  // first, and all three off the Up Sidings list lowest first.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
+      roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),
       // Tonbridge and Faversham look like first-departure sections in the
       // book - it times them off the berth, not the platform a minute later
       // - but firstDep is the wrong tool: it takes the first move of the
@@ -265,11 +272,11 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
-      posAsc: new Set(),
+      posAsc: new Set(), roadPosAsc: new Map(),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
-      posAsc: new Set(),
+      posAsc: new Set(), roadPosAsc: new Map(),
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity

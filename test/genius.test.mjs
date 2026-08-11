@@ -284,3 +284,17 @@ test("a late evening move only keeps the berth inside its own area", async () =>
   assert.ok(dests.includes("GPD"), "depot arrival destined GPD: " + dests);
   assert.ok(dests.includes("GPK"), "station arrival destined GPK: " + dests);
 });
+
+test("a road that faces the other way reads the other way round", async () => {
+  const N = built();
+  const { ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL]);
+  const list = res.secsByDay.M.get("ASHFORD");
+  assert.ok(list && list.length === 2, "both Ashford departures built");
+  const [down, up] = list;
+  // the section rule: highest Position leads
+  assert.deepEqual(norm(down.units.map(u => u.diag)), ["952", "951"], "off the Down Sidings");
+  // …and the Up Sidings, which the profile names, the other way round
+  assert.deepEqual(norm(up.units.map(u => u.diag)), ["953", "954"], "off the Up Sidings");
+});
