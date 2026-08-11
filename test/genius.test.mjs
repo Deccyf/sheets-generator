@@ -42,8 +42,8 @@ test("stop collapsing and berth boundaries are unchanged", () => {
    slots) mirrored; every other section is untouched. The end markers name
    the physical ends of the train and are written against the first and last
    row of an entry, so they stay in their rows. */
-const POS_ASC = new Set(["DOVER PRIORY", "FAVERSHAM", "GILLINGHAM",
-  "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]);
+const POS_ASC = new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
+  "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]);
 
 function mirrorEntry(e) {
   const o = {};
@@ -220,7 +220,8 @@ test("which unit leads is per section, from the fleet profile", async () => {
     await import("./helpers/synth.mjs");
   const res = N.GENIUS.buildIntegrale(
     [REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
-  // Ramsgate lists Position 1 first; Ashford and Victoria list it last.
+  // Ramsgate lists Position 1 first; Ashford and Victoria list it last
+  // (checked against the real book for 12/08).
   for (const [sec, want] of [["RAMSGATE", ["903", "904"]],
                              ["ASHFORD", ["906", "905"]],
                              ["VICTORIA", ["902", "901"]]]) {
@@ -235,10 +236,10 @@ test("which unit leads is per section, from the fleet profile", async () => {
   assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
     "metro unchanged");
   // …and a formation the books say is the other way round beats the section
-  // rule (Grove Park lists lowest first, but not this pair).
-  const gp = res.secsByDay.M.get("GROVE PARK");
-  assert.ok(gp && gp.length === 1, "one Grove Park departure");
-  assert.deepEqual(norm(gp[0].units.map(u => u.diag)), ["814", "813"],
+  // rule (Dover Priory lists lowest first, but not this pair).
+  const dp = res.secsByDay.M.get("DOVER PRIORY");
+  assert.ok(dp && dp.length === 1, "one Dover Priory departure");
+  assert.deepEqual(norm(dp[0].units.map(u => u.diag)), ["014", "013"],
     "ORDER_FIX beats the section rule");
 });
 

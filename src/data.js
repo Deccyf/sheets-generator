@@ -213,8 +213,6 @@ const SIDING_CLASS_RE = new RegExp(
   // prints them, sorted.
   const ORDER_FIX = {
     "DOVER PRIORY|013,014": ["014", "013"],
-    "GROVE PARK|805,806": ["806", "805"],
-    "GROVE PARK|813,814": ["814", "813"],
   };
 
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
@@ -229,15 +227,16 @@ const SIDING_CLASS_RE = new RegExp(
   // 10/08 books say, section by section; nothing in the reports predicts it,
   // so it is house knowledge like the berth tables.
   //
-  // Four entries on 10/08 disagree with their own section and are noted in
-  // the README - Dover Priory 04 30, and Grove Park 05+14, 05+48 and 15+12.
+  // Checked against the real book for 12/08: Folkestone East, Grove Park,
+  // Slade Green, Hastings, Dover Priory and Gillingham list lowest first;
+  // Victoria, West Marina, Orpington and Ashford list highest first.
   // The metro and High Speed books have not been checked; they list highest
   // Position first throughout.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "GILLINGHAM",
-        "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
+      posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
+        "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",

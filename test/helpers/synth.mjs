@@ -349,10 +349,10 @@ export const REVERSED_ORDER_SUMMARY = [
   "AF906,Covered,375/6,,0,10/08/2026 06:00,2,5A20,ASHFDNS,10/08/2026 07:20,DOVERP,30,,,,,,AF906,,",
   "MT907,Covered,465/9,,0,10/08/2026 06:00,1,5C40,SLADEGD,10/08/2026 07:00,CANONST,18,,,,,,MT907,,",
   "MT908,Covered,465/9,,0,10/08/2026 06:00,2,5C40,SLADEGD,10/08/2026 07:00,CANONST,18,,,,,,MT908,,",
-  // 813/814 off the Grove Park down CHS: the section rule says lowest first,
-  // ORDER_FIX says the books have this formation the other way round
-  "GP813,Covered,376/0,,0,10/08/2026 05:48,1,5N17,GRVPKDS,10/08/2026 07:00,BRNHRST,13,,,,,,GP813,,",
-  "GP814,Covered,376/0,,0,10/08/2026 05:48,2,5N17,GRVPKDS,10/08/2026 07:00,BRNHRST,13,,,,,,GP814,,",
+  // 013/014 off the Dover Priory sidings: the section rule says lowest
+  // first, ORDER_FIX says the books have this formation the other way round
+  "DP013,Covered,375/6,,0,10/08/2026 04:30,1,5W05,DOVERPS,10/08/2026 06:00,CANONST,30,,,,,,DP013,,",
+  "DP014,Covered,375/6,,0,10/08/2026 04:30,2,5W05,DOVERPS,10/08/2026 06:00,CANONST,30,,,,,,DP014,,",
 ].join("\r\n");
 
 const orderLeg = (d, miles, a, an, at, hc, b, bn, bt) =>
@@ -379,9 +379,9 @@ export const REVERSED_ORDER_DETAIL = [
     orderLeg(d, 18, "SLADEGD", "Slade Green T&R.S.M.D", "06:00:00", "5C40", "SLADEGN", "Slade Green", "06:10:00"),
     orderLeg(d, 18, "SLADEGN", "Slade Green", "06:20:00", "2C40", "CANONST", "Cannon Street", "07:00:00"),
   ]),
-  ...["GP813", "GP814"].flatMap(d => [
-    orderLeg(d, 13, "GRVPKDS", "Grove Park Down CHS", "05:48:00", "5N17", "BRNHRST", "Barnehurst", "06:14:00"),
-    orderLeg(d, 13, "BRNHRST", "Barnehurst", "06:16:00", "2C07", "CANONST", "Cannon Street", "07:00:00"),
+  ...["DP013", "DP014"].flatMap(d => [
+    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "04:30:00", "5W05", "DOVERP", "Dover Priory", "04:40:00"),
+    orderLeg(d, 30, "DOVERP", "Dover Priory", "04:50:00", "2W05", "CANONST", "Cannon Street", "06:00:00"),
   ]),
 ].join("\r\n");
 
