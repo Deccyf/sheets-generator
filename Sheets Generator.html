@@ -1033,7 +1033,7 @@ return {
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
-  MAINLINE, METRO, HIGHSPEED, PROFILES,
+  PROFILES,
 };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_DATA;
@@ -1052,22 +1052,12 @@ function pyStr(v) {
   return String(v);
 }
 function strip(s) { return s.replace(/^\s+|\s+$/g, ""); }
-function stripChars(s, chars) {
-  let a = 0, b = s.length;
-  while (a < b && chars.includes(s[a])) a++;
-  while (b > a && chars.includes(s[b - 1])) b--;
-  return s.slice(a, b);
-}
 function pad2(n) { return String(n).padStart(2, "0"); }
 const LOC_STRIP_RE = /\s*\((?:via|VIA)[^)]*\)|\s*\[[^\]]*\]|\s*\(E\)/g;
 function cleanLoc(name) {
   if (name === null || name === undefined) return null;
   const s = strip(pyStr(name).replace(LOC_STRIP_RE, ""));
   return s.replace(/\s+/g, " ");
-}
-function bracketOf(name) {
-  const m = /\[([^\]]+)\]/.exec(pyStr(name === null || name === undefined ? "" : name));
-  return m ? strip(m[1]) : null;
 }
 function norm(name) {
   if (name === null || name === undefined) return null;
@@ -1082,10 +1072,6 @@ function isSiding(locNorm) {
   if (NON_BERTH_VISIT.has(locNorm)) return false;
   return SIDING_CLASS_RE.test(locNorm);
 }
-function binfo(sheetTitle) {
-  const k = norm(sheetStation(sheetTitle));
-  return Object.prototype.hasOwnProperty.call(BERTH_SHEETS, k) ? BERTH_SHEETS[k] : undefined;
-}
 function locBinfo(locNorm) {
   const k = locNorm || "";
   return Object.prototype.hasOwnProperty.call(BERTH_SHEETS, k) ? BERTH_SHEETS[k] : undefined;
@@ -1098,10 +1084,6 @@ function destTlc(destRaw) {
   if (b) return b[3];
   return (c || "?").slice(0, 3) + "?";
 }
-function bracketDest(destRaw) {
-  const m = /\[([^\]]+)\]/.exec(pyStr(destRaw === null || destRaw === undefined ? "" : destRaw));
-  return m ? strip(m[1]) : null;
-}
 // ---------- berth AM/PM rule (ex builder3) ----------
 const AM_CUTOFF = 14 * 60;
 const PM_STAY = 18 * 60;
@@ -1111,20 +1093,12 @@ function fmtTime(mins, kind) {
   const sep = kind === "pax" ? " " : "+";
   return pad2(Math.floor(m / 60)) + sep + pad2(m % 60);
 }
-function clsText(slot) {
-  const c = (slot.cls || "?").replace(/\//g, "-");
-  return `${slot.length !== null && slot.length !== undefined ? slot.length : "?"} ${c}`;
-}
 function visitCode(loc) {
   const b = BERTH_SHEETS[loc || ""];
   if (b) return [b[1], b[0]];
   const key = loc || "";
   const dflt = (loc || "?").slice(0, 3);
   return [Object.prototype.hasOwnProperty.call(DEST_TLC, key) ? DEST_TLC[key] : dflt, null];
-}
-function sectionOf(loc) {
-  const b = BERTH_SHEETS[loc || ""];
-  return b ? b[0] : null;
 }
 function amPm(visits, flags) {
   const berthV = [];

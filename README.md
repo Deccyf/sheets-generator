@@ -263,7 +263,7 @@ test suite drives them.
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code left: zip/unzip for docx and xlsx, zlib inflate for the PDF streams. |
 | `build.mjs` | Assembles `src/` into the single file. |
 | `test/` | The golden test suite (see [Building and testing](#building-and-testing)). `test/fixtures/legacy.html` is the frozen pre-overhaul build the suite compares against. |
-| `tools/` | Development utilities: the one-shot extraction scripts that produced `src/` from the monolith, the Playwright smoke test and screenshot scripts, and the Word-guide generator. |
+| `tools/` | Development utilities: the Playwright smoke tests and screenshot scripts (all of which share `tools/browser.mjs` for finding Chromium), the order mark-up sheet, and the Word-guide generator. |
 
 ### Weekday pipeline (Genius PDFs)
 

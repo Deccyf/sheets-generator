@@ -1,17 +1,13 @@
 /* One-off: feed reports that carry Mainline diagrams only, so the Metro and
    High Speed roads come up empty, and screenshot all four roads. */
-import { createRequire } from "node:module";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { loadSandbox } from "../test/helpers/sandbox.mjs";
 import { makePdf, makeDocx, SUMMARY_LINES, DETAIL_LINES, PRINTS_LINES }
   from "../test/helpers/synth.mjs";
+import { BUILT, BUILT_URL, launch } from "./browser.mjs";
 
-const require = createRequire("/opt/node22/lib/node_modules/playwright/");
-const { chromium } = require("playwright");
-const BUILT = fileURLToPath(new URL("../Sheets Generator.html", import.meta.url));
 const ctx = loadSandbox(BUILT);
 
 // keep the GT (mainline) diagrams only
@@ -28,10 +24,10 @@ const f = (n, b) => { const p = join(dir, n); writeFileSync(p, b); return p; };
 const sumPdf = f("Diagram Summary.pdf", makePdf(sum, ctx.fflate));
 const detPdf = f("Diagram Detail.pdf", makePdf(det, ctx.fflate));
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 860, height: 1400 } });
 page.on("pageerror", e => { console.error("PAGE ERROR:", e.message); process.exitCode = 1; });
-await page.goto("file://" + BUILT.replace(/ /g, "%20"));
+await page.goto(BUILT_URL);
 await page.setInputFiles("#file", [sumPdf, detPdf]);
 await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
