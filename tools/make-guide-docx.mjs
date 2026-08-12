@@ -354,7 +354,7 @@ const children = [
       "them over below, then save.”*",
     "**Look them over.** **Look at it** shows the finished sheet on screen, day " +
       "by day, exactly as it will print. The tabs are the days — MON, TUE… — " +
-      "plus **Review** and **Watch for**.",
+      "plus **Review**.",
     "**Save.** **Save book** on each one, or **Save all books (.zip)** at the " +
       "bottom for the lot.",
   ]),
@@ -495,22 +495,15 @@ const children = [
     "lines are the exception: those are a rule being broken, not a decision " +
     "being explained."),
   gap(60),
-  h3("The Watch for tab"),
-  p("Beside **Review** on each weekday book is **Watch for** — the standing " +
-    "Sectional Appendix notes for that book's route. Nothing triggers them and " +
-    "they are not tests; they are what is worth carrying in your head while " +
-    "you check the book. Eight for the mainline book, nine for Metro, seven " +
-    "for High Speed: the 12-car Networker rules, which classes may stand on " +
-    "which road, where a lone 2-car unit cannot go, the route clearances."),
-  p("The tab names its source and edition at the top. It is a June 2026 " +
-    "extract, so check the current issue and the ACWNs — the tool has no way " +
-    "of knowing when that edition goes stale."),
+  h3("About the Sectional Appendix lines"),
+  p("These are the only place the tool quotes the Appendix, and they are a " +
+    "**prompt to go and look the rule up** — not a copy of it. The tool holds " +
+    "no summary of the Appendix and is not a substitute for reading it."),
   callout("Weekday builds only",
-    "There is no **Watch for** tab on the weekend books, and the Appendix " +
-    "checks do not run there either: the prints do not carry the class and " +
-    "formation detail those rules are tested against. The Appendix applies " +
-    "just the same on a Saturday, so read the weekday notes for the route and " +
-    "check the weekend books against them by eye."),
+    "The Appendix checks do not run on the weekend books: the prints do not " +
+    "carry the class and formation detail those rules are tested against. The " +
+    "Appendix applies just the same on a Saturday, so check a weekend book " +
+    "against it yourself."),
 
   h2("10. The headcode switches"),
   p("Above each drop zone there is a box marked **HEADCODES** with three " +
@@ -575,8 +568,6 @@ const children = [
     "**Read the review list.** Every time. It exists to be read — and treat the " +
       "*Sectional Appendix* lines as a rule broken rather than a decision " +
       "explained.",
-    "**Skim the Watch for tab** when you are checking an unfamiliar route, or a " +
-      "formation you do not often see.",
     "**Check the sheets against the ACWNs** — especially the Folkestone East " +
       "Train Roads notes, which are worked out from last night's arrivals and " +
       "flagged for exactly that reason.",

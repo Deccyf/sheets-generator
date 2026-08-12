@@ -143,7 +143,7 @@ If **reissued** prints have come out, get those too. Any file with *reissue* or
    *"Books built — look them over below, then save."*
 4. **Look them over.** Click **Look at it** on a book to see the finished sheet
    on screen, day by day, exactly as it will print. Tabs across the top are the
-   days (MON, TUE…) plus **Review** and **Watch for**.
+   days (MON, TUE…) plus **Review**.
 5. **Save.** Either **Save book** on each one, or **Save all books (.zip)** at
    the bottom for everything in a single zip.
 
@@ -293,24 +293,15 @@ fault — mostly it's the tool showing its working. The *Sectional Appendix*
 lines are the exception: those are a rule being broken, not a decision being
 explained.
 
-### The Watch for tab
+### About the Sectional Appendix lines
 
-Beside **Review** on each weekday book is **Watch for** — the standing Sectional
-Appendix notes for that book's route. Nothing triggers them and they aren't
-tests; they're what's worth carrying in your head while you check the book.
-Eight for the mainline book, nine for Metro, seven for High Speed: the 12-car
-Networker rules, which classes may stand on which road, where a lone 2-car unit
-can't go, the route clearances.
+These are the only place the tool quotes the Appendix, and they are a **prompt
+to go and look the rule up** — not a copy of it. The tool holds no summary of
+the Appendix and is not a substitute for reading it.
 
-The tab names its source and edition at the top. It is a June 2026 extract, so
-check the current issue and the ACWNs — the tool has no way of knowing when that
-edition goes stale.
-
-There is no **Watch for** tab on the weekend books, and the Appendix checks
-don't run there either: the prints don't carry the class and formation detail
-those rules are tested against. The Appendix applies just the same on a
-Saturday, so read the weekday notes for the route and check the weekend books
-against them by eye.
+The checks run on weekday builds only: the weekend prints don't carry the class
+and formation detail the rules are tested against. The Appendix applies just the
+same on a Saturday, so check a weekend book against it yourself.
 
 ---
 
@@ -358,8 +349,6 @@ save them again afterwards; it'll remind you.
 
 * **Read the review list.** Every time. It exists to be read — and treat the
   *Sectional Appendix* lines as a rule broken rather than a decision explained.
-* **Skim the Watch for tab** when you're checking an unfamiliar route, or a
-  formation you don't often see.
 * **Check the sheets against the ACWNs** — especially the Folkestone East Train
   Roads notes, which are worked out from last night's arrivals and flagged for
   exactly this reason.
