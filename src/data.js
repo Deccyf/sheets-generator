@@ -256,8 +256,17 @@ const SIDING_CLASS_RE = new RegExp(
        off a later day. */
     "RAMSGATE|043,044,910": ["910", "044", "043"],
     "RAMSGATE|045,911,912": ["045", "912", "911"],
-    "RAMSGATE|046,047,913": ["913", "047", "046"],
     "RAMSGATE|052,053": ["053", "052"],
+    /* No section: this formation reads the same way wherever it turns up.
+       RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
+       and again in the mainline book off Grove Park at 16+13 - the same three
+       units, the same way round, hours apart. A tester found Grove Park the
+       other way on a later day, when the Position field had moved under it,
+       so the order is pinned to the formation rather than re-derived per
+       section. Only use a bare key where the order really is the same
+       everywhere: RM043/RM044 read one way at Grove Park and the other at
+       West Marina, and would be wrong pinned. */
+    "046,047,913": ["913", "047", "046"],
     "RAMSGATE|907,908,909": ["909", "908", "907"],
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book

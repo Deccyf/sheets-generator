@@ -437,7 +437,8 @@ const GENIUS = (() => {
       {
         const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
         const fix = ORDER_FIX[e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags] ||
-                    ORDER_FIX[e.sec + "|" + diags];
+                    ORDER_FIX[e.sec + "|" + diags] ||
+                    ORDER_FIX[diags];
         if (fix) blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
       }

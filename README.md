@@ -412,8 +412,17 @@ ones, all commented at the point of implementation:
   standing, so where the books disagree with the section, the entry is named
   here.
 
-  The key takes an optional time — `"ASHFORD 15+43|101,102"` — which is
-  looked up before the plain `"ASHFORD|101,102"`. Use it only where the same
+  The key has three forms, tried in that order: with a time
+  (`"ASHFORD 15+43|101,102"`), with a section (`"ASHFORD|101,102"`), and with
+  neither (`"046,047,913"`). A key with no section holds that formation
+  **wherever it appears** — RM046/RM047/RM913 print 913 first in the Ramsgate
+  book at 07 02 and again off Grove Park at 16+13, the same three units the
+  same way round hours apart, so one line pins both and any later appearance
+  besides. Use it only where the order really is the same everywhere:
+  RM043/RM044 read one way at Grove Park and the other at West Marina, and
+  would be wrong pinned.
+
+  The timed form is looked up first. Use it only where the same
   formation reads one way earlier in the day and the other way later, since
   the plain key keeps working when the timetable moves a departure by a
   minute or two. `RM101`/`RM102` need it: they leave Ashford 102-first at

@@ -348,3 +348,30 @@ test("the Sectional Appendix checks flag a breach and stay quiet otherwise", asy
   assert.ok(!all.some(m => /Networker|no route clearance|will not hold|lone 2-car/.test(m)),
     "nothing flagged on ordinary work: " + all.join(" | "));
 });
+
+test("an order fix with no section holds the formation everywhere", async () => {
+  const N = built();
+  const { REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL } =
+    await import("./helpers/synth.mjs");
+  // RG903/RG904 leave Ramsgate for Ashford. Ramsgate lists lowest Position
+  // first, so without a fix it reads 903 then 904 - the fixture's own test
+  // above pins that. Here the point is the lookup order: a bare key is only
+  // consulted after the section-qualified ones.
+  const D = N.SHEETS_DATA;
+  const bare = Object.keys(D.ORDER_FIX).filter(k => !k.includes("|"));
+  assert.ok(bare.length, "there is at least one formation-wide key");
+  for (const k of bare) {
+    assert.match(k, /^\d{3}(,\d{3})+$/, "a bare key is just sorted diagrams: " + k);
+    assert.deepEqual(norm(D.ORDER_FIX[k].slice().sort()), norm(k.split(",")),
+      "the fix names exactly the diagrams in its key: " + k);
+  }
+  // and every section-qualified key still names diagrams that sort to its tail
+  for (const k of Object.keys(D.ORDER_FIX)) {
+    if (!k.includes("|")) continue;
+    const tail = k.split("|")[1];
+    assert.deepEqual(norm(D.ORDER_FIX[k].slice().sort()), norm(tail.split(",")),
+      "key and value agree: " + k);
+  }
+  const res = N.GENIUS.buildIntegrale([REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
+  assert.ok(res.secsByDay.M.get("RAMSGATE"), "the fixture still builds");
+});
