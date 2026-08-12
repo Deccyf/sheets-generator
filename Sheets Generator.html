@@ -957,8 +957,8 @@ const SIDING_CLASS_RE = new RegExp(
     main: [
       ["Grove Park sidings and the 377/5",
        "Table D2A puts R7 against the 377 on the Lee Spur Jn - Chislehurst Jn row: prohibited Grove Park Up and Down Washer line and Up sidings. The 375 and 376 are plain Y on that same row, so a 377/5 shown on the washer road or in an Up siding is a query - it belongs in a Down siding."],
-      ["Dover is ECS only for a 376",
-       "A 376 is barred between Folkestone East and Dover Substation, and between Dover Priory and the change of mileage, when laden; the leg beyond the change of mileage is marked E, ECS and transit only. Anything that puts a 376 at Dover needs both legs checked - it can get there empty, not in service."],
+      ["How far south a 376 may work at Dover",
+       "Off the Chatham a 376 is plain Y as far as Buckland Jn, and the laden bar starts at Dover Priory itself - so a 376 may work into the station in service and turn there. What it must not do laden is carry on: Dover Priory to the change of mileage is barred when laden, and the leg beyond that reads E, ECS and transit only. The Folkestone approach is barred laden throughout, Folkestone East to Dover Substation. So a 376 terminating at Dover Priory off the Chatham is ordinary; one south of the station, or one that came in service via Folkestone, is not."],
       ["Where you may stand on a running line",
        "Away from terminal platforms and dead-end bays, this book's only running-line berths are the Ashford Down and Up loops, Dover Priory Up platform loop, the Faversham Down and Up platform loops, Folkestone East Nos. 1, 2 and 3 Train Roads, Gillingham Up platform loop, Hastings No. 4, Ramsgate Nos. 1 and 4, Strood Up Loop and Tonbridge Up platform Loop No. 1. Anything else left standing on a running line is not a berth."],
       ["Two hours is not a berth",
@@ -1044,12 +1044,19 @@ const SIDING_CLASS_RE = new RegExp(
   };
   /* Route clearance, modules KSWRC D2A (06/12/2025) and D2C (13/09/2025).
      "N" in a class column means NO PUBLISHED CLEARANCE - the General Notes
-     allow separate authorisation - so the wording says "no clearance", never
-     "prohibited". Key: "<class>|<destination or section>". */
+     allow separate authorisation - so for those the wording says "no
+     clearance", never "prohibited". The 377 at Dover is the exception: its
+     cells are not N but a clearance hedged with explicit "Prohibited" notes,
+     which is a stronger statement, so that message says what the table says
+     rather than borrowing the N wording.
+     Key: "<class>|<destination or section>". */
   const SA_NO_CLEARANCE = {
-    "377|DVP": { line: 24897, msg: "no route clearance for a Class 377 to or" +
-      " from Dover Priory - barred through Priory Tunnel on the Up Chatham" +
-      " and again south of the station" },
+    "377|DVP": { line: 24894, msg: "a Class 377 has no clean way in and out of" +
+      " Dover Priory - off the Chatham only the 377/1 and 377/5 are cleared at" +
+      " all, and both are barred through Priory Tunnel on the Up and south of" +
+      " the station; the Folkestone approach is prohibited at Martello and" +
+      " Abbotscliffe tunnels and Archcliffe Jn. The reports do not carry the" +
+      " subclass, so check which 377 this is" },
     "707|DVP": { line: 26094, msg: "no route clearance for a Class 707 on" +
       " either approach to Dover Priory" },
     "707|SSS": { line: 26091, msg: "no route clearance for a Class 707 to" +
