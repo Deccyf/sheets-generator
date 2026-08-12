@@ -375,7 +375,7 @@ const SIDING_CLASS_RE = new RegExp(
       ["Two hours is not a berth",
        "Ashford 2 and 5, Dover Priory 1 and 2, Hastings 2 and 3 and Ramsgate 2 and 3 carry a two-hour driverless immobilisation and nothing longer. A second list - Faversham 2 and 3, Gillingham 2 and 3, Orpington 2 to 5, Strood 1 and 2, Tonbridge 2 and 3 - is the same two hours but for engineering works and emergencies only. Neither one makes an overnight stand."],
       ["Hastings line, south of Tunbridge Wells",
-       "Between Tunbridge Wells and Bo Peep Jn electric trains must not exceed 8 cars or a conductor rail current index of 8, unless Network Rail Control authorises it. Eight cars is the length ceiling; the index is a separate test, and this Appendix gives the limit without giving the per-unit figures, so check the index elsewhere rather than assuming it follows from the car count. Twelve coaches are permitted only between Tunbridge Wells station and its turnback siding. At Hastings itself, platform 1 is 8 cars in 167 metres."],
+       "Between Tunbridge Wells and Bo Peep Jn electric trains must not exceed 8 cars or a conductor rail current index of 8 unless Network Rail Control authorises it - half the network default of 16. The traction current table allocates index 4 to every 2, 3 and 4-car EMU alike, so two units is the ceiling whatever their length, and three 375/3s fail twice over: 9 cars and an index of 12. Twelve coaches are permitted only between Tunbridge Wells station and its turnback siding. At Hastings, platform 1 is the short one - 8 cars, 167 metres - while 2, 3 and 4 hold twelve, though the line limit binds long before the platform does."],
       ["West Marina and the 376",
        "The 376 column reads N - no published clearance - from Willingdon Jn to the St Leonards LMD connection, where 375 and 377 are both Y. From the LMD connection through Bo Peep to Hastings the 376 is cleared, so a 376 at West Marina has to come and go via Hastings rather than the Eastbourne side."],
       ["Dover Priory platform lengths",
@@ -385,7 +385,7 @@ const SIDING_CLASS_RE = new RegExp(
     ],
     metro: [
       ["A 12-car Networker is three 465s",
-       "Twelve cars must be 3 x 4-car 465s coupled together, with no 466 anywhere in the formation. A 12-car row reading 465 + 465 + 466 is wrong before the berth comes into it."],
+       "Twelve cars must be 3 x 4-car 465s coupled together, with no 466 anywhere in the formation. The way twelve goes wrong is two 465s made up with a pair of 466s - 4 + 4 + 2 + 2 reaches twelve and is barred, whatever road it stands on."],
       ["Sidings closed to 12-car Networkers",
        "Dartford Up and Down sidings are out apart from No. 1 road in the Up sidings, Slade Green Up sidings take none at all, and Plumstead No. 1 road will hold twelve only with a shunter on hand."],
       ["Networker platform lengths",
