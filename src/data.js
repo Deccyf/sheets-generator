@@ -366,14 +366,14 @@ const SIDING_CLASS_RE = new RegExp(
 
   const APPENDIX_NOTES = {
     main: [
-      ["Grove Park sidings and the 377/5",
-       "Table D2A puts R7 against the 377 on the Lee Spur Jn - Chislehurst Jn row: prohibited Grove Park Up and Down Washer line and Up sidings. The 375 and 376 are plain Y on that same row, so a 377/5 shown on the washer road or in an Up siding is a query - it belongs in a Down siding."],
+      ["Grove Park sidings and the 377",
+       "Table D2A puts R7 against the 377 on the Lee Spur Jn - Chislehurst Jn row: prohibited Grove Park Up AND Down Washer line, and the Up sidings. The 375 and 376 are plain Y on that same row, so this is the 377's restriction alone - and it is every 377, not just the /5s we happen to run. A 377 shown on either washer road or in an Up siding is a query; a Down siding is the one that is left."],
       ["How far south a 376 may work at Dover",
        "Off the Chatham a 376 is plain Y as far as Buckland Jn, and the laden bar starts at Dover Priory itself - so a 376 may work into the station in service and turn there. What it must not do laden is carry on: Dover Priory to the change of mileage is barred when laden, and the leg beyond that reads E, ECS and transit only. The Folkestone approach is barred laden throughout, Folkestone East to Dover Substation. So a 376 terminating at Dover Priory off the Chatham is ordinary; one south of the station, or one that came in service via Folkestone, is not."],
       ["Where you may stand on a running line",
-       "Away from terminal platforms and dead-end bays, this book's only running-line berths are the Ashford Down and Up loops, Dover Priory Up platform loop, the Faversham Down and Up platform loops, Folkestone East Nos. 1, 2 and 3 Train Roads, Gillingham Up platform loop, Hastings No. 4, Ramsgate Nos. 1 and 4, Strood Up Loop and Tonbridge Up platform Loop No. 1. Anything else left standing on a running line is not a berth."],
+       "The Kent Route berthing rule permits a running line only at a terminal platform, a dead-end bay, or one of the places named in its table. Taking that table and keeping the sections this book covers: Ashford Down and Up loops, Dover Priory Up platform loop, Faversham Down and Up platform loops, Folkestone East Nos. 1, 2 and 3 Train Roads, Gillingham Up platform loop, Hastings No. 4 platform, Ramsgate Nos. 1 and 4 platforms, Strood Up Loop and Tonbridge Up platform Loop No. 1. Grove Park, Orpington, Slade Green, Victoria and West Marina are not in the table at all, so they have no running-line berth. This is the list filtered to this book - the Appendix table also covers Canterbury West, Dartford, Rainham, Rochester, Sevenoaks, Sittingbourne, Lenham, Dollands Moor and Stewarts Lane, and Ashford's International platforms for class 373 only."],
       ["Two hours is not a berth",
-       "Ashford 2 and 5, Dover Priory 1 and 2, Hastings 2 and 3 and Ramsgate 2 and 3 carry a two-hour driverless immobilisation and nothing longer. A second list - Faversham 2 and 3, Gillingham 2 and 3, Orpington 2 to 5, Strood 1 and 2, Tonbridge 2 and 3 - is the same two hours but for engineering works and emergencies only. Neither one makes an overnight stand."],
+       "Classes 375, 376, 377, 395, 465, 466, 700 and 707 may be left immobilised for up to two hours with no driver at Ashford 2 and 5, Dover Priory 1 and 2, Hastings 2 and 3 and Ramsgate 2 and 3. A second list - Faversham 2 and 3, Gillingham 2 and 3, Orpington 2 to 5, Strood 1 and 2, Tonbridge 2 and 3 - is the same two hours but for engineering works and emergencies only, subject to agreement on access. Two hours is not an overnight stand, and neither list is a berthing list. Both are shown filtered to this book's sections; the Appendix tables run wider."],
       ["Hastings line, south of Tunbridge Wells",
        "Between Tunbridge Wells and Bo Peep Jn electric trains must not exceed 8 cars or a conductor rail current index of 8 unless Network Rail Control authorises it - half the network default of 16. The traction current table allocates index 4 to every 2, 3 and 4-car EMU alike, so two units is the ceiling whatever their length, and three 375/3s fail twice over: 9 cars and an index of 12. Twelve coaches are permitted only between Tunbridge Wells station and its turnback siding. At Hastings, platform 1 is the short one - 8 cars, 167 metres - while 2, 3 and 4 hold twelve, though the line limit binds long before the platform does."],
       ["West Marina and the 376",
@@ -389,11 +389,11 @@ const SIDING_CLASS_RE = new RegExp(
       ["Sidings closed to 12-car Networkers",
        "Dartford Up and Down sidings are out apart from No. 1 road in the Up sidings, Slade Green Up sidings take none at all, and Plumstead No. 1 road will hold twelve only with a shunter on hand."],
       ["Networker platform lengths",
-       "Where the capacity table prints 10/8 (N), the (N) figure is the one that applies to 365, 465 and 466. Grove Park platform 1, Bromley North 1 and 2, and Sundridge Park 1 and 2 are all 10/8 (N) - eight cars for a Networker, whatever a 375 would fit."],
+       "The capacity table's footnote reads: all lengths refer to Class 375 stock unless otherwise stated, and (N) denotes Networker classes 465/466 - those two only. So where a row prints 10/8 (N), ten is the 375 figure and eight is what a 465 or 466 gets. Grove Park platform 1, Bromley North 1 and 2, and Sundridge Park 1 and 2 all read 10/8 (N). Victoria 5 and 6 read 12/10 (N) on the same basis."],
       ["Charing Cross 4, 5 and 6",
        "Twelve-car Networker work belongs in platforms 1, 2 or 3; 4, 5 and 6 are not long enough. Where two trains share one of those platforms and the second one in is a 465 or 466, the total must not exceed ten vehicles."],
       ["Routes barred to 12-car Networkers",
-       "Twelve cars are shut out of everything from Victoria or Blackfriars, any station via Herne Hill or Catford, the Bromley North branch and the New Beckenham spur. They also must not call at Woolwich Dockyard in either direction, or at Grove Park platforms 1 and 2, which have no 12-car DOO equipment."],
+       "The Appendix names what twelve cars ARE permitted on first, and it is a short list: Charing Cross or Cannon Street to Sevenoaks, Dartford, Gravesend and Hayes. Barred are all routes out of Victoria or Blackfriars, any station via Herne Hill or Catford, the Bromley North branch, and the New Beckenham spur to either Petts Wood Jn or Sevenoaks via Bromley South. They must also not call at Woolwich Dockyard in either direction, whose platforms are too short, or at Grove Park platforms 1 and 2, which have no 12-car DOO equipment."],
       ["Grove Park, up side to down side",
        "Twelve-car trains must not be shunted between the Up and Down sidings at Grove Park - L1299, at the country end of Hither Green platform 3, cannot be sighted for the move. A twelve that goes in one side has to come back out the way it went in."],
       ["A 466 working alone",
@@ -401,13 +401,13 @@ const SIDING_CLASS_RE = new RegExp(
       ["Class 707 clearance",
        "The 707 shows E - ECS and transit, self powered - over Gillingham to Western Jn, Faversham Jn to Ramsgate station, Sevenoaks Substation through both Tonbridge junctions, Swanley Jn to Fawkham Jn to Rochester Bridge Jn, and Grove Park to Bromley North. Past Ramsgate station towards the substation it is N, no clearance in any mode. A 707 can be positioned over those legs light; diagrammed in service it is a clearance breach."],
       ["Two hours without a driver",
-       "Dartford 2, 3 and 4, Grove Park 1 and Ramsgate 2 and 3 are where a 465, 466 or 707 may stand immobilised for up to two hours with nobody on board. Orpington 2 to 5 and Gillingham 2 and 3 appear only on the second list, which is engineering works and emergencies. None of them is an overnight berth."]
+       "Blackfriars 3 and 4, Dartford 2, 3 and 4, Grove Park 1, Ramsgate 2 and 3 and Sevenoaks 2, 3 and 4 are where a 465, 466 or 707 may stand immobilised for up to two hours with nobody on board. The second list - engineering works and emergencies only - adds Gillingham 2 and 3, Orpington 2 to 5, Sittingbourne 1 and 2, Rainham, Maidstone East 1 and 2 and London Bridge 1 to 9, and repeats Blackfriars 3 and 4. Two hours is not an overnight berth, and neither list says a train may be berthed there."]
     ],
     hs: [
       ["Ashford platforms for a 395",
-       "Platform 1, the Up platform loop, is prohibited on both SO130 Ashford rows, and the 465 and 466 are plain Y there - the restriction is the 395's. Platforms 3 and 4 take no domestic passenger service. That leaves 2, 5 and 6, all twelve-car roads."],
+       "Both SO130 Ashford rows carry four notes against the 395 and nothing against any other class - 444, 450 and 458 read N, and the 465 and 466 are plain Y - so all four are the 395's alone: change over AC to DC standing at the platform, 75 mph maximum, prohibited Ashford platform 1 (the Up platform loop), and 25 mph over platform 2 (Up Slow). Platform 1 is a 12-car road at 265 m, so the bar is not about length. Platforms 3 and 4 are listed in the capacity table as 18-car Eurostar roads, which is why domestic work does not use them - the Appendix gives that as a length, not as a prohibition. That leaves 2, 5 and 6, all twelve-car."],
       ["Changing over at Ashford",
-       "AC to DC and back has to be done standing at the platform - not on the move, not at a signal."],
+       "Changing over from AC to DC, and the other way, must be done while stationary at the platform - not on the move, not held at a signal. It sits in the 395 column on both Ashford rows, so it is this fleet's rule."],
       ["Berthing at Ramsgate",
        "Nos. 1 and 4 are the only running lines at Ramsgate a train may be berthed on."],
       ["What a 395 may stand on at Faversham",
@@ -415,9 +415,9 @@ const SIDING_CLASS_RE = new RegExp(
       ["Canterbury West",
        "The Down Loop Line is the only running line at Canterbury West a train may be berthed on, and both platforms are eight-car - 159.6 and 166.6 metres, against twelve at Ashford, Faversham and Ramsgate. The Appendix gives lengths and says nothing about selective door opening, so treat this as something to check rather than a bar."],
       ["Two hours without a driver",
-       "Ashford 2 and 5, Margate 2 and Ramsgate 2 and 3 are the platforms on this route where a unit may be left immobilised for up to two hours with nobody on board. Faversham 2 and 3 and Canterbury West carry the same two hours for engineering works and emergencies only. Anything longer, or anywhere else, needs a driver on the train."],
+       "Of the places this book touches, Ashford 2 and 5, Margate 2 and Ramsgate 2 and 3 are where a 395 may be left immobilised for up to two hours with nobody on board. Faversham 2 and 3, Canterbury West and Deal carry the same two hours for engineering works and emergencies only, subject to agreement on access. Anything longer, or anywhere else, needs a driver on the train - and two hours never makes a berth."],
       ["DOO(P) routes the 395 has to itself",
-       "Ashford to Ramsgate, Dover Priory to Minster East Jn and Minster South Jn to Minster West Jn are cleared for driver-only passenger working by Class 395 alone."]
+       "Nine entries on the Kent DOO(P) cleared-routes list are marked Class 395 only: Springhead Jn to Ebbsfleet (CTRL), Swanley to Ramsgate, Fawkham Jn to Southfleet Jn (CTRL), Tonbridge to Dover Priory, Otford Jn to Ashford, Ashford to Ramsgate, Dover Priory to Minster East Jn, Minster South Jn to Minster West Jn, and Strood to Rochester Bridge Jn. Strood to Rainham is the mirror image - Class 700 only. Everything else on the list is cleared without a class condition."]
     ],
   };
 

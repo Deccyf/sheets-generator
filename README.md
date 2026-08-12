@@ -543,8 +543,24 @@ prints can tell us, and both user-facing guides say so rather than leaving the
 absence to be discovered.
 
 The Appendix itself is not in the repository — it is a licensed Network Rail
-document. What is here is the extracted facts, with the source line recorded
-against each so any note can be taken back to the page it came from.
+document. What is here is the extracted facts. Every **check** carries a
+`line:` back-reference to the extraction, so it can be taken to the page it
+came from; the **notes** instead name their source in the prose (*"Table D2A
+puts R7 against the 377…"*, *"the capacity table's footnote reads…"*), which is
+what a reader needs to look one up.
+
+Anything read out of the clearance grids must be aligned by **ordinal column**,
+not by character offset — the data rows do not line up with the header spacing,
+and aligning on offset silently attributes a note to the wrong class. Read the
+nine values in order against `319 325 373 375 376 377 378 380 387`, and
+remember a cell can stack several note codes on the rows beneath it. Two of
+these tables have a class column that looks like a bar but is a permission
+(*"Class 377/1 and 377/5 only"*), so read the note text before concluding
+anything from an R-code.
+
+Where a note lists places, it is filtered to the sections that book covers and
+says so. Do not read one as the Appendix's full table — a reader who assumes a
+short list is exhaustive is the failure mode these notes exist to prevent.
 
 ## Reference data — where the knowledge lives
 
