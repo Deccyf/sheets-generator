@@ -340,6 +340,11 @@ test("the Sectional Appendix checks flag a breach and stay quiet otherwise", asy
   const msgs = norm(bad.reviews.metro.map(x => x.msg));
   assert.ok(msgs.some(m => /12-car Networker must be three 4-car 465s/.test(m)),
     "the make-up is flagged: " + msgs.join(" | "));
+  /* A review line that asserts a rule has to say whose rule it is - the rest
+     of the tab is the tool doubting the reports, which is a different claim. */
+  for (const m of msgs.filter(m => /Networker|route clearance|will not hold|authorised to berth|lone 2-car/.test(m)))
+    assert.match(m, /Sectional Appendix - /,
+      "an Appendix finding names its source: " + m);
   // …and an ordinary day trips none of them
   const ok = N.GENIUS.buildIntegrale(
     [S.REVERSED_ORDER_SUMMARY, S.REVERSED_ORDER_DETAIL]);

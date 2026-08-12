@@ -3489,7 +3489,11 @@ const GENIUS = (() => {
           const cars = e.units.reduce((n, u) => n + carsOf(u), 0);
           const all465 = e.units.length > 0 &&
             e.units.every(u => classOf(u) === "465");
-          const say = m => warn.push({ sec, msg: at + m });
+          /* Name the source. Everything else in the Review tab is the tool
+             saying it cannot tell from the reports; these say a published
+             document forbids it. The reader should be able to tell those
+             apart at a glance and go and look this one up. */
+          const say = m => warn.push({ sec, msg: at + "Sectional Appendix - " + m });
 
           const bc = SA_BERTH_CLASS[road];
           if (bc) for (const u of e.units) {
