@@ -509,9 +509,13 @@ the writer saves — so on both panels, what you look at is what you get.
 Two kinds of knowledge come out of the Kent / Sussex / Wessex Sectional
 Appendix, and they are kept apart on purpose.
 
-**Checks** fire on a single row and go on the Review tab with the day's other
-findings — *"a 12-car Networker must be three 4-car 465s with no 466 in the
-formation"*. Each is decidable from what the reports actually carry: the car
+**Checks** fire on a single row and go on the Review tab prefixed *Sectional
+Appendix* — *"a 12-car Networker must be three 4-car 465s with no 466 in the
+formation"*. The prefix is load-bearing: every other item on that tab is the
+tool saying it could not settle something from the reports, whereas these say a
+published document forbids the working, and only the second kind can be taken
+back to a page and checked. A test pins the attribution so a new check cannot
+land unmarked. Each is decidable from what the reports actually carry: the car
 count, the class, the section, the berthing road, the destination code, and
 whether the move is passenger or empty. Rules that turn on a platform number,
 a signal or a siding road number are **deliberately absent and must not be
@@ -530,6 +534,13 @@ whole list, which costs more than the rule saves.
 **Notes** are the standing per-book briefing on the *Watch for* tab: things
 worth knowing while checking a book rather than tests. Eight for the mainline
 book, nine for Metro, seven for High Speed, each quotable from the Appendix.
+
+Both are **weekday-only**. The weekend pipeline reads diagram prints, which do
+not carry the class and formation detail every one of these rules is tested
+against, so there is no *Watch for* tab on a weekend book and no check fires.
+The Appendix does not stop applying on a Saturday — the gap is in what the
+prints can tell us, and both user-facing guides say so rather than leaving the
+absence to be discovered.
 
 The Appendix itself is not in the repository — it is a licensed Network Rail
 document. What is here is the extracted facts, with the source line recorded

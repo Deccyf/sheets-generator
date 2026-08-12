@@ -354,7 +354,7 @@ const children = [
       "them over below, then save.”*",
     "**Look them over.** **Look at it** shows the finished sheet on screen, day " +
       "by day, exactly as it will print. The tabs are the days — MON, TUE… — " +
-      "plus **Review**.",
+      "plus **Review** and **Watch for**.",
     "**Save.** **Save book** on each one, or **Save all books (.zip)** at the " +
       "bottom for the lot.",
   ]),
@@ -410,11 +410,18 @@ const children = [
     "with the section name and the date at the top. Inside it, one **entry** " +
     "per departure and one row per unit."),
   p("Which unit comes first is taken from the diagram's **Position** in the " +
-    "Summary. The mainline book lists the lowest Position first; the metro and " +
-    "High Speed books list the highest first. Where two units share a Position " +
-    "— they started the day in different formations — the reports cannot say " +
-    "which way round they go, and the entry is named on the review list for " +
-    "you to check."),
+    "Summary. Broadly the mainline book lists the lowest Position first and the " +
+    "metro and High Speed books the highest — but that is not a rule without " +
+    "exceptions. A few sections and some individual sidings run the other way, " +
+    "and known formations can be pinned outright; all of it is written down in " +
+    "the tables rather than worked out on the fly, so it does not drift. Where " +
+    "two units share a Position — they started the day in different formations " +
+    "— the reports genuinely cannot say which way round they go, and the entry " +
+    "is named on the review list for you to check."),
+  p("**If an order comes out wrong, say so.** A formation can be pinned for one " +
+    "departure, for a whole section, or wherever it appears in the week, so the " +
+    "same correction only has to be made once. Report the section, the time and " +
+    "the diagram numbers."),
   sheetSample(),
   caption("The 06:45 to Charing Cross: a four-car 375 on diagram 117, off to " +
     "Dartford Up Sidings next and finishing the day at Slade Green."),
@@ -475,9 +482,35 @@ const children = [
     "**The Folkestone East Train Roads arrivals**, worked out " +
       "last-in-first-out from tonight's arrivals — always worth checking " +
       "against the ACWN.",
+    "**A Sectional Appendix breach**, marked *Sectional Appendix* at the front " +
+      "of the line — *“a 12-car Networker must be three 4-car 465s with no 466 " +
+      "in the formation”*. This one is the odd one out, and the marking is " +
+      "there so you can spot it: everything else on the list is the tool " +
+      "telling you what it could not settle, but this says a published " +
+      "document forbids the working. Take it back to the Appendix before " +
+      "acting on it. Weekday builds only.",
   ]),
   p("A clean list is normal on a straightforward day. A long one isn't a fault " +
-    "— it is the tool showing its working."),
+    "— mostly it is the tool showing its working. The *Sectional Appendix* " +
+    "lines are the exception: those are a rule being broken, not a decision " +
+    "being explained."),
+  gap(60),
+  h3("The Watch for tab"),
+  p("Beside **Review** on each weekday book is **Watch for** — the standing " +
+    "Sectional Appendix notes for that book's route. Nothing triggers them and " +
+    "they are not tests; they are what is worth carrying in your head while " +
+    "you check the book. Eight for the mainline book, nine for Metro, seven " +
+    "for High Speed: the 12-car Networker rules, which classes may stand on " +
+    "which road, where a lone 2-car unit cannot go, the route clearances."),
+  p("The tab names its source and edition at the top. It is a June 2026 " +
+    "extract, so check the current issue and the ACWNs — the tool has no way " +
+    "of knowing when that edition goes stale."),
+  callout("Weekday builds only",
+    "There is no **Watch for** tab on the weekend books, and the Appendix " +
+    "checks do not run there either: the prints do not carry the class and " +
+    "formation detail those rules are tested against. The Appendix applies " +
+    "just the same on a Saturday, so read the weekday notes for the route and " +
+    "check the weekend books against them by eye."),
 
   h2("10. The headcode switches"),
   p("Above each drop zone there is a box marked **HEADCODES** with three " +
@@ -529,13 +562,21 @@ const children = [
       "The reissue's date doesn't match the prints it came with."],
      ["The page says the browser is too old",
       "Right-click the file, choose **Open with**, and pick Edge, Chrome or Firefox."],
+     ["Two units are the wrong way round",
+      "If the review list flagged the entry, the reports couldn't settle it. If " +
+      "it didn't, the order came from the tables and is wrong there — report " +
+      "the section, time and diagram numbers and it can be pinned."],
      ["Nothing happens when you drop a file",
       "Click the panel and browse for it instead — some setups block drag-and-drop."]]),
   gap(240),
 
   h2("12. Before the books go out"),
   ...bullets([
-    "**Read the review list.** Every time. It exists to be read.",
+    "**Read the review list.** Every time. It exists to be read — and treat the " +
+      "*Sectional Appendix* lines as a rule broken rather than a decision " +
+      "explained.",
+    "**Skim the Watch for tab** when you are checking an unfamiliar route, or a " +
+      "formation you do not often see.",
     "**Check the sheets against the ACWNs** — especially the Folkestone East " +
       "Train Roads notes, which are worked out from last night's arrivals and " +
       "flagged for exactly that reason.",

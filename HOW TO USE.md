@@ -143,7 +143,7 @@ If **reissued** prints have come out, get those too. Any file with *reissue* or
    *"Books built — look them over below, then save."*
 4. **Look them over.** Click **Look at it** on a book to see the finished sheet
    on screen, day by day, exactly as it will print. Tabs across the top are the
-   days (MON, TUE…) plus **Review**.
+   days (MON, TUE…) plus **Review** and **Watch for**.
 5. **Save.** Either **Save book** on each one, or **Save all books (.zip)** at
    the bottom for everything in a single zip.
 
@@ -203,10 +203,19 @@ the section name and the date at the top. Inside it, one **entry** per
 departure, and one row per unit.
 
 Which unit is listed first comes from the diagram's **Position** in the
-Summary. The mainline book puts the lowest Position first; the metro and High
-Speed books put the highest first. Where two units share a Position — they
-started the day in different formations — the reports can't say which way round
-they go, and the entry is named on the review list for you to check.
+Summary. Broadly the mainline book puts the lowest Position first and the metro
+and High Speed books the highest — but that isn't a rule without exceptions. A
+few sections and some individual sidings run the other way, and known formations
+can be pinned outright. Those are all written down in the tables rather than
+worked out on the fly, so they don't drift. Where two units share a Position —
+they started the day in different formations — the reports genuinely can't say
+which way round they go, and the entry is named on the review list for you to
+check.
+
+**If an order comes out wrong, say so.** A formation can be pinned for one
+departure, for a whole section, or wherever it appears in the week, so the same
+correction only has to be made once. Report the section, the time and the
+diagram numbers.
 
 | Column | What it says | Example |
 |---|---|---|
@@ -272,9 +281,36 @@ Typical items:
   tool says so and leaves it for you.
 * **The Folkestone East Train Roads arrivals**, worked out last-in-first-out
   from tonight's arrivals. Always double-check these against the ACWN.
+* **A Sectional Appendix breach**, marked *Sectional Appendix* at the front of
+  the line — *"a 12-car Networker must be three 4-car 465s with no 466 in the
+  formation"*. This one is the odd one out, and the marking is there so you can
+  spot it: everything else on the list is the tool telling you what it couldn't
+  settle, but this says a published document forbids the working. Take it back
+  to the Appendix before acting on it. Weekday builds only.
 
 A clean review list is normal on a straightforward day. A long one isn't a
-fault — it's the tool showing its working.
+fault — mostly it's the tool showing its working. The *Sectional Appendix*
+lines are the exception: those are a rule being broken, not a decision being
+explained.
+
+### The Watch for tab
+
+Beside **Review** on each weekday book is **Watch for** — the standing Sectional
+Appendix notes for that book's route. Nothing triggers them and they aren't
+tests; they're what's worth carrying in your head while you check the book.
+Eight for the mainline book, nine for Metro, seven for High Speed: the 12-car
+Networker rules, which classes may stand on which road, where a lone 2-car unit
+can't go, the route clearances.
+
+The tab names its source and edition at the top. It is a June 2026 extract, so
+check the current issue and the ACWNs — the tool has no way of knowing when that
+edition goes stale.
+
+There is no **Watch for** tab on the weekend books, and the Appendix checks
+don't run there either: the prints don't carry the class and formation detail
+those rules are tested against. The Appendix applies just the same on a
+Saturday, so read the weekday notes for the route and check the weekend books
+against them by eye.
 
 ---
 
@@ -309,6 +345,7 @@ save them again afterwards; it'll remind you.
 | A road says *"nothing to berth"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
 | A location has its own heading | A unit berthed somewhere the section list has never heard of. It's on the review list; check where it should live. |
 | A train seems to be missing | Read the review list first — empty moves into a berth are left off deliberately and each one is named. If it isn't there, note the diagram number and report it. |
+| Two units are the wrong way round | If the review list flagged the entry, the reports couldn't settle it. If it didn't, the order came from the tables and is wrong there — report the section, time and diagram numbers and it can be pinned. |
 | *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
 | *"That looks like a reissue on its own"* | Drop the full weekly prints with it, or first. |
 | *"…belongs to a different day"* | The reissue's date doesn't match the prints it was dropped with. |
@@ -319,7 +356,10 @@ save them again afterwards; it'll remind you.
 
 ## 12. Before the books go out
 
-* **Read the review list.** Every time. It exists to be read.
+* **Read the review list.** Every time. It exists to be read — and treat the
+  *Sectional Appendix* lines as a rule broken rather than a decision explained.
+* **Skim the Watch for tab** when you're checking an unfamiliar route, or a
+  formation you don't often see.
 * **Check the sheets against the ACWNs** — especially the Folkestone East Train
   Roads notes, which are worked out from last night's arrivals and flagged for
   exactly this reason.
