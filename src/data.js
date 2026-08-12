@@ -249,6 +249,16 @@ const SIDING_CLASS_RE = new RegExp(
     "GROVE PARK|021,022": ["022", "021"],
     "GROVE PARK|118,119": ["118", "119"],
     "HASTINGS|029,030": ["030", "029"],
+    /* Ramsgate reads six formations lowest-Position-first and these five
+       highest-first, so the section keeps the ascending rule and the five are
+       named. Confirmed twice over: they are the five the 12/08 Ramsgate book
+       prints backwards from the tool, and the same five a tester marked up
+       off a later day. */
+    "RAMSGATE|043,044,910": ["910", "044", "043"],
+    "RAMSGATE|045,911,912": ["045", "912", "911"],
+    "RAMSGATE|046,047,913": ["913", "047", "046"],
+    "RAMSGATE|052,053": ["053", "052"],
+    "RAMSGATE|907,908,909": ["909", "908", "907"],
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book
     "BELLINGHAM SIDING|461,462": ["461", "462"],
@@ -290,6 +300,12 @@ const SIDING_CLASS_RE = new RegExp(
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
+      // Ramsgate is NOT here. Its own book prints every coupled formation
+      // highest Position first - all five in the 12/08 book, and a tester
+      // flagged the same five off a later day. It was on this list until the
+      // Ramsgate book was compared against its real counterpart, which had
+      // never been done: every accuracy figure before that was the mainline
+      // book with Ramsgate cut out.
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),
