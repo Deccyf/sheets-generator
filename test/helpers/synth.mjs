@@ -561,3 +561,27 @@ export const SPLITS_DETAIL = [
       orderLeg(d, 60, "MSTONEE", "Maidstone East", back + ":00", "5S99", "ASHFDNS", "Ashford Down Sidings", home + ":00"),
     ]),
 ].join("\r\n");
+
+/* A 12-car Networker made up the way the Appendix forbids - 465 + 465 + 466
+   + 466 rather than three 4-car 465s - standing on the Slade Green Up CHS,
+   which will not hold twelve either way. */
+export const APPENDIX_BREACH_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  ...[["MX901", "465/9", 1], ["MX902", "465/9", 2],
+      ["MX903", "466/0", 3], ["MX904", "466/0", 4]].map(([d, t, p]) =>
+    d + ",Covered," + t + ",,0,10/08/2026 06:00," + p +
+    ",5X01,SLADGUS,10/08/2026 07:00,CANONST,18,,,,,," + d + ",,"),
+].join("\r\n");
+
+export const APPENDIX_BREACH_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["MX901", "MX902", "MX903", "MX904"].flatMap(d => [
+    orderLeg(d, 18, "SLADGUS", "Slade Green Up C.H.S", "06:00:00", "5X01", "SLADEGN", "Slade Green", "06:10:00"),
+    orderLeg(d, 18, "SLADEGN", "Slade Green", "06:20:00", "2X01", "CANONST", "Cannon Street", "07:00:00"),
+  ]),
+].join("\r\n");

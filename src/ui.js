@@ -232,6 +232,19 @@ function reviewPane(items) {
     : '<p class="noreviews">Nothing flagged for review.</p>';
 }
 
+/* Standing notes from the Sectional Appendix for this book's fleet and
+   sections - things worth knowing while checking a book, as against the
+   Review tab, which is what this particular build threw up. */
+function notesPane(notes) {
+  if (!notes || !notes.length)
+    return '<p class="noreviews">No Appendix notes for this book.</p>';
+  return '<p class="sa-src">Kent / Sussex / Wessex Sectional Appendix, ' +
+    'June 2026. Standing notes - always check the current issue and the ' +
+    'ACWNs.</p><ul class="sa-notes">' +
+    notes.map(([head, body]) => "<li><b>" + escHtml(head) + "</b> " +
+      escHtml(body) + "</li>").join("") + "</ul>";
+}
+
 /* ================= weekday panel: Genius reports ================= */
 (function weekday() {
   const say = sayer($("#status"));
@@ -333,6 +346,8 @@ function reviewPane(items) {
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
+      panes.push(["Watch for",
+                  () => notesPane(SHEETS_DATA.APPENDIX_NOTES[b.hc])]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,

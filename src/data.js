@@ -321,6 +321,139 @@ const SIDING_CLASS_RE = new RegExp(
   // Ashford rows prove it). Only the SHUNT SPURS - places that host
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
+
+  /* ==== Sectional Appendix ==========================================
+     Kent / Sussex / Wessex Routes Sectional Appendix, June 2026. Two
+     kinds of knowledge come out of it.
+
+     APPENDIX_NOTES are standing notes per book - things worth carrying
+     in your head while checking a book, not tests. SA_* below are the
+     checks: conditions decidable from what the reports actually carry,
+     which is the car count, the class, the section, the berthing road,
+     the destination code and whether the move is passenger or empty.
+
+     Rules that turn on a platform number, a signal or a siding road
+     number are deliberately absent and must not be added - the reports
+     do not carry them, so such a rule would guess, and a review note
+     that cries wolf teaches the reader to skip the whole list. Every
+     check here was counted against the real 12/08 and 10/08 books
+     before it went in; all seven are silent on both.                */
+
+  const APPENDIX_NOTES = {
+    main: [
+      ["Grove Park sidings and the 377/5",
+       "Table D2A puts R7 against the 377 on the Lee Spur Jn - Chislehurst Jn row: prohibited Grove Park Up and Down Washer line and Up sidings. The 375 and 376 are plain Y on that same row, so a 377/5 shown on the washer road or in an Up siding is a query - it belongs in a Down siding."],
+      ["Dover is ECS only for a 376",
+       "A 376 is barred between Folkestone East and Dover Substation, and between Dover Priory and the change of mileage, when laden; the leg beyond the change of mileage is marked E, ECS and transit only. Anything that puts a 376 at Dover needs both legs checked - it can get there empty, not in service."],
+      ["Where you may stand on a running line",
+       "Away from terminal platforms and dead-end bays, this book's only running-line berths are the Ashford Down and Up loops, Dover Priory Up platform loop, the Faversham Down and Up platform loops, Folkestone East Nos. 1, 2 and 3 Train Roads, Gillingham Up platform loop, Hastings No. 4, Ramsgate Nos. 1 and 4, Strood Up Loop and Tonbridge Up platform Loop No. 1. Anything else left standing on a running line is not a berth."],
+      ["Two hours is not a berth",
+       "Ashford 2 and 5, Dover Priory 1 and 2, Hastings 2 and 3 and Ramsgate 2 and 3 carry a two-hour driverless immobilisation and nothing longer. A second list - Faversham 2 and 3, Gillingham 2 and 3, Orpington 2 to 5, Strood 1 and 2, Tonbridge 2 and 3 - is the same two hours but for engineering works and emergencies only. Neither one makes an overnight stand."],
+      ["Hastings line, south of Tunbridge Wells",
+       "Between Tunbridge Wells and Bo Peep Jn nothing may exceed 8 cars or a conductor rail index of 8. Every 3-car and 4-car EMU counts as index 4, so two units is the ceiling and three 375/3s fail on both length and index. Twelve coaches are permitted only between Tunbridge Wells station and its turnback siding. At Hastings itself, platform 1 is 8 cars in 167 metres."],
+      ["West Marina and the 376",
+       "The 376 column reads N - no published clearance - from Willingdon Jn to the St Leonards LMD connection, where 375 and 377 are both Y. From the LMD connection through Bo Peep to Hastings the 376 is cleared, so a 376 at West Marina has to come and go via Hastings rather than the Eastbourne side."],
+      ["Dover Priory platform lengths",
+       "Platform 1 is the only twelve at Dover Priory; platform 2 holds ten and platform 3 eight. The single running-line berth on the station is the Up platform loop."],
+      ["Victoria platforms 5 and 6",
+       "Attaching or detaching to make a 12-car formation is prohibited in Victoria platforms 5 and 6 - permissive working there is allowed provided the result is not twelve. Platforms 3 and 4 are 8-car roads, 188.0 and 201.0 metres."]
+    ],
+    metro: [
+      ["A 12-car Networker is three 465s",
+       "Twelve cars must be 3 x 4-car 465s coupled together, with no 466 anywhere in the formation. A 12-car row reading 465 + 465 + 466 is wrong before the berth comes into it."],
+      ["Sidings closed to 12-car Networkers",
+       "Dartford Up and Down sidings are out apart from No. 1 road in the Up sidings, Slade Green Up sidings take none at all, and Plumstead No. 1 road will hold twelve only with a shunter on hand."],
+      ["Networker platform lengths",
+       "Where the capacity table prints 10/8 (N), the (N) figure is the one that applies to 365, 465 and 466. Grove Park platform 1, Bromley North 1 and 2, and Sundridge Park 1 and 2 are all 10/8 (N) - eight cars for a Networker, whatever a 375 would fit."],
+      ["Charing Cross 4, 5 and 6",
+       "Twelve-car Networker work belongs in platforms 1, 2 or 3; 4, 5 and 6 are not long enough. Where two trains share one of those platforms and the second one in is a 465 or 466, the total must not exceed ten vehicles."],
+      ["Routes barred to 12-car Networkers",
+       "Twelve cars are shut out of everything from Victoria or Blackfriars, any station via Herne Hill or Catford, the Bromley North branch and the New Beckenham spur. They also must not call at Woolwich Dockyard in either direction, or at Grove Park platforms 1 and 2, which have no 12-car DOO equipment."],
+      ["Grove Park, up side to down side",
+       "Twelve-car trains must not be shunted between the Up and Down sidings at Grove Park - L1299, at the country end of Hither Green platform 3, cannot be sighted for the move. A twelve that goes in one side has to come back out the way it went in."],
+      ["A 466 working alone",
+       "A single 2-car unit in passenger service must not work into Cannon Street; the same unit as ECS is not caught. Conductor rail gapping also means a single 2-car EMU must not be routed from signal EK4157 to Rainham platforms 0 or 1 - which bites, because the Up Rainham Bay platform No. 0 is on the berthing list, so a lone 466 stabled there reads legal and is not."],
+      ["Class 707 clearance",
+       "The 707 shows E - ECS and transit, self powered - over Gillingham to Western Jn, Faversham Jn to Ramsgate station, Sevenoaks Substation through both Tonbridge junctions, Swanley Jn to Fawkham Jn to Rochester Bridge Jn, and Grove Park to Bromley North. Past Ramsgate station towards the substation it is N, no clearance in any mode. A 707 can be positioned over those legs light; diagrammed in service it is a clearance breach."],
+      ["Two hours without a driver",
+       "Dartford 2, 3 and 4, Grove Park 1 and Ramsgate 2 and 3 are where a 465, 466 or 707 may stand immobilised for up to two hours with nobody on board. Orpington 2 to 5 and Gillingham 2 and 3 appear only on the second list, which is engineering works and emergencies. None of them is an overnight berth."]
+    ],
+    hs: [
+      ["Ashford platforms for a 395",
+       "Platform 1, the Up platform loop, is prohibited on both SO130 Ashford rows, and the 465 and 466 are plain Y there - the restriction is the 395's. Platforms 3 and 4 take no domestic passenger service. That leaves 2, 5 and 6, all twelve-car roads."],
+      ["Changing over at Ashford",
+       "AC to DC and back has to be done standing at the platform - not on the move, not at a signal."],
+      ["Berthing at Ramsgate",
+       "Nos. 1 and 4 are the only running lines at Ramsgate a train may be berthed on."],
+      ["What a 395 may stand on at Faversham",
+       "On a running line the berth is the Down or Up platform loop. Up Sidings 1, 2 and 3 are open to the 395, which is on the authorised class list. Platforms 2 and 3 are not a berth at all - they appear only on the engineering-works-and-emergencies list, and that buys two hours."],
+      ["Canterbury West",
+       "The Down Loop Line is the only running line at Canterbury West a train may be berthed on, and both platforms are eight-car - 159.6 and 166.6 metres, against twelve at Ashford, Faversham and Ramsgate. The Appendix gives lengths and says nothing about selective door opening, so treat this as something to check rather than a bar."],
+      ["Two hours without a driver",
+       "Ashford 2 and 5, Margate 2 and Ramsgate 2 and 3 are the platforms on this route where a unit may be left immobilised for up to two hours with nobody on board. Faversham 2 and 3 and Canterbury West carry the same two hours for engineering works and emergencies only. Anything longer, or anywhere else, needs a driver on the train."],
+      ["DOO(P) routes the 395 has to itself",
+       "Ashford to Ramsgate, Dover Priory to Minster East Jn and Minster South Jn to Minster West Jn are cleared for driver-only passenger working by Class 395 alone."]
+    ],
+  };
+
+  // "4 375-9" -> "375", "2 466" -> "466", "5 707" -> "707"
+  const SA_CLASS_RE = /^\d+\s+(\d{3})/;
+  // Berths where the Appendix names who may stand there.
+  const SA_BERTH_CLASS = {
+    "FAVERSHAM UP SIDINGS": { line: 16677,
+      allow: ["375", "376", "377", "395", "465", "466"],
+      msg: "only Classes 375, 376, 377, 395, 465 and 466 are authorised to" +
+           " berth in the Faversham Up Sidings" },
+    // Table D2A, Lee Spur Jn - Chislehurst Jn, note R7. The 375 and 376 are
+    // unrestricted on that same row, so this is a 377-only bar.
+    "GROVE PARK UP C.H.S": { line: 24809, deny: ["377"],
+      msg: "a Class 377 is not cleared for the Grove Park Up Sidings or the" +
+           " washer roads" },
+  };
+  /* Sidings that will not hold a 12-car Networker. Only the two whose bar
+     carries no road-number exception: the Appendix lets Dartford Up No. 1
+     and Plumstead No. 1 take twelve, and the reports never give a road
+     number, so listing those would flag lawful use. */
+  const SA_NO_12CAR = {
+    "SLADE GREEN UP C.H.S": { line: 9730,
+      msg: "the Slade Green Up Sidings will not hold 12 cars" },
+    "DARTFORD DOWN SIDINGS": { line: 9728,
+      msg: "the Dartford Down Sidings will not hold 12 cars" },
+  };
+  // 12-car Class 465, routes not permitted (SA 9718-9722). Only the limbs a
+  // destination code can settle; "via Herne Hill or Catford" and the New
+  // Beckenham spur need a route the reports do not carry.
+  const SA_NO_12CAR_DEST = {
+    VIC: { line: 9719, msg: "out of Victoria" },
+    BFR: { line: 9719, msg: "to Blackfriars" },
+    BMN: { line: 9721, msg: "on the Bromley North branch" },
+  };
+  /* Route clearance, modules KSWRC D2A (06/12/2025) and D2C (13/09/2025).
+     "N" in a class column means NO PUBLISHED CLEARANCE - the General Notes
+     allow separate authorisation - so the wording says "no clearance", never
+     "prohibited". Key: "<class>|<destination or section>". */
+  const SA_NO_CLEARANCE = {
+    "377|DVP": { line: 24897, msg: "no route clearance for a Class 377 to or" +
+      " from Dover Priory - barred through Priory Tunnel on the Up Chatham" +
+      " and again south of the station" },
+    "707|DVP": { line: 26094, msg: "no route clearance for a Class 707 on" +
+      " either approach to Dover Priory" },
+    "707|SSS": { line: 26091, msg: "no route clearance for a Class 707 to" +
+      " Sheerness-on-Sea" },
+    "707|MDW": { line: 26101, msg: "no route clearance for a Class 707 to" +
+      " Maidstone West" },
+    "707|TBW": { line: 26097, msg: "no route clearance for a Class 707 to" +
+      " Tunbridge Wells" },
+    "707|HGS": { line: 26100, msg: "no route clearance for a Class 707 to" +
+      " Hastings" },
+    "707|RAM": { line: 26014, msg: "no route clearance for a Class 707 beyond" +
+      " Ramsgate station" },
+  };
+  // A lone 2-car unit in passenger service may not work into Cannon Street
+  // (SO130 Cannon Street, line 16684). ECS is not caught.
+  const SA_LONE_2CAR_DEST = { CST: { line: 16684,
+    msg: "Cannon Street will not take a lone 2-car unit in passenger service" } };
+
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
@@ -509,6 +642,8 @@ return {
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  APPENDIX_NOTES, SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
+  SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   PROFILES,

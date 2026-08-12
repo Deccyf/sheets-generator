@@ -331,3 +331,20 @@ test("SPLITS follows where the units part, over the whole day", async () => {
   assert.equal(norm(flagOf("973")), "SPLITS PM", "parting at 20 55");
   assert.equal(norm(flagOf("975")), "", "never parting");
 });
+
+test("the Sectional Appendix checks flag a breach and stay quiet otherwise", async () => {
+  const N = built();
+  const S = await import("./helpers/synth.mjs");
+  const bad = N.GENIUS.buildIntegrale(
+    [S.APPENDIX_BREACH_SUMMARY, S.APPENDIX_BREACH_DETAIL]);
+  const msgs = norm(bad.reviews.metro.map(x => x.msg));
+  assert.ok(msgs.some(m => /12-car Networker must be three 4-car 465s/.test(m)),
+    "the make-up is flagged: " + msgs.join(" | "));
+  // …and an ordinary day trips none of them
+  const ok = N.GENIUS.buildIntegrale(
+    [S.REVERSED_ORDER_SUMMARY, S.REVERSED_ORDER_DETAIL]);
+  const all = [].concat(ok.reviews.main, ok.reviews.metro, ok.reviews.hs)
+    .map(x => x.msg);
+  assert.ok(!all.some(m => /Networker|no route clearance|will not hold|lone 2-car/.test(m)),
+    "nothing flagged on ordinary work: " + all.join(" | "));
+});

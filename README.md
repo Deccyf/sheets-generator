@@ -495,6 +495,37 @@ entry. The weekday layout adds a double rule at the section's biggest time gap
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.
 
+### Sectional Appendix checks and notes
+
+Two kinds of knowledge come out of the Kent / Sussex / Wessex Sectional
+Appendix, and they are kept apart on purpose.
+
+**Checks** fire on a single row and go on the Review tab with the day's other
+findings — *"a 12-car Networker must be three 4-car 465s with no 466 in the
+formation"*. Each is decidable from what the reports actually carry: the car
+count, the class, the section, the berthing road, the destination code, and
+whether the move is passenger or empty. Rules that turn on a platform number,
+a signal or a siding road number are **deliberately absent and must not be
+added** — the reports do not carry them, so such a rule would guess. Two bars
+were dropped for exactly that reason: the Appendix lets Dartford Up No. 1 and
+Plumstead No. 1 hold twelve cars, and without a road number the check would
+flag lawful use of the one road that is permitted. A silent miss is the right
+failure direction.
+
+Every check was counted against the real 12/08 and 10/08 books before it went
+in, and all seven are silent on both. One candidate — a length limit over the
+Hastings line — was dropped because it fired on the same routine working on
+both days; a rule that flags ordinary traffic teaches the reader to skip the
+whole list, which costs more than the rule saves.
+
+**Notes** are the standing per-book briefing on the *Watch for* tab: things
+worth knowing while checking a book rather than tests. Eight for the mainline
+book, nine for Metro, seven for High Speed, each quotable from the Appendix.
+
+The Appendix itself is not in the repository — it is a licensed Network Rail
+document. What is here is the extracted facts, with the source line recorded
+against each so any note can be taken back to the page it came from.
+
 ## Reference data — where the knowledge lives
 
 All of the tool's local knowledge lives in **one module — `src/data.js`
