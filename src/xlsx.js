@@ -236,13 +236,13 @@ function previewHtml(layout){
 }
 
 /* ==== weekday layout (ex ExcelJS glue) ==== */
-  function* entryRows(e, section) {
+  function* entryRows(e, section, allHc) {
     const src = e.units.length ? e.units[0].src_sheet : null;
     const stn = norm(sheetStation(src || e.pub.sheet));
     let originNote = SIDING_NOTES[stn] || "";
     if (section === "ORPINGTON") originNote = "";
     let hc = "";
-    if (HEADCODE_SECTIONS.has(section) && e.headcode) {
+    if ((allHc || HEADCODE_SECTIONS.has(section)) && e.headcode) {
       hc = e.headcode;
       const road = GP_ROAD[stn] || "";
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
@@ -288,7 +288,7 @@ function previewHtml(layout){
     });
   }
 
-  function sectionRows(rows, name, dateLbl, entries) {
+  function sectionRows(rows, name, dateLbl, entries, allHc) {
     rows.push({ kind: "hdr", name, date: dateLbl, merge: true });
     const flat = [];
     const tkey = e => {
@@ -312,7 +312,7 @@ function previewHtml(layout){
       if (e.flag && e.units.length > 1) {
         flagSpans.push([flat.length, e.units.length]);
       }
-      for (const v of entryRows(e, name)) flat.push(v);
+      for (const v of entryRows(e, name, allHc)) flat.push(v);
     });
     const spanStart = new Map(flagSpans);
     flat.forEach((v, idx) => {
@@ -331,7 +331,7 @@ function previewHtml(layout){
     rows.push({ kind: "gap" });
   }
 
-  function layoutSheet(secs, dateLbl, ram, fullOrder) {
+  function layoutSheet(secs, dateLbl, ram, fullOrder, allHc) {
     const rows = [];
     const order = ram ? ["RAMSGATE"] : (fullOrder || MAIN_ORDER);
     for (const name of order) {
@@ -344,13 +344,18 @@ function previewHtml(layout){
           norm(sheetStation(e.pub.sheet)).startsWith(name.split(" ")[0])));
       }
       if (!entries.length) continue;
-      if (name === "GROVE PARK") {
+      // Grove Park gets two tables in the mainline book - the overnight block
+      // first, then the rest. Only there: the 10/08 metro book this tool
+      // produced came back with the second GROVE PARK header struck out and
+      // its entry merged into the first.
+      if (name === "GROVE PARK" &&
+          fullOrder !== METRO_ORDER && fullOrder !== HS_ORDER) {
         const firstB = entries.filter(e => e.overnight);
         const second = entries.filter(e => !e.overnight);
-        if (firstB.length) sectionRows(rows, name, dateLbl, firstB);
-        if (second.length) sectionRows(rows, name, dateLbl, second);
+        if (firstB.length) sectionRows(rows, name, dateLbl, firstB, allHc);
+        if (second.length) sectionRows(rows, name, dateLbl, second, allHc);
       } else {
-        sectionRows(rows, name, dateLbl, entries);
+        sectionRows(rows, name, dateLbl, entries, allHc);
       }
     }
     return rows;
@@ -432,15 +437,16 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const splitRamsgate = opts.splitRamsgate !== false;
   const fullOrder = bookOrder(secsByDay, base, splitRamsgate);
   const dayKeys = ["M", "T", "W", "TH", "F"].filter(d => d in dateLabels);
+  const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
-    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder)),
+    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc)),
   }));
   return writeWorkbook(sheets, opts.zipFn || (f => fflate.zipSync(f, { level: 6 })));
 }
 
-function dayPreviewHtml(secs, label, ram, order) {
-  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order)));
+function dayPreviewHtml(secs, label, ram, order, allHc) {
+  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order, allHc)));
 }
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,

@@ -508,17 +508,23 @@ function generate(diags, prof, stabling, warn){
         if (onPlat) leaveStop = onPlat;
       }
       let exitStop = leaveStop;
-      if (prof.first_dep.has(sec)){
+      if (prof.first_dep_all || prof.first_dep.has(sec)){
         for (let k = a; k <= b; k++)
           if (stops[k].dep_idx !== null){ exitStop = stops[k]; break; }
       }
       const fmRow = rows[leaveStop.dep_idx];
       const ei = exitStop.dep_idx, er = rows[ei];
+      // The metro book is timed off the first move, but a unit that only
+      // runs empty into the platform alongside still shows where the
+      // service it forms is going. The two depot sections keep their own
+      // long-standing wording.
+      const di = (prof.first_dep_all && !prof.first_dep.has(sec))
+                 ? leaveStop.dep_idx : ei;
       const key = sec + "\u0000" + mins(er.dep) + "\u0000" + er.hc;
       let e = entries.get(key);
       if (!e){
         e = {sec, key, tmin:mins(er.dep), time_raw:er.dep, hc:er.hc,
-             dest_loc:legEnd(rows, ei), units:[], origins:new Set(),
+             dest_loc:legEnd(rows, di), units:[], origins:new Set(),
              exit_fm:new Map()};
         entries.set(key, e);
       }
@@ -701,7 +707,7 @@ const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
 const DAY_BREAKS = [12 * 60, 20 * 60];
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
-function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
+function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc){
   const banner = dateBits(dateStr).banner;
   const cells = [], merges = [], rowHeights = new Map();
   const at = new Map();                       // "r,c" -> cell
@@ -748,7 +754,7 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr){
         if (u.E) put(r, 5, u.E, 4);
         const parts = [];
         if (i === 0){
-          if (headcodeSections.has(sec) && e.hc) parts.push(e.hc);
+          if ((allHc || headcodeSections.has(sec)) && e.hc) parts.push(e.hc);
           if (e.attachment) parts.push("ATTACHMENT");
           if (e.note) parts.push(e.note);
         }
@@ -929,7 +935,8 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   return {name: nm, bytes: zipped};
 }
 
-function run(input, unzipFn, zipFn){
+function run(input, unzipFn, zipFn, opts){
+  const allHeadcodes = (opts && opts.allHeadcodes) || {};
   const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
   const mg = mergeDocs(inputs, unzipFn);
   const diags = mg.merged;
@@ -975,7 +982,8 @@ function run(input, unzipFn, zipFn){
     if (n === 0){ books.push({label:prof.label, road:prof.road, skipped:true}); continue; }
     const tag = prof.tag ? "_" + prof.tag : "";
     const name = "SHEETS" + tag + "_" + stamp + ".xlsx";
-    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr);
+    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr,
+                              !!allHeadcodes[prof.road]);
     const xlsx = buildBook(layout, zipFn);
     const nSecs = Object.keys(secs).length;
     books.push({label:prof.label, road:prof.road, name, xlsx, layout,

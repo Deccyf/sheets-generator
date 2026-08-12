@@ -15,7 +15,9 @@ jobs:
       - name: Build the single-file deliverable
         run: node build.mjs
       - name: Golden tests against the frozen legacy build
-        run: node --test test/
+        # `node --test test/` resolves test/ as a module and dies before it
+        # runs anything - use the same glob the npm script does.
+        run: node --test "test/**/*.test.mjs"
       - name: Upload built artifact
         uses: actions/upload-artifact@v4
         with:

@@ -49,11 +49,16 @@ const BERTH_SHEETS = {
   "GILLINGHAM UP SDGS": ["GILLINGHAM", "GI", "UP SDGS", "GI"],
   "GILLINGHAM UP SIDINGS": ["GILLINGHAM", "GI", "UP SDGS", "GI"],
   "GILLINGHAM": ["GILLINGHAM", "GLM", null, "GLM"],
-  "GROVE PARK C.S.D": ["GROVE PARK", "GP", "SD", "GPK"],
-  "GROVE PARK DOWN CHS": ["GROVE PARK", "GPD", "DN", "GPK"],
-  "GROVE PARK UP C.H.S": ["GROVE PARK", "GPU", "UP", "GPK"],
-  "GROVE PARK UP HEADSHUNT": ["GROVE PARK", "GP", null, "GPK"],
-  "GROVE PARK DPT CTRY ED EXT": ["GROVE PARK", "GP", null, "GPK"],
+  // A train booked into one of the depot roads is destined GPD - Grove Park
+  // depot. GPK is Grove Park the station, and only a service that terminates
+  // there gets it (the books use both: SLADE GREEN 18+04 and 22+35 print GPD
+  // for the depot, GROVE PARK 15+32 prints GPK for the station).
+  "GROVE PARK C.S.D": ["GROVE PARK", "GP", "SD", "GPD"],
+  "GROVE PARK DOWN CHS": ["GROVE PARK", "GPD", "DN", "GPD"],
+  "GROVE PARK UP C.H.S": ["GROVE PARK", "GPU", "UP", "GPD"],
+  "GROVE PARK UP HEADSHUNT": ["GROVE PARK", "GP", null, "GPD"],
+  "GROVE PARK DPT CTRY ED EXT": ["GROVE PARK", "GP", null, "GPD"],
+  "GROVE PARK DPT LNDN ED EXT": ["GROVE PARK", "GP", null, "GPD"],
   "GROVE PARK": ["GROVE PARK", "GP", null, "GPK"],
   "HASTINGS": ["HASTINGS", "HGS", null, "HGS"],
   "HASTINGS PARK SIDINGS": ["HASTINGS", "HGS", null, "HGS"],
@@ -171,6 +176,13 @@ const SIDING_CLASS_RE = new RegExp(
     TONBDMS: "Tonbridge DM Siding", TONBPMY: "Tonbridge Jub Sdgs",
     TONBDG: "Tonbridge", GRVPCSD: "Grove Park C.S.D",
     GRVPKDS: "Grove Park Down CHS", GRVPKUS: "Grove Park Up C.H.S",
+    // The depot extensions and headshunts: the CSV export truncates their
+    // names to 16 characters ("Grove Park Dpt C", "Slade Green Dpt"), which
+    // matches nothing, so name them here as the berth tables spell them.
+    GRVPDCE: "Grove Park Dpt Ctry Ed Ext",
+    GRVPDLE: "Grove Park Dpt Lndn Ed Ext",
+    GRVPUHS: "Grove Park Up Headshunt",
+    SLADGEH: "Slade Green Dpt East Hshnt",
     SLADEGD: "Slade Green T&R.S.M.D", SLADGUS: "Slade Green Up C.H.S",
     DARTFUS: "Dartford Up Sidings", DARTFDS: "Dartford Down Sidings",
     DARTFD: "Dartford", PLMSTCS: "Plumstead C.H.S", ORPNGTN: "Orpington",
@@ -193,7 +205,8 @@ const SIDING_CLASS_RE = new RegExp(
   const STABLE_CODES = new Set(["ASHFDNS", "ASHFUPS", "ASHFEBS", "ASHFDYW",
     "ASHFDY", "VICTGCS", "GLNGDEP", "GLNGMUS", "RAMSGTD", "RAMSNEW",
     "DOVERPS", "FAVRUPS", "FAVRBRD", "HASTPSD", "STLNWCS", "TONBDMS",
-    "TONBPMY", "GRVPCSD", "GRVPKDS", "GRVPKUS", "SLADEGD", "SLADGUS",
+    "TONBPMY", "GRVPCSD", "GRVPKDS", "GRVPKUS", "GRVPDCE", "GRVPDLE",
+    "GRVPUHS", "SLADGEH", "SLADEGD", "SLADGUS",
     "DARTFUS", "DARTFDS", "PLMSTCS", "ORPNDSG", "BELNGMS", "SIDCUPS",
     "FLKSETR"]);
   // corrections learned from the hand-built sheets: these beat whatever
@@ -203,17 +216,128 @@ const SIDING_CLASS_RE = new RegExp(
     "FOLKESTONE EAST": "FKE", "FOLKESTONE ETR": "FKE", "MINSTER THANET": "MSR",
     "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
   const FIX_CODE = { GLU: "GIU" };
+  /* Formations the reports cannot place. Position says where a unit sits in
+     its own diagram's formation, not which way that formation is facing, and
+     nothing in either export says which way round it was left standing:
+     Grove Park 05+19 (SG809/SG810) and 05+48 (SG813/SG814) are identical in
+     every field of both exports and want opposite orders. Where the books
+     disagree with the section's rule, name the diagrams here and the order is
+     taken verbatim.
+
+     Key: the section, optionally a space and the entry's own time, then "|"
+     and the diagram numbers as the sheet prints them, sorted. The timed form
+     is looked up first. Give a time only when the same formation reads one
+     way earlier in the day and the other way later - RM101/RM102 leave
+     Ashford 102 first at 05 05 and 101 first at 15+43, and GT127/GT128 leave
+     Victoria 128 first at 05+50 and 127 first at 17 14. Everything else
+     holds all day and is better named without a time, so it still applies
+     when the timetable moves the working by a few minutes.
+
+     The mainline entries are taken from the hand-written book for 12/08. The
+     Metro ones are corrections marked on a book this tool produced for 10/08
+     and then put right by hand: six formations, each moved the same way
+     everywhere it appears, which is what an orientation correction looks
+     like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
+     ones, so the shared section names are safe. */
+  const ORDER_FIX = {
+    "ASHFORD|004,905": ["004", "905"],
+    "ASHFORD|114,115": ["115", "114"],
+    "ASHFORD|301,901,902": ["901", "902", "301"],
+    "ASHFORD 15+43|101,102": ["101", "102"],
+    "DOVER PRIORY|013,014": ["014", "013"],
+    "FAVERSHAM|019,020": ["020", "019"],
+    "GROVE PARK|021,022": ["022", "021"],
+    "GROVE PARK|118,119": ["118", "119"],
+    "HASTINGS|029,030": ["030", "029"],
+    /* Ramsgate reads six formations lowest-Position-first and these five
+       highest-first, so the section keeps the ascending rule and the five are
+       named. Confirmed twice over: they are the five the 12/08 Ramsgate book
+       prints backwards from the tool, and the same five a tester marked up
+       off a later day. */
+    "RAMSGATE|043,044,910": ["910", "044", "043"],
+    "RAMSGATE|045,911,912": ["045", "912", "911"],
+    "RAMSGATE|052,053": ["053", "052"],
+    /* No section: this formation reads the same way wherever it turns up.
+       RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
+       and again in the mainline book off Grove Park at 16+13 - the same three
+       units, the same way round, hours apart. A tester found Grove Park the
+       other way on a later day, when the Position field had moved under it,
+       so the order is pinned to the formation rather than re-derived per
+       section. Only use a bare key where the order really is the same
+       everywhere: RM043/RM044 read one way at Grove Park and the other at
+       West Marina, and would be wrong pinned. */
+    "046,047,913": ["913", "047", "046"],
+    "RAMSGATE|907,908,909": ["909", "908", "907"],
+    "VICTORIA 17 14|127,128": ["127", "128"],
+    // Metro, from the marked-up 10/08 book
+    "BELLINGHAM SIDING|461,462": ["461", "462"],
+    "CANNON STREET|403,404": ["403", "404"],
+    "CANNON STREET|405,406": ["405", "406"],
+    "GILLINGHAM|201,422": ["422", "201"],
+    "GROVE PARK|204,440,441": ["204", "440", "441"],
+    "SLADE GREEN|201,422": ["422", "201"],
+    "SLADE GREEN|204,440,441": ["204", "440", "441"],
+    "SLADE GREEN|403,404": ["403", "404"],
+    "SLADE GREEN|405,406": ["405", "406"],
+    "SLADE GREEN|461,462": ["461", "462"],
+    "SLADE GREEN|465,466": ["465", "466"],
+  };
+
   // ---- fleet profiles (the weekend PROFILES, verbatim strings) ----
+  // posAsc: sections that list units LOWEST Summary Position first. The rest
+  // list highest first.
+  //
+  // The sheets list a formation in physical order, and a unit's Position is
+  // fixed to its diagram for the whole day - so which end of the formation
+  // carries Position 1 depends on which way it is facing, and that turns out
+  // to be a property of the section. The same pair reads ascending at Dover
+  // Priory and descending at Ashford and Victoria. This list is what the
+  // 10/08 books say, section by section; nothing in the reports predicts it,
+  // so it is house knowledge like the berth tables.
+  //
+  // Checked against the real book for 12/08: Folkestone East, Grove Park,
+  // Slade Green, Hastings, Dover Priory and Gillingham list lowest first;
+  // Victoria, West Marina, Orpington and Ashford list highest first.
+  // The metro and High Speed books have not been checked; they list highest
+  // Position first throughout.
+  //
+  // roadPosAsc: individual berthing roads that face the other way to the rest
+  // of their section, and so read the other way round. A road named here
+  // beats its section's rule. Ashford's Up Sidings are the case the 12/08
+  // book proves: every departure off the Down Sidings lists highest Position
+  // first, and all three off the Up Sidings list lowest first.
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
+      // Ramsgate is NOT here. Its own book prints every coupled formation
+      // highest Position first - all five in the 12/08 book, and a tester
+      // flagged the same five off a later day. It was on this list until the
+      // Ramsgate book was compared against its real counterpart, which had
+      // never been done: every accuracy figure before that was the mainline
+      // book with Ramsgate cut out.
+      posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
+        "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
+      roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),
+      // Tonbridge and Faversham look like first-departure sections in the
+      // book - it times them off the berth, not the platform a minute later
+      // - but firstDep is the wrong tool: it takes the first move of the
+      // whole stint, and RM302 comes off the Back Road at 05:29 before the
+      // Up Sidings departure at 05:36 that the book actually uses. Adding
+      // them here costs more entries than it wins.
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["WEST MARINA", "GROVE PARK", "SLADE GREEN"]) },
     { bucket: "metro", fleets: { "465/9": "4 465", "465/0": "4 465",
         "466/0": "2 466", "707/0": "5 707" },
+      // metro house rule: every entry is timed off the first time the unit
+      // moves, so an empty run out of the sidings is the time on the sheet.
+      // A platform starter's first move IS its platform departure, so those
+      // keep the platform time.
+      firstDepAll: true,
+      posAsc: new Set(), roadPosAsc: new Map(),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
+      posAsc: new Set(), roadPosAsc: new Map(),
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
   // A home berthing siding splits the diagram whenever the identity
@@ -222,7 +346,149 @@ const SIDING_CLASS_RE = new RegExp(
   // Ashford rows prove it). Only the SHUNT SPURS - places that host
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
+
+  /* ==== Sectional Appendix ==========================================
+     Kent / Sussex / Wessex Routes Sectional Appendix, June 2026. Two
+     kinds of knowledge come out of it.
+
+     APPENDIX_NOTES are standing notes per book - things worth carrying
+     in your head while checking a book, not tests. SA_* below are the
+     checks: conditions decidable from what the reports actually carry,
+     which is the car count, the class, the section, the berthing road,
+     the destination code and whether the move is passenger or empty.
+
+     Rules that turn on a platform number, a signal or a siding road
+     number are deliberately absent and must not be added - the reports
+     do not carry them, so such a rule would guess, and a review note
+     that cries wolf teaches the reader to skip the whole list. Every
+     check here was counted against the real 12/08 and 10/08 books
+     before it went in; all seven are silent on both.                */
+
+  const APPENDIX_NOTES = {
+    main: [
+      ["Grove Park sidings and the 377/5",
+       "Table D2A puts R7 against the 377 on the Lee Spur Jn - Chislehurst Jn row: prohibited Grove Park Up and Down Washer line and Up sidings. The 375 and 376 are plain Y on that same row, so a 377/5 shown on the washer road or in an Up siding is a query - it belongs in a Down siding."],
+      ["Dover is ECS only for a 376",
+       "A 376 is barred between Folkestone East and Dover Substation, and between Dover Priory and the change of mileage, when laden; the leg beyond the change of mileage is marked E, ECS and transit only. Anything that puts a 376 at Dover needs both legs checked - it can get there empty, not in service."],
+      ["Where you may stand on a running line",
+       "Away from terminal platforms and dead-end bays, this book's only running-line berths are the Ashford Down and Up loops, Dover Priory Up platform loop, the Faversham Down and Up platform loops, Folkestone East Nos. 1, 2 and 3 Train Roads, Gillingham Up platform loop, Hastings No. 4, Ramsgate Nos. 1 and 4, Strood Up Loop and Tonbridge Up platform Loop No. 1. Anything else left standing on a running line is not a berth."],
+      ["Two hours is not a berth",
+       "Ashford 2 and 5, Dover Priory 1 and 2, Hastings 2 and 3 and Ramsgate 2 and 3 carry a two-hour driverless immobilisation and nothing longer. A second list - Faversham 2 and 3, Gillingham 2 and 3, Orpington 2 to 5, Strood 1 and 2, Tonbridge 2 and 3 - is the same two hours but for engineering works and emergencies only. Neither one makes an overnight stand."],
+      ["Hastings line, south of Tunbridge Wells",
+       "Between Tunbridge Wells and Bo Peep Jn electric trains must not exceed 8 cars or a conductor rail current index of 8, unless Network Rail Control authorises it. Eight cars is the length ceiling; the index is a separate test, and this Appendix gives the limit without giving the per-unit figures, so check the index elsewhere rather than assuming it follows from the car count. Twelve coaches are permitted only between Tunbridge Wells station and its turnback siding. At Hastings itself, platform 1 is 8 cars in 167 metres."],
+      ["West Marina and the 376",
+       "The 376 column reads N - no published clearance - from Willingdon Jn to the St Leonards LMD connection, where 375 and 377 are both Y. From the LMD connection through Bo Peep to Hastings the 376 is cleared, so a 376 at West Marina has to come and go via Hastings rather than the Eastbourne side."],
+      ["Dover Priory platform lengths",
+       "Platform 1 is the only twelve at Dover Priory; platform 2 holds ten and platform 3 eight. The single running-line berth on the station is the Up platform loop."],
+      ["Victoria platforms 5 and 6",
+       "Attaching or detaching to make a 12-car formation is prohibited in Victoria platforms 5 and 6 - permissive working there is allowed provided the result is not twelve. Platforms 3 and 4 are 8-car roads, 188.0 and 201.0 metres."]
+    ],
+    metro: [
+      ["A 12-car Networker is three 465s",
+       "Twelve cars must be 3 x 4-car 465s coupled together, with no 466 anywhere in the formation. A 12-car row reading 465 + 465 + 466 is wrong before the berth comes into it."],
+      ["Sidings closed to 12-car Networkers",
+       "Dartford Up and Down sidings are out apart from No. 1 road in the Up sidings, Slade Green Up sidings take none at all, and Plumstead No. 1 road will hold twelve only with a shunter on hand."],
+      ["Networker platform lengths",
+       "Where the capacity table prints 10/8 (N), the (N) figure is the one that applies to 365, 465 and 466. Grove Park platform 1, Bromley North 1 and 2, and Sundridge Park 1 and 2 are all 10/8 (N) - eight cars for a Networker, whatever a 375 would fit."],
+      ["Charing Cross 4, 5 and 6",
+       "Twelve-car Networker work belongs in platforms 1, 2 or 3; 4, 5 and 6 are not long enough. Where two trains share one of those platforms and the second one in is a 465 or 466, the total must not exceed ten vehicles."],
+      ["Routes barred to 12-car Networkers",
+       "Twelve cars are shut out of everything from Victoria or Blackfriars, any station via Herne Hill or Catford, the Bromley North branch and the New Beckenham spur. They also must not call at Woolwich Dockyard in either direction, or at Grove Park platforms 1 and 2, which have no 12-car DOO equipment."],
+      ["Grove Park, up side to down side",
+       "Twelve-car trains must not be shunted between the Up and Down sidings at Grove Park - L1299, at the country end of Hither Green platform 3, cannot be sighted for the move. A twelve that goes in one side has to come back out the way it went in."],
+      ["A 466 working alone",
+       "A single 2-car unit in passenger service must not work into Cannon Street; the same unit as ECS is not caught. Conductor rail gapping also means a single 2-car EMU must not be routed from signal EK4157 to Rainham platforms 0 or 1 - which bites, because the Up Rainham Bay platform No. 0 is on the berthing list, so a lone 466 stabled there reads legal and is not."],
+      ["Class 707 clearance",
+       "The 707 shows E - ECS and transit, self powered - over Gillingham to Western Jn, Faversham Jn to Ramsgate station, Sevenoaks Substation through both Tonbridge junctions, Swanley Jn to Fawkham Jn to Rochester Bridge Jn, and Grove Park to Bromley North. Past Ramsgate station towards the substation it is N, no clearance in any mode. A 707 can be positioned over those legs light; diagrammed in service it is a clearance breach."],
+      ["Two hours without a driver",
+       "Dartford 2, 3 and 4, Grove Park 1 and Ramsgate 2 and 3 are where a 465, 466 or 707 may stand immobilised for up to two hours with nobody on board. Orpington 2 to 5 and Gillingham 2 and 3 appear only on the second list, which is engineering works and emergencies. None of them is an overnight berth."]
+    ],
+    hs: [
+      ["Ashford platforms for a 395",
+       "Platform 1, the Up platform loop, is prohibited on both SO130 Ashford rows, and the 465 and 466 are plain Y there - the restriction is the 395's. Platforms 3 and 4 take no domestic passenger service. That leaves 2, 5 and 6, all twelve-car roads."],
+      ["Changing over at Ashford",
+       "AC to DC and back has to be done standing at the platform - not on the move, not at a signal."],
+      ["Berthing at Ramsgate",
+       "Nos. 1 and 4 are the only running lines at Ramsgate a train may be berthed on."],
+      ["What a 395 may stand on at Faversham",
+       "On a running line the berth is the Down or Up platform loop. Up Sidings 1, 2 and 3 are open to the 395, which is on the authorised class list. Platforms 2 and 3 are not a berth at all - they appear only on the engineering-works-and-emergencies list, and that buys two hours."],
+      ["Canterbury West",
+       "The Down Loop Line is the only running line at Canterbury West a train may be berthed on, and both platforms are eight-car - 159.6 and 166.6 metres, against twelve at Ashford, Faversham and Ramsgate. The Appendix gives lengths and says nothing about selective door opening, so treat this as something to check rather than a bar."],
+      ["Two hours without a driver",
+       "Ashford 2 and 5, Margate 2 and Ramsgate 2 and 3 are the platforms on this route where a unit may be left immobilised for up to two hours with nobody on board. Faversham 2 and 3 and Canterbury West carry the same two hours for engineering works and emergencies only. Anything longer, or anywhere else, needs a driver on the train."],
+      ["DOO(P) routes the 395 has to itself",
+       "Ashford to Ramsgate, Dover Priory to Minster East Jn and Minster South Jn to Minster West Jn are cleared for driver-only passenger working by Class 395 alone."]
+    ],
+  };
+
+  // "4 375-9" -> "375", "2 466" -> "466", "5 707" -> "707"
+  const SA_CLASS_RE = /^\d+\s+(\d{3})/;
+  // Berths where the Appendix names who may stand there.
+  const SA_BERTH_CLASS = {
+    "FAVERSHAM UP SIDINGS": { line: 16677,
+      allow: ["375", "376", "377", "395", "465", "466"],
+      msg: "only Classes 375, 376, 377, 395, 465 and 466 are authorised to" +
+           " berth in the Faversham Up Sidings" },
+    // Table D2A, Lee Spur Jn - Chislehurst Jn, note R7. The 375 and 376 are
+    // unrestricted on that same row, so this is a 377-only bar.
+    "GROVE PARK UP C.H.S": { line: 24809, deny: ["377"],
+      msg: "a Class 377 is not cleared for the Grove Park Up Sidings or the" +
+           " washer roads" },
+  };
+  /* Sidings that will not hold a 12-car Networker. Only the two whose bar
+     carries no road-number exception: the Appendix lets Dartford Up No. 1
+     and Plumstead No. 1 take twelve, and the reports never give a road
+     number, so listing those would flag lawful use. */
+  const SA_NO_12CAR = {
+    "SLADE GREEN UP C.H.S": { line: 9730,
+      msg: "the Slade Green Up Sidings will not hold 12 cars" },
+    "DARTFORD DOWN SIDINGS": { line: 9728,
+      msg: "the Dartford Down Sidings will not hold 12 cars" },
+  };
+  // 12-car Class 465, routes not permitted (SA 9718-9722). Only the limbs a
+  // destination code can settle; "via Herne Hill or Catford" and the New
+  // Beckenham spur need a route the reports do not carry.
+  const SA_NO_12CAR_DEST = {
+    VIC: { line: 9719, msg: "out of Victoria" },
+    BFR: { line: 9719, msg: "to Blackfriars" },
+    BMN: { line: 9721, msg: "on the Bromley North branch" },
+  };
+  /* Route clearance, modules KSWRC D2A (06/12/2025) and D2C (13/09/2025).
+     "N" in a class column means NO PUBLISHED CLEARANCE - the General Notes
+     allow separate authorisation - so the wording says "no clearance", never
+     "prohibited". Key: "<class>|<destination or section>". */
+  const SA_NO_CLEARANCE = {
+    "377|DVP": { line: 24897, msg: "no route clearance for a Class 377 to or" +
+      " from Dover Priory - barred through Priory Tunnel on the Up Chatham" +
+      " and again south of the station" },
+    "707|DVP": { line: 26094, msg: "no route clearance for a Class 707 on" +
+      " either approach to Dover Priory" },
+    "707|SSS": { line: 26091, msg: "no route clearance for a Class 707 to" +
+      " Sheerness-on-Sea" },
+    "707|MDW": { line: 26101, msg: "no route clearance for a Class 707 to" +
+      " Maidstone West" },
+    "707|TBW": { line: 26097, msg: "no route clearance for a Class 707 to" +
+      " Tunbridge Wells" },
+    "707|HGS": { line: 26100, msg: "no route clearance for a Class 707 to" +
+      " Hastings" },
+    "707|RAM": { line: 26014, msg: "no route clearance for a Class 707 beyond" +
+      " Ramsgate station" },
+  };
+  // A lone 2-car unit in passenger service may not work into Cannon Street
+  // (SO130 Cannon Street, line 16684). ECS is not caught.
+  const SA_LONE_2CAR_DEST = { CST: { line: 16684,
+    msg: "Cannon Street will not take a lone 2-car unit in passenger service" } };
+
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
+  /* Sections that share one berthing area. A unit still on a berth at 20 00
+     has ended its day there whatever a late working does with it afterwards -
+     but only while it stays in the area: a unit shut in the St Leonards shed
+     and shunted out to Hastings for the night is still a shed unit, and the
+     12/08 book prints XSE for all twelve of them. A late run OUT of the area
+     is the unit going home, and the book follows it: GT105/GT106 off Ashford
+     East to the Folkestone Train Roads print FKE, and RM301 off Ramsgate to
+     Gillingham prints GI. */
+  const BERTH_AREAS = [new Set(["WEST MARINA", "HASTINGS"])];
   const END_MARKERS_GENIUS = {
     "DOVER PRIORY": {
       fke: "FKE END", cbe: "CBE END",
@@ -383,6 +649,8 @@ const PROFILES = [
   fleets:{"465/9":"4 465","466/0":"2 466","707/0":"5 707"},
   sections:METRO,
   headcode_sections:new Set(["GILLINGHAM","GROVE PARK","SLADE GREEN","VICTORIA"]),
+  // metro house rule: time every entry off the first move (see PROFILES_G)
+  first_dep_all:true,
   first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
   ecs_only_ok:new Set(["GROVE PARK","SLADE GREEN"])},
  {tag:"395", label:"395", road:"High Speed",
@@ -398,10 +666,12 @@ return {
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, END_MARKERS_GENIUS,
+  PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  APPENDIX_NOTES, SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
+  SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
-  MAINLINE, METRO, HIGHSPEED, PROFILES,
+  PROFILES,
 };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_DATA;

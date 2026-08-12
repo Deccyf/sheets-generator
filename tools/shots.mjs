@@ -1,20 +1,16 @@
-import { createRequire } from "node:module";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { loadSandbox } from "../test/helpers/sandbox.mjs";
 import { makePdf, makeDocx, SUMMARY_LINES, DETAIL_LINES, PRINTS_LINES,
          REISSUE_LINES } from "../test/helpers/synth.mjs";
-const require = createRequire("/opt/node22/lib/node_modules/playwright/");
-const { chromium } = require("playwright");
-const BUILT = fileURLToPath(new URL("../Sheets Generator.html", import.meta.url));
+import { BUILT, BUILT_URL, launch } from "./browser.mjs";
 const ctx = loadSandbox(BUILT);
 const dir = mkdtempSync(join(tmpdir(), "sheets-shots-"));
 const f = (n, b) => { const p = join(dir, n); writeFileSync(p, b); return p; };
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 860, height: 980 } });
-await page.goto("file://" + BUILT.replace(/ /g, "%20"));
+await page.goto(BUILT_URL);
 await page.evaluate(() => window.scrollTo(0, 0));
 await page.waitForTimeout(200);
 await page.screenshot({ path: "tools/shot-1-header.png" });

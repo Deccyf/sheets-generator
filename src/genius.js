@@ -5,9 +5,11 @@
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, PROFILES_G } = SHEETS_DATA;
+          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
+          SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
+          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
-  const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
+  const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
   function latin(u8) {
@@ -123,6 +125,15 @@ const GENIUS = (() => {
   // ---- locations ----
   const locName = s => CODE2NAME[s.code] || s.name;
   const berthInfo = s => SHEETS_CORE.BERTH_SHEETS[SHEETS_CORE.norm(locName(s))] || null;
+  // The section a location berths into, without asking the resolver - used
+  // only to compare two locations, so an unknown name standing for itself is
+  // as good an answer as any.
+  const areaOf = s => {
+    const bi = berthInfo(s);
+    return (bi && bi[0]) || SHEETS_CORE.norm(locName(s));
+  };
+  const sameArea = (a, b) =>
+    a === b || BERTH_AREAS.some(g => g.has(a) && g.has(b));
   const SE = () => (typeof SheetsEngine !== "undefined" ? SheetsEngine : null);
   // Sidings, depots and sheds only — see data.js STABLE_CODES.
   const isStabling = s => STABLE_CODES.has(s.code) ||
@@ -224,7 +235,26 @@ const GENIUS = (() => {
   function buildDate(date, sumRows, details, prof, warn) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
-    for (const r of sumRows) summ.set(r.diag, r);
+    // The Genius summary carries one row per working, and a unit's Position
+    // changes as the day goes on - it can be first out of the sidings and
+    // second by the time it leaves the platform. Keep every row, in order.
+    for (const r of sumRows) {
+      if (!summ.has(r.diag)) summ.set(r.diag, []);
+      summ.get(r.diag).push(r);
+    }
+    for (const rows of summ.values())
+      rows.sort((x, y) => sortkey(x.start) - sortkey(y.start));
+    // Position for a working that departs at t: the row covering it, else the
+    // last one to have started. (An Integrale export has a single row per
+    // diagram, so this always lands on it.)
+    const posAt = (rows, t) => {
+      const k = sortkey(t);
+      for (const r of rows)
+        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r.pos;
+      let best = rows[0];
+      for (const r of rows) if (sortkey(r.start) <= k) best = r;
+      return best.pos;
+    };
     const autoSec = new Map();
     const secOf = (stop, endpoint) => {
       const bi = berthInfo(stop);
@@ -243,14 +273,15 @@ const GENIUS = (() => {
     };
     // scope + stints
     for (const [diag, raw] of details) {
-      const sr = summ.get(diag);
+      const srs = summ.get(diag);
+      const sr = srs && srs[0];
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
       const bnd = boundaries(stops);
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
-      meta.set(diag, { stops, stints, sum: sr });
+      meta.set(diag, { stops, stints, sum: sr, sums: srs });
     }
     const entries = new Map();
     for (const [diag, m] of meta) {
@@ -299,37 +330,66 @@ const GENIUS = (() => {
         leaveIdx = lastGood;
         if (leaveIdx === null) continue;
         let exitIdx = leaveIdx;
-        if (prof.firstDep.has(sec)) {
+        if (prof.firstDepAll || prof.firstDep.has(sec)) {
           for (let k = a; k <= b; k++) if (stops[k].dep !== null) { exitIdx = k; break; }
         }
+        // The metro book is timed off the first move, but a unit that only
+        // runs empty from its berth into the platform alongside still shows
+        // where the service it forms is going - the destination and the
+        // route stay with the working leg out of the section. The two depot
+        // sections keep their own long-standing wording.
+        const destIdx = prof.firstDepAll && !prof.firstDep.has(sec)
+          ? leaveIdx : exitIdx;
         const er = stops[exitIdx];
         const key = sec + "\u0000" + (er.dep % 1440) + "\u0000" + (er.hcOut || "");
         let e = entries.get(key);
         if (!e) {
           e = { sec, tmin: er.dep, hc: er.hcOut, hc0: stops[a].hcOut,
-                destStop: legEnd(stops, exitIdx),
-                route: legRoute(stops, exitIdx), units: [], origins: new Set() };
+                destStop: legEnd(stops, destIdx),
+                route: legRoute(stops, destIdx), units: [], origins: new Set() };
           entries.set(key, e);
         }
         e.units.push({ diag, si, exitIdx });
         e.origins.add(core.norm(locName(origin)));
       }
     }
+    /* Where these units part company: the first point their itineraries stop
+       being the same train. Two diagrams worked as one formation carry
+       identical rows until they divide, so the first row that differs is the
+       parting - and if one simply runs out first, that is where it left. */
+    function partsAt(diags) {
+      const seqs = diags.map(d => (meta.get(d) || {}).stops).filter(Boolean);
+      if (seqs.length !== diags.length || seqs.length < 2) return null;
+      const key = s => s.code + "@" + s.arr + "/" + s.dep + "/" + (s.hcOut || "");
+      const n = Math.min(...seqs.map(s => s.length));
+      for (let i = 0; i < n; i++)
+        if (new Set(seqs.map(s => key(s[i]))).size !== 1) {
+          const s = seqs[0][i];
+          return s.dep !== null ? s.dep : s.arr;
+        }
+      if (new Set(seqs.map(s => s.length)).size === 1) return null;
+      const short = seqs.reduce((a, b) => a.length <= b.length ? a : b);
+      const last = short[short.length - 1];
+      return last.arr !== null ? last.arr : last.dep;
+    }
     // per-unit derivations
     for (const e of entries.values()) {
       const blocks = [];
       for (const u of e.units) {
         const m = meta.get(u.diag);
-        const { stops, stints, sum } = m;
+        const { stops, stints, sum, sums } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
-        // finalBerth: still on a berth at 20 00 = the PM end point
+        // finalBerth: still on a berth at 20 00 = the PM end point, as long
+        // as the late working keeps the unit in the same berthing area (see
+        // BERTH_AREAS). A run out of the area is the unit going home for the
+        // night, and the sheets follow it there.
         const lastStint = stints[stints.length - 1];
         const lb = stops[lastStint[0]], lastStop = stops[stops.length - 1];
-        let fbLoc = lastStop, insteadOf = null;
-        if (stints.length && core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
-            lb.dep !== null && sortkey(lb.dep) >= PM_BREAK) {
-          fbLoc = lb; insteadOf = lastStop;
-        }
+        const lateMove = !!stints.length &&
+          core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
+          lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
+        const fbLoc = lateMove && sameArea(areaOf(lb), areaOf(lastStop))
+          ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
@@ -340,7 +400,9 @@ const GENIUS = (() => {
         } else {
           D = secOf(later[0], false) !== null ? bcode(locName(later[0]), warn, u.diag) : "";
           E = fc;
-          if (insteadOf && u.si + 1 === stints.length - 1) D = "";
+          // The berth the unit sits on into the night is its PM one wherever
+          // it ends up afterwards, so the AM column stays empty for it.
+          if (lateMove && u.si + 1 === stints.length - 1) D = "";
         }
         let paxAfter = false;
         for (let i = u.exitIdx + 1; i < stops.length; i++) {
@@ -352,14 +414,41 @@ const GENIUS = (() => {
         // later parting is SPLITS PM business, settled by D/E
         const bEnd = stops[stints[u.si][1]];
         const path = bEnd.code + "@" + (bEnd.arr !== null ? bEnd.arr : bEnd.dep);
-        blocks.push({ diag: u.diag, si: u.si, pos: sum.pos, D, E,
+        blocks.push({ diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path,
                       later: later.length > 0 });
       }
-      if (e.sec === "FOLKESTONE EAST")
-        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag < y.diag ? -1 : 1));
+      // Which unit leads: the whole ordering mirrors with the book's posAsc
+      // (see the fleet profiles), diagram number included - it is only a
+      // fallback for units the Position field cannot separate. A road that
+      // faces the other way to the rest of its section overrides it, so long
+      // as the whole formation came off that one road.
+      const road = e.origins.size === 1 ? [...e.origins][0] : null;
+      const byRoad = road === null ? undefined
+        : (prof.roadPosAsc || new Map()).get(road);
+      if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
+        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      // A formation the books say the reports get the wrong way round: the
+      // order is taken verbatim (see ORDER_FIX). A formation that reads one
+      // way in the morning and the other in the afternoon is named with its
+      // time; one that holds all day is named without.
+      {
+        const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
+        const fix = ORDER_FIX[e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags] ||
+                    ORDER_FIX[e.sec + "|" + diags] ||
+                    ORDER_FIX[diags];
+        if (fix) blocks.sort((x, y) =>
+          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
+      }
+      // Two units on the same Position started the day in different
+      // formations, so the reports cannot say which way round they go.
+      if (blocks.length > 1 &&
+          new Set(blocks.map(x => x.pos)).size !== blocks.length)
+        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+          blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
+          " the reports cannot say which way round they go, so check the order" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
       // (the manual's 07 55 row: GT117 listed, GT116 attaching from the
@@ -369,12 +458,20 @@ const GENIUS = (() => {
         e.blocks = blocks.filter(x => x.si === 0);
         e.attachment = true;
       } else e.blocks = blocks;
-      let splits = false;
-      if (blocks.length > 1) {
-        const p0 = blocks[0].path;
-        if (!blocks.every(x => x.path === p0)) splits = true;
+      // SPLITS is about the units parting company, and the books take that
+      // from the whole day rather than from where this stint happens to end:
+      // GT107/GT108 run as one train from Ashford at 06 40 to the same berth
+      // and back out again, and part at Maidstone East at 18 12 - the book
+      // flags the 06 40. "PM" says the parting is still to come this
+      // evening, so an entry that is itself in the afternoon just says
+      // SPLITS.
+      {
+        const t = partsAt(e.blocks.map(x => x.diag));
+        const parting = t !== null && sortkey(t) > sortkey(e.tmin);
+        e.splits_pm = parting && sortkey(t) >= PM_BREAK &&
+                      sortkey(e.tmin) < AM_CUTOFF;
+        e.splits = parting && !e.splits_pm;
       }
-      e.splits = splits;
       e.attachment = e.attachment || e.origins.size > 1;
       if (!e.attachment) {
         const inUnits = new Set(e.units.map(u => u.diag));
@@ -452,8 +549,6 @@ const GENIUS = (() => {
     for (const e of entries.values()) {
       for (const x of e.blocks)
         if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";
-      const pairs = new Set(e.blocks.map(x => x.D + "\u0000" + x.E));
-      e.splits_pm = !e.splits && e.blocks.length > 1 && pairs.size > 1;
       if (e.suppress)
         warn.push({ sec: e.sec,
                   msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
@@ -499,6 +594,59 @@ const GENIUS = (() => {
   /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
      over parsed summary rows + detail itineraries, whatever their source. */
   function assemble(sumRows, byDate, extraNotes) {
+    /* Sectional Appendix checks. Each one is decidable from what the reports
+       carry - car count, class, berthing road, destination, and whether the
+       move is passenger or empty - and each was counted against the real
+       12/08 and 10/08 books before it went in: all seven are silent on both,
+       which is what a guard should look like. See the SA_ tables in data.js
+       for the source line behind every message. */
+    function appendixChecks(secs, warn) {
+      if (!secs) return;
+      const classOf = u => (SA_CLASS_RE.exec(u.cls || "") || [])[1] || "";
+      const carsOf = u => parseInt(u.cls, 10) || 0;
+      for (const [sec, list] of secs) {
+        for (const e of list) {
+          const at = sec + " " + fmtT(e.time, e.headcode) + ": ";
+          const road = (e.pub && e.pub.sheet) || sec;
+          const cars = e.units.reduce((n, u) => n + carsOf(u), 0);
+          const all465 = e.units.length > 0 &&
+            e.units.every(u => classOf(u) === "465");
+          /* Name the source. Everything else in the Review tab is the tool
+             saying it cannot tell from the reports; these say a published
+             document forbids it. The reader should be able to tell those
+             apart at a glance and go and look this one up. */
+          const say = m => warn.push({ sec, msg: at + "Sectional Appendix - " + m });
+
+          const bc = SA_BERTH_CLASS[road];
+          if (bc) for (const u of e.units) {
+            const c = classOf(u);
+            if ((bc.allow && c && !bc.allow.includes(c)) ||
+                (bc.deny && bc.deny.includes(c))) { say(bc.msg); break; }
+          }
+          if (cars === 12 && e.units.some(u => classOf(u) === "465") &&
+              !(e.units.length === 3 && all465 && e.units.every(u => carsOf(u) === 4)))
+            say("a 12-car Networker must be three 4-car 465s with no 466 in" +
+                " the formation - this one is " +
+                e.units.map(u => u.cls).join(" + "));
+          if (cars === 12 && all465) {
+            const sd = SA_NO_12CAR[road];
+            if (sd) say(sd.msg);
+            const dd = SA_NO_12CAR_DEST[e.dest] ||
+                       (sec === "VICTORIA" ? SA_NO_12CAR_DEST.VIC : null);
+            if (dd) say("12-car Networker operation is not permitted " + dd.msg);
+          }
+          if (e.time_kind === "pax" && e.units.length === 1 &&
+              carsOf(e.units[0]) === 2 && SA_LONE_2CAR_DEST[e.dest])
+            say(SA_LONE_2CAR_DEST[e.dest].msg);
+          for (const u of e.units) {
+            const c = classOf(u);
+            const nc = SA_NO_CLEARANCE[c + "|" + e.dest] ||
+                       SA_NO_CLEARANCE[c + "|" + sec];
+            if (nc) { say(nc.msg); break; }
+          }
+        }
+      }
+    }
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)
@@ -522,6 +670,10 @@ const GENIUS = (() => {
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro);
       hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
+      for (const [secs, warn] of [[secsByDay[dk], warnMain],
+                                  [metroSecs[dk], warnMetro],
+                                  [hsSecs[dk], warnHs]])
+        appendixChecks(secs, warn);
       for (const [warn, bag] of [[warnMain, reviews.main],
                                  [warnMetro, reviews.metro],
                                  [warnHs, reviews.hs]]) {
@@ -536,20 +688,30 @@ const GENIUS = (() => {
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
-  async function build(buffers) {
+  /* Genius input: the report PDFs (bytes), the CSV exports (strings), or one
+     of each - they carry the same two reports and merge into the same pair. */
+  async function build(inputs) {
     let sumRows = [];
     const byDate = new Map();
-    for (const buf of buffers) {
-      const txt = pdfText(buf instanceof Uint8Array ? buf : new Uint8Array(buf));
+    const mergeDetail = m1 => {
+      for (const [d, m] of m1) {
+        if (!byDate.has(d)) byDate.set(d, new Map());
+        for (const [k, v] of m) byDate.get(d).set(k, v);
+      }
+    };
+    for (const inp of inputs) {
+      if (typeof inp === "string") {
+        const kind = sniffGeniusCsv(inp);
+        if (kind === "sum") sumRows = sumRows.concat(parseSummaryCsvG(inp));
+        else if (kind === "det") mergeDetail(parseDetailCsvG(inp));
+        continue;
+      }
+      const txt = pdfText(inp instanceof Uint8Array ? inp : new Uint8Array(inp));
       if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt));
-      if (/Diagram Detail Report/i.test(txt))
-        for (const [d, m] of parseDetail(txt)) {
-          if (!byDate.has(d)) byDate.set(d, new Map());
-          for (const [k, v] of m) byDate.get(d).set(k, v);
-        }
+      if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found - upload the Summary report PDF as well.");
-    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - upload the Detail report PDF as well.");
+    if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
+    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
     return assemble(sumRows, byDate);
   }
 
@@ -690,6 +852,75 @@ const GENIUS = (() => {
     }
     return { byDate, stabled, mangled };
   }
+  // ---- Genius CSV exports (the same two reports, saved as CSV) ----
+  // Every line repeats the whole report header and carries its data at the
+  // end, so the columns are found by their label rather than by position.
+  // The summary has one line per WORKING, which is where the changing
+  // Position comes from; the detail has one line per leg, with the arrival
+  // and departure at the leg's origin.
+  function afterLabel(row, label) {
+    for (let i = row.length - 1; i >= 0; i--)
+      if ((row[i] || "").trim() === label) return i + 1;
+    return -1;
+  }
+  function sniffGeniusCsv(text) {
+    const rows = csvParse(text.slice(0, 4000));
+    if (!rows.length) return null;
+    const first = rows[0].map(x => (x || "").trim());
+    if (first.indexOf("DIAGRAM SUMMARY REPORT") >= 0) return "sum";
+    if (first.indexOf("Diagram Detail Report") >= 0) return "det";
+    return null;
+  }
+  function parseSummaryCsvG(text) {
+    const out = [], seen = new Set();
+    for (const r of csvParse(text)) {
+      const di = afterLabel(r, "Diagram Summary for:"), ni = afterLabel(r, "NOTES");
+      if (di < 0 || ni < 0) continue;
+      const f = r.slice(ni).map(x => (x || "").trim());
+      // code, units, fleet, start fuel, POS, at, from, to, at, …
+      if (!/^[A-Z]{2}\d{3}$/.test(f[0] || "")) continue;
+      if (!TM.test(f[5] || "") || !TM.test(f[8] || "")) continue;
+      const key = f[0] + "\u0000" + f[5];
+      if (seen.has(key)) continue;          // the export repeats rows per page
+      seen.add(key);
+      out.push({ date: (r[di] || "").trim(), diag: f[0], fleet: f[2],
+                 pos: parseInt(f[4], 10) || 1, start: mins(f[5]),
+                 from: f[6], to: f[7], end: mins(f[8]) });
+    }
+    return out;
+  }
+  function parseDetailCsvG(text) {
+    const byDate = new Map(), state = new Map();
+    for (const r of csvParse(text)) {
+      const gi = afterLabel(r, "Diagram"), oi = afterLabel(r, "On"),
+            fi = afterLabel(r, "Fuel Miles");
+      if (gi < 0 || oi < 0 || fi < 0) continue;
+      const diag = (r[gi] || "").trim(), date = (r[oi] || "").trim();
+      if (!/^[A-Z]{2}\d{3}$/.test(diag)) continue;
+      const f = r.slice(fi).map(x => (x || "").trim());
+      // from, name, arr, dep, activity, headcode, miles, fuel, to, name, arr
+      const key = date + "\u0000" + diag;
+      if (!state.has(key)) state.set(key, { out: [], prev: -1 });
+      const st = state.get(key);
+      const roll = v => {
+        while (v < st.prev - 60) v += 1440;
+        st.prev = Math.max(st.prev, v);
+        return v;
+      };
+      const arr = TM.test(f[2]) ? roll(mins(f[2])) : null;
+      const dep = TM.test(f[3]) ? roll(mins(f[3])) : null;
+      if (arr === null && dep === null) continue;
+      st.out.push({ code: f[0], name: f[1], arr, dep,
+                    hc: f[5] ? f[5].slice(0, 4) : null });
+      if (TM.test(f[10]))
+        st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
+                      dep: null, hc: null });
+      if (!byDate.has(date)) byDate.set(date, new Map());
+      byDate.get(date).set(diag, st.out);
+    }
+    return byDate;
+  }
+
   function buildIntegrale(texts) {
     let sumRows = null, det = null;
     for (const t of texts) {
@@ -717,8 +948,8 @@ const GENIUS = (() => {
     return assemble(sumRows, det.byDate, notes);
   }
 
-  return { build, buildIntegrale, sniffIntegrale, pdfText, parseSummary,
-           parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
+  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
+           parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
 if (typeof globalThis !== "undefined") globalThis.GENIUS = GENIUS;

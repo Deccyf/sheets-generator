@@ -4,6 +4,9 @@
 "use strict";
 const SHEETS_RULEBOOK = (() => {
   const DAY_ROLL = 180;      // times below this have wrapped past midnight
+  const AM_CUTOFF = 14 * 60; // an entry after this is an afternoon one (the
+                             // prints engine keeps its own copy, since it is
+                             // loaded before this module)
   const PM_BREAK = 20 * 60;  // a berth still occupied this late is the PM end
   const RUN_ROUND = 60;      // out and straight back inside this, nothing
                              // worked, is a run-round not a departure
@@ -23,7 +26,7 @@ const SHEETS_RULEBOOK = (() => {
     }
     return out;
   }
-  return { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf };
+  return { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_RULEBOOK;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_RULEBOOK = SHEETS_RULEBOOK;

@@ -159,16 +159,35 @@ if (lineupEl) {
       "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
       "</figcaption></figure>").join("");
 }
-/* A road card: header + animated unit + review line + actions + panel. */
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
-  const art = document.createElement("article");
-  art.className = "road";
+/* The head of a road card, shared by the built and the empty ones. */
+function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
   head.className = "road-head";
   head.innerHTML = '<span class="road-no">Road ' + (i + 1) + "</span>" +
     '<h2 class="road-name">' + escHtml(road) + "</h2>" +
     '<span class="road-fleet">' + escHtml(fleetLabel) + "</span>" +
     '<span class="road-sprite" aria-hidden="true">' + sprite(spriteCls) + "</span>";
+  return head;
+}
+
+/* A road with nothing on it: same head, one line saying why. Every book
+   with no diagrams gets this, so an empty Metro road reads like an empty
+   High Speed one rather than offering an empty workbook to save. */
+function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
+  const art = document.createElement("article");
+  art.className = "road";
+  const p = document.createElement("p");
+  p.className = "nothing";
+  p.textContent = why;
+  art.append(roadHead(i, road, fleetLabel, spriteCls), p);
+  return art;
+}
+
+/* A road card: header + animated unit + review line + actions + panel. */
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
+  const art = document.createElement("article");
+  art.className = "road";
+  const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
   track.className = "track";
   const unit = document.createElement("div");
@@ -213,6 +232,19 @@ function reviewPane(items) {
     : '<p class="noreviews">Nothing flagged for review.</p>';
 }
 
+/* Standing notes from the Sectional Appendix for this book's fleet and
+   sections - things worth knowing while checking a book, as against the
+   Review tab, which is what this particular build threw up. */
+function notesPane(notes) {
+  if (!notes || !notes.length)
+    return '<p class="noreviews">No Appendix notes for this book.</p>';
+  return '<p class="sa-src">Kent / Sussex / Wessex Sectional Appendix, ' +
+    'June 2026. Standing notes - always check the current issue and the ' +
+    'ACWNs.</p><ul class="sa-notes">' +
+    notes.map(([head, body]) => "<li><b>" + escHtml(head) + "</b> " +
+      escHtml(body) + "</li>").join("") + "</ul>";
+}
+
 /* ================= weekday panel: Genius reports ================= */
 (function weekday() {
   const say = sayer($("#status"));
@@ -225,21 +257,30 @@ function reviewPane(items) {
     zoneStrong.textContent = strong;
     zoneSub.textContent = sub;
   }
-  let built = null;
+  let built = null, zipName = "SHEETS_BOOKS.zip";
+  let lastRes = null;        // kept so the headcode toggles can rebuild
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
+  const hcToggles = {
+    main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
+  };
+  const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
 
   async function buildGenius() {
     say("Reading the reports …"); await paint();
     const res = have.sum.fmt === "csv"
       ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
       : await GENIUS.build([have.sum.data, have.det.data]);
+    lastRes = res;
+    await renderBooks(res);
+  }
+
+  async function renderBooks(res) {
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
-    const hsAny = Object.values(res.hsSecs || {}).some(m => m && m.size);
     // Each book carries its own fleet's review items. The Ramsgate book is
     // cut from the mainline build, so it keeps the mainline items tagged
     // RAMSGATE plus the section-less general ones (unreadable diagrams,
@@ -251,38 +292,31 @@ function reviewPane(items) {
       metro: msgs(res.reviews.metro),
       hs: msgs(res.reviews.hs),
     };
-    const books = [
-      { road: "SHEETS", label: "Mainline 375/376/377", spriteCls: "375",
-        name: "SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, false),
-        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main },
-      { road: "RAM SHEETS", label: "Ramsgate", spriteCls: "375",
-        name: "RAM_SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.secsByDay, res.labels, true),
-        secs: res.secsByDay, ram: true, order: null, review: revs.ram },
-      { road: "METRO SHEETS", label: "Metro 465/466/707", spriteCls: "465",
-        name: "METRO_SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.metroSecs, res.labels, false,
-          { baseOrder: X.METRO_ORDER, splitRamsgate: false }),
-        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro },
-    ];
-    if (hsAny) {
-      books.push({ road: "HS SHEETS", label: "High Speed 395", spriteCls: "395",
-        name: "HS_SHEETS_" + res.tag + ".xlsx",
-        bytes: X.writeBooks(res.hsSecs, res.labels, false,
-          { baseOrder: [], splitRamsgate: false }),
+    // Every fleet gets a road whether or not the reports carry its diagrams.
+    // What it holds is decided below by the entry count, so an empty Metro
+    // road reads exactly like an empty High Speed one.
+    const plan = [
+      { road: "SHEETS", fleet: "Mainline", label: "Mainline 375/376/377",
+        spriteCls: "375", file: "SHEETS_", hc: "main",
+        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main,
+        opts: {} },
+      { road: "RAM SHEETS", fleet: "Ramsgate", label: "Ramsgate",
+        spriteCls: "375", file: "RAM_SHEETS_", hc: "main",
+        secs: res.secsByDay, ram: true, order: null, review: revs.ram,
+        opts: {} },
+      { road: "METRO SHEETS", fleet: "Metro", label: "Metro 465/466/707",
+        spriteCls: "465", file: "METRO_SHEETS_", hc: "metro", cycle: true,
+        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
+        opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
+      { road: "HS SHEETS", fleet: "High Speed", label: "High Speed 395",
+        spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
         secs: res.hsSecs, ram: false,
-        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs });
-    }
+        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
+        opts: { baseOrder: [], splitRamsgate: false } },
+    ];
     roadsEl.textContent = "";
-    books.forEach((b, i) => {
-      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
-        const secs = b.secs[d];
-        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order);
-      }]);
-      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
-                  () => reviewPane(b.review)]);
+    const books = [];
+    plan.forEach((b, i) => {
       let entries = 0;
       const secNames = new Set();
       const splitByRamsgate = b.secs === res.secsByDay;
@@ -292,26 +326,37 @@ function reviewPane(items) {
           if (list.length) { secNames.add(name); entries += list.length; }
         }
       }
+      if (!entries) {
+        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label, b.spriteCls,
+          "No " + b.fleet + " diagrams in these reports — nothing to berth." +
+          (b.cycle ? " (A " + b.fleet + " Control Cycle must exist in Genius" +
+                     " for its diagrams to appear.)" : "")));
+        return;
+      }
+      const allHc = hcOn(b.hc);
+      const opts = { allHeadcodes: allHc };
+      for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
+      const book = { road: b.road, name: b.file + res.tag + ".xlsx",
+        bytes: X.writeBooks(b.secs, res.labels, b.ram, opts) };
+      books.push(book);
+      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
+        const secs = b.secs[d];
+        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
+        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc);
+      }]);
+      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
+                  () => reviewPane(b.review)]);
+      panes.push(["Watch for",
+                  () => notesPane(SHEETS_DATA.APPENDIX_NOTES[b.hc])]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes,
-        [["Save book", () => download(b.name, b.bytes, XLSX_MIME)]]));
+        [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]]));
     });
-    if (!hsAny) {
-      const art = document.createElement("article");
-      art.className = "road";
-      art.innerHTML = '<div class="road-head"><span class="road-no">Road 4</span>' +
-        '<h2 class="road-name">HS SHEETS</h2>' +
-        '<span class="road-fleet">High Speed 395</span>' +
-        '<span class="road-sprite" aria-hidden="true">' + sprite("395") + "</span></div>" +
-        '<p style="margin:14px 0 0;color:#79818A">No High Speed diagrams in ' +
-        "these reports — nothing to berth. (A High Speed Control Cycle must " +
-        "exist in Genius for its diagrams to appear.)</p>";
-      roadsEl.appendChild(art);
-    }
     built = books;
-    allbar.hidden = false;
+    zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
+    allbar.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -329,22 +374,27 @@ function reviewPane(items) {
       return;
     }
     if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) {
-      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius PDF reports or the Integrale CSV exports.", "err");
+      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius reports (PDF or CSV) or the Integrale CSV exports.", "err");
       return;
     }
     if (nm.endsWith(".csv")) {
       const text = new TextDecoder("utf-8").decode(await file.arrayBuffer());
-      let kind = null;
+      let kind = null, fmt = "csv";
       try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
       if (!kind) {
-        say("“" + file.name + "” doesn't look like an Integrale export — drop the Diagram Summary and Diagrams CSVs from Integrale.", "err");
+        try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {}
+      }
+      if (!kind) {
+        say("“" + file.name + "” isn't a report this reads — it takes the " +
+            "Diagram Summary and Diagrams CSVs from Integrale, or the " +
+            "Diagram Summary and Detail reports from Genius saved as CSV.", "err");
         return;
       }
-      await stash(kind, "csv", text);
+      await stash(kind, fmt, text);
       return;
     }
     if (!nm.endsWith(".pdf")) {
-      say("This tool reads the Genius Diagram Summary & Detail PDFs or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
+      say("This tool reads the Genius Diagram Summary & Detail reports (PDF or CSV) or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
       return;
     }
     const u8 = new Uint8Array(await file.arrayBuffer());
@@ -361,15 +411,18 @@ function reviewPane(items) {
     await stash(kind, "pdf", u8);
   }
 
+  // Genius comes as the report PDFs or as CSV exports of the same two
+  // reports; either pairs with the other, so they are one source.
   const srcName = fmt => fmt === "csv" ? "Integrale" : "Genius";
+  const family = fmt => fmt === "csv" ? "integrale" : "genius";
   async function stash(kind, fmt, data) {
     have[kind] = { fmt, data };
     if (have.sum && have.det) {
-      if (have.sum.fmt !== have.det.fmt) {
+      if (family(have.sum.fmt) !== family(have.det.fmt)) {
         say("The Summary is from " + srcName(have.sum.fmt) + " but the Detail is from " +
-            srcName(have.det.fmt) + " — drop a matching pair: two Genius PDFs or two Integrale CSVs.", "err");
+            srcName(have.det.fmt) + " — drop a matching pair: both from Genius, or both from Integrale.", "err");
         zone("Mixed sources loaded",
-             "drop a matching pair — two Genius PDFs or two Integrale CSVs");
+             "drop a matching pair — both from Genius, or both from Integrale");
         return;
       }
       try {
@@ -382,7 +435,7 @@ function reviewPane(items) {
     } else {
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
-      const what = fmt === "csv" ? "CSV" : "report";
+      const what = family(fmt) === "integrale" ? "CSV" : "report";
       say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want + " " + what + ".");
       zone("Diagram " + got + " loaded ✓ (" + srcName(fmt) + ")",
            "now drop the " + want + " " + what + " · or click to choose it");
@@ -390,10 +443,19 @@ function reviewPane(items) {
   }
 
   dlall.addEventListener("click", () => {
-    if (!built) return;
-    downloadZip(built[0].name.replace(/^SHEETS_/, "SHEETS_BOOKS_")
-      .replace(/\.xlsx$/, ".zip"), built.map(b => [b.name, b.bytes]));
+    if (!built || !built.length) return;
+    downloadZip(zipName, built.map(b => [b.name, b.bytes]));
   });
+  for (const k of Object.keys(hcToggles)) {
+    if (!hcToggles[k]) continue;
+    hcToggles[k].addEventListener("change", () => {
+      if (!lastRes) return;
+      queue = queue.then(async () => {
+        await renderBooks(lastRes);
+        say("Books rebuilt with the new headcode setting — save them again if needed.", "go");
+      });
+    });
+  }
   // Files are read one after another so a Summary + Detail pair dropped
   // together can't race the build.
   wireDrop($("#berth"), $("#file"), files => {
@@ -414,15 +476,10 @@ function reviewPane(items) {
     roadsEl.textContent = "";
     res.books.forEach((b, i) => {
       if (b.skipped) {
-        const art = document.createElement("article");
-        art.className = "road";
-        art.innerHTML = '<div class="road-head"><span class="road-no">Road ' + (i + 1) +
-          '</span><h2 class="road-name">' + escHtml(b.road) + "</h2>" +
-          '<span class="road-sprite" aria-hidden="true">' +
-          sprite(SPRITE_FOR[b.road] || "375") + "</span></div>" +
-          '<p style="margin:14px 0 0;color:#79818A">No ' + escHtml(b.label) +
-          " diagrams in this weekend's prints — nothing to berth.</p>";
-        roadsEl.appendChild(art);
+        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label,
+          SPRITE_FOR[b.road] || "375",
+          "No " + b.road + " diagrams in this weekend's prints — nothing" +
+          " to berth."));
         return;
       }
       const items = b.report.split("\n").filter(l => l.startsWith("- "))
@@ -443,10 +500,18 @@ function reviewPane(items) {
       " diagrams read";
   }
 
+  const weHc = {
+    Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
+    "High Speed": $("#we_hc_hs"),
+  };
   function rebuildFromLoaded() {
+    const allHeadcodes = {};
+    for (const road of Object.keys(weHc))
+      allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b),
-      f => fflate.zipSync(f, { level: 6 }));
+      f => fflate.zipSync(f, { level: 6 }),
+      { allHeadcodes });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
@@ -494,6 +559,16 @@ function reviewPane(items) {
   }
 
   wireDrop($("#we_berth"), $("#we_file"), build);
+  for (const road of Object.keys(weHc)) {
+    if (!weHc[road]) continue;
+    weHc[road].addEventListener("change", () => {
+      if (!loadedDocs.length) return;
+      try {
+        rebuildFromLoaded();
+        say("Sheets rebuilt with the new headcode setting — save them again if needed.", "go");
+      } catch (e) { /* keep previous view */ }
+    });
+  }
   $("#we_dlupd").addEventListener("click", () => {
     if (built && built.updated)
       download(built.updated.name, built.updated.bytes, DOCX_MIME);

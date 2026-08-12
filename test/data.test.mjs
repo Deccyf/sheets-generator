@@ -6,7 +6,16 @@ import { legacy, built, norm } from "./helpers/compare.mjs";
 
 test("reference tables match the legacy build", () => {
   const L = legacy(), D = built().SHEETS_DATA;
-  assert.deepEqual(norm(D.BERTH_SHEETS), norm(L.SHEETS_CORE.BERTH_SHEETS), "BERTH_SHEETS");
+  // Deliberate divergence: a train booked into a Grove Park depot road is
+  // destined GPD, not GPK - the books keep GPK for the station itself. Plus
+  // the London End extension, which the legacy tables never named.
+  const legacyBerthSheets = { ...L.SHEETS_CORE.BERTH_SHEETS };
+  for (const k of Object.keys(legacyBerthSheets))
+    if (/^GROVE PARK ./.test(k))
+      legacyBerthSheets[k] = [...legacyBerthSheets[k].slice(0, 3), "GPD"];
+  legacyBerthSheets["GROVE PARK DPT LNDN ED EXT"] = ["GROVE PARK", "GP", null, "GPD"];
+  assert.deepEqual(norm(D.BERTH_SHEETS), norm(legacyBerthSheets),
+    "BERTH_SHEETS (with the Grove Park depot destination)");
   assert.deepEqual(norm(D.DEST_TLC), norm(L.SHEETS_CORE.DEST_TLC), "DEST_TLC");
   assert.deepEqual(norm(D.NON_BERTH_VISIT), norm(L.SHEETS_CORE.NON_BERTH_VISIT),
     "NON_BERTH_VISIT");
@@ -20,7 +29,12 @@ test("reference tables match the legacy build", () => {
   assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
   assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
   assert.deepEqual(norm(D.DAY_SHEET), norm(L.SHEETS_XLSX.DAY_SHEET), "DAY_SHEET");
-  assert.deepEqual(norm(D.PROFILES), norm(L.SheetsEngine.PROFILES), "PROFILES");
+  // Deliberate divergence: the metro book is timed off the first move now,
+  // which the profile carries as first_dep_all.
+  const legacyProfiles = L.SheetsEngine.PROFILES.map(p =>
+    p.road === "Metro" ? { ...p, first_dep_all: true } : p);
+  assert.deepEqual(norm(D.PROFILES), norm(legacyProfiles),
+    "PROFILES (with the metro first-move rule)");
 });
 
 test("data module holds together", () => {
