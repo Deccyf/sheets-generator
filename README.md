@@ -504,10 +504,7 @@ entry. The weekday layout adds a double rule at the section's biggest time gap
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.
 
-### Sectional Appendix checks and notes
-
-Two kinds of knowledge come out of the Kent / Sussex / Wessex Sectional
-Appendix, and they are kept apart on purpose.
+### Sectional Appendix checks
 
 **Checks** fire on a single row and go on the Review tab prefixed *Sectional
 Appendix* — *"a 12-car Networker must be three 4-car 465s with no 466 in the
@@ -531,36 +528,46 @@ Hastings line — was dropped because it fired on the same routine working on
 both days; a rule that flags ordinary traffic teaches the reader to skip the
 whole list, which costs more than the rule saves.
 
-**Notes** are the standing per-book briefing on the *Watch for* tab: things
-worth knowing while checking a book rather than tests. Eight for the mainline
-book, nine for Metro, seven for High Speed, each quotable from the Appendix.
-
-Both are **weekday-only**. The weekend pipeline reads diagram prints, which do
-not carry the class and formation detail every one of these rules is tested
-against, so there is no *Watch for* tab on a weekend book and no check fires.
-The Appendix does not stop applying on a Saturday — the gap is in what the
-prints can tell us, and both user-facing guides say so rather than leaving the
-absence to be discovered.
+Checks are **weekday-only**. The weekend pipeline reads diagram prints, which
+do not carry the class and formation detail these rules are tested against, so
+none fires there. The Appendix does not stop applying on a Saturday — the gap
+is in what the prints can tell us, and both user-facing guides say so rather
+than leaving the absence to be discovered.
 
 The Appendix itself is not in the repository — it is a licensed Network Rail
-document. What is here is the extracted facts. Every **check** carries a
-`line:` back-reference to the extraction, so it can be taken to the page it
-came from; the **notes** instead name their source in the prose (*"Table D2A
-puts R7 against the 377…"*, *"the capacity table's footnote reads…"*), which is
-what a reader needs to look one up.
+document. Every check carries a `line:` back-reference to the extraction, so it
+can be taken to the page it came from.
 
-Anything read out of the clearance grids must be aligned by **ordinal column**,
-not by character offset — the data rows do not line up with the header spacing,
-and aligning on offset silently attributes a note to the wrong class. Read the
-nine values in order against `319 325 373 375 376 377 378 380 387`, and
-remember a cell can stack several note codes on the rows beneath it. Two of
-these tables have a class column that looks like a bar but is a permission
-(*"Class 377/1 and 377/5 only"*), so read the note text before concluding
-anything from an R-code.
+#### Why there is no standing-notes tab
 
-Where a note lists places, it is filtered to the sections that book covers and
-says so. Do not read one as the Appendix's full table — a reader who assumes a
-short list is exhaustive is the failure mode these notes exist to prevent.
+There was one: a *Watch for* pane carrying 24 notes per book, summarising the
+Appendix in prose. It is gone, and it should not come back.
+
+An audit of those 24 notes against the source found a class invented in one,
+three lists short enough to mislead, and two claims a reader had no way to
+verify. Each was fixed — and the fixes are not the point. The point is that a
+page of prose restating a licensed safety document reads as authoritative,
+gets believed without being checked, and puts this tool in the position of
+being the reference. It cannot hold that position: it is a static extract of
+one edition with no way of knowing when that edition goes stale, and the people
+most likely to lean on it are the ones least able to spot an error in it.
+
+A check is a different proposition. It fires on one row of one real book, names
+its source, and asks the reader to go and look the rule up. That is a pointer
+to the Appendix, not a substitute for it.
+
+If a future change proposes reference prose about the Appendix, the question to
+ask is not "is it accurate" but "who reads this instead of the Appendix, and
+what happens when the Appendix changes".
+
+**Reading the clearance grids.** Anything taken out of them must be aligned by
+**ordinal column**, not by character offset — the data rows do not line up with
+the header spacing, and aligning on offset silently attributes a note to the
+wrong class. Read the nine values in order against
+`319 325 373 375 376 377 378 380 387`, and remember a cell can stack several
+note codes on the rows beneath it. Some cells hold a note that looks like a bar
+but is a permission (*"Class 377/1 and 377/5 only"*), so read the note text
+before concluding anything from an R-code.
 
 ## Reference data — where the knowledge lives
 
