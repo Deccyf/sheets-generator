@@ -344,7 +344,12 @@ function previewHtml(layout){
           norm(sheetStation(e.pub.sheet)).startsWith(name.split(" ")[0])));
       }
       if (!entries.length) continue;
-      if (name === "GROVE PARK") {
+      // Grove Park gets two tables in the mainline book - the overnight block
+      // first, then the rest. Only there: the 10/08 metro book this tool
+      // produced came back with the second GROVE PARK header struck out and
+      // its entry merged into the first.
+      if (name === "GROVE PARK" &&
+          fullOrder !== METRO_ORDER && fullOrder !== HS_ORDER) {
         const firstB = entries.filter(e => e.overnight);
         const second = entries.filter(e => !e.overnight);
         if (firstB.length) sectionRows(rows, name, dateLbl, firstB, allHc);
