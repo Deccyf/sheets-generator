@@ -9,6 +9,20 @@ const GENIUS = (() => {
           SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
           SA_NO_CLEARANCE, SA_LONE_2CAR_DEST } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
+  /* sorted diagram list -> the places an order was written down for it.
+     Bare keys are left out on purpose: they fire everywhere, so they can
+     never be the pin that quietly missed. */
+  const ORDER_FIX_KEYS = (() => {
+    const m = new Map();
+    for (const k of Object.keys(ORDER_FIX)) {
+      const i = k.indexOf("|");
+      if (i < 0) continue;
+      const diags = k.slice(i + 1);
+      if (!m.has(diags)) m.set(diags, new Set());
+      m.get(diags).add(k.slice(0, i));
+    }
+    return m;
+  })();
   const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
@@ -441,6 +455,18 @@ const GENIUS = (() => {
                     ORDER_FIX[diags];
         if (fix) blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
+        /* A pin that silently stops matching is the worst failure this table
+           has: someone wrote down the order for these very units, the working
+           moved by a minute or changed headcode, and the sheet quietly went
+           back to guessing with nothing to show for it. If any key was ever
+           recorded for this formation and none of them fired here, say so. */
+        else if (blocks.length > 1 && ORDER_FIX_KEYS.has(diags))
+          warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+            blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
+            " for this formation but not for here - it is set down as " +
+            [...ORDER_FIX_KEYS.get(diags)].join("; ") + ", so this one is" +
+            " ordered off the reports. Check it, and say if it should be" +
+            " pinned too" });
       }
       // Two units on the same Position started the day in different
       // formations, so the reports cannot say which way round they go.
