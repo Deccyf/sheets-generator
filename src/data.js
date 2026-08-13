@@ -248,6 +248,22 @@ const SIDING_CLASS_RE = new RegExp(
     "FAVERSHAM|019,020": ["020", "019"],
     "GROVE PARK|021,022": ["022", "021"],
     "GROVE PARK|118,119": ["118", "119"],
+    /* 301 is last at Ashford and first at Grove Park, so this cannot be a bare
+       key. Untimed on purpose: the book shows 15+54 on every sheet, but a
+       Friday minute change would silently defeat a timed pin. Only the Genius
+       summary carries a Position per stint, which is the one reason the
+       unpinned Grove Park entry came out right there; an Integrale export has
+       one start-of-day Position per diagram and sorted the PM entry on morning
+       Positions, putting the 3-car at the rear. */
+    "GROVE PARK|301,901,902": ["301", "902", "901"],
+    /* Section-scoped, not bare: 805/806 read ascending at Slade Green 18+04
+       and descending here, and both sections list lowest Position first, so
+       posAsc cannot express it. A timed key is no use either - the book times
+       this off the headshunt departure (05+25) and the tool off the move out
+       of the siding (05+14), so a key written from the book's time never
+       fires. Caveat: the key is built before attaching units are filtered, so
+       if 5S07 ever runs with a third unit this stops matching. */
+    "GROVE PARK|805,806": ["806", "805"],
     "HASTINGS|029,030": ["030", "029"],
     /* Ramsgate reads six formations lowest-Position-first and these five
        highest-first, so the section keeps the ascending rule and the five are
