@@ -210,7 +210,17 @@ entries:
 
 * a location that is not in the section list (given its own section — check
   whether it should live under an existing one);
-* a suppressed empty move to a berth, named diagram by diagram;
+* a suppressed empty move to a berth, named diagram by diagram. Only moves
+  that stay inside the section's own area are dropped — one that takes a unit
+  to a berth in another section (a run from Ramsgate depot to the Ashford
+  sidings, say) prints, because the section it leaves has to show it going;
+* a formation whose unit order is pinned somewhere but not here, naming where
+  the order *is* recorded. A pin that silently stops matching — the working
+  moved a minute, or changed headcode — is the worst failure `ORDER_FIX` has,
+  because the sheet reverts to ordering off the reports with nothing to show
+  for it. Only formations pinned somewhere can raise this, which keeps it to a
+  handful a day; warning on every unpinned order would fire on 144 of 168
+  multi-unit rows and teach the reader to skip the list;
 * a Folkestone East `EX … ARR` note, which is inferred and must be checked;
 * an end-marker decision that had no rule to lean on;
 * a **Sectional Appendix** breach, prefixed with that name. This is the one

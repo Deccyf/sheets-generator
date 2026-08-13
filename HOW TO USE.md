@@ -274,7 +274,14 @@ Typical items:
   alphabetical order and a note. Check it's in the right place — and say if it
   ought to live under an existing section, so the tables can be corrected.
 * **Empty moves left off.** Each suppressed move is named with its diagram
-  number, so you can confirm it should be off.
+  number, so you can confirm it should be off. Only moves that stay inside the
+  section are dropped — an empty run that takes a unit to another depot for the
+  night is printed, because the section it leaves has to show it going.
+* **A unit order pinned somewhere but not here.** Where a formation's order has
+  been written down for one departure and this one isn't covered, it says so and
+  tells you where the order *is* recorded. Worth a look: it usually means either
+  this one needs pinning too, or the working has moved and the existing pin no
+  longer reaches it.
 * **A diagram whose page didn't read cleanly**, or a date with no matching
   detail report.
 * **An end marker with no rule to fit.** Rather than guess which end leads, the

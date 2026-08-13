@@ -75,7 +75,12 @@ test("GENIUS.build output is identical to the legacy build", async () => {
   assert.deepEqual(norm(resN.metroSecs), norm(resL.metroSecs), "metro sections");
   assert.deepEqual(norm(resN.hsSecs), norm(resL.hsSecs), "high speed sections");
   assert.deepEqual(norm(resN.labels), norm(resL.labels), "labels");
-  assert.deepEqual(norm(resN.review), norm(resL.review), "review list");
+  /* The legacy build is frozen, so it cannot grow review items the new one
+     learned to raise. Compare only the kinds both builds know about; the
+     added kind has its own test below. */
+  const SINCE_LEGACY = /a unit order is recorded for this formation|Sectional Appendix - /;
+  assert.deepEqual(norm(resN.review.filter(m => !SINCE_LEGACY.test(m))),
+                   norm(resL.review), "review list");
   assert.equal(resN.tag, resL.tag, "tag");
 });
 
@@ -379,4 +384,29 @@ test("an order fix with no section holds the formation everywhere", async () => 
   }
   const res = N.GENIUS.buildIntegrale([REVERSED_ORDER_SUMMARY, REVERSED_ORDER_DETAIL]);
   assert.ok(res.secsByDay.M.get("RAMSGATE"), "the fixture still builds");
+});
+
+test("a pin that exists elsewhere but not here is named on the review list", async () => {
+  const N = built();
+  const S = await import("./helpers/synth.mjs");
+  const res = await N.GENIUS.build(
+    [S.makePdf(S.SUMMARY_LINES, N.fflate), S.makePdf(S.DETAIL_LINES, N.fflate)]);
+  /* GT101/GT102 are pinned at ASHFORD 15+43 and nowhere else, so their other
+     appearance has to say the pin did not reach it - that silent miss is the
+     failure this note exists to catch. */
+  const hit = res.review.find(m => /a unit order is recorded for this formation/.test(m));
+  assert.ok(hit, "the unreached pin is named: " + res.review.join(" | "));
+  assert.match(hit, /GT10[12]\+GT10[12]/, "it names the units: " + hit);
+  assert.match(hit, /ASHFORD 15\+43/, "it says where the order IS recorded: " + hit);
+  // a formation with no pin anywhere must stay quiet - this is not a
+  // "your order is unvalidated" warning, which would fire on nearly every row
+  const D = N.SHEETS_DATA;
+  const pinned = new Set(Object.keys(D.ORDER_FIX)
+    .filter(k => k.includes("|")).map(k => k.split("|")[1]));
+  for (const m of res.review) {
+    const mm = /\((.+?)\): a unit order is recorded/.exec(m);
+    if (!mm) continue;
+    const diags = mm[1].split("+").map(d => d.slice(2)).sort().join(",");
+    assert.ok(pinned.has(diags), "only formations that ARE pinned somewhere: " + m);
+  }
 });
