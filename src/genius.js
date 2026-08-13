@@ -536,9 +536,15 @@ const GENIUS = (() => {
         if (i >= 0) e.dest = destCode(locName(m0.stops[i]), warn, e.sec);
       }
       const dl = e.destStop;
+      /* An empty move onto a berth is a shunt not worth printing - but only
+         while the unit stays in this section. A 5-headcode run from Ramsgate
+         depot to the Ashford sidings is the unit leaving for the night, and
+         the section it leaves has to show it going, so the berth has to be
+         in this section's own area for the move to count as internal. */
       e.suppress = !prof.ecsOnlyOk.has(e.sec) && !!e.hc && e.hc[0] === "5" &&
                    !blocks.some(x => x.paxAfter) &&
-                   (isStabling(dl) || secOf(dl, false) === e.sec);
+                   (isStabling(dl) || secOf(dl, false) === e.sec) &&
+                   sameArea(areaOf(dl), e.sec);
     }
     // Folkestone East Train Roads is unmanned: note on each 12-car which
     // service arrival forms it. The roads work last-in-first-out, so
