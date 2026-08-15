@@ -68,3 +68,20 @@ test("data module holds together", () => {
     assert.ok(name && /^[A-Z]{3}$/.test(crs), "station row: " + name);
   }
 });
+
+test("Charing Cross codes never swallow Charing in Kent", () => {
+  const N = built();
+  const NC = N.SHEETS_DATA.NAME_CODE;
+  /* CHARING alone is a station on the Maidstone East line with its own code,
+     CHG. Mapping it to Charing Cross would silently send a Kent village's
+     units to a London terminal, which is exactly the kind of error nobody
+     would spot on a sheet. */
+  assert.equal(NC.CHARING, undefined, "bare CHARING is not mapped");
+  for (const [k, v] of Object.entries(NC))
+    if (v === "CHX")
+      assert.match(k, /CHARING (CROSS|X|CRS|C|CR)$|CHRING X$|^CH[RG]G? CROSS$/,
+        "a CHX name is unambiguously Charing Cross: " + k);
+  // and the resolver still gives Charing itself its own code
+  const E = N.SheetsEngine, w = [];
+  assert.equal(E.codeFor("Charing", E.DEST_CODE, w, "t"), "CHG");
+});

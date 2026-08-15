@@ -214,7 +214,18 @@ const SIDING_CLASS_RE = new RegExp(
   const NAME_CODE = { "DARTFORD UP SIDINGS": "DFU", "GILLINGHAM UP SDGS": "GIU",
     "BELLINGHAM SIDING": "BGM", "PLUMSTEAD C.H.S": "PLU",
     "FOLKESTONE EAST": "FKE", "FOLKESTONE ETR": "FKE", "MINSTER THANET": "MSR",
-    "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE" };
+    "ST LEONARDS SHUNT NECK": "XSE", "ST LEONARDS CET": "XSE",
+    /* Charing Cross truncated. The reports abbreviate a long terminal name
+       ("London Blackfr's", "London Cannon St"), and any form the resolver
+       cannot place falls back to the first three letters - which for anything
+       beginning "London" is the useless LON. Note what is NOT here: bare
+       CHARING is Charing in Kent, CHG, a different station on the Maidstone
+       East line, so it must never be swept into this. */
+    "LONDON CHARING CROSS": "CHX", "LONDON CHARING X": "CHX",
+    "LONDON CHARING C": "CHX", "LONDON CHARING CR": "CHX",
+    "LONDON CHARING CRS": "CHX", "LONDON CHRING X": "CHX",
+    "CHARING CROSS": "CHX", "CHARING X": "CHX", "CHARING CRS": "CHX",
+    "CHG CROSS": "CHX", "CHRG CROSS": "CHX" };
   const FIX_CODE = { GLU: "GIU" };
   /* Formations the reports cannot place. Position says where a unit sits in
      its own diagram's formation, not which way that formation is facing, and

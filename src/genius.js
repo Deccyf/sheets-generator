@@ -213,16 +213,34 @@ const GENIUS = (() => {
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
   const BERTH_STAY = 65;
+  /* The roads inside the Grove Park depot fence. A move from one of these to
+     another never leaves the depot, so it is a shunt the sheets do not carry -
+     the units have not gone anywhere a reader needs telling about. GRVPK, the
+     station, is deliberately absent: depot to platform is a real departure. */
+  const GP_DEPOT = new Set(["GRVPCSD", "GRVPDCE", "GRVPDLE", "GRVPKDS",
+                            "GRVPKUS", "GRVPUHS"]);
   function boundaries(stops) {
     const b = new Set();
     for (let k = 0; k < stops.length; k++) {
       const s = stops[k];
       if (k === 0 || k === stops.length - 1) { b.add(k); continue; }
       if (!isStabling(s) || s.hcIn === s.hcOut) continue;
-      if (MINOR_SPUR.has(s.code)) {
-        const dwell = (s.arr !== null && s.dep !== null) ? s.dep - s.arr : null;
-        if (dwell !== null && dwell < BERTH_STAY) continue;
-      }
+      const dwell = (s.arr !== null && s.dep !== null) ? s.dep - s.arr : null;
+      if (MINOR_SPUR.has(s.code) && dwell !== null && dwell < BERTH_STAY) continue;
+      /* A run through the washer and straight back where it came from is a
+         trip, not a berthing: the unit leaves from the platform it arrived
+         at, that departure is already on the sheet, and the hand book prints
+         nothing for the wash itself. Deliberately not a general out-and-back
+         rule - the sidings either side of it look identical in shape, and the
+         books DO list every re-departure off those (the 14+41 / 15+43 / 16 27
+         Ashford rows above). Only a washer road, only when it goes back
+         whence it came, only inside the run-round window, only if nothing
+         was worked while it was away. */
+      if (/WASHER/.test(SHEETS_CORE.norm(locName(s))) &&
+          k > 0 && k + 1 < stops.length &&
+          stops[k - 1].code === stops[k + 1].code &&
+          dwell !== null && dwell <= RUN_ROUND &&
+          (s.hcIn || "5")[0] === "5" && (s.hcOut || "5")[0] === "5") continue;
       b.add(k);
     }
     return Array.from(b).sort((x, y) => x - y);
@@ -360,11 +378,13 @@ const GENIUS = (() => {
         if (!e) {
           e = { sec, tmin: er.dep, hc: er.hcOut, hc0: stops[a].hcOut,
                 destStop: legEnd(stops, destIdx),
-                route: legRoute(stops, destIdx), units: [], origins: new Set() };
+                route: legRoute(stops, destIdx), units: [], origins: new Set(),
+                originCodes: new Set() };
           entries.set(key, e);
         }
         e.units.push({ diag, si, exitIdx });
         e.origins.add(core.norm(locName(origin)));
+        e.originCodes.add(origin.code);
       }
     }
     /* Where these units part company: the first point their itineraries stop
@@ -545,6 +565,13 @@ const GENIUS = (() => {
                    !blocks.some(x => x.paxAfter) &&
                    (isStabling(dl) || secOf(dl, false) === e.sec) &&
                    sameArea(areaOf(dl), e.sec);
+      // …and a shunt that never leaves the Grove Park depot fence is not a
+      // move the sheets carry at all, whatever headcode it runs under.
+      if (!e.suppress && GP_DEPOT.has(dl.code) &&
+          [...e.originCodes].every(c => GP_DEPOT.has(c))) {
+        e.suppress = true;
+        e.gpShunt = true;
+      }
     }
     // Folkestone East Train Roads is unmanned: note on each 12-car which
     // service arrival forms it. The roads work last-in-first-out, so
@@ -584,7 +611,9 @@ const GENIUS = (() => {
       if (e.suppress)
         warn.push({ sec: e.sec,
                   msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-                  e.blocks.map(x => x.diag).join("+") + ") - empty move to a berth" });
+                  e.blocks.map(x => x.diag).join("+") + ") - " +
+                  (e.gpShunt ? "shunt inside the Grove Park depot"
+                             : "empty move to a berth") });
     }
     // writer-shaped sections
     const secs = new Map();
