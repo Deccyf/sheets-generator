@@ -459,6 +459,12 @@ const children = [
     "showing where the service it forms is going. A train that starts in the " +
     "platform keeps its platform time. Mainline and High Speed are timed off " +
     "the platform call, as always."),
+  h3("The double line"),
+  p("The double line rules off the morning: it sits under the section's last " +
+    "entry before midday, where the gap that follows is two hours or more. A " +
+    "section worked steadily through midday has no line, and Grove Park is " +
+    "never ruled. On the weekend sheets the line is drawn where the section " +
+    "crosses midday and 20:00 instead — the three goes of a shift."),
 
   h2("9. The review list — always read it"),
   p("Every build produces one: everything the rules had to decide for " +

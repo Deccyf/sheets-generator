@@ -1696,13 +1696,25 @@ function previewHtml(layout){
       const t = e.time % 1440;
       return t < 180 ? t + 1440 : t;
     };
-    let gapI = null, gap = 0;
+    /* The double line rules off the morning: the hand books draw it under
+       the last entry before the midday break, and nowhere else - Ashford
+       after 08 28, Victoria after 07+14, Slade Green after 06+36 in the
+       12/08 book. Not "the biggest gap": those two readings agreed on every
+       section of 12/08 and came apart the day a late ECS row opened a
+       bigger evening gap, which pulled the line down to it. A section
+       worked steadily through midday (Gillingham, Faversham) draws no line,
+       so the crossing only counts when the gap under it is berthing-length.
+       Grove Park is never ruled - its two-table layout has no divide. */
+    const NOON = 12 * 60;
+    let gapI = null;
     if (name !== "GROVE PARK") {
       for (let i = 1; i < entries.length; i++) {
-        const g = tkey(entries[i]) - tkey(entries[i - 1]);
-        if (g > gap) { gapI = i; gap = g; }
+        const a = tkey(entries[i - 1]), b = tkey(entries[i]);
+        if (a < NOON && b >= NOON) {
+          if (b - a >= 120) gapI = i;
+          break;
+        }
       }
-      if (gap < 120) gapI = null;
     }
     let divideAt = null;
     const flagSpans = [];

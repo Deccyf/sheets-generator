@@ -97,3 +97,33 @@ test("all-headcodes toggle puts every headcode in the notes column (weekday)", a
   assert.match(noteFor(mOn, "06+20"), /5E01/, "ECS headcode on");
   assert.doesNotMatch(noteFor(mOff, "06+20") || "", /5E01/, "legacy rules off");
 });
+
+test("the double line marks the midday break, not the biggest gap", () => {
+  const N = built();
+  const X = N.SHEETS_XLSX;
+  const mk = (time, kind, diag) => ({
+    time, time_kind: kind, dest: "VIC", headcode: "2A00", flag: "", sub: null,
+    attachment: false, extra_notes: [], pub: { sheet: "ASHFORD" },
+    units: [{ cls: "4 375", diag, am: "", pm: "", end: "", src_sheet: "ASHFORD" }],
+  });
+  /* The tester's Monday shape: the evening gap (16:00 -> 22:53, 413 min) is
+     BIGGER than the midday one (08:28 -> 14:56, 388 min). The line belongs
+     to the morning block all the same. */
+  const entries = [mk(8 * 60 + 28, "pax", "001"), mk(14 * 60 + 56, "pax", "002"),
+                   mk(16 * 60, "pax", "003"), mk(22 * 60 + 53, "ecs", "004")];
+  // Array.from into this realm: the sandbox's arrays fail deepEqual on
+  // prototype alone, whatever their contents
+  const doubles = rows => Array.from(rows).filter(r => r.kind === "data")
+    .flatMap((r, i) => r.bot === "double" ? [i] : []);
+  const rows = X.layoutSheet(new Map([["ASHFORD", entries]]), "X", false, ["ASHFORD"], false);
+  assert.deepEqual(doubles(rows), [0], "one line, under the 08 28 row");
+  // a section worked steadily through midday draws no line at all
+  const dense = [mk(11 * 60, "pax", "001"), mk(11 * 60 + 50, "pax", "002"),
+                 mk(12 * 60 + 40, "pax", "003")];
+  const r2 = X.layoutSheet(new Map([["ASHFORD", dense]]), "X", false, ["ASHFORD"], false);
+  assert.deepEqual(doubles(r2), [], "no line when the crossing gap is short");
+  // and Grove Park is never ruled, whatever its day looks like
+  const gp = entries.map(e => ({ ...e, pub: { sheet: "GROVE PARK C.S.D" } }));
+  const r3 = X.layoutSheet(new Map([["GROVE PARK", gp]]), "X", false, ["GROVE PARK"], false);
+  assert.deepEqual(doubles(r3), [], "Grove Park never gets a divider");
+});

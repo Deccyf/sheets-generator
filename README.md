@@ -512,9 +512,15 @@ borders as they are needed, zipped with fflate. It writes the house grid —
 A4 portrait, Arial, the ruled sheets' fixed column widths, a medium box around
 each section, medium verticals after the diagram / D / remarks columns, a
 thin rule under every entry, the flag column merged across each multi-unit
-entry. The weekday layout adds a double rule at the section's biggest time gap
-(≥ 2 h); the weekend layout rules the section off where it crosses midday and
-20:00, matching how the sheet is read across a shift.
+entry. The weekday layout adds a double rule under the last entry of the
+morning: the line sits in the gap that contains midday, and only when that gap
+is berthing-length (≥ 2 h) — a section worked steadily through midday draws no
+line, and Grove Park's two-table layout is never ruled. It was "the biggest
+gap" until a tester's Monday sheet showed those two readings coming apart: the
+hand books' own borders put every line at the morning break, and a late ECS
+row big enough to open a larger evening gap must not pull the line down to it.
+The weekend layout rules the section off where it crosses midday and 20:00,
+matching how the sheet is read across a shift.
 
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.
