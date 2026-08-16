@@ -100,7 +100,8 @@ test("GENIUS.build output is identical to the legacy build", async () => {
      plainer words - "Left off —" rather than "suppressed:", diagram numbers
      as the sheet prints them, and no "Position" or "pinned". Compare the
      kinds both builds raise, in the shape this one uses. */
-  const SINCE_LEGACY = /has a corrected order recorded at/;
+  const SINCE_LEGACY =
+    /has a corrected order recorded at|as a berthing —/;
   const asNow = m => m
     .replace(/^suppressed: /, "Left off — ")
     .replace(/\) - /, "): ")
@@ -514,4 +515,95 @@ test("the exception needs the activity column to be there at all", async () => {
   const paused = res.review.filter(m => /never shunted/.test(m));
   assert.deepEqual(Array.from(paused), [],
     "no entry is dropped as a pause when the report has no activity column");
+});
+
+/* ---- a long stand in a platform ----
+   GT120/GT121 arrive at London Victoria at 22 40 and leave at 23 40 for
+   Meopham, and the book carries that line. A platform is not a siding, so
+   this is not the general rule: it fires where the report shunts the unit
+   on the spot ("#"), or where the operator asks for it. Everything else
+   long enough is named on the review list and left off. */
+const STAND_SUM = ['"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,',
+  '"Control:","SouthEastern Trains","Print Date:","August 16, 2026",',
+  '"Diagram Summary for:"," 17/08/26","DIAGRAM","UNITS","FLEET","OFF",',
+  '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",',
+  '"TOT. FUEL  MILES","NOTES","NOTES",',
+  '"GT120","","375/6",0.00,1,"20:00","ASHFDNS","VICTGCS","23:59",',
+  '-0.60,100.00,100.00,,'].join("");
+
+function standDetail(act) {
+  const head = ['"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,',
+    '"Control:","SouthEastern Trains","Print Date:","August 16, 2026",',
+    '"Diagram Details for:"," 17/08/26","Diagram","GT120","On","17/08/26",',
+    '"Notes",,"Miles","Fuel Miles",'].join("");
+  const leg = (c, n, arr, dep, a, hc, tc, tn, tarr) =>
+    head + ['"' + c + '"', '"' + n + '"', arr ? '"' + arr + '"' : "",
+      dep ? '"' + dep + '"' : "", a ? '"' + a + '"' : "", '"' + hc + '"',
+      "1.00", "1.00", '"' + tc + '"', '"' + tn + '"', '"' + tarr + '"',
+      '"Off Diagram"', '"  000"', '"Works"', '"  000"'].join(",");
+  return [
+    /* Starts at Ashford, so Victoria gets a line ONLY if the stand there
+       counts as a berthing - otherwise the rule under test is masked by the
+       ordinary "timed off the last call in the section" behaviour. */
+    leg("ASHFDNS", "Ashford Down Sidings", "", "20:00", "", "5F16BD",
+        "VICTRIE", "London Victoria", "21:10"),
+    // the stand: an hour in the platform, with or without the shunt marker
+    leg("VICTRIE", "London Victoria", "21:10", "22:10", act, "1S72BA",
+        "BCKNHMJ", "Beckenham Juncti", "22:23"),
+    leg("BCKNHMJ", "Beckenham Juncti", "22:23", "22:23", "", "1S72BA",
+        "MEOPHAM", "Meopham", "22:43"),
+    leg("MEOPHAM", "Meopham", "22:43", "23:00", "", "5Y72UA",
+        "VICTGCS", "Victoria Grosven", "23:59"),
+  ].join("\r\n");
+}
+
+const victoriaTimes = res => {
+  const out = [];
+  for (const d of Object.keys(res.labels))
+    for (const [name, list] of (res.secsByDay[d] || new Map()))
+      if (name === "VICTORIA") for (const e of list) out.push(e.time);
+  return out.sort((a, b) => a - b);
+};
+
+test("a platform stand the report shunts is a berthing", async () => {
+  const N = built();
+  const res = await N.GENIUS.build([STAND_SUM, standDetail("#")]);
+  assert.ok(Array.from(victoriaTimes(res)).includes(22 * 60 + 10),
+    "the 22 10 off the platform is on the sheet: " + victoriaTimes(res));
+  const note = res.review.find(m => /Taken as a berthing/.test(m));
+  assert.ok(note, "and the review says so: " + res.review.join(" | "));
+  assert.match(note, /shunts it there/);
+});
+
+test("a platform stand with no shunt is named, not printed", async () => {
+  const N = built();
+  const res = await N.GENIUS.build([STAND_SUM, standDetail("")]);
+  assert.ok(!Array.from(victoriaTimes(res)).includes(22 * 60 + 10),
+    "no line for it: " + victoriaTimes(res));
+  const note = res.review.find(m => /Not counted as a berthing/.test(m));
+  assert.ok(note, "but it is named: " + res.review.join(" | "));
+  assert.match(note, /60 minutes/);
+  assert.match(note, /Count long platform stands/, "and says how to include it");
+});
+
+test("…and the option puts it on the sheet", async () => {
+  const N = built();
+  const res = await N.GENIUS.build([STAND_SUM, standDetail("")],
+                                   { platformStands: true });
+  assert.ok(Array.from(victoriaTimes(res)).includes(22 * 60 + 10),
+    "with the option on it prints: " + victoriaTimes(res));
+});
+
+test("a short stand is a turnround, not a berthing", async () => {
+  const N = built();
+  /* Under RUN_ROUND the stand is a turnround and never reaches the rule -
+     with or without a shunt marker, and whatever the option says. */
+  const short = standDetail("#").replace('"21:10","22:10"', '"21:10","21:50"');
+  for (const opts of [undefined, { platformStands: true }]) {
+    const res = await N.GENIUS.build([STAND_SUM, short], opts);
+    assert.ok(!Array.from(victoriaTimes(res)).includes(21 * 60 + 50),
+      "40 minutes is a turnround: " + victoriaTimes(res));
+    assert.deepEqual(Array.from(res.review.filter(m => /as a berthing/.test(m))),
+      [], "and not worth a review line either");
+  }
 });

@@ -9,7 +9,12 @@ const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 /* road_pos_asc is keyed on the weekday road names; the prints use their own
    abbreviations for the same roads. The two siding-note tables are the
    bridge - both spell a road the same short way ("Up Sidings"), so one can
-   be looked up through the other rather than kept as a third list. */
+   be looked up through the other rather than kept as a third list.
+   A note is only a short label, though, not a name: Dartford up siding and
+   Slade Green up C.H.S. are both written "UPS", so matching on the note
+   alone hands Dartford's formations Slade Green's reading order. The
+   caller checks the road it gets back really is at the place it is
+   printing, and ignores it when it is not. */
 const ROAD_ALIAS = (() => {
   const byNote = new Map();
   for (const k of Object.keys(SHEETS_DATA.SIDING_NOTES))
@@ -614,8 +619,11 @@ function generate(diags, prof, stabling, warn){
        NOT carried over is the pinned order - those pins name weekday
        diagram numbers, which the weekend prints do not use.) */
     const road = e.origins.size === 1 ? Array.from(e.origins)[0] : null;
+    // an alias is only trusted when it names a road at THIS place
+    const alias = road === null ? undefined : ROAD_ALIAS.get(road);
+    const wkRoad = alias && alias.indexOf(sec) === 0 ? alias : road;
     const byRoad = road === null ? undefined
-      : (prof.road_pos_asc || new Map()).get(ROAD_ALIAS.get(road) || road);
+      : (prof.road_pos_asc || new Map()).get(wkRoad);
     if (byRoad === undefined ? (prof.pos_asc || new Set()).has(sec) : byRoad)
       blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
     else

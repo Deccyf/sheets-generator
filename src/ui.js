@@ -444,7 +444,7 @@ function reviewPane(items) {
 (function weekday() {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall"), optsEl = $("#opts");
+        dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -463,6 +463,7 @@ function reviewPane(items) {
     main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
+  const platStand = $("#platstand");
 
   /* A rule edit changes what the build does, so it re-runs the build - the
      order lookup is inside it. Serialised on the same queue the headcode
@@ -481,7 +482,8 @@ function reviewPane(items) {
     if (have.sum && have.det)
       lastInputs = { csv: have.sum.fmt === "csv",
                      pair: have.sum.data.concat(have.det.data) };
-    const opts = { orderFix: ruleEdits };
+    const opts = { orderFix: ruleEdits,
+                   platformStands: !!(platStand && platStand.checked) };
     const res = lastInputs.csv
       ? GENIUS.buildIntegrale(lastInputs.pair, opts)
       : await GENIUS.build(lastInputs.pair, opts);
@@ -581,6 +583,7 @@ function reviewPane(items) {
        rather than above an empty page - they were the second thing a new
        user saw, before they had dropped anything. */
     optsEl.hidden = books.length === 0;
+    opts2El.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -668,6 +671,7 @@ function reviewPane(items) {
         roadsEl.textContent = "";
         allbar.hidden = true;
         optsEl.hidden = true;
+        opts2El.hidden = true;
         allnote.textContent = "";
         built = null; lastRes = null; lastInputs = null;
       }
@@ -699,6 +703,19 @@ function reviewPane(items) {
       });
     });
   }
+  /* Platform stands change what the BUILD produces, not just how it is
+     written out, so this one re-runs the build rather than re-rendering. */
+  if (platStand) platStand.addEventListener("change", () => {
+    if (!lastInputs) return;
+    queue = queue.then(async () => {
+      try {
+        await buildGenius();
+        say(platStand.checked
+          ? "Books rebuilt with long platform stands counted as berthings — save them again if needed."
+          : "Books rebuilt without platform stands — save them again if needed.", "go");
+      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
+    });
+  });
   /* One drop is one job: every file in it is read before anything is built.
      Reading them as separate jobs meant a pair dropped together built once
      off the first file and a leftover half from an earlier drop - Friday's

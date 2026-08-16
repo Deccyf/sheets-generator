@@ -251,6 +251,10 @@ const SHEETS_RULES = (() => {
         "A run out to a carriage washer and straight back to the road it " +
         "came from is not a berthing.",
         "A move that never leaves the Grove Park depot fence is not a line.",
+        "A unit standing in a platform for an hour or more has arguably " +
+        "berthed there. It gets a line where the report shunts it on the " +
+        "spot; otherwise it is named on the Review tab and left off, and " +
+        "“Count long platform stands” puts those on the sheets too.",
         "A unit that stands somewhere for the last time in the day and then " +
         "runs empty to a depot was only berthed there if it was actually put " +
         "away — the report marks that with a shunt against the stand. " +

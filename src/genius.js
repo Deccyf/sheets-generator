@@ -23,6 +23,9 @@ const GENIUS = (() => {
     return m;
   }
   const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
+  /* The locations the books actually print a page for. */
+  const PAGE_SECTIONS = new Set([...SHEETS_DATA.MAIN_ORDER,
+    ...SHEETS_DATA.METRO_ORDER, ...SHEETS_DATA.HS_ORDER]);
   const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
@@ -231,12 +234,40 @@ const GENIUS = (() => {
      station, is deliberately absent: depot to platform is a real departure. */
   const GP_DEPOT = new Set(["GRVPCSD", "GRVPDCE", "GRVPDLE", "GRVPKDS",
                             "GRVPKUS", "GRVPUHS"]);
-  function boundaries(stops) {
+  /* A unit that stands in a PLATFORM long enough has been berthed there as
+     far as the sheet is concerned - GT120/GT121 arrive at Victoria at 22 40
+     and leave at 23 40 for Meopham, and the book carries that line. But a
+     platform is not a siding, so this is not the general rule: it fires only
+     where the report says the unit was actually shunted on the spot ("#"),
+     or where the operator has asked for platform stands to be included.
+     Everything else long enough to be one is named on the review list
+     instead - between three and fourteen a day across the reports seen. */
+  function platformStand(s, opts) {
+    if (isStabling(s)) return null;               // already a berth
+    if (s.arr === null || s.dep === null) return null;
+    let dwell = s.dep - s.arr;
+    if (dwell < 0) dwell += 1440;
+    if (dwell < RUN_ROUND) return null;           // a turnround, not a stand
+    return { dwell, shunted: s.act === "#" };
+  }
+  function boundaries(stops, opts) {
+    opts = opts || {};
     const b = new Set();
     for (let k = 0; k < stops.length; k++) {
       const s = stops[k];
       if (k === 0 || k === stops.length - 1) { b.add(k); continue; }
-      if (!isStabling(s) || s.hcIn === s.hcOut) continue;
+      if (!isStabling(s)) {
+        const st = platformStand(s, opts);
+        if (st && (st.shunted || opts.platformStands) && s.hcIn !== s.hcOut) {
+          b.add(k);
+          if (opts.seen) opts.seen.push({ k, dwell: st.dwell, shunted: st.shunted,
+                                          took: true });
+        } else if (st && s.hcIn !== s.hcOut && opts.seen) {
+          opts.seen.push({ k, dwell: st.dwell, shunted: false, took: false });
+        }
+        continue;
+      }
+      if (s.hcIn === s.hcOut) continue;
       const dwell = (s.arr !== null && s.dep !== null) ? s.dep - s.arr : null;
       if (MINOR_SPUR.has(s.code) && dwell !== null && dwell < BERTH_STAY) continue;
       /* A run through the washer and straight back where it came from is a
@@ -322,7 +353,33 @@ const GENIUS = (() => {
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
-      const bnd = boundaries(stops);
+      /* Platform stands long enough to be a berthing: taken when the report
+         shunted the unit there or the operator asked for them, and named on
+         the review list either way so the decision is never silent. */
+      const stood = [];
+      const bnd = boundaries(stops, { platformStands: !!fx.platformStands,
+                                      seen: stood });
+      for (const st of stood) {
+        const at = stops[st.k];
+        /* Only where the book HAS a page. A unit standing at St Pancras,
+           Swanley, Margate or Maidstone East is not a berthing question:
+           nothing berths there as far as these sheets are concerned, and
+           without this the list fills with places nobody would look up.
+           Six a day across the reports seen, against thirty-seven. */
+        const secHere = secOf(at, false);
+        if (!secHere || !PAGE_SECTIONS.has(secHere)) continue;
+        const hh = t => String(Math.floor(t / 60) % 24).padStart(2, "0") + " " +
+                        String(t % 60).padStart(2, "0");
+        warn.push({ sec: secHere,
+          msg: (st.took ? "Taken as a berthing — " : "Not counted as a berthing — ") +
+            core.norm(locName(at)) + " " + hh(at.dep) + " (" + diag.slice(2) +
+            "): the unit stands in the platform for " +
+            (st.dwell >= 120 ? Math.round(st.dwell / 60) + " hours"
+                             : st.dwell + " minutes") +
+            (st.shunted ? " and the report shunts it there, so it is berthed"
+                        : ". Tick “Count long platform stands” to put it" +
+                          " on the sheet") });
+      }
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
       meta.set(diag, { stops, stints, sum: sr, sums: srs });
@@ -830,7 +887,8 @@ const GENIUS = (() => {
     const hasEdits = Object.keys(edits).length > 0;
     const fixTable = hasEdits
       ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
-    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
+    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [],
+                 platformStands: !!(opts && opts.platformStands) };
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)

@@ -17,6 +17,7 @@ No training needed — if you can find the reports, the page does the rest.
 8. [Reading a sheet](#8-reading-a-sheet)
 9. [The review list — always read it](#9-the-review-list--always-read-it)
 10. [The headcode switches](#10-the-headcode-switches)
+10a. [Long platform stands](#10a-long-platform-stands)
 11. [When something looks wrong](#11-when-something-looks-wrong)
 12. [Before the books go out](#12-before-the-books-go-out)
 
@@ -319,6 +320,27 @@ usual rules on the Mainline.
 **You can change your mind after building.** Tick or untick and the books are
 rebuilt on the spot — you don't have to drop the files again. Just remember to
 save them again afterwards; it'll remind you.
+
+---
+
+## 10a. Long platform stands
+
+Under the **HEADCODES** box, once a panel has built something, there is a
+second box: **Platform stands**.
+
+A unit that sits in a platform for an hour or more has arguably berthed
+there. The tool handles it in three ways:
+
+* If the report **shunts the unit on the spot** while it stands, that is the
+  planners saying it was put away — it gets a line, always. (London Victoria
+  22 40 on Sunday 17/08 is one: the unit stands an hour and goes at 23 40 to
+  Meopham.)
+* If not, the stand is **named on the review list** and left off the sheet.
+* Tick **Count long platform stands** to put those on the sheets too. The
+  books rebuild on the spot; save them again afterwards.
+
+Only places the books print a page for are considered — a unit standing at
+St Pancras or Swanley is not a berthing question.
 
 ---
 

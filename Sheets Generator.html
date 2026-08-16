@@ -421,6 +421,15 @@
       <label><input type="checkbox" id="hc_hs"> High Speed</label>
     </fieldset>
 
+    <fieldset class="opts" id="opts2" hidden>
+      <legend>Platform stands</legend>
+      <p class="opts-hint">A unit that stands in a platform for an hour or
+        more has arguably berthed there. It gets a line when the report
+        shunts it on the spot; otherwise it is named on the review list and
+        left off. Tick this to put those on the sheets too.</p>
+      <label><input type="checkbox" id="platstand"> Count long platform stands</label>
+    </fieldset>
+
     <div class="roads" id="roads"></div>
 
     <div class="allbar" id="allbar" hidden>
@@ -1457,6 +1466,10 @@ const SHEETS_RULES = (() => {
         "A run out to a carriage washer and straight back to the road it " +
         "came from is not a berthing.",
         "A move that never leaves the Grove Park depot fence is not a line.",
+        "A unit standing in a platform for an hour or more has arguably " +
+        "berthed there. It gets a line where the report shunts it on the " +
+        "spot; otherwise it is named on the Review tab and left off, and " +
+        "“Count long platform stands” puts those on the sheets too.",
         "A unit that stands somewhere for the last time in the day and then " +
         "runs empty to a depot was only berthed there if it was actually put " +
         "away — the report marks that with a shunt against the stand. " +
@@ -2391,7 +2404,12 @@ const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 /* road_pos_asc is keyed on the weekday road names; the prints use their own
    abbreviations for the same roads. The two siding-note tables are the
    bridge - both spell a road the same short way ("Up Sidings"), so one can
-   be looked up through the other rather than kept as a third list. */
+   be looked up through the other rather than kept as a third list.
+   A note is only a short label, though, not a name: Dartford up siding and
+   Slade Green up C.H.S. are both written "UPS", so matching on the note
+   alone hands Dartford's formations Slade Green's reading order. The
+   caller checks the road it gets back really is at the place it is
+   printing, and ignores it when it is not. */
 const ROAD_ALIAS = (() => {
   const byNote = new Map();
   for (const k of Object.keys(SHEETS_DATA.SIDING_NOTES))
@@ -2996,8 +3014,11 @@ function generate(diags, prof, stabling, warn){
        NOT carried over is the pinned order - those pins name weekday
        diagram numbers, which the weekend prints do not use.) */
     const road = e.origins.size === 1 ? Array.from(e.origins)[0] : null;
+    // an alias is only trusted when it names a road at THIS place
+    const alias = road === null ? undefined : ROAD_ALIAS.get(road);
+    const wkRoad = alias && alias.indexOf(sec) === 0 ? alias : road;
     const byRoad = road === null ? undefined
-      : (prof.road_pos_asc || new Map()).get(ROAD_ALIAS.get(road) || road);
+      : (prof.road_pos_asc || new Map()).get(wkRoad);
     if (byRoad === undefined ? (prof.pos_asc || new Set()).has(sec) : byRoad)
       blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
     else
@@ -3458,6 +3479,9 @@ const GENIUS = (() => {
     return m;
   }
   const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
+  /* The locations the books actually print a page for. */
+  const PAGE_SECTIONS = new Set([...SHEETS_DATA.MAIN_ORDER,
+    ...SHEETS_DATA.METRO_ORDER, ...SHEETS_DATA.HS_ORDER]);
   const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
@@ -3666,12 +3690,40 @@ const GENIUS = (() => {
      station, is deliberately absent: depot to platform is a real departure. */
   const GP_DEPOT = new Set(["GRVPCSD", "GRVPDCE", "GRVPDLE", "GRVPKDS",
                             "GRVPKUS", "GRVPUHS"]);
-  function boundaries(stops) {
+  /* A unit that stands in a PLATFORM long enough has been berthed there as
+     far as the sheet is concerned - GT120/GT121 arrive at Victoria at 22 40
+     and leave at 23 40 for Meopham, and the book carries that line. But a
+     platform is not a siding, so this is not the general rule: it fires only
+     where the report says the unit was actually shunted on the spot ("#"),
+     or where the operator has asked for platform stands to be included.
+     Everything else long enough to be one is named on the review list
+     instead - between three and fourteen a day across the reports seen. */
+  function platformStand(s, opts) {
+    if (isStabling(s)) return null;               // already a berth
+    if (s.arr === null || s.dep === null) return null;
+    let dwell = s.dep - s.arr;
+    if (dwell < 0) dwell += 1440;
+    if (dwell < RUN_ROUND) return null;           // a turnround, not a stand
+    return { dwell, shunted: s.act === "#" };
+  }
+  function boundaries(stops, opts) {
+    opts = opts || {};
     const b = new Set();
     for (let k = 0; k < stops.length; k++) {
       const s = stops[k];
       if (k === 0 || k === stops.length - 1) { b.add(k); continue; }
-      if (!isStabling(s) || s.hcIn === s.hcOut) continue;
+      if (!isStabling(s)) {
+        const st = platformStand(s, opts);
+        if (st && (st.shunted || opts.platformStands) && s.hcIn !== s.hcOut) {
+          b.add(k);
+          if (opts.seen) opts.seen.push({ k, dwell: st.dwell, shunted: st.shunted,
+                                          took: true });
+        } else if (st && s.hcIn !== s.hcOut && opts.seen) {
+          opts.seen.push({ k, dwell: st.dwell, shunted: false, took: false });
+        }
+        continue;
+      }
+      if (s.hcIn === s.hcOut) continue;
       const dwell = (s.arr !== null && s.dep !== null) ? s.dep - s.arr : null;
       if (MINOR_SPUR.has(s.code) && dwell !== null && dwell < BERTH_STAY) continue;
       /* A run through the washer and straight back where it came from is a
@@ -3757,7 +3809,33 @@ const GENIUS = (() => {
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
-      const bnd = boundaries(stops);
+      /* Platform stands long enough to be a berthing: taken when the report
+         shunted the unit there or the operator asked for them, and named on
+         the review list either way so the decision is never silent. */
+      const stood = [];
+      const bnd = boundaries(stops, { platformStands: !!fx.platformStands,
+                                      seen: stood });
+      for (const st of stood) {
+        const at = stops[st.k];
+        /* Only where the book HAS a page. A unit standing at St Pancras,
+           Swanley, Margate or Maidstone East is not a berthing question:
+           nothing berths there as far as these sheets are concerned, and
+           without this the list fills with places nobody would look up.
+           Six a day across the reports seen, against thirty-seven. */
+        const secHere = secOf(at, false);
+        if (!secHere || !PAGE_SECTIONS.has(secHere)) continue;
+        const hh = t => String(Math.floor(t / 60) % 24).padStart(2, "0") + " " +
+                        String(t % 60).padStart(2, "0");
+        warn.push({ sec: secHere,
+          msg: (st.took ? "Taken as a berthing — " : "Not counted as a berthing — ") +
+            core.norm(locName(at)) + " " + hh(at.dep) + " (" + diag.slice(2) +
+            "): the unit stands in the platform for " +
+            (st.dwell >= 120 ? Math.round(st.dwell / 60) + " hours"
+                             : st.dwell + " minutes") +
+            (st.shunted ? " and the report shunts it there, so it is berthed"
+                        : ". Tick “Count long platform stands” to put it" +
+                          " on the sheet") });
+      }
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
       meta.set(diag, { stops, stints, sum: sr, sums: srs });
@@ -4265,7 +4343,8 @@ const GENIUS = (() => {
     const hasEdits = Object.keys(edits).length > 0;
     const fixTable = hasEdits
       ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
-    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
+    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [],
+                 platformStands: !!(opts && opts.platformStands) };
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)
@@ -5088,7 +5167,7 @@ function reviewPane(items) {
 (function weekday() {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall"), optsEl = $("#opts");
+        dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -5107,6 +5186,7 @@ function reviewPane(items) {
     main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
+  const platStand = $("#platstand");
 
   /* A rule edit changes what the build does, so it re-runs the build - the
      order lookup is inside it. Serialised on the same queue the headcode
@@ -5125,7 +5205,8 @@ function reviewPane(items) {
     if (have.sum && have.det)
       lastInputs = { csv: have.sum.fmt === "csv",
                      pair: have.sum.data.concat(have.det.data) };
-    const opts = { orderFix: ruleEdits };
+    const opts = { orderFix: ruleEdits,
+                   platformStands: !!(platStand && platStand.checked) };
     const res = lastInputs.csv
       ? GENIUS.buildIntegrale(lastInputs.pair, opts)
       : await GENIUS.build(lastInputs.pair, opts);
@@ -5225,6 +5306,7 @@ function reviewPane(items) {
        rather than above an empty page - they were the second thing a new
        user saw, before they had dropped anything. */
     optsEl.hidden = books.length === 0;
+    opts2El.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -5312,6 +5394,7 @@ function reviewPane(items) {
         roadsEl.textContent = "";
         allbar.hidden = true;
         optsEl.hidden = true;
+        opts2El.hidden = true;
         allnote.textContent = "";
         built = null; lastRes = null; lastInputs = null;
       }
@@ -5343,6 +5426,19 @@ function reviewPane(items) {
       });
     });
   }
+  /* Platform stands change what the BUILD produces, not just how it is
+     written out, so this one re-runs the build rather than re-rendering. */
+  if (platStand) platStand.addEventListener("change", () => {
+    if (!lastInputs) return;
+    queue = queue.then(async () => {
+      try {
+        await buildGenius();
+        say(platStand.checked
+          ? "Books rebuilt with long platform stands counted as berthings — save them again if needed."
+          : "Books rebuilt without platform stands — save them again if needed.", "go");
+      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
+    });
+  });
   /* One drop is one job: every file in it is read before anything is built.
      Reading them as separate jobs meant a pair dropped together built once
      off the first file and a leftover half from an earlier drop - Friday's

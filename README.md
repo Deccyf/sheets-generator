@@ -409,6 +409,20 @@ ones, all commented at the point of implementation:
   with no passenger work after it is left off (except in sections where
   ECS-only entries belong, such as West Marina, Grove Park and Slade Green) —
   each suppression is named on the review list.
+* **A long stand in a platform.** A unit standing in a platform for
+  `RUN_ROUND` minutes or more has arguably berthed there — `GT120`/`GT121`
+  arrive at London Victoria at 22 40 on 17/08 and leave at 23 40 for
+  Meopham, and the book carries that line. A platform is not a siding, so
+  `boundaries()` splits there only when the report **shunts the unit on the
+  spot** (`#` in the activity column, which that Victoria row has), or when
+  the operator ticks *Count long platform stands*. Everything else long
+  enough is named on the review list either way, so the decision is never
+  silent. Restricted to locations the books actually print a page for —
+  without that filter the list fills with St Pancras, Swanley and Margate,
+  where nothing berths as far as these sheets are concerned: **six a day
+  across the reports seen, against thirty-seven.** Across GEN-WED/FRI +
+  INT-MON the option off changes nothing (703 entries); on 17/08 it takes
+  the mainline book from 132 entries to 138.
 * **The going-home pause.** A last-of-the-day ECS run to a depot is left off
   even when the depot is in another section, if the unit was never actually
   shunted where it stood. Genius marks a shunt on the spot with `#` in the

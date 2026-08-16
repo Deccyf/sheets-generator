@@ -140,3 +140,30 @@ test("the exported corrections file reads without the code", async () => {
   assert.deepEqual(norm(back.orderFix["ASHFORD 05 05|101,102"]),
                    norm(["101", "102"]), "unchanged through the round trip");
 });
+
+test("a siding note is a label, not a road name", () => {
+  const D = built().SHEETS_DATA;
+  /* The weekend prints and the weekday books spell the same road two
+     different ways, so the reading-order table is reached through the two
+     siding-note tables. Notes are short labels and repeat across the
+     network - Dartford up siding and Slade Green up C.H.S. are both "UPS" -
+     so the bridge alone will hand one place another place's order. The
+     engine only accepts a road that is at the section being printed; this
+     pins the collision that made the guard necessary. */
+  const byNote = new Map();
+  for (const k of Object.keys(D.SIDING_NOTES))
+    byNote.set(String(D.SIDING_NOTES[k]).toUpperCase(), k);
+  const claimed = new Map();
+  for (const k of Object.keys(D.NOTE_FROM_BERTH)) {
+    const w = byNote.get(String(D.NOTE_FROM_BERTH[k]).toUpperCase());
+    if (!w) continue;
+    if (!claimed.has(w)) claimed.set(w, []);
+    claimed.get(w).push(k);
+  }
+  assert.deepEqual(claimed.get("SLADE GREEN UP C.H.S"), ["S Gn U Sd", "Dart USd"],
+    "the note bridge really does hand Dartford Slade Green's road");
+  // and the guard the engine applies drops it, while keeping the true pair
+  const at = (sec, w) => !!(w && w.indexOf(sec) === 0);
+  assert.equal(at("SLADE GREEN", "SLADE GREEN UP C.H.S"), true, "kept where it belongs");
+  assert.equal(at("DARTFORD", "SLADE GREEN UP C.H.S"), false, "dropped where it does not");
+});
