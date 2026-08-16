@@ -303,14 +303,15 @@ fault — it's the tool showing its working.
 
 ## 10. The headcode switches
 
-Above each drop zone there's a box marked **HEADCODES** with three tick-boxes:
-**Mainline**, **Metro**, **High Speed**.
+Once a panel has built something, a box marked **HEADCODES** appears with it,
+holding three tick-boxes: **Mainline**, **Metro**, **High Speed**. It only
+shows up alongside books, because ticking one rebuilds them.
 
 * **Left off** (how they start) each book follows the house rules — headcodes
   appear only in the sections that have always quoted them: Gillingham, Victoria
   and Grove Park.
 * **Ticked**, that book puts **every** headcode in the notes column — empty moves
-  and platform starters alike, the way Victoria and Grove Park have always read.
+  and platform starters alike.
 
 They're per book, so you can have all the headcodes on the Metro sheets and the
 usual rules on the Mainline.

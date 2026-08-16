@@ -503,15 +503,16 @@ const children = [
     "— it is the tool showing its working."),
   gap(60),
   h2("10. The headcode switches"),
-  p("Above each drop zone there is a box marked **HEADCODES** with three " +
-    "tick-boxes: **Mainline**, **Metro**, **High Speed**."),
+  p("Once a panel has built something, a box marked **HEADCODES** appears " +
+    "with it, holding three tick-boxes: **Mainline**, **Metro**, **High " +
+    "Speed**. It only shows up alongside books, because ticking one " +
+    "rebuilds them."),
   ...bullets([
     "**Left off** — how they start — each book follows the house rules, and " +
       "headcodes appear only in the sections that have always quoted them: " +
       "Gillingham, Victoria and Grove Park.",
     "**Ticked**, that book puts *every* headcode in the notes column — empty " +
-      "moves and platform starters alike, the way Victoria and Grove Park have " +
-      "always read.",
+      "moves and platform starters alike.",
   ]),
   p("They work per book, so you can have all the headcodes on the Metro sheets " +
     "and the usual rules on the Mainline."),

@@ -314,14 +314,9 @@
   <header>
     <p class="eyebrow">Fleet &amp; depot · unit berthing</p>
     <h1>Berthing sheets <span class="sub">the week's books, built from the plans</span></h1>
-    <p class="lede">This page turns the planning paperwork into the unit berthing
-      books. Weekday books are built from the Diagram Summary and Detail
-      reports — from Genius or from Integrale; Saturday and Sunday sheets
-      from the weekend diagram prints.
-      The page reads the dropped files, works out where every unit berths and
-      ends its day, and writes the books in the house format — diagram
-      numbers, AM and PM columns, flags and notes filled in — ready to check
-      on screen and save.</p>
+    <p class="lede">Drop the week's planning paperwork on the matching panel
+      below and the unit berthing books come back built — checked on screen,
+      then saved. Nothing leaves this computer.</p>
 
     <div class="lineup" id="lineup" aria-hidden="true"></div>
 
@@ -389,7 +384,7 @@
 
   <section class="platform" aria-labelledby="wk-h">
     <span class="sign">Weekdays · Mon – Fri</span>
-    <h2 id="wk-h">Daily sheets from the Genius reports</h2>
+    <h2 id="wk-h">Weekday sheets from the planning reports</h2>
     <p class="whatfor">Needs <strong>both</strong> reports for the date —
       the Diagram Summary (one line per diagram) and the Diagram Detail (every
       stop of every diagram) — from Genius as PDFs or CSVs, or from
@@ -407,17 +402,18 @@
     </button>
     <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
-    <fieldset class="opts">
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <fieldset class="opts" id="opts" hidden>
       <legend>Headcodes</legend>
-      <p class="opts-hint">Put every headcode in the notes column — empty
-        moves and platform starters alike, Victoria &amp; Grove Park style.
-        Left off, each book keeps the house rules.</p>
+      <p class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
+        headcode as standard. Tick a book to put one on every line of it —
+        empty moves and platform starters alike. The books rebuild as you
+        tick, so save them again afterwards.</p>
       <label><input type="checkbox" id="hc_main"> Mainline</label>
       <label><input type="checkbox" id="hc_metro"> Metro</label>
       <label><input type="checkbox" id="hc_hs"> High Speed</label>
     </fieldset>
-
-    <p class="status" id="status" role="status" aria-live="polite"></p>
 
     <div class="roads" id="roads"></div>
 
@@ -429,24 +425,19 @@
     <details class="explain">
       <summary>What the tool does with these reports</summary>
       <div class="explain-body">
-        <p>It reads every diagram's day from the Detail report, works out where
-          each unit berths, and writes the entries the way the hand-built books
-          do: departure times, three-digit diagram numbers, AM and PM columns
-          showing where each unit goes next and where it ends its day, SPLITS
-          and SPLITS PM flags, siding notes such as EAST SIDINGS, ATTACHMENT
-          notes, and the end markers at Dover Priory, Folkestone East, Hastings
-          and West Marina. Coupled units are listed in the order they stand —
-          which way round depends on the location, and the mainline and metro
-          books are timed differently.</p>
-        <p><b>Every rule is written out in full on the Rules tab</b> of each
-          book once it is built, and in <i>BERTHING SHEET RULES</i> for
-          circulating. Both are generated from the tool's own tables, so they
-          cannot fall behind what the books actually do.</p>
-        <p>Empty moves to a berth with no passenger work afterwards are left
-          off, the same as the hand-built sheets — each one is named on the
-          review list so nothing disappears silently. A move that takes a unit
-          out of its section, though, is the unit going away for the night and
-          is printed: the section it leaves has to show it going.</p>
+        <p>It reads every diagram's day from the Detail report, works out
+          where each unit berths, and writes the entries the way the
+          hand-built books do — times, diagram numbers, AM and PM columns,
+          flags, siding notes and end markers, all filled in.</p>
+        <p>It also leaves things off on purpose: an empty move onto a berth
+          with no passenger work after it is not a line, the same as the
+          hand-built sheets. Every one is named on the review list, so
+          nothing disappears silently.</p>
+        <p><b>The full rulebook is on the Rules tab</b> of each book once it
+          is built, and in <i>BERTHING SHEET RULES</i> for circulating. Both
+          are written out from the tool's own tables, so neither can fall
+          behind what the books actually do — which is why they are not
+          repeated here.</p>
       </div>
     </details>
 
@@ -493,17 +484,18 @@
     </button>
     <input type="file" id="we_file" accept=".docx,.doc" multiple hidden>
 
-    <fieldset class="opts">
+    <p class="status" id="we_status" role="status" aria-live="polite"></p>
+
+    <fieldset class="opts" id="we_opts" hidden>
       <legend>Headcodes</legend>
-      <p class="opts-hint">Put every headcode in the notes column — empty
-        moves and platform starters alike, Victoria &amp; Grove Park style.
-        Left off, each book keeps the house rules.</p>
+      <p class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
+        headcode as standard. Tick a book to put one on every line of it —
+        empty moves and platform starters alike. The books rebuild as you
+        tick, so save them again afterwards.</p>
       <label><input type="checkbox" id="we_hc_main"> Mainline</label>
       <label><input type="checkbox" id="we_hc_metro"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs"> High Speed</label>
     </fieldset>
-
-    <p class="status" id="we_status" role="status" aria-live="polite"></p>
 
     <div class="roads" id="we_roads"></div>
 
@@ -546,8 +538,9 @@
     <ul class="books">
       <li><b>SHEETS</b> — the mainline book (375 / 376 / 377 units), every
         section from Ashford to West Marina.</li>
-      <li><b>RAM_SHEETS</b> — Ramsgate's own book, cut from the same day's
-        workings.</li>
+      <li><b>RAM_SHEETS</b> — Ramsgate's own book, cut out of the mainline
+        day. Ramsgate has its own depot and its own people, so its section is
+        lifted into a book of its own rather than printed with the rest.</li>
       <li><b>METRO_SHEETS</b> — the metro book (465 / 466 / 707 units).</li>
       <li><b>HS_SHEETS</b> — the High Speed book (395 units), built whenever the
         reports contain High Speed diagrams.</li>
@@ -561,7 +554,7 @@
     <p>Read the review list on every build. Anything the rules had to decide
       for themselves is named there — locations that needed looking up, empty
       moves left off, diagrams whose pages didn't read cleanly, a unit order
-      pinned somewhere but not here. Nothing is quietly guessed at.</p>
+      recorded somewhere but not here. Nothing is quietly guessed at.</p>
     <p class="checknote"><b>Always double-check</b>These are drafting tools,
       and mistakes and bad uploads happen — check every book against the
       reports, the prints and the ACWNs before it goes out.</p>
@@ -5036,7 +5029,7 @@ function reviewPane(items) {
 (function weekday() {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall");
+        dlall = $("#dlall"), optsEl = $("#opts");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -5168,6 +5161,10 @@ function reviewPane(items) {
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
     allbar.hidden = books.length === 0;
+    /* The headcode toggles rebuild the books, so they belong with the books
+       rather than above an empty page - they were the second thing a new
+       user saw, before they had dropped anything. */
+    optsEl.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -5254,6 +5251,7 @@ function reviewPane(items) {
            one click from a zip named for the day that failed. */
         roadsEl.textContent = "";
         allbar.hidden = true;
+        optsEl.hidden = true;
         allnote.textContent = "";
         built = null; lastRes = null; lastInputs = null;
       }
@@ -5311,7 +5309,7 @@ function reviewPane(items) {
 (function weekend() {
   const say = sayer($("#we_status"));
   const roadsEl = $("#we_roads"), allbar = $("#we_allbar"),
-        allnote = $("#we_allnote");
+        allnote = $("#we_allnote"), optsEl = $("#we_opts");
   let built = null;
   let loadedDocs = [];
   const SPRITE_FOR = { Mainline: "375", Metro: "465", "High Speed": "395" };
@@ -5340,6 +5338,7 @@ function reviewPane(items) {
     });
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;
+    optsEl.hidden = live.length === 0;
     allnote.textContent = res.banner + " · " + res.diagrams +
       " diagrams read";
   }
@@ -5393,6 +5392,7 @@ function reviewPane(items) {
         loadedDocs = loadedDocs.filter(d => !newDocs.some(n => n.name === d.name));
         if (!loadedDocs.length) {
           built = null; roadsEl.textContent = ""; allbar.hidden = true;
+          optsEl.hidden = true;
         } else {
           try { rebuildFromLoaded(); } catch (e2) { /* keep previous view */ }
         }

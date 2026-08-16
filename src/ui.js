@@ -419,7 +419,7 @@ function reviewPane(items) {
 (function weekday() {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall");
+        dlall = $("#dlall"), optsEl = $("#opts");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -551,6 +551,10 @@ function reviewPane(items) {
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
     allbar.hidden = books.length === 0;
+    /* The headcode toggles rebuild the books, so they belong with the books
+       rather than above an empty page - they were the second thing a new
+       user saw, before they had dropped anything. */
+    optsEl.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -637,6 +641,7 @@ function reviewPane(items) {
            one click from a zip named for the day that failed. */
         roadsEl.textContent = "";
         allbar.hidden = true;
+        optsEl.hidden = true;
         allnote.textContent = "";
         built = null; lastRes = null; lastInputs = null;
       }
@@ -694,7 +699,7 @@ function reviewPane(items) {
 (function weekend() {
   const say = sayer($("#we_status"));
   const roadsEl = $("#we_roads"), allbar = $("#we_allbar"),
-        allnote = $("#we_allnote");
+        allnote = $("#we_allnote"), optsEl = $("#we_opts");
   let built = null;
   let loadedDocs = [];
   const SPRITE_FOR = { Mainline: "375", Metro: "465", "High Speed": "395" };
@@ -723,6 +728,7 @@ function reviewPane(items) {
     });
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;
+    optsEl.hidden = live.length === 0;
     allnote.textContent = res.banner + " · " + res.diagrams +
       " diagrams read";
   }
@@ -776,6 +782,7 @@ function reviewPane(items) {
         loadedDocs = loadedDocs.filter(d => !newDocs.some(n => n.name === d.name));
         if (!loadedDocs.length) {
           built = null; roadsEl.textContent = ""; allbar.hidden = true;
+          optsEl.hidden = true;
         } else {
           try { rebuildFromLoaded(); } catch (e2) { /* keep previous view */ }
         }
