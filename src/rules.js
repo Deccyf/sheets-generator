@@ -103,21 +103,45 @@ const SHEETS_RULES = (() => {
     return out;
   }
 
-  function exportText(orderFix, tag) {
-    const n = Object.keys(orderFix || {}).length;
-    const lines = [
-      "Unit order corrections" + (tag ? " from " + tag : ""),
-      n + " edit" + (n === 1 ? "" : "s") + " made on the machine that built these books.",
+  /* The file a tester sends back. It is read by two people: whoever made the
+     corrections, checking they exported what they meant to, and whoever
+     builds them into the tool. So it opens in plain English with the same
+     four columns the Unit order tab shows, and keeps the paste-in lines and
+     the machine copy underneath for the second reader. */
+  function exportText(orderFix, tag, savedIso) {
+    const keys = Object.keys(orderFix || {}).sort();
+    const n = keys.length;
+    const out = [
+      "UNIT ORDER CORRECTIONS" + (tag ? " — " + tag : ""),
       "",
-      "Paste these into ORDER_FIX in src/data.js to make them permanent:",
+      n + (n === 1 ? " formation was" : " formations were") +
+        " turned round by hand on the computer that built these books" +
+        (savedIso ? ", last changed " + savedIso.slice(0, 10).split("-")
+                      .reverse().join("/") : "") + ".",
       "",
-    ].concat(dataJsLines(orderFix), [
+      "Send this file back and they get built into the tool, so every copy of",
+      "it prints them the same way. Until then they are on that one computer",
+      "only, and every book built there says so on its review list.",
       "",
-      "The same edits as this page stores them:",
+      "-".repeat(70),
       "",
-      serialize(orderFix, null),
-    ]);
-    return lines.join("\n");
+    ];
+    for (const k of keys) {
+      const v = orderFix[k], r = orderRow(k, v || []);
+      if (!r) { out.push("  (unreadable: " + k + ")", ""); continue; }
+      out.push("  " + r.where + ", " + r.when,
+               "    diagrams " + r.formation,
+               "    " + (v === null ? "correction switched off — back to the reports' order"
+                                    : "print " + r.prints),
+               "");
+    }
+    out.push("-".repeat(70), "",
+      "FOR WHOEVER MAINTAINS THE TOOL", "",
+      "Paste into ORDER_FIX in src/data.js:", "");
+    for (const line of dataJsLines(orderFix)) out.push(line);
+    out.push("", "The same corrections as the page stores them:", "",
+             serialize(orderFix, savedIso || null));
+    return out.join("\n");
   }
 
   /* ------------------------------------------------------------------

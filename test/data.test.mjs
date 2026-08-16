@@ -117,3 +117,26 @@ test("Charing Cross codes never swallow Charing in Kent", () => {
   const E = N.SheetsEngine, w = [];
   assert.equal(E.codeFor("Charing", E.DEST_CODE, w, "t"), "CHG");
 });
+
+test("the exported corrections file reads without the code", async () => {
+  const N = built();
+  const R = N.SHEETS_RULES;
+  const txt = R.exportText({ "ASHFORD 05 05|101,102": ["101", "102"],
+                             "GROVE PARK|805,806": null },
+                           "MON-17-08", "2026-08-16T09:12:00.000Z");
+  /* It is sent by somebody who pressed Reverse and read by somebody who
+     builds it in, so it has to make sense before the JSON starts. */
+  assert.match(txt, /ASHFORD, the 05 05 departure only/, "where and when");
+  assert.match(txt, /diagrams 101 \+ 102/, "which formation");
+  assert.match(txt, /print 101, then 102/, "and what to print");
+  assert.match(txt, /switched off/, "a removal says so in words");
+  assert.match(txt, /16\/08\/2026/, "when it was made");
+  assert.ok(txt.indexOf("ASHFORD, the 05 05") < txt.indexOf("ORDER_FIX"),
+    "the plain half comes before the code half");
+  // and the machine copy still round-trips
+  const json = txt.slice(txt.indexOf("{"));
+  const back = R.parse(json);
+  assert.ok(back, "the block at the foot parses back");
+  assert.deepEqual(norm(back.orderFix["ASHFORD 05 05|101,102"]),
+                   norm(["101", "102"]), "unchanged through the round trip");
+});

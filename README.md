@@ -17,9 +17,10 @@ in and the house drafting conventions applied automatically.
 Everything runs inside the one file, in the browser, on the local machine. No
 report, print or sheet ever leaves the computer, and the page works without an
 internet connection — the only library it needs (fflate, for zip and inflate)
-is bundled into the file itself. The deliverable is about **300 KB** (a third
-of it the how-to screenshots in the quick start); the source lives in `src/`
-and is assembled by `node build.mjs`.
+is bundled into the file itself. The deliverable is a few hundred KB (a good
+part of it the how-to screenshots in the quick start); the source lives in
+`src/` and is assembled by `node build.mjs`, which prints the exact size and
+also rebuilds the two generated documents.
 
 > **These are drafting tools.** Every build produces a review list naming
 > anything the rules had to decide for themselves. Always read it, and always
@@ -87,13 +88,13 @@ The weekday panel reads either planning system:
   dialog, are behind *Getting the two CSVs out of Integrale* in the page's own
   quick start.
 
-3. Drop **both files** on the first panel (*Weekdays · Mon – Fri*), together
-   or one after the other — the tool recognises which report is which from
-   its contents and waits until it has a matching pair (two PDFs or two
-   CSVs). You can also click the panel to browse for the files.
-4. The books are built immediately: look them over in the on-screen preview
-   (per-day tables for Mainline, Metro and High Speed, plus the Review tab),
-   then save each book, or all of them at once as a single zip.
+Then: drop **both files** on the first panel (*Weekdays · Mon – Fri*),
+together or one after the other — the tool recognises which report is which
+from its contents and waits until it has a matching pair. You can also click
+the panel to browse for them. The books are built immediately: look them over
+in the on-screen preview (per-day tables for Mainline, Metro and High Speed,
+plus the Review, Unit order and Rules tabs), then save each book, or all of
+them at once as a single zip.
 
 Four roads are always shown — **SHEETS**, **RAM SHEETS**, **METRO SHEETS** and
 **HS SHEETS**. A road whose fleet has no diagrams in the reports says so

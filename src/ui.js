@@ -127,6 +127,12 @@ let ruleEdits = (() => {
   return parsed ? parsed.orderFix : {};
 })();
 const editCount = () => Object.keys(ruleEdits).length;
+/* when the overlay was last written, so the exported file can say */
+const savedAt = () => {
+  if (!rulesStore) return null;
+  const p = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
+  return p ? p.saved : null;
+};
 function persistEdits() {
   if (!rulesStore) return false;
   try {
@@ -563,7 +569,8 @@ function reviewPane(items) {
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
       if (editCount()) acts.push(["Export order corrections",
         () => download("SHEETS_ORDER_CORRECTIONS_" + res.tag + ".txt",
-                       SHEETS_RULES.exportText(ruleEdits, res.tag), "text/plain")]);
+                       SHEETS_RULES.exportText(ruleEdits, res.tag, savedAt()),
+                       "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes, acts));
     });
