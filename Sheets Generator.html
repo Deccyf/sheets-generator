@@ -1574,9 +1574,12 @@ const SHEETS_RULES = (() => {
     /* ---- 8. words on the sheet ---- */
     push("words", "The words you will see in the notes", [
       { table: { head: ["Note", "What it means"], rows: [
-        ["ATTACHMENT", "Another unit joins this train later on its journey. " +
-         "It does not mean some other train happens to leave the same place " +
-         "in the same minute."],
+        ["ATTACHMENT", "Another unit joins this train and the two run on as " +
+         "one, under one headcode. They need not leave the berth together - " +
+         "the other unit can run empty into the platform and become part of " +
+         "the working there. It does not mean some other train happens to " +
+         "leave the same place in the same minute, and a unit that joins " +
+         "further down the line is that place's note, not this one's."],
         ["SPLITS", "These units come apart again later today."],
         ["SPLITS PM", "They come apart, but not until this evening."],
         ["UP SIDINGS, EAST SIDINGS, UPS, DNM, JUB",
@@ -3774,7 +3777,7 @@ const GENIUS = (() => {
                 originCodes: new Set() };
           entries.set(key, e);
         }
-        e.units.push({ diag, si, exitIdx });
+        e.units.push({ diag, si, exitIdx, leaveIdx });
         e.origins.add(core.norm(locName(origin)));
         e.originCodes.add(origin.code);
       }
@@ -3954,19 +3957,35 @@ const GENIUS = (() => {
       e.attachment = e.attachment || e.origins.size > 1;
       if (!e.attachment) {
         const inUnits = new Set(e.units.map(u => u.diag));
-        const ex = meta.get(e.units[0].diag).stops[e.units[0].exitIdx];
+        /* An attachment is another unit JOINING this train, and the join is
+           a headcode: the two need not leave the berth on the same working
+           - one can run empty off the siding into the platform and become
+           part of 2FXX there - but from the moment they are one train they
+           carry one headcode.
+
+           So the comparison runs from the berth to the last call in this
+           section, not just the berth. Where those are the same stop this is
+           the old test; where they differ - the metro book's first-move
+           timing, mostly - it lets the join happen at the platform, which is
+           the case the note is for. It stops at the section boundary on
+           purpose: a unit that attaches further down the line belongs to
+           that place's sheet (Tonbridge 06+07 joins at Tunbridge Wells).
+
+           Same place and same minute alone is not enough: two unrelated
+           trains leave a junction in the same minute all morning. */
+        const u0 = e.units[0], m0 = meta.get(u0.diag);
+        const run = m0.stops.slice(u0.exitIdx, u0.leaveIdx + 1)
+          /* A stop the unit only passes through carries no departure and no
+             headcode, and two nulls match two nulls - which would make every
+             diagram that so much as calls there an attachment. */
+          .filter(s => s.dep !== null && s.hcOut);
         outer:
         for (const [od, om] of meta) {
           if (inUnits.has(od)) continue;
-          /* Same place and same minute is not enough - two unrelated trains
-             leave a junction station in the same minute all morning. The
-             other unit has to be leaving on THIS working, which is what the
-             outbound headcode says. (Tonbridge 06+07: RM066 runs 5E56 to
-             Tunbridge Wells and attaches there, while RM001 and RM903 leave
-             Tonbridge at 06 07 on 2W08 - a different train entirely.) */
           for (const s of om.stops)
-            if (s.code === ex.code && s.dep === ex.dep &&
-                s.hcOut === ex.hcOut) { e.attachment = true; break outer; }
+            for (const mine of run)
+              if (s.code === mine.code && s.dep === mine.dep &&
+                  s.hcOut === mine.hcOut) { e.attachment = true; break outer; }
         }
       }
       for (const x of blocks) x.end = "";

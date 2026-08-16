@@ -183,8 +183,16 @@ The columns are:
   one off the sidings even though the time is from the platform.
 * **Siding notes** such as `EAST SIDINGS`, `UP SIDINGS`, `UPS`, `DNM`, `JUB`,
   naming which road the unit starts from.
-* **`ATTACHMENT`** when another unit joins this departure (a unit re-entering
-  its berth just to attach is not listed as its own row — the note covers it).
+* **`ATTACHMENT`** when another unit joins this train and the two run on
+  under one headcode (a unit re-entering its berth just to attach is not
+  listed as its own row — the note covers it). The join is the *headcode*,
+  not the berth: the two need not leave together, so the comparison runs from
+  the berth to the last call in this section — which is what lets a unit run
+  empty off the siding into the platform and become part of `2FXX` there. It
+  stops at the section boundary, because a unit that attaches further down
+  the line belongs to that place's sheet (Tonbridge `06+07` joins at
+  Tunbridge Wells). Same place and same minute alone is not enough: two
+  unrelated trains leave a junction in the same minute all morning.
 * **End markers** at the places where the two ends of a train are named for
   the way out: Dover Priory (`FKE END` / `CBE END`), Folkestone East
   (`AFK END` / `DVP END`), Hastings (`TON END` / `ORE END`), West Marina

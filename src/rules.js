@@ -374,9 +374,12 @@ const SHEETS_RULES = (() => {
     /* ---- 8. words on the sheet ---- */
     push("words", "The words you will see in the notes", [
       { table: { head: ["Note", "What it means"], rows: [
-        ["ATTACHMENT", "Another unit joins this train later on its journey. " +
-         "It does not mean some other train happens to leave the same place " +
-         "in the same minute."],
+        ["ATTACHMENT", "Another unit joins this train and the two run on as " +
+         "one, under one headcode. They need not leave the berth together - " +
+         "the other unit can run empty into the platform and become part of " +
+         "the working there. It does not mean some other train happens to " +
+         "leave the same place in the same minute, and a unit that joins " +
+         "further down the line is that place's note, not this one's."],
         ["SPLITS", "These units come apart again later today."],
         ["SPLITS PM", "They come apart, but not until this evening."],
         ["UP SIDINGS, EAST SIDINGS, UPS, DNM, JUB",
