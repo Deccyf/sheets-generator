@@ -547,17 +547,6 @@ const GENIUS = (() => {
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
         const applied = fx.table[kTimed] ? kTimed
                       : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
-        /* What the lookup actually consulted, recorded at the lookup itself
-           so nothing downstream has to re-derive a key and risk deriving a
-           different one - the diags here are the pre-filter list. */
-        if (e.blocks.length > 1)
-          /* buildDate runs once per fleet into the same list, so the record
-             has to say which book it belongs to or the mainline Rules tab
-             offers to reverse metro formations. */
-          fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
-                            bucket: prof.bucket,
-                            lookupDiags: diags, keysTried: [kTimed, kSec, diags],
-                            applied, units: e.blocks.map(x => x.diag.slice(2)) });
         if (fix) e.blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
         /* A pin that silently stops matching is the worst failure this table
@@ -567,19 +556,34 @@ const GENIUS = (() => {
            recorded for this formation and none of them fired here, say so. */
         else if (e.blocks.length > 1 && fx.keys.has(diags))
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-            e.blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
-            " for this formation but not for here - it is set down as " +
-            [...fx.keys.get(diags)].join("; ") + ", so this one is" +
-            " ordered off the reports. Check it, and say if it should be" +
-            " pinned too" });
+            e.blocks.map(x => x.diag.slice(2)).join("+") + "): this formation " +
+            "has a corrected order recorded at " +
+            [...fx.keys.get(diags)].join(" and ") + ", but not here, so this " +
+            "one is ordered off the reports. Check it — it may need the same " +
+            "correction" });
+        /* What the lookup consulted, recorded at the lookup itself so nothing
+           downstream has to re-derive a key and risk deriving a different
+           one. It goes AFTER the sort on purpose: the Unit order tab labels
+           this column "printed in this order", so it has to be the order
+           that printed - recorded before, it showed the reports' order and
+           never moved when a correction was applied to it.
+           buildDate runs once per fleet into this one list, so the record
+           also has to say which book it belongs to, or the mainline tab
+           offers to reverse metro formations. */
+        if (e.blocks.length > 1)
+          fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
+                            bucket: prof.bucket,
+                            lookupDiags: diags, keysTried: [kTimed, kSec, diags],
+                            applied, units: e.blocks.map(x => x.diag.slice(2)) });
       }
       // Two units on the same Position started the day in different
       // formations, so the reports cannot say which way round they go.
       if (e.blocks.length > 1 &&
           new Set(e.blocks.map(x => x.pos)).size !== e.blocks.length)
         warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-          e.blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
-          " the reports cannot say which way round they go, so check the order" });
+          e.blocks.map(x => x.diag.slice(2)).join("+") + "): the reports give " +
+          "these units the same place in the formation, so they cannot say " +
+          "which way round they go — check the order against the real book" });
       // SPLITS is about the units parting company, and the books take that
       // from the whole day rather than from where this stint happens to end:
       // GT107/GT108 run as one train from Ashford at 06 40 to the same berth
@@ -749,8 +753,8 @@ const GENIUS = (() => {
         if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";
       if (e.suppress)
         warn.push({ sec: e.sec,
-                  msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-                  e.blocks.map(x => x.diag).join("+") + ") - " +
+                  msg: "Left off — " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+                  e.blocks.map(x => x.diag.slice(2)).join("+") + "): " +
                   (e.gpShunt ? "shunt inside the Grove Park depot"
                    : e.pause ? "stood here on the way to the depot, never" +
                                " shunted, so it is not a berthing here"

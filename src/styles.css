@@ -285,6 +285,12 @@
   .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron);
     vertical-align:top}
   .rules-t .tag-local{color:var(--amber); font-weight:700}
+  /* a formation you turned round yourself, so it is obvious which rows are
+     yours and which came with the tool */
+  .rules-t tr.flipped td{background:#FFF6E8; border-bottom-color:#E8CFA6}
+  .rules-t tr.flipped td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+  .flag-you{font-family:var(--mono); font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--amber); white-space:nowrap}
   .rule-sec{margin:0 0 18px}
   .rule-sec + .rule-sec{border-top:1px solid var(--apron); padding-top:12px}
   .rules ul{margin:0 0 10px; padding-left:18px}

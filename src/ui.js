@@ -221,18 +221,29 @@ function orderPane(b, res, rebuild, secNames) {
       "<th>Printed in this order</th><th>Decided by</th><th></th>" +
       "</tr></thead><tbody>");
     coupled.forEach((c, ix) => {
-      h.push("<tr><td>" + esc(c.sec + " " + c.timeText) + "</td><td>" +
-        esc(c.units.join(", ")) + "</td><td>" +
-        (c.applied ? "the corrections list"
-                   : "the position numbers in the report") +
-        '</td><td><button type="button" class="btn ghost" data-flip="' + ix +
-        '">Reverse</button></td></tr>');
+      /* A row you turned round yourself, as opposed to one the shipped
+         corrections list already had: it is marked, and the button undoes
+         it rather than reversing it a second time. */
+      const mine = !!c.applied &&
+        Object.prototype.hasOwnProperty.call(R.edits, c.applied);
+      h.push('<tr class="' + (mine ? "flipped" : "") + '"><td>' +
+        esc(c.sec + " " + c.timeText) +
+        (mine ? ' <span class="flag-you">turned round by you</span>' : "") +
+        "</td><td>" + esc(c.units.join(", ")) + "</td><td>" +
+        (mine ? "you, on this computer"
+              : c.applied ? "the corrections list"
+                          : "the position numbers in the report") +
+        '</td><td><button type="button" class="btn ghost" ' +
+        (mine ? 'data-unflip="' + esc(c.applied) + '">Undo'
+              : 'data-flip="' + ix + '">Reverse') +
+        "</button></td></tr>");
     });
     h.push("</tbody></table>");
     h.push('<p class="opts-hint">Reverse turns that formation round and ' +
-      "rebuilds the books straight away so you can see it. The change stays " +
-      "on this computer only — use “Export order corrections” on this " +
-      "card and send us the file, and it gets built in for everybody.</p>");
+      "rebuilds the books straight away so you can see it. Anything you have " +
+      "turned round is marked, and Undo puts it back. The changes stay on " +
+      "this computer only — use “Export order corrections” on this " +
+      "card and send us the file, and they get built in for everybody.</p>");
     h.push("</section>");
   }
 
@@ -279,6 +290,14 @@ function orderPane(b, res, rebuild, secNames) {
       const bad = SHEETS_RULES.validEdit(key, order);
       if (bad) return;
       ruleEdits[key] = order;
+      persistEdits();
+      rebuild();
+      return;
+    }
+    const un = ev.target.getAttribute && ev.target.getAttribute("data-unflip");
+    if (un) {
+      // back to whatever the tool ships, which may be an order of its own
+      delete ruleEdits[un];
       persistEdits();
       rebuild();
       return;

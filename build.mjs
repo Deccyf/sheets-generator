@@ -1,6 +1,8 @@
 /* Assembles the single-file deliverable from src/. No dependencies.
    Usage: node build.mjs  ->  "Sheets Generator.html" */
 import { readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const read = p => readFileSync(new URL(p, import.meta.url), "utf8");
 const version = JSON.parse(read("./package.json")).version;
@@ -29,3 +31,31 @@ const html = read("./src/page.html")
 writeFileSync(new URL("./Sheets Generator.html", import.meta.url), html);
 console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes ` +
   `(${(html.length / 1024).toFixed(0)} KB)`);
+
+/* The documents that are generated FROM the tool are part of the build, not
+   an afterthought - the Word guide sat a day behind for exactly as long as
+   it took nobody to remember to run it by hand. The rules page needs only
+   the file we have just written; the Word guide needs the `docx` package,
+   so it is built when that is installed and skipped, loudly, when it is
+   not. Neither failure stops the tool being built. */
+async function extras() {
+  const here = new URL("./", import.meta.url);
+  try {
+    await import("./tools/make-rules-doc.mjs");
+  } catch (e) {
+    console.error('  ! "BERTHING SHEET RULES.html" NOT rebuilt: ' + e.message);
+  }
+  try {
+    createRequire(import.meta.url).resolve("docx");
+  } catch (e) {
+    console.log('  - "HOW TO USE.docx" skipped (run `npm i docx` to build it)');
+    return;
+  }
+  try {
+    process.argv[2] = fileURLToPath(new URL("./HOW TO USE.docx", here));
+    await import("./tools/make-guide-docx.mjs");
+  } catch (e) {
+    console.error('  ! "HOW TO USE.docx" NOT rebuilt: ' + e.message);
+  }
+}
+await extras();

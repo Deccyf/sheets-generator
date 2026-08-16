@@ -95,9 +95,18 @@ test("GENIUS.build output is identical to the legacy build", async () => {
   /* The legacy build is frozen, so it cannot grow review items the new one
      learned to raise. Compare only the kinds both builds know about; the
      added kind has its own test below. */
-  const SINCE_LEGACY = /a unit order is recorded for this formation/;
+  /* The review list has moved on from the frozen build in two ways: it
+     raises a kind of note that build never had, and it says the rest in
+     plainer words - "Left off —" rather than "suppressed:", diagram numbers
+     as the sheet prints them, and no "Position" or "pinned". Compare the
+     kinds both builds raise, in the shape this one uses. */
+  const SINCE_LEGACY = /has a corrected order recorded at/;
+  const asNow = m => m
+    .replace(/^suppressed: /, "Left off — ")
+    .replace(/\) - /, "): ")
+    .replace(/\b([A-Z]{2})(\d{3})/g, "$2");
   assert.deepEqual(norm(resN.review.filter(m => !SINCE_LEGACY.test(m))),
-                   norm(resL.review), "review list");
+                   norm(resL.review.map(asNow)), "review list");
   assert.equal(resN.tag, resL.tag, "tag");
 });
 
@@ -131,15 +140,15 @@ test("per-book review lists carry only their own fleet's items", async () => {
 test("warnings carry their section, and the Ramsgate cut works", async () => {
   const N = built();
   const res = await N.GENIUS.build(pdfs(N));
-  const fav = res.reviews.main.find(x => /suppressed: FAVERSHAM/.test(x.msg));
+  const fav = res.reviews.main.find(x => /Left off — FAVERSHAM/.test(x.msg));
   assert.equal(fav.sec, "FAVERSHAM", "suppression tagged with its section");
-  const ramItem = res.reviews.main.find(x => /suppressed: RAMSGATE/.test(x.msg));
+  const ramItem = res.reviews.main.find(x => /Left off — RAMSGATE/.test(x.msg));
   assert.equal(ramItem.sec, "RAMSGATE", "Ramsgate suppression tagged");
   const bel = res.reviews.metro.find(x => /Belvedere/.test(x.msg));
   assert.equal(bel.sec, "BELVEDERE", "auto-section tagged with its section");
   // The Ramsgate card's filter: RAMSGATE items and general items only.
   const ram = res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE");
-  assert.ok(ram.some(x => /suppressed: RAMSGATE/.test(x.msg)),
+  assert.ok(ram.some(x => /Left off — RAMSGATE/.test(x.msg)),
     "Ramsgate card keeps its own item");
   assert.ok(!ram.some(x => /FAVERSHAM/.test(x.msg)),
     "Ramsgate card clean of other sections' items");
@@ -270,10 +279,14 @@ test("units the reports cannot order are named on the review list", async () => 
   const { TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL } =
     await import("./helpers/synth.mjs");
   const res = N.GENIUS.buildIntegrale([TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL]);
+  /* The note names the units the way the SHEET names them - three digits,
+     no fleet prefix - because it is read next to the sheet. */
   assert.ok(res.reviews.main.some(x =>
-    /two units share a Position/.test(x.msg) &&
-    /RM910/.test(x.msg) && /RM911/.test(x.msg)),
+    /the same place in the formation/.test(x.msg) &&
+    /\b910\b/.test(x.msg) && /\b911\b/.test(x.msg)),
     "the tie is flagged rather than quietly guessed at");
+  assert.ok(!res.reviews.main.some(x => /\bPosition\b|\bpinned\b/.test(x.msg)),
+    "and says it without the report's own field names");
 });
 
 test("mixed-format pairs are refused by the sniffers", () => {
@@ -393,9 +406,9 @@ test("a pin that exists elsewhere but not here is named on the review list", asy
   /* GT101/GT102 are pinned at ASHFORD 15+43 and nowhere else, so their other
      appearance has to say the pin did not reach it - that silent miss is the
      failure this note exists to catch. */
-  const hit = res.review.find(m => /a unit order is recorded for this formation/.test(m));
+  const hit = res.review.find(m => /has a corrected order recorded at/.test(m));
   assert.ok(hit, "the unreached pin is named: " + res.review.join(" | "));
-  assert.match(hit, /GT10[12]\+GT10[12]/, "it names the units: " + hit);
+  assert.match(hit, /10[12]\+10[12]/, "it names the units: " + hit);
   assert.match(hit, /ASHFORD 15\+43/, "it says where the order IS recorded: " + hit);
   // a formation with no pin anywhere must stay quiet - this is not a
   // "your order is unvalidated" warning, which would fire on nearly every row
@@ -403,9 +416,9 @@ test("a pin that exists elsewhere but not here is named on the review list", asy
   const pinned = new Set(Object.keys(D.ORDER_FIX)
     .filter(k => k.includes("|")).map(k => k.split("|")[1]));
   for (const m of res.review) {
-    const mm = /\((.+?)\): a unit order is recorded/.exec(m);
+    const mm = /\((.+?)\): this formation has a corrected order/.exec(m);
     if (!mm) continue;
-    const diags = mm[1].split("+").map(d => d.slice(2)).sort().join(",");
+    const diags = mm[1].split("+").sort().join(",");
     assert.ok(pinned.has(diags), "only formations that ARE pinned somewhere: " + m);
   }
 });
@@ -478,7 +491,7 @@ test("a stand with no shunt on the way to the depot is not printed", async () =>
   const res = await N.GENIUS.build([PAUSE_SUM, pauseDetail("")]);
   assert.deepEqual(Array.from(dartfordTimes(res)), [],
     "Dartford gets no line for a unit that only paused there");
-  const note = res.review.find(m => /DARTFORD/.test(m) && /suppressed/.test(m));
+  const note = res.review.find(m => /DARTFORD/.test(m) && /Left off/.test(m));
   assert.ok(note, "and the Review tab says why: " + res.review.join(" | "));
   assert.match(note, /never shunted/);
 });
