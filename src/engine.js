@@ -810,8 +810,7 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
         doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
-        if (i === 0) put(r, 1, e.time + " " + e.dest +
-                                (e.via ? " Via " + e.via : ""), 3);
+        if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
         put(r, 2, u.cls, 3);
         put(r, 3, dnum(u.num), 3);
         if (u.D) put(r, 4, u.D, 4);
@@ -819,6 +818,11 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
         const parts = [];
         if (i === 0){
           if ((allHc || headcodeSections.has(sec)) && e.hc) parts.push(e.hc);
+          /* The route goes in the notes, not against the time. Column A is
+             "HH MM DDD" in every real book and never more - the longest
+             value in any of them is nine characters - so "Via AFK" against
+             the time widened the column for the whole page. */
+          if (e.via) parts.push("Via " + e.via);
           if (e.attachment) parts.push("ATTACHMENT");
           if (e.note) parts.push(e.note);
         }

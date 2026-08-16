@@ -1029,7 +1029,11 @@ const SIDING_CLASS_RE = new RegExp(
      Faversham services leave the other way and keep the CBE end in front,
      which is what the plain destination rules above already say.
 
-     `via` is what the destination cell adds - "VIC Via AFK". `lead` names
+     `via` is what the notes column adds - "Via AFK", beside the end
+     marker. It does NOT go against the time: column A reads "HH MM DDD" in
+     every real book and never more, the longest value in any of them being
+     nine characters, so "08 28 VIC Via AFK" widened the column for the
+     whole page. `lead` names
      which end of END_MARKERS leads, and beats the destination sets when it
      is given. A section with no rule here behaves exactly as before.     */
   const ROUTE_BY_HC = {
@@ -1590,8 +1594,9 @@ const SHEETS_RULES = (() => {
         { p: "Some destinations are reached by two different routes, and on " +
              "a Sunday a whole location can send everything to the same " +
              "place by both of them. Where the headcode tells us which route " +
-             "a train is taking, the sheet says so — “08 42 VIC Via " +
-             "AFK” rather than just “08 42 VIC”." },
+             "a train is taking, the sheet says so, in the notes on the " +
+             "right — “Via AFK” alongside the end marker. The time column " +
+             "stays as it always reads, “08 42 VIC”." },
         { table: { head: ["Location", "To", "Headcodes starting", "Prints",
                           "Front of the train"], rows } },
         { p: "Where no rule covers it, no route is printed. The tool will " +
@@ -2159,10 +2164,7 @@ function previewHtml(layout){
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
     }
     const ends = END_STYLE[section];
-    // "08 42 VIC Via AFK" - the route only appears where a destination is
-    // reached more than one way and the rule table says which this is.
-    const timeA = (`${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim() +
-                   (e.via ? ` Via ${e.via}` : "")).trim();
+    const timeA = `${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim();
     const n = e.units.length;
     for (let i = 0; i < n; i++) {
       const u = e.units[i];
@@ -2174,6 +2176,13 @@ function previewHtml(layout){
       const notes = [];
       if (i === 0) {
         if (hc) notes.push(hc);
+        /* "Via AFK" - the route only appears where a destination is reached
+           more than one way and the rule table says which this is. It goes
+           in the notes rather than against the time: column A is
+           "HH MM DDD" in every real book and never more (the longest value
+           in any of them is nine characters), so putting it there widened
+           the column for the whole page. */
+        if (e.via) notes.push(`Via ${e.via}`);
         if (originNote) notes.push(originNote);
         if (e.attachment) notes.push("ATTACHMENT");
         for (const x of e.extra_notes) notes.push(x);
@@ -3205,8 +3214,7 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
         doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
-        if (i === 0) put(r, 1, e.time + " " + e.dest +
-                                (e.via ? " Via " + e.via : ""), 3);
+        if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
         put(r, 2, u.cls, 3);
         put(r, 3, dnum(u.num), 3);
         if (u.D) put(r, 4, u.D, 4);
@@ -3214,6 +3222,11 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
         const parts = [];
         if (i === 0){
           if ((allHc || headcodeSections.has(sec)) && e.hc) parts.push(e.hc);
+          /* The route goes in the notes, not against the time. Column A is
+             "HH MM DDD" in every real book and never more - the longest
+             value in any of them is nine characters - so "Via AFK" against
+             the time widened the column for the whole page. */
+          if (e.via) parts.push("Via " + e.via);
           if (e.attachment) parts.push("ATTACHMENT");
           if (e.note) parts.push(e.note);
         }

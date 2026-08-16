@@ -424,7 +424,11 @@ const SIDING_CLASS_RE = new RegExp(
      Faversham services leave the other way and keep the CBE end in front,
      which is what the plain destination rules above already say.
 
-     `via` is what the destination cell adds - "VIC Via AFK". `lead` names
+     `via` is what the notes column adds - "Via AFK", beside the end
+     marker. It does NOT go against the time: column A reads "HH MM DDD" in
+     every real book and never more, the longest value in any of them being
+     nine characters, so "08 28 VIC Via AFK" widened the column for the
+     whole page. `lead` names
      which end of END_MARKERS leads, and beats the destination sets when it
      is given. A section with no rule here behaves exactly as before.     */
   const ROUTE_BY_HC = {

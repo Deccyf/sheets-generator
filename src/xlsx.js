@@ -255,10 +255,7 @@ function previewHtml(layout){
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
     }
     const ends = END_STYLE[section];
-    // "08 42 VIC Via AFK" - the route only appears where a destination is
-    // reached more than one way and the rule table says which this is.
-    const timeA = (`${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim() +
-                   (e.via ? ` Via ${e.via}` : "")).trim();
+    const timeA = `${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim();
     const n = e.units.length;
     for (let i = 0; i < n; i++) {
       const u = e.units[i];
@@ -270,6 +267,13 @@ function previewHtml(layout){
       const notes = [];
       if (i === 0) {
         if (hc) notes.push(hc);
+        /* "Via AFK" - the route only appears where a destination is reached
+           more than one way and the rule table says which this is. It goes
+           in the notes rather than against the time: column A is
+           "HH MM DDD" in every real book and never more (the longest value
+           in any of them is nine characters), so putting it there widened
+           the column for the whole page. */
+        if (e.via) notes.push(`Via ${e.via}`);
         if (originNote) notes.push(originNote);
         if (e.attachment) notes.push("ATTACHMENT");
         for (const x of e.extra_notes) notes.push(x);

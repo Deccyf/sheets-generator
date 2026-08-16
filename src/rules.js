@@ -375,8 +375,9 @@ const SHEETS_RULES = (() => {
         { p: "Some destinations are reached by two different routes, and on " +
              "a Sunday a whole location can send everything to the same " +
              "place by both of them. Where the headcode tells us which route " +
-             "a train is taking, the sheet says so — “08 42 VIC Via " +
-             "AFK” rather than just “08 42 VIC”." },
+             "a train is taking, the sheet says so, in the notes on the " +
+             "right — “Via AFK” alongside the end marker. The time column " +
+             "stays as it always reads, “08 42 VIC”." },
         { table: { head: ["Location", "To", "Headcodes starting", "Prints",
                           "Front of the train"], rows } },
         { p: "Where no rule covers it, no route is printed. The tool will " +

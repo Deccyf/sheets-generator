@@ -168,3 +168,50 @@ test("a double line rules off every break in the day's work", () => {
                            ["GROVE PARK"], false);
   assert.deepEqual(doubles(r3), [], "Grove Park never gets a divider");
 });
+
+test("the time column stays 'HH MM DDD' and the route rides in the notes", async () => {
+  const N = built();
+  const D = N.SHEETS_DATA, X = N.SHEETS_XLSX;
+
+  /* Column A is "HH MM DDD" in every real book and never more - the longest
+     value in any of the hand-marked books is nine characters, and the column
+     is cut to fit that. "08 28 VIC Via AFK" is seventeen, which widened the
+     column for the whole page on screen and ran off the end of the cell in
+     the saved workbook. The route is a note, so it goes with the notes. */
+  const e = {
+    time: 8 * 60 + 28, time_kind: "pax", dest: "VIC", flag: "", extra_notes: [],
+    headcode: "2C22", attachment: false, pub: { sheet: "Dover P" },
+    via: D.routeRule("DOVER PRIORY", "VIC", "2C22").via,
+    units: [{ cls: "375", diag: "011", am: "", pm: "RE", unit: "", end: "" },
+            { cls: "375", diag: "010", am: "", pm: "RE", unit: "", end: "" }],
+  };
+  assert.equal(e.via, "AFK", "the rule table still says this one goes via Ashford");
+  const lay = ent => X.layoutSheet(new Map([["DOVER PRIORY", [ent]]]), "SUN 16/08",
+    false, ["DOVER PRIORY"], false).filter(r => r.kind === "data");
+  const rows = lay(e);
+  assert.equal(rows.length, 2, "two units, two rows");
+  assert.equal(rows[0].vals[1], "08 28 VIC", "the time cell is just the time and where to");
+  assert.ok(String(rows[0].vals[1]).length <= 9,
+    "no wider than the widest the books ever go");
+  assert.match(String(rows[0].vals[8]), /Via AFK/, "the route is in the notes");
+  assert.match(String(rows[0].vals[8]), /FKE END/, "beside the end marker it decides");
+  assert.ok(!rows[1].vals[1], "and nothing spills onto the row underneath");
+
+  // a destination reached only one way carries no route at all
+  const prows = lay({ ...e, via: null, headcode: "2K64" });
+  assert.equal(prows[0].vals[1], "08 28 VIC", "same time cell");
+  assert.doesNotMatch(String(prows[0].vals[8] || ""), /Via/,
+    "and no route invented for it");
+
+  // and nothing anywhere in a real day's books goes past that width either
+  const rN = await geniusRes(N);
+  const day = Object.keys(rN.labels)[0];
+  const wide = X.layoutSheet(rN.secsByDay[day], rN.labels[day], false,
+    X.bookOrder(rN.secsByDay, X.MAIN_ORDER, true), true)
+    .filter(r => r.kind === "data")
+    .map(r => String(r.vals[1] || "")).filter(v => v.length > 9);
+  // (built in the sandbox realm, so count it rather than deepEqual an array
+  // whose prototype is not this realm's)
+  assert.equal(wide.length, 0,
+    "time cells wider than the books ever go: " + Array.from(wide).join(", "));
+});
