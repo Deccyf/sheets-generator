@@ -625,11 +625,12 @@ function generate(diags, prof, stabling, warn){
     e.splits = splits;
     e.attachment = blocks.some(x => x.att);
     for (const x of blocks) x.end = "";
+    e.dest = codeFor(e.dest_loc, DEST_CODE, warn, sec + " " + e.time_raw);
     const mk = END_MARKERS[sec];
     if (mk && blocks.length > 1){
       const firstUnit = e.units.find(function(u){ return u.dk === blocks[0].dk; });
       const route = new Set(legLocs(meta.get(blocks[0].dk).rows, firstUnit.ei));
-      const dest = DEST_CODE[e.dest_loc] !== undefined ? DEST_CODE[e.dest_loc] : e.dest;
+      const dest = e.dest;
       let lead = null, rear = null;
       // A destination reached two ways settles it on the route first - the
       // headcode carries it, and the leg's stop list does not.
@@ -650,7 +651,6 @@ function generate(diags, prof, stabling, warn){
     e.note = "";
     for (const o of Array.from(e.origins).sort())
       if (NOTE_FROM_BERTH[o] !== undefined){ e.note = NOTE_FROM_BERTH[o]; break; }
-    e.dest = codeFor(e.dest_loc, DEST_CODE, warn, sec + " " + e.time_raw);
     // two routes to one place: say which, on the destination cell
     { const rr = routeRule(sec, e.dest, e.hc); if (rr && rr.via) e.via = rr.via; }
     const dl = e.dest_loc;
@@ -875,7 +875,12 @@ function mergeDocs(inputs, unzipFn){
 }
 function docParaSpans2(xml){
   const paras = [];
-  const re = /<w:p [^>]*>[\s\S]*?<\/w:p>|<w:p\/>/g;
+  /* A paragraph need not carry attributes. The old pattern required a space
+     after "w:p", so every <w:p> in a plain Word document was invisible here:
+     diagSpansX found no paragraphs, the reissue merge replaced nothing, and
+     the "updated prints" the panel saved were byte-identical to the
+     superseded original with no warning anywhere. */
+  const re = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g;
   let m;
   while ((m = re.exec(xml)) !== null) paras.push([m.index, m.index + m[0].length]);
   return paras;

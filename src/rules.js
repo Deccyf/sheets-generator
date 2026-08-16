@@ -173,6 +173,13 @@ const SHEETS_RULES = (() => {
            "stands there through the day and then leaves again, in the order " +
            "they leave. One line is one unit, so a pair standing together is " +
            "two lines and a twelve-car is three." },
+      inBook("GROVE PARK") ? { p: env.gpSplit
+        ? "Grove Park is the one exception to a page per location: it gets " +
+          "two tables in this book, the overnight block first and the rest " +
+          "of the day after it, the way the mainline book has always been " +
+          "written."
+        : "Grove Park gets a single table in this book. Only the mainline " +
+          "book splits it in two." } : null,
       { p: "Reading a line from left to right:" },
       { table: { head: ["Column", "What it holds"], rows: [
         ["Time and destination",

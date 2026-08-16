@@ -23,7 +23,7 @@ const DEST_TLC = {
   "NEW CROSS": "NWX", "DARTFORD": "DFD", "GRAVESEND": "GRV",
   "SLADE GREEN": "SGR", "BARNEHURST": "BNH", "CRAYFORD": "CRY",
   "PLUMSTEAD": "PLU", "HASTINGS": "HGS", "ORE": "ORE",
-  "HERNE HILL": "HNH", "BECKENHAM JUNCTION": "BEC", "BROMLEY NORTH": "BMN",
+  "HERNE HILL": "HNH", "BECKENHAM JUNCTION": "BKJ", "BROMLEY NORTH": "BMN",
   "SWANLEY": "SAY", "EBBSFLEET INTERNATIONAL": "EBD",
   "SELHURST DEPOT": "SEL", "STEWARTS LANE": "SL", "SIDCUP": "SID",
   "BELLINGHAM": "BGM", "CRANMORE": "CRANMORE", "LONDON BRIDGE (VIA ORP)": "LBG",
@@ -188,7 +188,13 @@ const SIDING_CLASS_RE = new RegExp(
     DARTFD: "Dartford", PLMSTCS: "Plumstead C.H.S", ORPNGTN: "Orpington",
     ORPNDSG: "Orpington Down Sdgs", BELNGMS: "Bellingham Siding",
     CANONST: "Cannon Street", SIDCUPS: "Sidcup Siding", STROOD: "Strood",
-    STLNSHN: "St Leonards Shunt Neck", STLNCET: "St Leonards CET",
+    /* Genius spells Ore's siding plural and West Marina's neck without
+       the stop; BERTH_SHEETS and NON_BERTH_VISIT are keyed the other
+       way, so without these two every Genius build says "Ore Up Sidings
+       is not in the section list" and the neck's visit guard never
+       fires. */
+    OREESDG: "Ore Up Siding",
+    STLNSHN: "St. Leonards Shunt Neck", STLNCET: "St Leonards CET",
     FLKSTNE: "Folkestone East",
   };
   // Working locations that belong to a section without being berths - the
@@ -238,7 +244,7 @@ const SIDING_CLASS_RE = new RegExp(
      Key: the section, optionally a space and the entry's own time, then "|"
      and the diagram numbers as the sheet prints them, sorted. The timed form
      is looked up first. Give a time only when the same formation reads one
-     way earlier in the day and the other way later - RM101/RM102 leave
+     way earlier in the day and the other way later - GT101/GT102 leave
      Ashford 102 first at 05 05 and 101 first at 15+43, and GT127/GT128 leave
      Victoria 128 first at 05+50 and 127 first at 17 14. Everything else
      holds all day and is better named without a time, so it still applies

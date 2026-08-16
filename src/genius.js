@@ -82,6 +82,15 @@ const GENIUS = (() => {
   // ---- report parsing ----
   const HC = /^\d[A-Z]\d\d[A-Z]{0,2}$/, TM = /^\d\d:\d\d$/;
   const mins = t => parseInt(t.slice(0, 2), 10) * 60 + parseInt(t.slice(3), 10);
+  /* A clock cell as the exports write it, or null if it is not one. Excel
+     drops the leading zero when a CSV is opened and saved again ("8:34:00"
+     for 08 34), and mins() reads that as 04 34 with nothing said. */
+  const tmin = v => {
+    const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(String(v == null ? "" : v).trim());
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    return (h < 24 && mi < 60) ? h * 60 + mi : null;
+  };
   const sortkey = t => (t % 1440) < DAY_ROLL ? (t % 1440) + 1440 : (t % 1440);
   function parseSummary(txt) {
     const rows = [];
@@ -324,6 +333,13 @@ const GENIUS = (() => {
     let anyShunt = false;
     for (const [, m] of meta)
       if (m.stops.some(s => s.act === "#")) { anyShunt = true; break; }
+    /* The mirror of "no detail itinerary": a diagram this book owns that
+       the detail report never mentions is dropped without a word. */
+    for (const [diag, srs] of summ) {
+      if (details.has(diag) || !(srs[0].fleet in prof.fleets)) continue;
+      warn.push({ sec: null, msg: date + " " + diag + ": in the summary but" +
+        " missing from the detail report - its rows are NOT in this book" });
+    }
     const entries = new Map();
     for (const [diag, m] of meta) {
       const { stops, stints } = m;
@@ -374,6 +390,16 @@ const GENIUS = (() => {
         if (prof.firstDepAll || prof.firstDep.has(sec)) {
           for (let k = a; k <= b; k++) if (stops[k].dep !== null) { exitIdx = k; break; }
         }
+        /* Drawing forward into a headshunt is not leaving: the unit stands
+           there and goes when the road is set, which is the time the book
+           writes (Grove Park 5S07 - out of the Up C.H.S at 05 14, away from
+           the Up Headshunt at 05 25). */
+        while (!prof.firstDepAll && exitIdx < leaveIdx) {
+          const nx = stops[exitIdx + 1];
+          if (!nx || !/HEADSHUNT|HSHNT/i.test(locName(nx))) break;
+          if (nx.arr === null || nx.dep === null || nx.dep <= nx.arr) break;
+          exitIdx++;
+        }
         // The metro book is timed off the first move, but a unit that only
         // runs empty from its berth into the platform alongside still shows
         // where the service it forms is going - the destination and the
@@ -386,6 +412,7 @@ const GENIUS = (() => {
         let e = entries.get(key);
         if (!e) {
           e = { sec, tmin: er.dep, hc: er.hcOut, hc0: stops[a].hcOut,
+                hcWork: stops[leaveIdx].hcOut,
                 destStop: legEnd(stops, destIdx),
                 route: legRoute(stops, destIdx), units: [], origins: new Set(),
                 originCodes: new Set() };
@@ -400,10 +427,19 @@ const GENIUS = (() => {
        being the same train. Two diagrams worked as one formation carry
        identical rows until they divide, so the first row that differs is the
        parting - and if one simply runs out first, that is where it left. */
-    function partsAt(diags) {
-      const seqs = diags.map(d => (meta.get(d) || {}).stops).filter(Boolean);
+    function partsAt(diags, from) {
+      /* Each unit read from ITS OWN departure on this entry: units that
+         reached the berth off different roads at different times are one
+         train from the moment they leave it (Grove Park 16+50 - 910 came in
+         at 08 55 off Ramsgate, 059 at 14 16 off St Leonards, and they run
+         to Ashford as one). The arrival minute leaves the key for the same
+         reason. */
+      const seqs = diags.map((d, j) => {
+        const st = (meta.get(d) || {}).stops;
+        return st ? st.slice(from && from[j] != null ? from[j] : 0) : null;
+      }).filter(Boolean);
       if (seqs.length !== diags.length || seqs.length < 2) return null;
-      const key = s => s.code + "@" + s.arr + "/" + s.dep + "/" + (s.hcOut || "");
+      const key = s => s.code + "@" + s.dep + "/" + (s.hcOut || "");
       const n = Math.min(...seqs.map(s => s.length));
       for (let i = 0; i < n; i++)
         if (new Set(seqs.map(s => key(s[i]))).size !== 1) {
@@ -431,8 +467,8 @@ const GENIUS = (() => {
         const lateMove = !!stints.length &&
           core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
           lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
-        const fbLoc = lateMove && sameArea(areaOf(lb), areaOf(lastStop))
-          ? lb : lastStop;
+        const fbLoc = lateMove && (prof.firstDepAll ||
+          sameArea(areaOf(lb), areaOf(lastStop))) ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
@@ -445,7 +481,9 @@ const GENIUS = (() => {
           E = fc;
           // The berth the unit sits on into the night is its PM one wherever
           // it ends up afterwards, so the AM column stays empty for it.
-          if (lateMove && u.si + 1 === stints.length - 1) D = "";
+          if (lateMove && u.si + 1 === stints.length - 1 &&
+              (prof.firstDepAll || lb.arr === null ||
+               sortkey(lb.arr) >= AM_CUTOFF)) D = "";
         }
         let paxAfter = false;
         for (let i = u.exitIdx + 1; i < stops.length; i++) {
@@ -466,7 +504,8 @@ const GENIUS = (() => {
           for (let k = sa; k <= sb; k++) if (stops[k].act === "#") return true;
           return false;
         })();
-        const blk = { diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
+        const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
+                      pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
         // only when the export actually carries it, so an entry keeps the
@@ -486,12 +525,23 @@ const GENIUS = (() => {
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      // a unit re-entering its berth to attach to another unit's first
+      // departure is not listed again - the ATTACHMENT note covers it
+      // (the manual's 07 55 row: GT117 listed, GT116 attaching from the
+      // East Sidings shown as the note). It comes BEFORE the order lookup:
+      // the key has to name the units that print, or a pin written for a
+      // pair stops matching the moment a third unit attaches.
+      if (blocks.length > 1 && blocks.some(x => x.si === 0) &&
+          blocks.some(x => x.si > 0)) {
+        e.blocks = blocks.filter(x => x.si === 0);
+        e.attachment = true;
+      } else e.blocks = blocks;
       // A formation the books say the reports get the wrong way round: the
       // order is taken verbatim (see ORDER_FIX). A formation that reads one
       // way in the morning and the other in the afternoon is named with its
       // time; one that holds all day is named without.
       {
-        const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
+        const diags = e.blocks.map(x => x.diag.slice(2)).sort().join(",");
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
         const kSec = e.sec + "|" + diags;
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
@@ -500,24 +550,24 @@ const GENIUS = (() => {
         /* What the lookup actually consulted, recorded at the lookup itself
            so nothing downstream has to re-derive a key and risk deriving a
            different one - the diags here are the pre-filter list. */
-        if (blocks.length > 1)
+        if (e.blocks.length > 1)
           /* buildDate runs once per fleet into the same list, so the record
              has to say which book it belongs to or the mainline Rules tab
              offers to reverse metro formations. */
           fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
                             bucket: prof.bucket,
                             lookupDiags: diags, keysTried: [kTimed, kSec, diags],
-                            applied, units: blocks.map(x => x.diag.slice(2)) });
-        if (fix) blocks.sort((x, y) =>
+                            applied, units: e.blocks.map(x => x.diag.slice(2)) });
+        if (fix) e.blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
         /* A pin that silently stops matching is the worst failure this table
            has: someone wrote down the order for these very units, the working
            moved by a minute or changed headcode, and the sheet quietly went
            back to guessing with nothing to show for it. If any key was ever
            recorded for this formation and none of them fired here, say so. */
-        else if (blocks.length > 1 && fx.keys.has(diags))
+        else if (e.blocks.length > 1 && fx.keys.has(diags))
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-            blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
+            e.blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
             " for this formation but not for here - it is set down as " +
             [...fx.keys.get(diags)].join("; ") + ", so this one is" +
             " ordered off the reports. Check it, and say if it should be" +
@@ -525,20 +575,11 @@ const GENIUS = (() => {
       }
       // Two units on the same Position started the day in different
       // formations, so the reports cannot say which way round they go.
-      if (blocks.length > 1 &&
-          new Set(blocks.map(x => x.pos)).size !== blocks.length)
+      if (e.blocks.length > 1 &&
+          new Set(e.blocks.map(x => x.pos)).size !== e.blocks.length)
         warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-          blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
+          e.blocks.map(x => x.diag).join("+") + "): two units share a Position -" +
           " the reports cannot say which way round they go, so check the order" });
-      // a unit re-entering its berth to attach to another unit's first
-      // departure is not listed again - the ATTACHMENT note covers it
-      // (the manual's 07 55 row: GT117 listed, GT116 attaching from the
-      // East Sidings shown as the note)
-      if (blocks.length > 1 && blocks.some(x => x.si === 0) &&
-          blocks.some(x => x.si > 0)) {
-        e.blocks = blocks.filter(x => x.si === 0);
-        e.attachment = true;
-      } else e.blocks = blocks;
       // SPLITS is about the units parting company, and the books take that
       // from the whole day rather than from where this stint happens to end:
       // GT107/GT108 run as one train from Ashford at 06 40 to the same berth
@@ -547,7 +588,8 @@ const GENIUS = (() => {
       // evening, so an entry that is itself in the afternoon just says
       // SPLITS.
       {
-        const t = partsAt(e.blocks.map(x => x.diag));
+        const t = partsAt(e.blocks.map(x => x.diag),
+                          e.blocks.map(x => x.exitIdx));
         const parting = t !== null && sortkey(t) > sortkey(e.tmin);
         e.splits_pm = parting && sortkey(t) >= PM_BREAK &&
                       sortkey(e.tmin) < AM_CUTOFF;
@@ -696,7 +738,9 @@ const GENIUS = (() => {
         days: new Set([dayKey(date)].filter(Boolean)),
         // Victoria's notes column shows the ECS headcode off the sidings,
         // while the time stays from the platform
-        headcode: (e.sec === "VICTORIA" ? (e.hc0 || e.hc) : e.hc) || null,
+        headcode: (e.sec === "VICTORIA"
+          ? (prof.firstDepAll ? (e.hcWork || e.hc) : (e.hc0 || e.hc))
+          : e.hc) || null,
         // first-stint departures are the overnight-berthed block: the
         // writer uses this to give Grove Park its two tables
         overnight: e.blocks.every(x => x.si === 0),
@@ -759,14 +803,31 @@ const GENIUS = (() => {
         ", not with the tool as issued. Export from the Rules tab and send" +
         " back so they can be baked in");
     }
-    const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {};
+    const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {}, built = {};
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
       if (!dk) { noteAll(date + ": falls on a weekend - use the weekend prints panel"); continue; }
       const det = byDate.get(date);
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
+      /* A book has one column per weekday, so a second date on the same day
+         name has nowhere to go - it used to overwrite the first silently,
+         warnings and all. */
+      if (labels[dk]) {
+        noteAll(date + " is NOT in these books - it falls on the same " +
+          DAY_NAME[dk] + " column as " + built[dk] + ", which is what was" +
+          " built; build one week at a time");
+        continue;
+      }
+      built[dk] = date;
       const rows = sumRows.filter(r => r.date === date);
+      /* A diagram in one report and not the other is left out silently, and
+         a formation it belonged to prints one unit short. */
+      const haveSum = new Set(rows.map(r => r.diag));
+      for (const diag of det.keys())
+        if (!haveSum.has(diag))
+          noteAll(date + " " + diag + ": a detail itinerary with no summary" +
+            " row - the diagram is left out, check the Summary export");
       const warnMain = [], warnMetro = [], warnHs = [];
       secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx);
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
@@ -933,7 +994,7 @@ const GENIUS = (() => {
       "End Tiploc", "End Location Name", "End Time"]);
     if (!c) throw new Error("That CSV doesn't look like the Integrale Diagrams export.");
     const diags = new Map();     // code -> {date, legs, stabledOnly}
-    let mangled = 0;
+    let mangled = 0, badTime = 0;
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const code = (r[c["Diagram Code"]] || "").trim();
@@ -965,15 +1026,21 @@ const GENIUS = (() => {
       const roll = v => { while (v < prev - 60) v += 1440; prev = Math.max(prev, v); return v; };
       const out = [];
       for (const leg of d.legs) {
+        /* An unreadable time is dropped rather than carried: Math.max with
+           NaN is NaN, so one bad cell kills the past-midnight rolling for
+           the rest of the diagram and prints a NaN+NaN row in the book. */
+        const sv = tmin(leg.sTime), ev = tmin(leg.eTime);
+        if (sv === null || ev === null) { badTime++; continue; }
         out.push({ code: leg.sT, name: leg.sN, arr: null,
-                   dep: roll(mins(leg.sTime)), hc: leg.hc });
-        out.push({ code: leg.eT, name: leg.eN, arr: roll(mins(leg.eTime)),
+                   dep: roll(sv), hc: leg.hc });
+        out.push({ code: leg.eT, name: leg.eN, arr: roll(ev),
                    dep: null, hc: null });
       }
+      if (!out.length) { stabled.push(code); continue; }
       if (!byDate.has(d.date)) byDate.set(d.date, new Map());
       byDate.get(d.date).set(code, out);
     }
-    return { byDate, stabled, mangled };
+    return { byDate, stabled, mangled, badTime };
   }
   // ---- Genius CSV exports (the same two reports, saved as CSV) ----
   // Every line repeats the whole report header and carries its data at the
@@ -1002,15 +1069,18 @@ const GENIUS = (() => {
       const f = r.slice(ni).map(x => (x || "").trim());
       // code, units, fleet, start fuel, POS, at, from, to, at, …
       if (!/^[A-Z]{2}\d{3}$/.test(f[0] || "")) continue;
-      if (!TM.test(f[5] || "") || !TM.test(f[8] || "")) continue;
-      const key = f[0] + "\u0000" + f[5];
+      const st = tmin(f[5]), en = tmin(f[8]);
+      if (st === null || en === null) continue;
+      // the date belongs in the key: a two-day export repeats a diagram at
+      // the same start time on both days, and day two was dropped
+      const key = (r[di] || "").trim() + "\u0000" + f[0] + "\u0000" + f[5];
       if (seen.has(key)) continue;          // the export repeats rows per page
       seen.add(key);
       // f[1] is the UNITS column - empty on every export seen so far, but it
       // is the allocated unit when the controller has filled it in
       out.push({ date: (r[di] || "").trim(), diag: f[0], fleet: f[2],
-                 pos: parseInt(f[4], 10) || 1, start: mins(f[5]),
-                 from: f[6], to: f[7], end: mins(f[8]), unit: unitNo(f[1]) });
+                 pos: parseInt(f[4], 10) || 1, start: st,
+                 from: f[6], to: f[7], end: en, unit: unitNo(f[1]) });
     }
     return out;
   }
@@ -1032,8 +1102,9 @@ const GENIUS = (() => {
         st.prev = Math.max(st.prev, v);
         return v;
       };
-      const arr = TM.test(f[2]) ? roll(mins(f[2])) : null;
-      const dep = TM.test(f[3]) ? roll(mins(f[3])) : null;
+      const av = tmin(f[2]), dv = tmin(f[3]);
+      const arr = av === null ? null : roll(av);
+      const dep = dv === null ? null : roll(dv);
       if (arr === null && dep === null) continue;
       /* The activity column is almost always blank; "#" is Genius marking a
          shunt on the spot. Kept because a stand with one is the unit being
@@ -1066,6 +1137,9 @@ const GENIUS = (() => {
       notes.push(det.stabled.length + " stable-all-day diagram(s) with no " +
         "movements left out: " + det.stabled.join(", "));
     }
+    if (det.badTime)
+      notes.push(det.badTime + " leg(s) left out - the Start or End Time cell" +
+        " was blank or unreadable; check the export");
     if (det.mangled)
       notes.push(det.mangled + " headcode(s) recovered from spreadsheet " +
         "number formatting (e.g. 2.00E+05 read back as 2E05) - re-export " +

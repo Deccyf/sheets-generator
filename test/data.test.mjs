@@ -16,7 +16,11 @@ test("reference tables match the legacy build", () => {
   legacyBerthSheets["GROVE PARK DPT LNDN ED EXT"] = ["GROVE PARK", "GP", null, "GPD"];
   assert.deepEqual(norm(D.BERTH_SHEETS), norm(legacyBerthSheets),
     "BERTH_SHEETS (with the Grove Park depot destination)");
-  assert.deepEqual(norm(D.DEST_TLC), norm(L.SHEETS_CORE.DEST_TLC), "DEST_TLC");
+  // Deliberate divergence: Beckenham Junction is BKJ - BEC is Beckenham
+  // Hill, and the tester corrected the 10/08 metro book by hand.
+  const legacyTlc = { ...L.SHEETS_CORE.DEST_TLC, "BECKENHAM JUNCTION": "BKJ" };
+  assert.deepEqual(norm(D.DEST_TLC), norm(legacyTlc),
+    "DEST_TLC (with the Beckenham Junction correction)");
   assert.deepEqual(norm(D.NON_BERTH_VISIT), norm(L.SHEETS_CORE.NON_BERTH_VISIT),
     "NON_BERTH_VISIT");
   assert.deepEqual(norm(D.DEST_CODE), norm(L.SheetsEngine.DEST_CODE), "DEST_CODE");

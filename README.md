@@ -39,6 +39,7 @@ and is assembled by `node build.mjs`.
   - [Weekday pipeline (Genius PDFs)](#weekday-pipeline-genius-pdfs)
   - [Weekend pipeline (diagram prints)](#weekend-pipeline-diagram-prints)
   - [The house rulebook](#the-house-rulebook)
+  - [Failing loudly](#failing-loudly)
   - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
 - [Requirements and privacy](#requirements-and-privacy)
@@ -243,6 +244,8 @@ entries:
 | A road says *nothing to berth* | No diagrams for that fleet are in the reports or prints — nothing to build, nothing wrong. In Genius, check a Control Cycle exists for that fleet. |
 | *"That looks like a reissue on its own"* | A reissue was dropped without the full weekly prints — drop the full prints with it (or first). |
 | Reissue rejected for its date | The reissue is dated differently from the base prints — it belongs to a different day. |
+| A day's books are missing after a drop | Two dates that fall on the same weekday cannot both be built — a book has one column per weekday. The review list names the one that was left out. Build one week at a time. |
+| The build failed and the roads are empty | That is deliberate: books from an earlier drop are cleared rather than left one click from a zip named for the day that just failed. Drop a matching pair. |
 | Page says the browser is too old / scripting is off | Open the file in a current Edge, Chrome or Firefox with JavaScript enabled. |
 
 ---
@@ -356,6 +359,11 @@ ones, all commented at the point of implementation:
   a call; other sections anchor on their platform whenever run through.
   In *first-departure sections* (Grove Park, Slade Green) the entry is timed
   off the first movement of the stint instead.
+  A unit that draws forward into a **headshunt** and stands there has not
+  left: the time is when it goes from the headshunt, which is what the book
+  writes (`GROVE PARK 5S07` — out of the Up C.H.S at 05 14, away from the Up
+  Headshunt at **05 25**). Mainline books only; on the metro profile the
+  first-move rule already owns the question.
 * **The Metro first-move rule.** The Metro book — weekday and weekend alike —
   is timed off the first time the unit moves, in every section. A unit that
   runs empty out of the sidings at 05+52 for the 06 00 off the platform is
@@ -395,6 +403,38 @@ ones, all commented at the point of implementation:
   report carrying the column at all (`anyShunt`), so a PDF or an Integrale
   export that never had it is unaffected; across GEN-MON/WED/FRI × three
   books it removes that one entry and nothing else.
+* **The metro Victoria headcode.** Victoria's note carries the ECS headcode
+  off the sidings while the time stays the platform departure — on the
+  mainline book. On the metro book, timed off the first move, that first
+  headcode *is* the empty feed out of Grosvenor, so the note takes the
+  working leg's headcode instead (`hcWork`): the operator crossed out all six
+  of the other kind by hand (`5U04`→`2U04`, `5K92`→`3K92`, `5M83`→`3M84`,
+  `5K28`→`2K28`, `5Y82`→`5Y83`, `5K40`→`2K40`).
+* **The PM berth on a late transfer.** A unit whose last stint starts on one
+  berth and ends elsewhere keeps the berth as its PM cell only if both are in
+  the same berthing area — except on the metro profile, where the berth
+  always wins. 15 cells, and both real metro books print the new value.
+* **The AM cell of an overnight berth.** A unit that leaves its overnight
+  berth and is back on it before 14:00 gets that berth in its AM cell; the
+  blanking rule is for units that only return at night.
+* **Grove Park's two tables** are a *mainline* convention, passed in as
+  `gpSplit`. The old guard compared the section-order array by identity, and
+  `bookOrder` returns a fresh array every call, so it was always true and the
+  metro book was splitting Grove Park too — a tester struck the second header
+  out of the 10/08 metro book by hand.
+* **`SPLITS` is read from each unit's own departure.** `partsAt` used to
+  compare whole days from row 0, so units that reached the berth off
+  different roads "parted" before the entry even began and no flag printed
+  (`GROVE PARK 16+50`: 910 in at 08 55 off Ramsgate, 059 at 14 16 off St
+  Leonards, one train to Ashford, divide at 19 04). Each itinerary is now
+  sliced at its own `exitIdx`, and the arrival minute leaves the comparison
+  key for the same reason.
+* **The order key names the units that print.** The attaching-unit filter now
+  runs *before* the `ORDER_FIX` lookup, so the key, the Rules-tab record and
+  the shared-Position warning are all built from `e.blocks` — the printed
+  formation — not from the pre-filter list. Before this, the Rules tab
+  offered a Reverse button for `ASHFORD 07 55 — 116, 117` on a row that
+  prints one unit, and a correction written there could never show up.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
 * **Position changes during the day.** The Genius Summary carries one row per
@@ -511,6 +551,21 @@ What flips it is how the formation was left standing, and which shunt moves it
 made on the depot — neither of which the Summary or the Detail records. That
 is why the residue is a list of formations rather than a rule, and why the
 mark-up sheet exists.
+
+### Failing loudly
+
+Six ways the tool used to be quietly wrong. Each was reproduced against a real
+export before it was fixed, and every one of them now says something rather
+than producing a book that looks finished.
+
+| What used to happen | Now |
+|---|---|
+| A Genius **summary covering two dates** deduplicated on `(diagram, start)` with no date, so day two collapsed into day one: `{WED 141, FRI 17}` — 139 rows and 14 review notes gone, silently. | The date is in the key: `{WED 141, FRI 139}`. |
+| **Excel re-saves a CSV** and drops the leading zero: `8:34:00`. `mins()` read that as **04 34**. On an Integrale detail re-saved this way, 136 of 244 entries carried the wrong time with no warning. A blank cell gave `NaN`, which killed the past-midnight rolling for the rest of the diagram and printed a `NaN+NaN` row. | A tolerant `tmin()` in all three parsers: `8:34:00` reads correctly, an unreadable cell is dropped and counted — *"1 leg(s) left out — the Start or End Time cell was blank or unreadable"*. |
+| A **diagram in one report but not the other** vanished. Drop `GT105`'s detail and three 8-cars print as 4-cars with nothing said. | Both directions are named: *"in the summary but missing from the detail report — its rows are NOT in this book"*, and the reverse. |
+| **Two dates on the same weekday** — a book has one column per weekday, so the second silently overwrote the first *and* left its 20 warnings behind. | The first is kept and the second is named: *"19/08/26 is NOT in these books — it falls on the same WED column as 12/08/26"*. |
+| A **control character in one cell** made the *whole workbook* unreadable — `disallowed character`, not one bad cell. Reachable through the station resolver's three-character fallback. | `esc()` strips them first; tab, newline and return are legal and are left alone. |
+| A **reissue merge replaced nothing**. `docParaSpans2` required a space after `w:p`, so every attribute-less `<w:p>` in a plain Word document was invisible: the *"updated prints"* handed back were the superseded document, byte for byte. | The pattern accepts both forms. This is the one place the frozen legacy build is *wrong* rather than merely older, so `test/engine.test.mjs` asserts the merge itself and pins the legacy build's mistake explicitly. |
 
 ### The workbook writer and the preview
 

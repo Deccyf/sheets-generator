@@ -16,7 +16,10 @@ const MIDDAY_GAP = 120;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  /* A control character anywhere in a cell makes the WHOLE workbook
+     unreadable, not just that cell, so they come out before anything else
+     is escaped. Tab, newline and return are legal and are left alone. */
+  return String(s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
                   .replace(/"/g,"&quot;");
 }
 function colName(n){         // 1 -> A
@@ -361,7 +364,11 @@ function previewHtml(layout){
     rows.push({ kind: "gap" });
   }
 
-  function layoutSheet(secs, dateLbl, ram, fullOrder, allHc) {
+  function layoutSheet(secs, dateLbl, ram, fullOrder, allHc, gpSplit) {
+    /* Only the mainline books split Grove Park, and the caller says so.
+       Testing the order array by identity never worked: bookOrder returns a
+       fresh array every call, so the guard was always true. */
+    if (gpSplit === undefined) gpSplit = true;
     const rows = [];
     const order = ram ? ["RAMSGATE"] : (fullOrder || MAIN_ORDER);
     for (const name of order) {
@@ -378,8 +385,7 @@ function previewHtml(layout){
       // first, then the rest. Only there: the 10/08 metro book this tool
       // produced came back with the second GROVE PARK header struck out and
       // its entry merged into the first.
-      if (name === "GROVE PARK" &&
-          fullOrder !== METRO_ORDER && fullOrder !== HS_ORDER) {
+      if (name === "GROVE PARK" && gpSplit) {
         const firstB = entries.filter(e => e.overnight);
         const second = entries.filter(e => !e.overnight);
         if (firstB.length) sectionRows(rows, name, dateLbl, firstB, allHc);
@@ -466,17 +472,18 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const base = opts.baseOrder || MAIN_ORDER;
   const splitRamsgate = opts.splitRamsgate !== false;
   const fullOrder = bookOrder(secsByDay, base, splitRamsgate);
+  const gpSplit = opts.gpSplit !== undefined ? !!opts.gpSplit : base === MAIN_ORDER;
   const dayKeys = ["M", "T", "W", "TH", "F"].filter(d => d in dateLabels);
   const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
-    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc)),
+    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc, gpSplit)),
   }));
   return writeWorkbook(sheets, opts.zipFn || (f => fflate.zipSync(f, { level: 6 })));
 }
 
-function dayPreviewHtml(secs, label, ram, order, allHc) {
-  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order, allHc)));
+function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
+  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order, allHc, gpSplit)));
 }
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,

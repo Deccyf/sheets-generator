@@ -160,6 +160,7 @@ function rulesEnv(b, res, secNames) {
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
     middayGap: SHEETS_XLSX.MIDDAY_GAP,
+    gpSplit: isMain,
     orderFix: res.rules.orderFix,
   };
 }
@@ -439,7 +440,7 @@ function reviewPane(items) {
     say("Reading the reports …"); await paint();
     if (have.sum && have.det)
       lastInputs = { csv: have.sum.fmt === "csv",
-                     pair: [have.sum.data, have.det.data] };
+                     pair: have.sum.data.concat(have.det.data) };
     const opts = { orderFix: ruleEdits };
     const res = lastInputs.csv
       ? GENIUS.buildIntegrale(lastInputs.pair, opts)
@@ -515,7 +516,8 @@ function reviewPane(items) {
       const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
         const secs = b.secs[d];
         if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc);
+        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
+                                b.hc === "main");
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
@@ -589,26 +591,44 @@ function reviewPane(items) {
 
   // Genius comes as the report PDFs or as CSV exports of the same two
   // reports; either pairs with the other, so they are one source.
+  let dropId = 0;
   const srcName = fmt => fmt === "csv" ? "Integrale" : "Genius";
   const family = fmt => fmt === "csv" ? "integrale" : "genius";
-  async function stash(kind, fmt, data) {
-    have[kind] = { fmt, data };
+  /* Two reports of the same kind in ONE drop are two days of the same
+     report, so they are kept together; a later drop starts the slot again. */
+  function stash(kind, fmt, data) {
+    if (have[kind] && have[kind].drop === dropId &&
+        family(have[kind].fmt) === family(fmt)) have[kind].data.push(data);
+    else have[kind] = { fmt, data: [data], drop: dropId };
+  }
+  async function drained() {
     if (have.sum && have.det) {
       if (family(have.sum.fmt) !== family(have.det.fmt)) {
         say("The Summary is from " + srcName(have.sum.fmt) + " but the Detail is from " +
-            srcName(have.det.fmt) + " — drop a matching pair: both from Genius, or both from Integrale.", "err");
+            srcName(have.det.fmt) + " — drop a matching pair together: both from Genius, or both from Integrale.", "err");
         zone("Mixed sources loaded",
              "drop a matching pair — both from Genius, or both from Integrale");
+        // nothing that was just refused is kept: a leftover half pairs with
+        // the next drop's first file and builds the wrong day
+        delete have.sum; delete have.det;
         return;
       }
       try {
         await buildGenius();
       } catch (err) {
         say("Build failed: " + err.message, "err");
+        /* Books from an earlier drop must not survive a failed one: they are
+           one click from a zip named for the day that failed. */
+        roadsEl.textContent = "";
+        allbar.hidden = true;
+        allnote.textContent = "";
+        built = null; lastRes = null; lastInputs = null;
       }
       delete have.sum; delete have.det;
       zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
-    } else {
+    } else if (have.sum || have.det) {
+      const kind = have.sum ? "sum" : "det";
+      const fmt = have[kind].fmt;
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
       const what = family(fmt) === "integrale" ? "CSV" : "report";
@@ -632,10 +652,25 @@ function reviewPane(items) {
       });
     });
   }
-  // Files are read one after another so a Summary + Detail pair dropped
-  // together can't race the build.
+  /* One drop is one job: every file in it is read before anything is built.
+     Reading them as separate jobs meant a pair dropped together built once
+     off the first file and a leftover half from an earlier drop - Friday's
+     summary against Wednesday's detail - and then reported no weekday dates
+     at all. A file that cannot be read says so and does not take the panel
+     down with it. */
   wireDrop($("#berth"), $("#file"), files => {
-    for (const f of files) queue = queue.then(() => accept(f));
+    dropId++;
+    queue = queue.then(async () => {
+      for (const f of files) {
+        try { await accept(f); }
+        catch (err) {
+          say("Couldn't read “" + f.name + "”: " + (err && err.message || err) +
+              " — copy it to this computer's desktop and drop that.", "err");
+        }
+      }
+      await drained();
+    }).catch(err => say("Couldn't read that drop: " +
+      (err && err.message || err), "err"));
   });
 })();
 

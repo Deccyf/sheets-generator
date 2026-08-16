@@ -64,10 +64,22 @@ test("weekend run matches the legacy build (reissue merged)", () => {
   assert.deepEqual(norm(rN.books.map(normBook)), norm(rL.books.map(normBook)));
   assert.deepEqual(norm(rN.merge), norm(rL.merge));
   assert.equal(rN.updated.name, rL.updated.name);
+  /* Deliberate divergence from the frozen build. Its paragraph pattern
+     required a space after "w:p", so a plain <w:p> was invisible to it: the
+     merge replaced nothing and the "updated prints" it handed back were the
+     superseded document, byte for byte, with no warning. The legacy bytes
+     are therefore the wrong answer and cannot be the assertion - what is
+     asserted instead is the merge itself. */
   const docXml = (ctx, u) =>
     new TextDecoder().decode(ctx.fflate.unzipSync(u.bytes)["word/document.xml"]);
-  assert.equal(docXml(N, rN.updated), docXml(L, rL.updated),
-    "updated prints document body");
+  const baseXml = new TextDecoder().decode(
+    N.fflate.unzipSync(inputs(N, true)[0].bytes)["word/document.xml"]);
+  const updXml = docXml(N, rN.updated);
+  assert.notEqual(updXml, baseXml, "the updated prints are not the original");
+  assert.ok(updXml.includes("1B06"), "the reissued diagram's rows are in it");
+  assert.ok(!updXml.includes("1B02"), "the superseded rows are gone");
+  assert.equal(docXml(L, rL.updated), baseXml,
+    "and the frozen build really did hand back the original unchanged");
 });
 
 test("guard rails are unchanged", () => {
