@@ -274,6 +274,22 @@
     cursor:pointer;
   }
   .opts input[type="checkbox"]{accent-color:var(--signal); width:14px; height:14px}
+
+  /* ---------- Rules tab ---------- */
+  .rules h3{font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--steel); margin:14px 0 6px}
+  .rules h3:first-of-type{margin-top:4px}
+  .rules p{font-size:12.5px; line-height:1.55; margin:0 0 8px}
+  .rules code{font-family:var(--mono); font-size:11.5px}
+  .rules-t{border-collapse:collapse; width:100%; margin:0 0 10px;
+    font-size:12px}
+  .rules-t th{text-align:left; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--chalk); font-weight:400;
+    border-bottom:1px solid var(--rule); padding:3px 8px 3px 0}
+  .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron);
+    vertical-align:top}
+  .rules-t .tag-local{color:var(--amber); font-weight:700}
+  .editline{color:var(--amber); font-size:12px; margin:0 0 8px}
 </style>
 </head>
 <body>
@@ -1273,6 +1289,135 @@ if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_DAT
 if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
 </script>
 <script>
+/* SHEETS_RULES — the pure part of local rule edits: the key grammar, the
+   merge, and the export. No DOM, no storage, no build knowledge, so it can
+   be reasoned about and tested on its own.
+
+   An edit is one entry in an object keyed exactly as ORDER_FIX is keyed:
+   an array pins the order, null switches a shipped pin off. That is the
+   whole vocabulary - the tool ships a table, the operator overlays it, and
+   the overlay exports as lines that can be pasted back into data.js so the
+   correction stops being local. Editing anything richer than unit order is
+   deliberately not offered: order is the table testers actually correct,
+   and it is the one with a closed, checkable grammar. */
+"use strict";
+const SHEETS_RULES = (() => {
+  const VERSION = 1;
+  /* "SECTION HH+MM|d,d" (most specific) | "SECTION|d,d" | "d,d" (everywhere).
+     Times take the sheet's own two forms - a space for a passenger working,
+     a + for empty stock. */
+  const KEY_RE =
+    /^(?:([A-Z][A-Z0-9 .&'-]*?)(?: (\d\d[ +]\d\d))?\|)?(\d{3}(?:,\d{3})+)$/;
+
+  function parseKey(key) {
+    const m = KEY_RE.exec(String(key || ""));
+    if (!m) return null;
+    const diags = m[3].split(",");
+    // the key's diagram list is always sorted: that is what the lookup builds
+    const sorted = diags.slice().sort();
+    if (diags.join(",") !== sorted.join(",")) return null;
+    return { sec: m[1] || null, time: m[2] || null, diags };
+  }
+
+  /* An order must name exactly the diagrams in its own key - no more, no
+     fewer, no repeats. Anything else would print a formation the key can
+     never match, which is worse than no pin at all because it looks set. */
+  function validEdit(key, order) {
+    const k = parseKey(key);
+    if (!k) return "that is not a rule key";
+    if (order === null) return null;
+    if (!Array.isArray(order)) return "an order is a list of diagrams, or null to switch a pin off";
+    const a = order.slice().sort().join(","), b = k.diags.slice().sort().join(",");
+    if (a !== b) return "the order must name exactly the diagrams in the key";
+    if (new Set(order).size !== order.length) return "a diagram is listed twice";
+    return null;
+  }
+
+  function mergeOrderFix(base, edits) {
+    const out = {};
+    for (const k of Object.keys(base || {})) out[k] = base[k];
+    for (const k of Object.keys(edits || {})) {
+      if (edits[k] === null) delete out[k];
+      else out[k] = edits[k];
+    }
+    return out;
+  }
+
+  function keyForms(sec, timeText, diags) {
+    const tail = diags.slice().sort().join(",");
+    return { timed: sec + " " + timeText + "|" + tail,
+             section: sec + "|" + tail, bare: tail };
+  }
+
+  /* Which form to write, following the mark-up sheet's rule: a formation
+     that turns up more than once in the day needs its time, or the pin
+     would silently reorder the other appearance too. */
+  function chooseKey(forms, seenMoreThanOnce, everywhere) {
+    if (everywhere) return forms.bare;
+    return seenMoreThanOnce ? forms.timed : forms.section;
+  }
+
+  function parse(jsonText) {
+    let o;
+    try { o = JSON.parse(String(jsonText || "")); }
+    catch (e) { return null; }
+    if (!o || typeof o !== "object" || o.v !== VERSION) return null;
+    const src = o.orderFix;
+    if (!src || typeof src !== "object") return null;
+    const orderFix = {};
+    for (const k of Object.keys(src)) {
+      // one bad entry voids the lot: a half-trusted overlay is worse than none
+      if (validEdit(k, src[k])) return null;
+      orderFix[k] = src[k];
+    }
+    return { v: VERSION, orderFix, saved: o.saved || null };
+  }
+
+  function serialize(orderFix, savedIso) {
+    const keys = Object.keys(orderFix || {}).sort();
+    const body = {};
+    for (const k of keys) body[k] = orderFix[k];
+    return JSON.stringify({ v: VERSION, saved: savedIso || null, orderFix: body },
+                          null, 2);
+  }
+
+  /* Exactly the shape of an ORDER_FIX line in data.js, so the answer to a
+     correction is to paste it in - the same convention the mark-up sheet
+     generator already follows. */
+  function dataJsLines(orderFix) {
+    const out = [];
+    for (const k of Object.keys(orderFix || {}).sort()) {
+      const v = orderFix[k];
+      if (v === null) out.push('    // remove from ORDER_FIX: "' + k + '"');
+      else out.push('    "' + k + '": ["' + v.join('", "') + '"],');
+    }
+    return out;
+  }
+
+  function exportText(orderFix, tag) {
+    const n = Object.keys(orderFix || {}).length;
+    const lines = [
+      "Unit order corrections" + (tag ? " from " + tag : ""),
+      n + " edit" + (n === 1 ? "" : "s") + " made on the machine that built these books.",
+      "",
+      "Paste these into ORDER_FIX in src/data.js to make them permanent:",
+      "",
+    ].concat(dataJsLines(orderFix), [
+      "",
+      "The same edits as this page stores them:",
+      "",
+      serialize(orderFix, null),
+    ]);
+    return lines.join("\n");
+  }
+
+  return { VERSION, parseKey, validEdit, mergeOrderFix, keyForms, chooseKey,
+           parse, serialize, dataJsLines, exportText };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_RULES;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_RULES = SHEETS_RULES;
+</script>
+<script>
 /* SHEETS core — the shared helpers and drafting rules every engine leans
    on: name normalisation, destination codes, the berth AM/PM rule.
    (The retired ACWN workbook pipeline that used to live here was removed
@@ -1443,6 +1588,9 @@ const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
+/* How long the gap containing midday has to be before the double line is
+   drawn in it - a section worked steadily through midday gets no line. */
+const MIDDAY_GAP = 120;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
@@ -1746,7 +1894,7 @@ function previewHtml(layout){
       for (let i = 1; i < entries.length; i++) {
         const a = tkey(entries[i - 1]), b = tkey(entries[i]);
         if (a < NOON && b >= NOON) {
-          if (b - a >= 120) gapI = i;
+          if (b - a >= MIDDAY_GAP) gapI = i;
           break;
         }
       }
@@ -1902,7 +2050,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, MIDDAY_GAP };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
@@ -2938,9 +3086,9 @@ const GENIUS = (() => {
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
      never be the pin that quietly missed. */
-  const ORDER_FIX_KEYS = (() => {
+  function orderFixKeys(table) {
     const m = new Map();
-    for (const k of Object.keys(ORDER_FIX)) {
+    for (const k of Object.keys(table)) {
       const i = k.indexOf("|");
       if (i < 0) continue;
       const diags = k.slice(i + 1);
@@ -2948,7 +3096,8 @@ const GENIUS = (() => {
       m.get(diags).add(k.slice(0, i));
     }
     return m;
-  })();
+  }
+  const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
   const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
@@ -3190,7 +3339,7 @@ const GENIUS = (() => {
     }
     return out;
   }
-  function buildDate(date, sumRows, details, prof, warn) {
+  function buildDate(date, sumRows, details, prof, warn, fx) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
     // The Genius summary carries one row per working, and a unit's Position
@@ -3400,9 +3549,18 @@ const GENIUS = (() => {
       // time; one that holds all day is named without.
       {
         const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
-        const fix = ORDER_FIX[e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags] ||
-                    ORDER_FIX[e.sec + "|" + diags] ||
-                    ORDER_FIX[diags];
+        const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
+        const kSec = e.sec + "|" + diags;
+        const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
+        const applied = fx.table[kTimed] ? kTimed
+                      : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
+        /* What the lookup actually consulted, recorded at the lookup itself
+           so nothing downstream has to re-derive a key and risk deriving a
+           different one - the diags here are the pre-filter list. */
+        if (blocks.length > 1)
+          fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
+                            lookupDiags: diags, keysTried: [kTimed, kSec, diags],
+                            applied, units: blocks.map(x => x.diag.slice(2)) });
         if (fix) blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
         /* A pin that silently stops matching is the worst failure this table
@@ -3410,11 +3568,11 @@ const GENIUS = (() => {
            moved by a minute or changed headcode, and the sheet quietly went
            back to guessing with nothing to show for it. If any key was ever
            recorded for this formation and none of them fired here, say so. */
-        else if (blocks.length > 1 && ORDER_FIX_KEYS.has(diags))
+        else if (blocks.length > 1 && fx.keys.has(diags))
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
             blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
             " for this formation but not for here - it is set down as " +
-            [...ORDER_FIX_KEYS.get(diags)].join("; ") + ", so this one is" +
+            [...fx.keys.get(diags)].join("; ") + ", so this one is" +
             " ordered off the reports. Check it, and say if it should be" +
             " pinned too" });
       }
@@ -3601,7 +3759,15 @@ const GENIUS = (() => {
 
   /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
      over parsed summary rows + detail itineraries, whatever their source. */
-  function assemble(sumRows, byDate, extraNotes) {
+  function assemble(sumRows, byDate, extraNotes, opts) {
+    /* The table this build runs with: the shipped one unless the page has
+       local edits overlaid. Computed once so every book sees the same rules
+       and the pane can show exactly what was used. */
+    const edits = (opts && opts.orderFix) || {};
+    const hasEdits = Object.keys(edits).length > 0;
+    const fixTable = hasEdits
+      ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
+    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
     /* Sectional Appendix checks. Each one is decidable from what the reports
        carry - car count, class, berthing road, destination, and whether the
        move is passenger or empty - and each was counted against the real
@@ -3665,6 +3831,17 @@ const GENIUS = (() => {
       reviews.main.push(tagged); reviews.metro.push(tagged); reviews.hs.push(tagged);
     };
     for (const m of (extraNotes || [])) noteAll(m);
+    /* A local rule edit changes what the books say, so it has to be as loud
+       as anything else on the list: the books were not built with the tool
+       as issued, and a correction that only ever lives on one machine is a
+       correction nobody else gets. */
+    if (hasEdits) {
+      const n = Object.keys(edits).length;
+      noteAll(n + " local rule edit" + (n === 1 ? " is" : "s are") + " in force" +
+        " - these books were built with " + (n === 1 ? "it" : "them") +
+        ", not with the tool as issued. Export from the Rules tab and send" +
+        " back so they can be baked in");
+    }
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {};
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
@@ -3674,9 +3851,9 @@ const GENIUS = (() => {
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       const rows = sumRows.filter(r => r.date === date);
       const warnMain = [], warnMetro = [], warnHs = [];
-      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain);
-      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro);
-      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs);
+      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx);
+      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
+      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
       for (const [secs, warn] of [[secsByDay[dk], warnMain],
                                   [metroSecs[dk], warnMetro],
@@ -3692,13 +3869,24 @@ const GENIUS = (() => {
       }
     }
     if (!Object.keys(secsByDay).length) throw new Error("No weekday dates found in the reports.");
+    /* Every edit that reached nothing is a pin quietly doing nothing - the
+       same silent miss the table itself has, so say it here too. */
+    for (const k of Object.keys(edits)) {
+      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0)) continue;
+      noteAll("local rule edit " + k + " matched nothing in these reports" +
+              " - the working may have moved; re-pin it or clear it");
+    }
     return { secsByDay, metroSecs, hsSecs, labels, review, reviews,
+             /* what this build actually ran with, for the Rules tab to
+                render - never a second copy of the tables read separately */
+             rules: { orderFix: fixTable, edits, coupled: fx.coupled,
+                      shipped: ORDER_FIX },
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
   /* Genius input: the report PDFs (bytes), the CSV exports (strings), or one
      of each - they carry the same two reports and merge into the same pair. */
-  async function build(inputs) {
+  async function build(inputs, opts) {
     let sumRows = [];
     const byDate = new Map();
     const mergeDetail = m1 => {
@@ -3720,7 +3908,7 @@ const GENIUS = (() => {
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
     if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
-    return assemble(sumRows, byDate);
+    return assemble(sumRows, byDate, undefined, opts);
   }
 
 
@@ -3945,7 +4133,7 @@ const GENIUS = (() => {
     return byDate;
   }
 
-  function buildIntegrale(texts) {
+  function buildIntegrale(texts, opts) {
     let sumRows = null, det = null;
     for (const t of texts) {
       const kind = sniffIntegrale(t);
@@ -3969,7 +4157,7 @@ const GENIUS = (() => {
     if (uncovered)
       notes.push(uncovered + " of " + sumRows.length +
         " diagrams are marked Uncovered in the plan");
-    return assemble(sumRows, det.byDate, notes);
+    return assemble(sumRows, det.byDate, notes, opts);
   }
 
   return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
@@ -4069,7 +4257,9 @@ function tabbed(panes) {
   });
   function select(ix) {
     if (cache[ix] === undefined) cache[ix] = btns[ix].htmlFn();
-    view.innerHTML = cache[ix];
+    const pane = cache[ix];
+    if (pane && pane.nodeType) { view.textContent = ""; view.appendChild(pane); }
+    else view.innerHTML = pane;
     view.scrollTop = 0; view.scrollLeft = 0;
     btns.forEach((b, j) => {
       b.tb.setAttribute("aria-selected", j === ix ? "true" : "false");
@@ -4088,6 +4278,188 @@ function tabbed(panes) {
     e.preventDefault();
   });
   return { tabs, view, select };
+}
+
+/* ---------------- local rule edits ----------------
+   The tool ships one order table; a tester can overlay it here to see a
+   correction take effect straight away. The overlay lives on this machine
+   only, so the point of it is the export: a correction is not finished
+   until it is baked into the tool for everyone. Everything below is built
+   so that state cannot go quiet - see the banner and the review notes. */
+const RULES_LS_KEY = "sheetsRules.v1";
+const rulesStore = (() => {
+  try { return window.localStorage; } catch (e) { return null; }
+})();
+let ruleEdits = (() => {
+  if (!rulesStore) return {};
+  const parsed = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
+  return parsed ? parsed.orderFix : {};
+})();
+const editCount = () => Object.keys(ruleEdits).length;
+function persistEdits() {
+  if (!rulesStore) return false;
+  try {
+    rulesStore.setItem(RULES_LS_KEY,
+      SHEETS_RULES.serialize(ruleEdits, new Date().toISOString()));
+    return true;
+  } catch (e) { return false; }
+}
+
+
+/* The Rules pane. Everything it shows comes from the build that produced
+   these very books - res.rules is the table that ran, not the tables read
+   again at display time - so it cannot drift from what you are looking at.
+   Editing is unit order and nothing else: it is the table testers actually
+   correct, and it has a closed grammar that can be checked. */
+function rulesPane(b, res, rebuild) {
+  const el = document.createElement("div");
+  el.className = "rules";
+  const R = res.rules;
+  const isMain = b.hc === "main";
+  const mine = c => b.ram ? c.sec === "RAMSGATE"
+                          : (isMain ? c.sec !== "RAMSGATE" : true);
+  const coupled = R.coupled.filter(mine);
+  const prof = SHEETS_DATA.PROFILES_G[isMain ? 0 : (b.hc === "metro" ? 1 : 2)];
+  const secsHere = new Set(coupled.map(c => c.sec));
+  const h = [];
+  const esc = escHtml;
+
+  h.push('<p class="sa-src">These are the rules this build ran with, not a ' +
+    'copy of them. Unit order can be corrected here; everything else is ' +
+    'shown so you can see what was applied.</p>');
+
+  /* ---- the editable part ---- */
+  h.push("<h3>Unit order</h3>");
+  const pins = Object.keys(R.orderFix).filter(k => {
+    const pk = SHEETS_RULES.parseKey(k);
+    if (!pk) return false;
+    if (!pk.sec) return true;                       // a bare pin holds anywhere
+    return b.ram ? pk.sec === "RAMSGATE"
+                 : (isMain ? pk.sec !== "RAMSGATE" && secsHere.has(pk.sec)
+                           : secsHere.has(pk.sec));
+  }).sort();
+  if (pins.length) {
+    h.push('<table class="rules-t"><thead><tr><th>Pinned formation</th>' +
+      "<th>Prints</th><th>State</th><th>Where it fired</th></tr></thead><tbody>");
+    for (const k of pins) {
+      const local = Object.prototype.hasOwnProperty.call(R.edits, k);
+      const shipped = Object.prototype.hasOwnProperty.call(R.shipped, k);
+      const state = !local ? "as issued"
+                  : (shipped ? "edited here" : "added here");
+      const fired = coupled.filter(c => c.applied === k)
+        .map(c => c.sec + " " + c.timeText);
+      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
+        esc(R.orderFix[k].join(", ")) + '</td><td class="' +
+        (local ? "tag-local" : "") + '">' + state + "</td><td>" +
+        (fired.length ? esc(fired.join("; "))
+                      : "<i>nothing in these reports</i>") + "</td></tr>");
+    }
+    h.push("</tbody></table>");
+  } else h.push("<p class=\"noreviews\">No order is pinned for this book.</p>");
+
+  /* every coupled formation this build produced, so an order can be
+     corrected from what is on the sheet rather than by writing a key */
+  h.push("<h3>Coupled formations in this build</h3>");
+  if (!coupled.length) h.push('<p class="noreviews">Nothing runs coupled.</p>');
+  else {
+    h.push('<table class="rules-t"><thead><tr><th>Where</th><th>Prints</th>' +
+      "<th>Pinned by</th><th></th></tr></thead><tbody>");
+    coupled.forEach((c, ix) => {
+      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
+      h.push("<tr><td>" + esc(c.sec + " " + c.timeText) + "</td><td>" +
+        esc(c.units.join(", ")) +
+        (c.lookupDiags !== c.units.slice().sort().join(",")
+          ? ' <i>(pin keyed on ' + esc(c.lookupDiags) + ')</i>' : "") +
+        "</td><td>" + (c.applied ? "<code>" + esc(c.applied) + "</code>"
+                                 : "<i>the reports</i>") +
+        '</td><td><button type="button" class="btn ghost" data-flip="' + ix +
+        '">Reverse</button></td></tr>');
+    });
+    h.push("</tbody></table>");
+    h.push('<p class="opts-hint">Reversing writes a pin' +
+      " on this machine and rebuilds the books. Export it from the card and " +
+      "send it back so it can be baked into the tool for everyone.</p>");
+  }
+
+  /* ---- view-only: what else decided these books ---- */
+  h.push("<h3>Which way a formation reads</h3>");
+  const asc = [...prof.posAsc].filter(x => !isMain || secsHere.has(x) ||
+    SHEETS_XLSX.MAIN_ORDER.indexOf(x) >= 0).sort();
+  h.push("<p>" + (asc.length
+    ? "Lowest Position first in: " + esc(asc.join(", ")) +
+      ". Every other section prints highest Position first."
+    : "Every section in this book prints highest Position first.") + "</p>");
+  if (prof.roadPosAsc && prof.roadPosAsc.size) {
+    const rows = [...prof.roadPosAsc].map(([road, v]) =>
+      esc(road) + " reads " + (v ? "lowest" : "highest") + " Position first");
+    h.push("<p>Roads that face the other way to their section: " +
+      rows.join("; ") + ".</p>");
+  }
+  h.push("<h3>Timing</h3>");
+  const RB = SHEETS_RULEBOOK, hhmm = m =>
+    String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  h.push("<p>The day rolls at " + hhmm(RB.DAY_ROLL) + "; the evening starts at " +
+    hhmm(RB.PM_BREAK) + " for PM purposes; a hop out and back inside " +
+    RB.RUN_ROUND + " minutes is a run-round, not a berthing. The double line " +
+    "sits under the last entry before the gap containing midday, when that " +
+    "gap is at least " + SHEETS_XLSX.MIDDAY_GAP + " minutes.</p>");
+  if (prof.firstDep && prof.firstDep.size)
+    h.push("<p>Timed off the first move out of the berth: " +
+      esc([...prof.firstDep].sort().join(", ")) + ".</p>");
+  h.push("<h3>What is left off</h3>");
+  h.push("<p>An empty move onto a berth in this section's own area is a shunt " +
+    "and is not printed; one that takes a unit to another section is. A run " +
+    "through a washer road and back where it came from is not a berthing. A " +
+    "move that never leaves the Grove Park depot fence is not a line. Every " +
+    "move left off is named on the Review tab.</p>");
+  if (prof.ecsOnlyOk && prof.ecsOnlyOk.size)
+    h.push("<p>Sections that keep their empty moves: " +
+      esc([...prof.ecsOnlyOk].sort().join(", ")) + ".</p>");
+  h.push("<h3>Headcodes</h3>");
+  h.push("<p>Quoted as standard in: " +
+    esc([...SHEETS_DATA.HEADCODE_SECTIONS].sort().join(", ")) +
+    ". The toggle above puts every headcode in the notes column.</p>");
+
+  if (editCount()) {
+    h.push("<h3>Edits in force on this machine</h3>");
+    h.push('<table class="rules-t"><thead><tr><th>Key</th><th>Order</th>' +
+      "</tr></thead><tbody>");
+    for (const k of Object.keys(ruleEdits).sort())
+      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
+        (ruleEdits[k] === null ? "<i>pin switched off</i>"
+                               : esc(ruleEdits[k].join(", "))) + "</td></tr>");
+    h.push("</tbody></table>");
+    h.push('<p><button type="button" class="btn ghost" data-clear="1">' +
+      "Clear all rule edits</button></p>");
+  }
+  el.innerHTML = h.join("");
+
+  el.addEventListener("click", ev => {
+    const flip = ev.target.getAttribute && ev.target.getAttribute("data-flip");
+    if (flip !== null && flip !== undefined) {
+      const c = coupled[Number(flip)];
+      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
+      const forms = SHEETS_RULES.keyForms(c.sec, c.timeText,
+                                          c.lookupDiags.split(","));
+      const key = SHEETS_RULES.chooseKey(forms, seen, false);
+      /* Reverse what is printed. The key is the one the lookup itself
+         recorded, so a pin can never be written against a key the build
+         would not consult. */
+      const order = c.units.slice().reverse();
+      const bad = SHEETS_RULES.validEdit(key, order);
+      if (bad) return;
+      ruleEdits[key] = order;
+      persistEdits();
+      rebuild();
+      return;
+    }
+    if (ev.target.getAttribute && ev.target.getAttribute("data-clear")) {
+      ruleEdits = {};
+      persistEdits();
+      rebuild();
+    }
+  });
+  return el;
 }
 
 /* ---------------- fleet sprites ---------------- */
@@ -4227,6 +4599,9 @@ function reviewPane(items) {
   }
   let built = null, zipName = "SHEETS_BOOKS.zip";
   let lastRes = null;        // kept so the headcode toggles can rebuild
+  /* the dropped pair itself, kept so a rule edit can rebuild in place: the
+     order lookup happens inside the build, so re-rendering is not enough */
+  let lastInputs = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
   const hcToggles = {
@@ -4234,11 +4609,27 @@ function reviewPane(items) {
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
 
+  /* A rule edit changes what the build does, so it re-runs the build - the
+     order lookup is inside it. Serialised on the same queue the headcode
+     toggles use, so clicks cannot overlap. */
+  function rebuildForRules() {
+    if (!lastInputs) return;
+    queue = queue.then(async () => {
+      try {
+        await buildGenius();
+        say("Books rebuilt with the rule edit - save them again if needed.");
+      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
+    });
+  }
   async function buildGenius() {
     say("Reading the reports …"); await paint();
-    const res = have.sum.fmt === "csv"
-      ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
-      : await GENIUS.build([have.sum.data, have.det.data]);
+    if (have.sum && have.det)
+      lastInputs = { csv: have.sum.fmt === "csv",
+                     pair: [have.sum.data, have.det.data] };
+    const opts = { orderFix: ruleEdits };
+    const res = lastInputs.csv
+      ? GENIUS.buildIntegrale(lastInputs.pair, opts)
+      : await GENIUS.build(lastInputs.pair, opts);
     lastRes = res;
     await renderBooks(res);
   }
@@ -4314,11 +4705,16 @@ function reviewPane(items) {
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
+      panes.push(["Rules" + (editCount() ? " (" + editCount() + " edited)" : ""),
+                  () => rulesPane(b, res, rebuildForRules)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
+      const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
+      if (editCount()) acts.push(["Export rule edits",
+        () => download("SHEETS_RULE_EDITS_" + res.tag + ".txt",
+                       SHEETS_RULES.exportText(ruleEdits, res.tag), "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes,
-        [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]]));
+        b.review.length, panes, acts));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";

@@ -10,6 +10,9 @@ const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
+/* How long the gap containing midday has to be before the double line is
+   drawn in it - a section worked steadily through midday gets no line. */
+const MIDDAY_GAP = 120;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
@@ -313,7 +316,7 @@ function previewHtml(layout){
       for (let i = 1; i < entries.length; i++) {
         const a = tkey(entries[i - 1]), b = tkey(entries[i]);
         if (a < NOON && b >= NOON) {
-          if (b - a >= 120) gapI = i;
+          if (b - a >= MIDDAY_GAP) gapI = i;
           break;
         }
       }
@@ -469,7 +472,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, MIDDAY_GAP };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

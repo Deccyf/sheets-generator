@@ -59,7 +59,7 @@ export function loadSandbox(htmlPath) {
   }
   // Top-level consts (GENIUS, …) are global lexical bindings, not properties
   // of globalThis — collect them with one last evaluation in the same scope.
-  const names = ["SHEETS_CORE", "SHEETS_XLSX", "SHEETS_DATA", "SHEETS_RULEBOOK",
+  const names = ["SHEETS_CORE", "SHEETS_XLSX", "SHEETS_DATA", "SHEETS_RULEBOOK", "SHEETS_RULES",
                  "GENIUS", "SheetsEngine", "ExcelJS", "fflate", "pako"];
   const grab = "({" + names.map(n =>
     `${n}: typeof ${n} !== "undefined" ? ${n} : undefined`).join(",") + "})";

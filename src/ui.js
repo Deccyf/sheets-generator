@@ -88,7 +88,9 @@ function tabbed(panes) {
   });
   function select(ix) {
     if (cache[ix] === undefined) cache[ix] = btns[ix].htmlFn();
-    view.innerHTML = cache[ix];
+    const pane = cache[ix];
+    if (pane && pane.nodeType) { view.textContent = ""; view.appendChild(pane); }
+    else view.innerHTML = pane;
     view.scrollTop = 0; view.scrollLeft = 0;
     btns.forEach((b, j) => {
       b.tb.setAttribute("aria-selected", j === ix ? "true" : "false");
@@ -107,6 +109,188 @@ function tabbed(panes) {
     e.preventDefault();
   });
   return { tabs, view, select };
+}
+
+/* ---------------- local rule edits ----------------
+   The tool ships one order table; a tester can overlay it here to see a
+   correction take effect straight away. The overlay lives on this machine
+   only, so the point of it is the export: a correction is not finished
+   until it is baked into the tool for everyone. Everything below is built
+   so that state cannot go quiet - see the banner and the review notes. */
+const RULES_LS_KEY = "sheetsRules.v1";
+const rulesStore = (() => {
+  try { return window.localStorage; } catch (e) { return null; }
+})();
+let ruleEdits = (() => {
+  if (!rulesStore) return {};
+  const parsed = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
+  return parsed ? parsed.orderFix : {};
+})();
+const editCount = () => Object.keys(ruleEdits).length;
+function persistEdits() {
+  if (!rulesStore) return false;
+  try {
+    rulesStore.setItem(RULES_LS_KEY,
+      SHEETS_RULES.serialize(ruleEdits, new Date().toISOString()));
+    return true;
+  } catch (e) { return false; }
+}
+
+
+/* The Rules pane. Everything it shows comes from the build that produced
+   these very books - res.rules is the table that ran, not the tables read
+   again at display time - so it cannot drift from what you are looking at.
+   Editing is unit order and nothing else: it is the table testers actually
+   correct, and it has a closed grammar that can be checked. */
+function rulesPane(b, res, rebuild) {
+  const el = document.createElement("div");
+  el.className = "rules";
+  const R = res.rules;
+  const isMain = b.hc === "main";
+  const mine = c => b.ram ? c.sec === "RAMSGATE"
+                          : (isMain ? c.sec !== "RAMSGATE" : true);
+  const coupled = R.coupled.filter(mine);
+  const prof = SHEETS_DATA.PROFILES_G[isMain ? 0 : (b.hc === "metro" ? 1 : 2)];
+  const secsHere = new Set(coupled.map(c => c.sec));
+  const h = [];
+  const esc = escHtml;
+
+  h.push('<p class="sa-src">These are the rules this build ran with, not a ' +
+    'copy of them. Unit order can be corrected here; everything else is ' +
+    'shown so you can see what was applied.</p>');
+
+  /* ---- the editable part ---- */
+  h.push("<h3>Unit order</h3>");
+  const pins = Object.keys(R.orderFix).filter(k => {
+    const pk = SHEETS_RULES.parseKey(k);
+    if (!pk) return false;
+    if (!pk.sec) return true;                       // a bare pin holds anywhere
+    return b.ram ? pk.sec === "RAMSGATE"
+                 : (isMain ? pk.sec !== "RAMSGATE" && secsHere.has(pk.sec)
+                           : secsHere.has(pk.sec));
+  }).sort();
+  if (pins.length) {
+    h.push('<table class="rules-t"><thead><tr><th>Pinned formation</th>' +
+      "<th>Prints</th><th>State</th><th>Where it fired</th></tr></thead><tbody>");
+    for (const k of pins) {
+      const local = Object.prototype.hasOwnProperty.call(R.edits, k);
+      const shipped = Object.prototype.hasOwnProperty.call(R.shipped, k);
+      const state = !local ? "as issued"
+                  : (shipped ? "edited here" : "added here");
+      const fired = coupled.filter(c => c.applied === k)
+        .map(c => c.sec + " " + c.timeText);
+      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
+        esc(R.orderFix[k].join(", ")) + '</td><td class="' +
+        (local ? "tag-local" : "") + '">' + state + "</td><td>" +
+        (fired.length ? esc(fired.join("; "))
+                      : "<i>nothing in these reports</i>") + "</td></tr>");
+    }
+    h.push("</tbody></table>");
+  } else h.push("<p class=\"noreviews\">No order is pinned for this book.</p>");
+
+  /* every coupled formation this build produced, so an order can be
+     corrected from what is on the sheet rather than by writing a key */
+  h.push("<h3>Coupled formations in this build</h3>");
+  if (!coupled.length) h.push('<p class="noreviews">Nothing runs coupled.</p>');
+  else {
+    h.push('<table class="rules-t"><thead><tr><th>Where</th><th>Prints</th>' +
+      "<th>Pinned by</th><th></th></tr></thead><tbody>");
+    coupled.forEach((c, ix) => {
+      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
+      h.push("<tr><td>" + esc(c.sec + " " + c.timeText) + "</td><td>" +
+        esc(c.units.join(", ")) +
+        (c.lookupDiags !== c.units.slice().sort().join(",")
+          ? ' <i>(pin keyed on ' + esc(c.lookupDiags) + ')</i>' : "") +
+        "</td><td>" + (c.applied ? "<code>" + esc(c.applied) + "</code>"
+                                 : "<i>the reports</i>") +
+        '</td><td><button type="button" class="btn ghost" data-flip="' + ix +
+        '">Reverse</button></td></tr>');
+    });
+    h.push("</tbody></table>");
+    h.push('<p class="opts-hint">Reversing writes a pin' +
+      " on this machine and rebuilds the books. Export it from the card and " +
+      "send it back so it can be baked into the tool for everyone.</p>");
+  }
+
+  /* ---- view-only: what else decided these books ---- */
+  h.push("<h3>Which way a formation reads</h3>");
+  const asc = [...prof.posAsc].filter(x => !isMain || secsHere.has(x) ||
+    SHEETS_XLSX.MAIN_ORDER.indexOf(x) >= 0).sort();
+  h.push("<p>" + (asc.length
+    ? "Lowest Position first in: " + esc(asc.join(", ")) +
+      ". Every other section prints highest Position first."
+    : "Every section in this book prints highest Position first.") + "</p>");
+  if (prof.roadPosAsc && prof.roadPosAsc.size) {
+    const rows = [...prof.roadPosAsc].map(([road, v]) =>
+      esc(road) + " reads " + (v ? "lowest" : "highest") + " Position first");
+    h.push("<p>Roads that face the other way to their section: " +
+      rows.join("; ") + ".</p>");
+  }
+  h.push("<h3>Timing</h3>");
+  const RB = SHEETS_RULEBOOK, hhmm = m =>
+    String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  h.push("<p>The day rolls at " + hhmm(RB.DAY_ROLL) + "; the evening starts at " +
+    hhmm(RB.PM_BREAK) + " for PM purposes; a hop out and back inside " +
+    RB.RUN_ROUND + " minutes is a run-round, not a berthing. The double line " +
+    "sits under the last entry before the gap containing midday, when that " +
+    "gap is at least " + SHEETS_XLSX.MIDDAY_GAP + " minutes.</p>");
+  if (prof.firstDep && prof.firstDep.size)
+    h.push("<p>Timed off the first move out of the berth: " +
+      esc([...prof.firstDep].sort().join(", ")) + ".</p>");
+  h.push("<h3>What is left off</h3>");
+  h.push("<p>An empty move onto a berth in this section's own area is a shunt " +
+    "and is not printed; one that takes a unit to another section is. A run " +
+    "through a washer road and back where it came from is not a berthing. A " +
+    "move that never leaves the Grove Park depot fence is not a line. Every " +
+    "move left off is named on the Review tab.</p>");
+  if (prof.ecsOnlyOk && prof.ecsOnlyOk.size)
+    h.push("<p>Sections that keep their empty moves: " +
+      esc([...prof.ecsOnlyOk].sort().join(", ")) + ".</p>");
+  h.push("<h3>Headcodes</h3>");
+  h.push("<p>Quoted as standard in: " +
+    esc([...SHEETS_DATA.HEADCODE_SECTIONS].sort().join(", ")) +
+    ". The toggle above puts every headcode in the notes column.</p>");
+
+  if (editCount()) {
+    h.push("<h3>Edits in force on this machine</h3>");
+    h.push('<table class="rules-t"><thead><tr><th>Key</th><th>Order</th>' +
+      "</tr></thead><tbody>");
+    for (const k of Object.keys(ruleEdits).sort())
+      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
+        (ruleEdits[k] === null ? "<i>pin switched off</i>"
+                               : esc(ruleEdits[k].join(", "))) + "</td></tr>");
+    h.push("</tbody></table>");
+    h.push('<p><button type="button" class="btn ghost" data-clear="1">' +
+      "Clear all rule edits</button></p>");
+  }
+  el.innerHTML = h.join("");
+
+  el.addEventListener("click", ev => {
+    const flip = ev.target.getAttribute && ev.target.getAttribute("data-flip");
+    if (flip !== null && flip !== undefined) {
+      const c = coupled[Number(flip)];
+      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
+      const forms = SHEETS_RULES.keyForms(c.sec, c.timeText,
+                                          c.lookupDiags.split(","));
+      const key = SHEETS_RULES.chooseKey(forms, seen, false);
+      /* Reverse what is printed. The key is the one the lookup itself
+         recorded, so a pin can never be written against a key the build
+         would not consult. */
+      const order = c.units.slice().reverse();
+      const bad = SHEETS_RULES.validEdit(key, order);
+      if (bad) return;
+      ruleEdits[key] = order;
+      persistEdits();
+      rebuild();
+      return;
+    }
+    if (ev.target.getAttribute && ev.target.getAttribute("data-clear")) {
+      ruleEdits = {};
+      persistEdits();
+      rebuild();
+    }
+  });
+  return el;
 }
 
 /* ---------------- fleet sprites ---------------- */
@@ -246,6 +430,9 @@ function reviewPane(items) {
   }
   let built = null, zipName = "SHEETS_BOOKS.zip";
   let lastRes = null;        // kept so the headcode toggles can rebuild
+  /* the dropped pair itself, kept so a rule edit can rebuild in place: the
+     order lookup happens inside the build, so re-rendering is not enough */
+  let lastInputs = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
   const hcToggles = {
@@ -253,11 +440,27 @@ function reviewPane(items) {
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
 
+  /* A rule edit changes what the build does, so it re-runs the build - the
+     order lookup is inside it. Serialised on the same queue the headcode
+     toggles use, so clicks cannot overlap. */
+  function rebuildForRules() {
+    if (!lastInputs) return;
+    queue = queue.then(async () => {
+      try {
+        await buildGenius();
+        say("Books rebuilt with the rule edit - save them again if needed.");
+      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
+    });
+  }
   async function buildGenius() {
     say("Reading the reports …"); await paint();
-    const res = have.sum.fmt === "csv"
-      ? GENIUS.buildIntegrale([have.sum.data, have.det.data])
-      : await GENIUS.build([have.sum.data, have.det.data]);
+    if (have.sum && have.det)
+      lastInputs = { csv: have.sum.fmt === "csv",
+                     pair: [have.sum.data, have.det.data] };
+    const opts = { orderFix: ruleEdits };
+    const res = lastInputs.csv
+      ? GENIUS.buildIntegrale(lastInputs.pair, opts)
+      : await GENIUS.build(lastInputs.pair, opts);
     lastRes = res;
     await renderBooks(res);
   }
@@ -333,11 +536,16 @@ function reviewPane(items) {
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
+      panes.push(["Rules" + (editCount() ? " (" + editCount() + " edited)" : ""),
+                  () => rulesPane(b, res, rebuildForRules)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
+      const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
+      if (editCount()) acts.push(["Export rule edits",
+        () => download("SHEETS_RULE_EDITS_" + res.tag + ".txt",
+                       SHEETS_RULES.exportText(ruleEdits, res.tag), "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes,
-        [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]]));
+        b.review.length, panes, acts));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";

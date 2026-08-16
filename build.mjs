@@ -10,6 +10,7 @@ const version = JSON.parse(read("./package.json")).version;
 const modules = [
   "src/vendor/fflate.js",
   "src/data.js",
+  "src/rules.js",
   "src/core.js",
   "src/rulebook.js",
   "src/xlsx.js",

@@ -12,9 +12,9 @@ const GENIUS = (() => {
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
      never be the pin that quietly missed. */
-  const ORDER_FIX_KEYS = (() => {
+  function orderFixKeys(table) {
     const m = new Map();
-    for (const k of Object.keys(ORDER_FIX)) {
+    for (const k of Object.keys(table)) {
       const i = k.indexOf("|");
       if (i < 0) continue;
       const diags = k.slice(i + 1);
@@ -22,7 +22,8 @@ const GENIUS = (() => {
       m.get(diags).add(k.slice(0, i));
     }
     return m;
-  })();
+  }
+  const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
   const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
@@ -264,7 +265,7 @@ const GENIUS = (() => {
     }
     return out;
   }
-  function buildDate(date, sumRows, details, prof, warn) {
+  function buildDate(date, sumRows, details, prof, warn, fx) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
     // The Genius summary carries one row per working, and a unit's Position
@@ -474,9 +475,18 @@ const GENIUS = (() => {
       // time; one that holds all day is named without.
       {
         const diags = blocks.map(x => x.diag.slice(2)).sort().join(",");
-        const fix = ORDER_FIX[e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags] ||
-                    ORDER_FIX[e.sec + "|" + diags] ||
-                    ORDER_FIX[diags];
+        const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
+        const kSec = e.sec + "|" + diags;
+        const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
+        const applied = fx.table[kTimed] ? kTimed
+                      : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
+        /* What the lookup actually consulted, recorded at the lookup itself
+           so nothing downstream has to re-derive a key and risk deriving a
+           different one - the diags here are the pre-filter list. */
+        if (blocks.length > 1)
+          fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
+                            lookupDiags: diags, keysTried: [kTimed, kSec, diags],
+                            applied, units: blocks.map(x => x.diag.slice(2)) });
         if (fix) blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
         /* A pin that silently stops matching is the worst failure this table
@@ -484,11 +494,11 @@ const GENIUS = (() => {
            moved by a minute or changed headcode, and the sheet quietly went
            back to guessing with nothing to show for it. If any key was ever
            recorded for this formation and none of them fired here, say so. */
-        else if (blocks.length > 1 && ORDER_FIX_KEYS.has(diags))
+        else if (blocks.length > 1 && fx.keys.has(diags))
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
             blocks.map(x => x.diag).join("+") + "): a unit order is recorded" +
             " for this formation but not for here - it is set down as " +
-            [...ORDER_FIX_KEYS.get(diags)].join("; ") + ", so this one is" +
+            [...fx.keys.get(diags)].join("; ") + ", so this one is" +
             " ordered off the reports. Check it, and say if it should be" +
             " pinned too" });
       }
@@ -675,7 +685,15 @@ const GENIUS = (() => {
 
   /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
      over parsed summary rows + detail itineraries, whatever their source. */
-  function assemble(sumRows, byDate, extraNotes) {
+  function assemble(sumRows, byDate, extraNotes, opts) {
+    /* The table this build runs with: the shipped one unless the page has
+       local edits overlaid. Computed once so every book sees the same rules
+       and the pane can show exactly what was used. */
+    const edits = (opts && opts.orderFix) || {};
+    const hasEdits = Object.keys(edits).length > 0;
+    const fixTable = hasEdits
+      ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
+    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
     /* Sectional Appendix checks. Each one is decidable from what the reports
        carry - car count, class, berthing road, destination, and whether the
        move is passenger or empty - and each was counted against the real
@@ -739,6 +757,17 @@ const GENIUS = (() => {
       reviews.main.push(tagged); reviews.metro.push(tagged); reviews.hs.push(tagged);
     };
     for (const m of (extraNotes || [])) noteAll(m);
+    /* A local rule edit changes what the books say, so it has to be as loud
+       as anything else on the list: the books were not built with the tool
+       as issued, and a correction that only ever lives on one machine is a
+       correction nobody else gets. */
+    if (hasEdits) {
+      const n = Object.keys(edits).length;
+      noteAll(n + " local rule edit" + (n === 1 ? " is" : "s are") + " in force" +
+        " - these books were built with " + (n === 1 ? "it" : "them") +
+        ", not with the tool as issued. Export from the Rules tab and send" +
+        " back so they can be baked in");
+    }
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {};
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
@@ -748,9 +777,9 @@ const GENIUS = (() => {
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       const rows = sumRows.filter(r => r.date === date);
       const warnMain = [], warnMetro = [], warnHs = [];
-      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain);
-      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro);
-      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs);
+      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx);
+      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
+      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
       for (const [secs, warn] of [[secsByDay[dk], warnMain],
                                   [metroSecs[dk], warnMetro],
@@ -766,13 +795,24 @@ const GENIUS = (() => {
       }
     }
     if (!Object.keys(secsByDay).length) throw new Error("No weekday dates found in the reports.");
+    /* Every edit that reached nothing is a pin quietly doing nothing - the
+       same silent miss the table itself has, so say it here too. */
+    for (const k of Object.keys(edits)) {
+      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0)) continue;
+      noteAll("local rule edit " + k + " matched nothing in these reports" +
+              " - the working may have moved; re-pin it or clear it");
+    }
     return { secsByDay, metroSecs, hsSecs, labels, review, reviews,
+             /* what this build actually ran with, for the Rules tab to
+                render - never a second copy of the tables read separately */
+             rules: { orderFix: fixTable, edits, coupled: fx.coupled,
+                      shipped: ORDER_FIX },
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
   /* Genius input: the report PDFs (bytes), the CSV exports (strings), or one
      of each - they carry the same two reports and merge into the same pair. */
-  async function build(inputs) {
+  async function build(inputs, opts) {
     let sumRows = [];
     const byDate = new Map();
     const mergeDetail = m1 => {
@@ -794,7 +834,7 @@ const GENIUS = (() => {
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
     if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
-    return assemble(sumRows, byDate);
+    return assemble(sumRows, byDate, undefined, opts);
   }
 
 
@@ -1019,7 +1059,7 @@ const GENIUS = (() => {
     return byDate;
   }
 
-  function buildIntegrale(texts) {
+  function buildIntegrale(texts, opts) {
     let sumRows = null, det = null;
     for (const t of texts) {
       const kind = sniffIntegrale(t);
@@ -1043,7 +1083,7 @@ const GENIUS = (() => {
     if (uncovered)
       notes.push(uncovered + " of " + sumRows.length +
         " diagrams are marked Uncovered in the plan");
-    return assemble(sumRows, det.byDate, notes);
+    return assemble(sumRows, det.byDate, notes, opts);
   }
 
   return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
