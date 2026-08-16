@@ -598,3 +598,21 @@ export const APPENDIX_BREACH_DETAIL = [
     orderLeg(d, 18, "SLADEGN", "Slade Green", "06:20:00", "2X01", "CANONST", "Cannon Street", "07:00:00"),
   ]),
 ].join("\r\n");
+
+/* "Stabled" is where a diagram starts, not all it does. GN621 stands in the
+   Slade Green depot overnight and then works out of it in the small hours -
+   a berthing the book has to carry. GN622 stands there all day and never
+   moves: nothing to berth, but the depot still has a unit in that road, so
+   it has to be named rather than dropped in silence. */
+export const STABLED_PRINTS = printsLines([
+  "Diagram:\tGN\t621\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tS Gn Dep\t\t\t\tSTABLD\t\t",
+  "\t\tS Gn Dep\t\t00:45\t5Z20\t\t\t",
+  "\t\tLndon BrE\t01:09\t\t\t\t\t",
+  "Diagram:\tGN\t622\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tS Gn U Sd\t\t\t\tSTABLD\t\t",
+]);

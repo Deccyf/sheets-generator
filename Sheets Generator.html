@@ -2806,10 +2806,36 @@ function generate(diags, prof, stabling, warn){
   for (const k of Object.keys(prof.sections)) sections[k] = prof.sections[k].slice();
   const loc2sec = {};
   for (const sec of Object.keys(sections)) for (const loc of sections[sec]) loc2sec[loc] = sec;
-  const scope = Array.from(diags.values())
-    .filter(v => Object.prototype.hasOwnProperty.call(prof.fleets, v.fleet || "")
-                 && !v.rows.some(r => r.ev === "STABLD"))
+  /* A diagram that stands still all day has nothing to berth, so it is left
+     off - but it is left off out loud, the way the weekday books do it,
+     because the depot still has a unit sitting in that road and somebody
+     otherwise has to write it on by hand.
+
+     "Stabled" is where a diagram STARTS, not necessarily all it does: the
+     prints mark the road the unit stands in overnight and then list the
+     morning's work under it. Dropping anything carrying a STABLD row threw
+     working diagrams away silently - on SUN 16/08, 465/9 diagrams 411 and
+     412 off Gillingham depot at 00+55 as 5P87, and 376 diagram 821 off
+     Slade Green depot at 00+45 as 5Z20. What counts is whether the diagram
+     ever moves. */
+  const mine = Array.from(diags.values())
+    .filter(v => Object.prototype.hasOwnProperty.call(prof.fleets, v.fleet || ""))
     .sort((a,b) => a.code < b.code ? -1 : a.code > b.code ? 1 : a.num - b.num);
+  const still = v => v.rows.every(r => !r.arr && !r.dep);
+  const stood = mine.filter(still);
+  const scope = mine.filter(v => !still(v));
+  if (stood.length){
+    const where = new Map();
+    for (const v of stood){
+      const loc = (v.rows[0] && v.rows[0].loc) || "?";
+      where.set(loc, (where.get(loc) || 0) + 1);
+    }
+    warn.push(["stabled", stood.length + " diagram(s) stand all day and are " +
+      "not berthed: " +
+      Array.from(where).sort((a,b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+        .map(x => x[0] + " x" + x[1]).join(", "),
+      null, stood.map(v => v.code + v.num).join(" ")]);
+  }
 
   // A working unit can berth somewhere the section list has never heard of.
   // Give each such place its own section instead of dropping the movement.
@@ -3229,6 +3255,8 @@ function buildReport(book, nEntries, nSecs, warn){
     else if (kind === "runround") other.push("run-round: " + a);
     else if (kind === "resolved") other.push("location read as: " + a);
     else if (kind === "merge") other.push(a);
+    else if (kind === "stabled") other.push("standing all day: " + a +
+                                            (c ? " (" + c + ")" : ""));
     else if (kind === "nocode") other.push("no code for '" + a + "' - used '" +
                                            a.slice(0,3).toUpperCase() + "'");
     else other.push(kind + ": " + a + " " + c);

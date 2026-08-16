@@ -235,6 +235,11 @@ entries:
   multi-unit rows and teach the reader to skip the list;
 * a Folkestone East `EX … ARR` note, which is inferred and must be checked;
 * an end-marker decision that had no rule to lean on;
+* diagrams that stand all day and are therefore not berthed, counted by the
+  road they stand in and named diagram by diagram. There is nothing to print
+  for a unit that never moves, but the depot still has it in that road — on
+  SUN 16/08 that is 157 diagrams across the three books, and the Faversham
+  back road one had been written on by hand;
 * weekend engine items: station dwells treated as layovers rather than
   berths, short stops treated as berths (the Maidstone West shape), run-rounds
   folded into the following departure, destinations or berths that had no code
@@ -341,8 +346,11 @@ test suite drives them.
 2. **Parsing diagrams** (`parseDiagrams`). Lines are scanned for
    `Diagram:\t<CODE>\t<NUM>\t…` headers, `Fleet:` and `From:` (the date), and
    double-tab-indented itinerary rows (location, arr, dep, headcode, event
-   marker, formation). The `#` event marker flags a berthing; `STABLD`
-   diagrams are out of scope.
+   marker, formation). The `#` event marker flags a berthing. `STABLD` marks
+   the road a diagram *starts* in, which is not the same as all it does — the
+   prints list the morning's work under that marker — so scope is decided on
+   whether the diagram ever moves, and the ones that never do are named on the
+   review list rather than dropped in silence.
 3. **Reissue merge** (`mergeDocs`). Files named *reissue* are overlaid on the
    single base document diagram-by-diagram (same-date check enforced), with
    replaced/added lists pushed onto the review list. `buildUpdatedDocx`

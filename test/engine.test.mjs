@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { legacy, built, norm } from "./helpers/compare.mjs";
-import { makeDocx, PRINTS_LINES, REISSUE_LINES, METRO_MOVE_PRINTS }
+import { makeDocx, PRINTS_LINES, REISSUE_LINES, METRO_MOVE_PRINTS, STABLED_PRINTS }
   from "./helpers/synth.mjs";
 
 function inputs(ctx, withReissue) {
@@ -205,4 +205,31 @@ test("all-headcodes toggle works per book on the weekend panel", () => {
   // The Metro book was not toggled and keeps its legacy notes exactly.
   assert.equal(noteCells(on.books[1]), noteCells(off.books[1]),
     "untouched book unchanged");
+});
+
+test("a diagram that starts stabled still gets berthed; one that never moves is named", () => {
+  const N = built();
+  const res = N.SheetsEngine.run(
+    [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(STABLED_PRINTS, N.fflate) }],
+    b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 }));
+  const metro = res.books.find(b => b.road === "Metro");
+  assert.ok(metro && !metro.skipped, "the metro book was built");
+  const col1 = metro.layout.cells.filter(c => c.c === 1).map(c => String(c.v || ""));
+  const diagCol = metro.layout.cells.filter(c => c.c === 3).map(c => String(c.v || ""));
+
+  /* GN621 stands in the Slade Green depot overnight and then works out of it
+     at 00 45. The prints mark the road it stands in and list the work under
+     it, so a filter on "carries a STABLD row" threw the whole diagram away -
+     on SUN 16/08 that lost 465/9 diagrams 411 and 412 off Gillingham depot
+     and 376 diagram 821 off Slade Green, none of them mentioned anywhere. */
+  assert.ok(col1.some(v => /^00[:+ ]45/.test(v)),
+    "the 00 45 off the depot is berthed: " + col1.filter(Boolean).join(" / "));
+  assert.ok(diagCol.includes("621"), "under its own diagram number");
+
+  // GN622 never moves, so it has nothing to berth - but it is left off out
+  // loud, naming the road it is standing in
+  assert.ok(!diagCol.includes("622"), "the one that never moves is not berthed");
+  assert.match(metro.report, /standing all day: 1 diagram\(s\)/, "it is counted");
+  assert.match(metro.report, /S Gn U Sd x1/, "with the road it stands in");
+  assert.match(metro.report, /GN622/, "and its diagram number");
 });
