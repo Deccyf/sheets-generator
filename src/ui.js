@@ -159,7 +159,7 @@ function rulesEnv(b, res, secNames) {
     endStyle: SHEETS_DATA.END_STYLE,
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
-    middayGap: SHEETS_XLSX.MIDDAY_GAP,
+    breakGap: SHEETS_XLSX.BREAK_GAP,
     gpSplit: isMain,
     orderFix: res.rules.orderFix,
   };

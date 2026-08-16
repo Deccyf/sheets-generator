@@ -443,6 +443,19 @@ ones, all commented at the point of implementation:
   formation — not from the pre-filter list. Before this, the Rules tab
   offered a Reverse button for `ASHFORD 07 55 — 116, 117` on a row that
   prints one unit, and a correction written there could never show up.
+* **The double lines.** A break of at least `BREAK_GAP` (90 min) with work
+  still to come after it is ruled off, so a page carries as many lines as it
+  has breaks — the 12/08 book rules Slade Green under 06+36 *and* under
+  18+04, which no single-line rule can draw. Three earlier readings were each
+  measured against the real books' border styles and each failed: the biggest
+  gap (a long evening lull outbids the real break — Ashford 16 00 → 22+53),
+  the gap containing midday (a section working through the middle of the day
+  breaks earlier), and the biggest gap starting before midday (6 of 7, and
+  structurally unable to draw Slade Green's second). At 90 minutes every rule
+  all three real books draw is drawn — mainline 6/6, Ramsgate 1/1, metro 5/5
+  once its two are matched through the first-move timing (the tool's `07+24`
+  is the book's `07 33`) — with 13 extra lines across the three books. Grove
+  Park is never ruled: neither real book rules it.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
 * **Position changes during the day.** The Genius Summary carries one row per

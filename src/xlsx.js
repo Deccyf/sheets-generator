@@ -10,9 +10,10 @@ const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
-/* How long the morning's break has to be before the double line is drawn in
-   it - a section worked steadily through the morning gets no line. */
-const MIDDAY_GAP = 120;
+/* How long a break in a location's work has to be before a double line is
+   ruled in it. Every break this long gets one, so a page can carry several -
+   see sectionRows. */
+const BREAK_GAP = 90;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
@@ -311,34 +312,28 @@ function previewHtml(layout){
       const t = e.time % 1440;
       return t < 180 ? t + 1440 : t;
     };
-    /* The double line rules off the morning: the biggest break in the day's
-       work that STARTS before midday. Not "the biggest gap" - a long evening
-       lull outbids the real one (Ashford's 16 00 to 22+53). Not "the gap
-       containing midday" either - a section that works through the middle of
-       the day puts its break earlier, and Tonbridge's 06 16 to 11+32 is the
-       break even though noon falls in the 11+32 to 14+40 gap after it. Both
-       readings were tried against the 12/08 book's own borders; only this one
-       reproduces all six of them, and it is the one the sheets are read by.
-       The break still has to be berthing-length, so a section worked steadily
-       through the morning draws no line. Grove Park's two-table layout is
-       never ruled. */
-    const NOON = 12 * 60;
-    let gapI = null, gap = 0;
-    if (name !== "GROVE PARK") {
-      for (let i = 1; i < entries.length; i++) {
-        const a = tkey(entries[i - 1]);
-        if (a >= NOON) continue;
-        const g = tkey(entries[i]) - a;
-        if (g > gap) { gap = g; gapI = i; }
-      }
-      if (gap < MIDDAY_GAP) gapI = null;
-    }
-    let divideAt = null;
+    /* A double line rules off a break in the day's work. EVERY break of at
+       least BREAK_GAP that still has work after it gets one, so a location
+       can carry more than one: the 12/08 book rules Slade Green under 06+36
+       and again under 18+04, which no single-line rule can draw.
+
+       Earlier readings all tried to find THE one break - the biggest gap (a
+       long evening lull outbids the real one, Ashford's 16 00 to 22+53), the
+       gap containing midday (a section that works through the middle of the
+       day breaks earlier), the biggest gap starting before midday (right six
+       times out of seven, and structurally unable to draw Slade Green's
+       second). All were measured against the real books' own border styles.
+
+       Grove Park is never ruled: neither real book rules it, and the
+       mainline book's two-table layout already does the job. */
+    const gapAt = new Set();
+    if (name !== "GROVE PARK")
+      for (let i = 1; i < entries.length; i++)
+        if (tkey(entries[i]) - tkey(entries[i - 1]) >= BREAK_GAP) gapAt.add(i);
+    const divideAt = new Set();
     const flagSpans = [];
     entries.forEach((e, i) => {
-      if (gapI !== null && i === gapI && flat.length) {
-        divideAt = flat.length - 1;
-      }
+      if (gapAt.has(i) && flat.length) divideAt.add(flat.length - 1);
       if (e.flag && e.units.length > 1) {
         flagSpans.push([flat.length, e.units.length]);
       }
@@ -349,7 +344,7 @@ function previewHtml(layout){
       const first = idx === 0;
       const lastSec = idx === flat.length - 1;
       let bot = lastSec ? "medium" : (v.last ? "thin" : null);
-      if (idx === divideAt && !lastSec) bot = "double";
+      if (divideAt.has(idx) && !lastSec) bot = "double";
       rows.push({ kind: "data",
         /* 6 is the unit column: the allocated unit where the export names
            it, and otherwise an empty ruled cell for the depot to write in. */
@@ -488,7 +483,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, MIDDAY_GAP };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

@@ -296,12 +296,12 @@ const SHEETS_RULES = (() => {
         "The evening starts at " + hhmm(env.pmBreak || 1200) + " for anything " +
         "the sheet calls PM.",
       ] },
-      { p: "A heavy double line runs across the page to divide the morning " +
-        "from the rest of the day. It sits under the last entry before the " +
-        "longest quiet spell that begins before midday, and only where that " +
-        "spell is at least " + hours(env.middayGap || 120) + " long. A page " +
-        "that is busy right through gets no double line, and Grove Park " +
-        "never gets one." },
+      { p: "Heavy double lines rule off the breaks in the day's work. Any " +
+        "break of " + hours(env.breakGap || 90) + " or more with work still " +
+        "to come after it gets one, so a page can carry two or three — Slade " +
+        "Green is ruled under its 06+36 and again under its 18+04. A page " +
+        "that is busy right through gets none, and Grove Park is never " +
+        "ruled." },
     ];
     push("times", "Times, and the line across the page", t);
 

@@ -64,7 +64,7 @@ function envFor(book) {
     endStyle: D.END_STYLE,
     routeByHc: D.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
-    middayGap: X.MIDDAY_GAP,
+    breakGap: X.BREAK_GAP,
     gpSplit: book.profile === 0,
     orderFix: D.ORDER_FIX,
   };

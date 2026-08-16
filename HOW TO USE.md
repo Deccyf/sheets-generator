@@ -258,11 +258,12 @@ where the service it forms is going. A train that starts in the platform keeps
 its platform time. The Mainline and High Speed books are timed off the platform
 call as always.
 
-**The double line** rules off the morning: it sits under the section's last
-entry before midday, where the gap that follows is two hours or more. A section
-worked steadily through midday has no line, and Grove Park is never ruled. On
-the weekend sheets the line is drawn where the section crosses midday and
-20:00 instead — the three goes of a shift.
+**Double lines** rule off the breaks in the day's work. Any break of **1½ hours
+or more** with work still to come after it gets one, so a page can carry two or
+three — Slade Green is ruled under its 06+36 and again under its 18+04. A page
+that is busy right through gets none, and Grove Park is never ruled. On the
+weekend sheets the line is drawn where the section crosses midday and 20:00
+instead — the three goes of a shift.
 
 ---
 

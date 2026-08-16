@@ -98,7 +98,7 @@ test("all-headcodes toggle puts every headcode in the notes column (weekday)", a
   assert.doesNotMatch(noteFor(mOff, "06+20") || "", /5E01/, "legacy rules off");
 });
 
-test("the double line marks the midday break, not the biggest gap", () => {
+test("a double line rules off every break in the day's work", () => {
   const N = built();
   const X = N.SHEETS_XLSX;
   const mk = (time, kind, diag) => ({
@@ -106,24 +106,39 @@ test("the double line marks the midday break, not the biggest gap", () => {
     attachment: false, extra_notes: [], pub: { sheet: "ASHFORD" },
     units: [{ cls: "4 375", diag, am: "", pm: "", end: "", src_sheet: "ASHFORD" }],
   });
-  /* The tester's Monday shape: the evening gap (16:00 -> 22:53, 413 min) is
-     BIGGER than the midday one (08:28 -> 14:56, 388 min). The line belongs
-     to the morning block all the same. */
-  const entries = [mk(8 * 60 + 28, "pax", "001"), mk(14 * 60 + 56, "pax", "002"),
-                   mk(16 * 60, "pax", "003"), mk(22 * 60 + 53, "ecs", "004")];
   // Array.from into this realm: the sandbox's arrays fail deepEqual on
   // prototype alone, whatever their contents
   const doubles = rows => Array.from(rows).filter(r => r.kind === "data")
     .flatMap((r, i) => r.bot === "double" ? [i] : []);
-  const rows = X.layoutSheet(new Map([["ASHFORD", entries]]), "X", false, ["ASHFORD"], false);
-  assert.deepEqual(doubles(rows), [0], "one line, under the 08 28 row");
-  // a section worked steadily through midday draws no line at all
+  const lay = entries =>
+    X.layoutSheet(new Map([["ASHFORD", entries]]), "X", false, ["ASHFORD"], false);
+
+  /* Two breaks, two lines. The real books rule Slade Green twice on 12/08 -
+     under 06+36 and again under 18+04 - so a single-line rule is wrong by
+     construction however its one line is chosen. */
+  const entries = [mk(8 * 60 + 28, "pax", "001"), mk(14 * 60 + 56, "pax", "002"),
+                   mk(16 * 60, "pax", "003"), mk(22 * 60 + 53, "ecs", "004")];
+  assert.deepEqual(doubles(lay(entries)), [0, 2],
+    "under 08 28 and under 16 00 - both breaks are hours long");
+
+  // a section worked steadily draws no line at all
   const dense = [mk(11 * 60, "pax", "001"), mk(11 * 60 + 50, "pax", "002"),
                  mk(12 * 60 + 40, "pax", "003")];
-  const r2 = X.layoutSheet(new Map([["ASHFORD", dense]]), "X", false, ["ASHFORD"], false);
-  assert.deepEqual(doubles(r2), [], "no line when the crossing gap is short");
+  assert.deepEqual(doubles(lay(dense)), [], "50-minute gaps are not breaks");
+
+  // exactly on the threshold counts; one minute under does not
+  const edge = [mk(6 * 60, "pax", "001"), mk(7 * 60 + 30, "pax", "002")];
+  assert.deepEqual(doubles(lay(edge)), [0], "90 minutes is a break");
+  const under = [mk(6 * 60, "pax", "001"), mk(7 * 60 + 29, "pax", "002")];
+  assert.deepEqual(doubles(lay(under)), [], "89 minutes is not");
+
+  // nothing is ruled after the last entry, however long the day's tail
+  const two = [mk(6 * 60, "pax", "001"), mk(20 * 60, "pax", "002")];
+  assert.deepEqual(doubles(lay(two)), [0], "one line between them, none below");
+
   // and Grove Park is never ruled, whatever its day looks like
   const gp = entries.map(e => ({ ...e, pub: { sheet: "GROVE PARK C.S.D" } }));
-  const r3 = X.layoutSheet(new Map([["GROVE PARK", gp]]), "X", false, ["GROVE PARK"], false);
+  const r3 = X.layoutSheet(new Map([["GROVE PARK", gp]]), "X", false,
+                           ["GROVE PARK"], false);
   assert.deepEqual(doubles(r3), [], "Grove Park never gets a divider");
 });
