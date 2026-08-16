@@ -231,7 +231,7 @@ function orderPane(b, res, rebuild, secNames) {
     h.push("</tbody></table>");
     h.push('<p class="opts-hint">Reverse turns that formation round and ' +
       "rebuilds the books straight away so you can see it. The change stays " +
-      "on this computer only — use “Export rule edits” on this " +
+      "on this computer only — use “Export order corrections” on this " +
       "card and send us the file, and it gets built in for everybody.</p>");
     h.push("</section>");
   }
@@ -240,7 +240,7 @@ function orderPane(b, res, rebuild, secNames) {
     h.push('<section class="rule-sec"><h3>Changes you have made on this ' +
       "computer</h3>");
     h.push("<p>These are in force for every book built here until you clear " +
-      "them, and they are what “Export rule edits” sends us.</p>");
+      "them, and they are what “Export order corrections” sends us.</p>");
     h.push('<table class="rules-t"><thead><tr><th>Location</th><th>When</th>' +
       "<th>Diagrams running together</th><th>Prints in this order</th>" +
       "</tr></thead><tbody>");
@@ -447,7 +447,7 @@ function reviewPane(items) {
     queue = queue.then(async () => {
       try {
         await buildGenius();
-        say("Books rebuilt with the rule edit - save them again if needed.");
+        say("Books rebuilt with your order correction — save them again if needed.");
       } catch (err) { say("Rebuild failed: " + err.message, "err"); }
     });
   }
@@ -542,8 +542,8 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
-      if (editCount()) acts.push(["Export rule edits",
-        () => download("SHEETS_RULE_EDITS_" + res.tag + ".txt",
+      if (editCount()) acts.push(["Export order corrections",
+        () => download("SHEETS_ORDER_CORRECTIONS_" + res.tag + ".txt",
                        SHEETS_RULES.exportText(ruleEdits, res.tag), "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes, acts));

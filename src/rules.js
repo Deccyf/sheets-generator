@@ -425,8 +425,8 @@ const SHEETS_RULES = (() => {
         "build. Pressing it turns that formation round and rebuilds the " +
         "books straight away so you can see the result — but the change " +
         "only lives on the computer you pressed it on. Use “Export " +
-        "rule edits” on the same card and send us the file, and it " +
-        "gets built into the tool for everybody." },
+        "order corrections” on the same card and send us the file, and " +
+        "it gets built into the tool for everybody." },
     ]);
 
     /* ---- 10. what it will not do ---- */

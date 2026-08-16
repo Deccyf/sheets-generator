@@ -71,6 +71,9 @@
 
   /* ---------- roads ---------- */
   .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}
+  /* before anything is built the panel left 88px of nothing between the
+     headcode box and the notes below it, which reads as a broken page */
+  .roads:empty{margin:0}
   .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
   .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
   .road-no{
@@ -310,7 +313,7 @@
 
   <header>
     <p class="eyebrow">Fleet &amp; depot · unit berthing</p>
-    <h1>Berthing sheets<span class="sub">the week's books, built from the plans</span></h1>
+    <h1>Berthing sheets <span class="sub">the week's books, built from the plans</span></h1>
     <p class="lede">This page turns the planning paperwork into the unit berthing
       books. Weekday books are built from the Diagram Summary and Detail
       reports — from Genius or from Integrale; Saturday and Sunday sheets
@@ -428,12 +431,17 @@
       <div class="explain-body">
         <p>It reads every diagram's day from the Detail report, works out where
           each unit berths, and writes the entries the way the hand-built books
-          do: departure times off the platform where the working runs through
-          it, units listed rear-first with their three-digit diagram numbers,
-          AM and PM columns showing where each unit goes next and where it ends
-          its day, SPLITS and SPLITS PM flags, siding notes such as EAST
-          SIDINGS, ATTACHMENT notes, and the end markers at Dover Priory,
-          Folkestone East, Hastings and West Marina.</p>
+          do: departure times, three-digit diagram numbers, AM and PM columns
+          showing where each unit goes next and where it ends its day, SPLITS
+          and SPLITS PM flags, siding notes such as EAST SIDINGS, ATTACHMENT
+          notes, and the end markers at Dover Priory, Folkestone East, Hastings
+          and West Marina. Coupled units are listed in the order they stand —
+          which way round depends on the location, and the mainline and metro
+          books are timed differently.</p>
+        <p><b>Every rule is written out in full on the Rules tab</b> of each
+          book once it is built, and in <i>BERTHING SHEET RULES</i> for
+          circulating. Both are generated from the tool's own tables, so they
+          cannot fall behind what the books actually do.</p>
         <p>Empty moves to a berth with no passenger work afterwards are left
           off, the same as the hand-built sheets — each one is named on the
           review list so nothing disappears silently. A move that takes a unit
@@ -443,7 +451,7 @@
     </details>
 
     <details class="explain">
-      <summary>If something looks wrong</summary>
+      <summary>If a weekday build looks wrong</summary>
       <div class="explain-body">
         <dl>
           <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
@@ -518,7 +526,7 @@
     </details>
 
     <details class="explain">
-      <summary>If something looks wrong</summary>
+      <summary>If a weekend build looks wrong</summary>
       <div class="explain-body">
         <dl>
           <dt>"That file is damaged or isn't a Word document"</dt>
@@ -1624,8 +1632,8 @@ const SHEETS_RULES = (() => {
         "build. Pressing it turns that formation round and rebuilds the " +
         "books straight away so you can see the result — but the change " +
         "only lives on the computer you pressed it on. Use “Export " +
-        "rule edits” on the same card and send us the file, and it " +
-        "gets built into the tool for everybody." },
+        "order corrections” on the same card and send us the file, and " +
+        "it gets built into the tool for everybody." },
     ]);
 
     /* ---- 10. what it will not do ---- */
@@ -4840,7 +4848,7 @@ function orderPane(b, res, rebuild, secNames) {
     h.push("</tbody></table>");
     h.push('<p class="opts-hint">Reverse turns that formation round and ' +
       "rebuilds the books straight away so you can see it. The change stays " +
-      "on this computer only — use “Export rule edits” on this " +
+      "on this computer only — use “Export order corrections” on this " +
       "card and send us the file, and it gets built in for everybody.</p>");
     h.push("</section>");
   }
@@ -4849,7 +4857,7 @@ function orderPane(b, res, rebuild, secNames) {
     h.push('<section class="rule-sec"><h3>Changes you have made on this ' +
       "computer</h3>");
     h.push("<p>These are in force for every book built here until you clear " +
-      "them, and they are what “Export rule edits” sends us.</p>");
+      "them, and they are what “Export order corrections” sends us.</p>");
     h.push('<table class="rules-t"><thead><tr><th>Location</th><th>When</th>' +
       "<th>Diagrams running together</th><th>Prints in this order</th>" +
       "</tr></thead><tbody>");
@@ -5056,7 +5064,7 @@ function reviewPane(items) {
     queue = queue.then(async () => {
       try {
         await buildGenius();
-        say("Books rebuilt with the rule edit - save them again if needed.");
+        say("Books rebuilt with your order correction — save them again if needed.");
       } catch (err) { say("Rebuild failed: " + err.message, "err"); }
     });
   }
@@ -5151,8 +5159,8 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
-      if (editCount()) acts.push(["Export rule edits",
-        () => download("SHEETS_RULE_EDITS_" + res.tag + ".txt",
+      if (editCount()) acts.push(["Export order corrections",
+        () => download("SHEETS_ORDER_CORRECTIONS_" + res.tag + ".txt",
                        SHEETS_RULES.exportText(ruleEdits, res.tag), "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes, acts));

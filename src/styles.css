@@ -64,6 +64,9 @@
 
   /* ---------- roads ---------- */
   .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}
+  /* before anything is built the panel left 88px of nothing between the
+     headcode box and the notes below it, which reads as a broken page */
+  .roads:empty{margin:0}
   .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
   .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
   .road-no{
