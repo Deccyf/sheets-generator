@@ -1158,29 +1158,28 @@ const HIGHSPEED = {
  "FAVERSHAM": MAINLINE["FAVERSHAM"],
  "RAMSGATE":  MAINLINE["RAMSGATE"],
 };
+/* The weekend books follow the same rulebook as the weekday ones, so their
+   profiles are the weekday profiles - not a second copy that can drift from
+   them. It had drifted: the weekend metro fleet list had lost 465/0, and
+   its headcode sections had gained Slade Green while the High Speed book
+   had none at all. The only weekday rule NOT carried over is the pinned
+   unit order (ORDER_FIX): those pins are keyed on weekday diagram numbers
+   and the weekend prints number their diagrams separately. */
 const PROFILES = [
- {tag:"", label:"375/376/377", road:"Mainline",
-  fleets:{"375/6":"4 375","375/9":"4 375-9","375/3":"3 375",
-          "377/5":"4 377","376/0":"5 376"},
-  sections:MAINLINE,
-  headcode_sections:new Set(["GILLINGHAM","GROVE PARK","VICTORIA"]),
-  first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
-  ecs_only_ok:new Set(["WEST MARINA","GROVE PARK","SLADE GREEN"])},
- {tag:"465_466_707", label:"465/466/707", road:"Metro",
-  fleets:{"465/9":"4 465","466/0":"2 466","707/0":"5 707"},
-  sections:METRO,
-  headcode_sections:new Set(["GILLINGHAM","GROVE PARK","SLADE GREEN","VICTORIA"]),
-  // metro house rule: time every entry off the first move (see PROFILES_G)
-  first_dep_all:true,
-  first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
-  ecs_only_ok:new Set(["GROVE PARK","SLADE GREEN"])},
- {tag:"395", label:"395", road:"High Speed",
-  fleets:{"395/0":"6 395"},
-  sections:HIGHSPEED,
-  headcode_sections:new Set(),
-  first_dep:new Set(),
-  ecs_only_ok:new Set()},
-];
+ {tag:"", label:"375/376/377", road:"Mainline", sections:MAINLINE},
+ {tag:"465_466_707", label:"465/466/707", road:"Metro", sections:METRO},
+ {tag:"395", label:"395", road:"High Speed", sections:HIGHSPEED},
+].map((p, i) => {
+  const g = PROFILES_G[i];
+  return {
+    tag: p.tag, label: p.label, road: p.road, sections: p.sections,
+    fleets: g.fleets,
+    headcode_sections: HEADCODE_SECTIONS,
+    pos_asc: g.posAsc, road_pos_asc: g.roadPosAsc,
+    first_dep: g.firstDep, first_dep_all: !!g.firstDepAll,
+    ecs_only_ok: g.ecsOnlyOk,
+  };
+});
 
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
@@ -1642,6 +1641,12 @@ const SHEETS_RULES = (() => {
         "Anything it was unsure about is written on the Review tab of that " +
         "book rather than guessed at on the sheet.",
       ] },
+      { p: "The weekend sheets are built from the diagram prints rather than " +
+           "the weekday reports, but they follow these same rules — the same " +
+           "tables decide the order, the times, the breaks and the " +
+           "headcodes. The one thing that does not carry over is the list of " +
+           "corrected formations above: those name weekday diagram numbers, " +
+           "and the weekend prints number their diagrams separately." },
       { note: "The sheets are built from the reports you feed in. If the " +
         "report is wrong, the sheet will be wrong in the same way — the " +
         "tool has no other source to check it against." },
@@ -2344,6 +2349,21 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
         TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
+/* road_pos_asc is keyed on the weekday road names; the prints use their own
+   abbreviations for the same roads. The two siding-note tables are the
+   bridge - both spell a road the same short way ("Up Sidings"), so one can
+   be looked up through the other rather than kept as a third list. */
+const ROAD_ALIAS = (() => {
+  const byNote = new Map();
+  for (const k of Object.keys(SHEETS_DATA.SIDING_NOTES))
+    byNote.set(String(SHEETS_DATA.SIDING_NOTES[k]).toUpperCase(), k);
+  const out = new Map();
+  for (const k of Object.keys(NOTE_FROM_BERTH)) {
+    const w = byNote.get(String(NOTE_FROM_BERTH[k]).toUpperCase());
+    if (w) out.set(k, w);
+  }
+  return out;
+})();
 const PROFILES = SHEETS_DATA.PROFILES;
 const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
 const QUAL_RE = /(up\s*sd|dn\s*sd|down\s*sd|u\s*sd|d\s*sd|sdg|sidings?|sids?|sd|depot|dep|shed|yard|yd|bk\s*rd|rd|tr|turnback|tb|ebs|dms|jub\s*s|pk\s*s|us|ds)$/i;
@@ -2929,7 +2949,20 @@ function generate(diags, prof, stabling, warn){
                    pax_after:paxAfter, later:later.length > 0,
                    cls:prof.fleets[fleet]});
     }
-    blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
+    /* Which way a formation reads is the weekday rule, section by section:
+       the sheets are written against the direction of travel, and which end
+       that is depends on the place, not on the day of the week. A road that
+       faces the other way to the rest of its section overrides it, so long
+       as the whole formation came off that one road. (The one weekday rule
+       NOT carried over is the pinned order - those pins name weekday
+       diagram numbers, which the weekend prints do not use.) */
+    const road = e.origins.size === 1 ? Array.from(e.origins)[0] : null;
+    const byRoad = road === null ? undefined
+      : (prof.road_pos_asc || new Map()).get(ROAD_ALIAS.get(road) || road);
+    if (byRoad === undefined ? (prof.pos_asc || new Set()).has(sec) : byRoad)
+      blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
+    else
+      blocks.sort((x,y) => y.pos - x.pos || y.num - x.num);
     if (blocks.length > 1 && blocks.every(x => x.pos === 999))
       warn.push(["order", sec + " " + e.time_raw, null, ""]);
     e.blocks = blocks;
@@ -3048,9 +3081,13 @@ function dateBits(dateStr){
    thin rule under every entry. Taken from the ruled sheets. */
 const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
                    ["thin","medium"],[null,null],[null,null],[null,"medium"]];
-/* The sheet is read in three goes across a shift, so each section is ruled off
-   with a double line where it crosses midday and 20 00. */
-const DAY_BREAKS = [12 * 60, 20 * 60];
+/* Double lines follow the weekday rule: a break of BREAK_GAP or more in a
+   location's work, with work still to come after it, is ruled off - and a
+   page carries as many lines as it has breaks. It used to rule wherever the
+   section crossed midday and 20 00, which drew a line through a location
+   that was busy right across the middle of the day and none at all through
+   one that stood idle from 08 00 to 19 00. */
+const BREAK_GAP = SHEETS_XLSX.BREAK_GAP;
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
 function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc){
@@ -3088,9 +3125,9 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     let prevTk = null, prevLast = null;
     for (const e of sectionsOut[sec]){
       const tk = sortkey(mins(e.time_raw));
-      if (prevTk !== null)
-        for (const bound of DAY_BREAKS)
-          if (prevTk < bound && bound <= tk) doubleEnds.add(prevLast);
+      // Grove Park is never ruled - neither real weekday book rules it
+      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP)
+        doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
         if (i === 0) put(r, 1, e.time + " " + e.dest +

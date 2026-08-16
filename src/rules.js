@@ -442,6 +442,12 @@ const SHEETS_RULES = (() => {
         "Anything it was unsure about is written on the Review tab of that " +
         "book rather than guessed at on the sheet.",
       ] },
+      { p: "The weekend sheets are built from the diagram prints rather than " +
+           "the weekday reports, but they follow these same rules — the same " +
+           "tables decide the order, the times, the breaks and the " +
+           "headcodes. The one thing that does not carry over is the list of " +
+           "corrected formations above: those name weekday diagram numbers, " +
+           "and the weekend prints number their diagrams separately." },
       { note: "The sheets are built from the reports you feed in. If the " +
         "report is wrong, the sheet will be wrong in the same way — the " +
         "tool has no other source to check it against." },

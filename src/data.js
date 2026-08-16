@@ -569,29 +569,28 @@ const HIGHSPEED = {
  "FAVERSHAM": MAINLINE["FAVERSHAM"],
  "RAMSGATE":  MAINLINE["RAMSGATE"],
 };
+/* The weekend books follow the same rulebook as the weekday ones, so their
+   profiles are the weekday profiles - not a second copy that can drift from
+   them. It had drifted: the weekend metro fleet list had lost 465/0, and
+   its headcode sections had gained Slade Green while the High Speed book
+   had none at all. The only weekday rule NOT carried over is the pinned
+   unit order (ORDER_FIX): those pins are keyed on weekday diagram numbers
+   and the weekend prints number their diagrams separately. */
 const PROFILES = [
- {tag:"", label:"375/376/377", road:"Mainline",
-  fleets:{"375/6":"4 375","375/9":"4 375-9","375/3":"3 375",
-          "377/5":"4 377","376/0":"5 376"},
-  sections:MAINLINE,
-  headcode_sections:new Set(["GILLINGHAM","GROVE PARK","VICTORIA"]),
-  first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
-  ecs_only_ok:new Set(["WEST MARINA","GROVE PARK","SLADE GREEN"])},
- {tag:"465_466_707", label:"465/466/707", road:"Metro",
-  fleets:{"465/9":"4 465","466/0":"2 466","707/0":"5 707"},
-  sections:METRO,
-  headcode_sections:new Set(["GILLINGHAM","GROVE PARK","SLADE GREEN","VICTORIA"]),
-  // metro house rule: time every entry off the first move (see PROFILES_G)
-  first_dep_all:true,
-  first_dep:new Set(["GROVE PARK","SLADE GREEN"]),
-  ecs_only_ok:new Set(["GROVE PARK","SLADE GREEN"])},
- {tag:"395", label:"395", road:"High Speed",
-  fleets:{"395/0":"6 395"},
-  sections:HIGHSPEED,
-  headcode_sections:new Set(),
-  first_dep:new Set(),
-  ecs_only_ok:new Set()},
-];
+ {tag:"", label:"375/376/377", road:"Mainline", sections:MAINLINE},
+ {tag:"465_466_707", label:"465/466/707", road:"Metro", sections:METRO},
+ {tag:"395", label:"395", road:"High Speed", sections:HIGHSPEED},
+].map((p, i) => {
+  const g = PROFILES_G[i];
+  return {
+    tag: p.tag, label: p.label, road: p.road, sections: p.sections,
+    fleets: g.fleets,
+    headcode_sections: HEADCODE_SECTIONS,
+    pos_asc: g.posAsc, road_pos_asc: g.roadPosAsc,
+    first_dep: g.firstDep, first_dep_all: !!g.firstDepAll,
+    ecs_only_ok: g.ecsOnlyOk,
+  };
+});
 
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,

@@ -261,9 +261,8 @@ call as always.
 **Double lines** rule off the breaks in the day's work. Any break of **1½ hours
 or more** with work still to come after it gets one, so a page can carry two or
 three — Slade Green is ruled under its 06+36 and again under its 18+04. A page
-that is busy right through gets none, and Grove Park is never ruled. On the
-weekend sheets the line is drawn where the section crosses midday and 20:00
-instead — the three goes of a shift.
+that is busy right through gets none, and Grove Park is never ruled. The
+weekend sheets follow the same rule.
 
 ---
 

@@ -47,21 +47,96 @@ test("parseDiagrams is unchanged", () => {
                    norm(L.SheetsEngine.parseDiagrams(PRINTS_LINES)));
 });
 
-test("weekend run matches the legacy build (no reissue)", () => {
+/* The weekend books follow the weekday rulebook now, so three things in the
+   layout are deliberately different from the frozen build: which way a
+   formation reads (per section, as the weekday books do it) and where the
+   double lines fall (every break of BREAK_GAP or more, not the midday and
+   20 00 crossings), and which sections quote a headcode. Everything else
+   still has to match it exactly, so the comparison drops those three and
+   they are pinned on their own below. */
+function sameShape(b) {
+  if (b.skipped) return { road: b.road, label: b.label, skipped: true };
+  const n = normBook(b);
+  return {
+    ...n,
+    layout: {
+      ...n.layout,
+      // c = [r, c, v, look, sides, f]; sides[3] is the bottom border
+      cells: n.layout.cells.map(c => [c[0], c[1],
+        c[1] === 3 ? "(diagram)"
+        // the notes column: a leading headcode comes and goes with the
+        // headcode sections, which are the weekday ones now
+        : c[1] === 8 ? String(c[2] || "").replace(/^\d[A-Z]\d\d\s*/, "")
+        : c[2], c[3],
+        [c[4][0], c[4][1], c[4][2], c[4][3] === "double" ? "thin" : c[4][3]],
+        c[5]]),
+    },
+  };
+}
+
+test("weekend run matches the legacy build apart from order and rules", () => {
   const L = legacy(), N = built();
   const rL = run(L, false), rN = run(N, false);
   assert.equal(rN.date, rL.date);
   assert.equal(rN.stamp, rL.stamp);
   assert.equal(rN.banner, rL.banner);
   assert.equal(rN.diagrams, rL.diagrams);
-  assert.deepEqual(norm(rN.books.map(normBook)), norm(rL.books.map(normBook)));
+  assert.deepEqual(norm(rN.books.map(sameShape)), norm(rL.books.map(sameShape)));
   assert.equal(rN.updated, rL.updated);
+});
+
+test("the weekend metro book quotes the weekday headcode sections", () => {
+  const L = legacy(), N = built();
+  const noteAt = (books, road, re) => {
+    const b = books.find(x => x.road === road);
+    const c = b.layout.cells.find(x => x.c === 8 && re.test(String(x.v || "")));
+    return c ? String(c.v) : null;
+  };
+  /* Slade Green was in the weekend metro book's headcode sections and in no
+     weekday book's, so its rows carried a headcode the weekday sheets never
+     print. Same railway, same rule. */
+  assert.match(noteAt(run(L, false).books, "Metro", /^5C01/) || "", /^5C01/,
+    "the frozen build quoted it");
+  assert.equal(noteAt(run(N, false).books, "Metro", /^5C01/), null,
+    "this one does not");
+  assert.ok(!N.SHEETS_DATA.HEADCODE_SECTIONS.has("SLADE GREEN"),
+    "because the weekday books do not");
+});
+
+test("a weekend page is ruled off at every break in its work", () => {
+  const N = built();
+  const X = N.SHEETS_XLSX;
+  const rN = run(N, false);
+  const doubles = b => b.layout.cells
+    .filter(c => c.c === 1 && c.sides[3] === "double").map(c => c.r);
+  const timeAt = (b, r) => {
+    const c = b.layout.cells.find(x => x.r === r && x.c === 1);
+    return c ? String(c.v).slice(0, 5) : null;
+  };
+  const mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+  for (const b of rN.books) {
+    if (b.skipped) continue;
+    for (const r of doubles(b)) {
+      /* every double has a gap of at least BREAK_GAP under it: find the next
+         entry's time down the page */
+      let next = null;
+      for (const c of b.layout.cells)
+        if (c.c === 1 && c.r > r && /^\d\d[: +]\d\d/.test(String(c.v))) {
+          next = String(c.v).slice(0, 5); break;
+        }
+      const here = timeAt(b, r);
+      if (!next || !here || !/\d\d[: +]\d\d/.test(here)) continue;
+      const gap = mins(next) - mins(here);
+      assert.ok(gap >= X.BREAK_GAP || gap < 0,
+        b.road + " row " + r + ": ruled off a " + gap + "-minute gap");
+    }
+  }
 });
 
 test("weekend run matches the legacy build (reissue merged)", () => {
   const L = legacy(), N = built();
   const rL = run(L, true), rN = run(N, true);
-  assert.deepEqual(norm(rN.books.map(normBook)), norm(rL.books.map(normBook)));
+  assert.deepEqual(norm(rN.books.map(sameShape)), norm(rL.books.map(sameShape)));
   assert.deepEqual(norm(rN.merge), norm(rL.merge));
   assert.equal(rN.updated.name, rL.updated.name);
   /* Deliberate divergence from the frozen build. Its paragraph pattern

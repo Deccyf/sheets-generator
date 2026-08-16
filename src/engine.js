@@ -6,6 +6,21 @@
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
         TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
+/* road_pos_asc is keyed on the weekday road names; the prints use their own
+   abbreviations for the same roads. The two siding-note tables are the
+   bridge - both spell a road the same short way ("Up Sidings"), so one can
+   be looked up through the other rather than kept as a third list. */
+const ROAD_ALIAS = (() => {
+  const byNote = new Map();
+  for (const k of Object.keys(SHEETS_DATA.SIDING_NOTES))
+    byNote.set(String(SHEETS_DATA.SIDING_NOTES[k]).toUpperCase(), k);
+  const out = new Map();
+  for (const k of Object.keys(NOTE_FROM_BERTH)) {
+    const w = byNote.get(String(NOTE_FROM_BERTH[k]).toUpperCase());
+    if (w) out.set(k, w);
+  }
+  return out;
+})();
 const PROFILES = SHEETS_DATA.PROFILES;
 const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
 const QUAL_RE = /(up\s*sd|dn\s*sd|down\s*sd|u\s*sd|d\s*sd|sdg|sidings?|sids?|sd|depot|dep|shed|yard|yd|bk\s*rd|rd|tr|turnback|tb|ebs|dms|jub\s*s|pk\s*s|us|ds)$/i;
@@ -591,7 +606,20 @@ function generate(diags, prof, stabling, warn){
                    pax_after:paxAfter, later:later.length > 0,
                    cls:prof.fleets[fleet]});
     }
-    blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
+    /* Which way a formation reads is the weekday rule, section by section:
+       the sheets are written against the direction of travel, and which end
+       that is depends on the place, not on the day of the week. A road that
+       faces the other way to the rest of its section overrides it, so long
+       as the whole formation came off that one road. (The one weekday rule
+       NOT carried over is the pinned order - those pins name weekday
+       diagram numbers, which the weekend prints do not use.) */
+    const road = e.origins.size === 1 ? Array.from(e.origins)[0] : null;
+    const byRoad = road === null ? undefined
+      : (prof.road_pos_asc || new Map()).get(ROAD_ALIAS.get(road) || road);
+    if (byRoad === undefined ? (prof.pos_asc || new Set()).has(sec) : byRoad)
+      blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
+    else
+      blocks.sort((x,y) => y.pos - x.pos || y.num - x.num);
     if (blocks.length > 1 && blocks.every(x => x.pos === 999))
       warn.push(["order", sec + " " + e.time_raw, null, ""]);
     e.blocks = blocks;
@@ -710,9 +738,13 @@ function dateBits(dateStr){
    thin rule under every entry. Taken from the ruled sheets. */
 const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
                    ["thin","medium"],[null,null],[null,null],[null,"medium"]];
-/* The sheet is read in three goes across a shift, so each section is ruled off
-   with a double line where it crosses midday and 20 00. */
-const DAY_BREAKS = [12 * 60, 20 * 60];
+/* Double lines follow the weekday rule: a break of BREAK_GAP or more in a
+   location's work, with work still to come after it, is ruled off - and a
+   page carries as many lines as it has breaks. It used to rule wherever the
+   section crossed midday and 20 00, which drew a line through a location
+   that was busy right across the middle of the day and none at all through
+   one that stood idle from 08 00 to 19 00. */
+const BREAK_GAP = SHEETS_XLSX.BREAK_GAP;
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
 function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc){
@@ -750,9 +782,9 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     let prevTk = null, prevLast = null;
     for (const e of sectionsOut[sec]){
       const tk = sortkey(mins(e.time_raw));
-      if (prevTk !== null)
-        for (const bound of DAY_BREAKS)
-          if (prevTk < bound && bound <= tk) doubleEnds.add(prevLast);
+      // Grove Park is never ruled - neither real weekday book rules it
+      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP)
+        doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
         if (i === 0) put(r, 1, e.time + " " + e.dest +

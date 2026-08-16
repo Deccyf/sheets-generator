@@ -33,12 +33,40 @@ test("reference tables match the legacy build", () => {
   assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
   assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
   assert.deepEqual(norm(D.DAY_SHEET), norm(L.SHEETS_XLSX.DAY_SHEET), "DAY_SHEET");
-  // Deliberate divergence: the metro book is timed off the first move now,
-  // which the profile carries as first_dep_all.
-  const legacyProfiles = L.SheetsEngine.PROFILES.map(p =>
-    p.road === "Metro" ? { ...p, first_dep_all: true } : p);
-  assert.deepEqual(norm(D.PROFILES), norm(legacyProfiles),
-    "PROFILES (with the metro first-move rule)");
+  /* Deliberate divergence: the weekend profiles are no longer a second copy
+     of the weekday ones - they ARE the weekday ones, so the weekend books
+     follow the same rulebook. The copy had drifted (the metro fleet list had
+     lost 465/0, its headcode sections had gained Slade Green, and the High
+     Speed book had none at all), which is exactly what a second copy does.
+     Compared field by field, with each difference named. */
+  const legacyProfiles = L.SheetsEngine.PROFILES;
+  assert.equal(D.PROFILES.length, legacyProfiles.length, "same three books");
+  D.PROFILES.forEach((p, i) => {
+    const q = legacyProfiles[i];
+    for (const k of ["tag", "label", "road"])
+      assert.equal(p[k], q[k], k);
+    assert.deepEqual(norm(p.sections), norm(q.sections), p.road + " sections");
+    assert.deepEqual(norm(p.first_dep), norm(q.first_dep), p.road + " first_dep");
+    assert.deepEqual(norm(p.ecs_only_ok), norm(q.ecs_only_ok),
+      p.road + " ecs_only_ok");
+    // the weekday tables, now shared
+    assert.deepEqual(norm(p.fleets), norm(D.PROFILES_G[i].fleets),
+      p.road + " fleets are the weekday fleets");
+    assert.equal(p.headcode_sections, D.HEADCODE_SECTIONS,
+      p.road + " quotes the weekday headcode sections");
+    assert.equal(p.pos_asc, D.PROFILES_G[i].posAsc,
+      p.road + " reads the weekday way round");
+    assert.equal(p.first_dep_all, !!D.PROFILES_G[i].firstDepAll,
+      p.road + " first_dep_all");
+  });
+  // and the drift the shared tables closed, named so it cannot come back
+  assert.ok(!("465/0" in L.SheetsEngine.PROFILES[1].fleets),
+    "the old weekend metro fleet list had lost 465/0");
+  assert.ok("465/0" in D.PROFILES[1].fleets, "it has it now");
+  assert.ok(L.SheetsEngine.PROFILES[1].headcode_sections.has("SLADE GREEN"),
+    "the old weekend metro book quoted Slade Green headcodes");
+  assert.ok(!D.PROFILES[1].headcode_sections.has("SLADE GREEN"),
+    "the weekday books do not, and now neither does it");
 });
 
 test("data module holds together", () => {

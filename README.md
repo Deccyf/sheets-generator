@@ -39,6 +39,7 @@ and is assembled by `node build.mjs`.
   - [Weekday pipeline (Genius PDFs)](#weekday-pipeline-genius-pdfs)
   - [Weekend pipeline (diagram prints)](#weekend-pipeline-diagram-prints)
   - [The house rulebook](#the-house-rulebook)
+  - [The weekend follows the weekday rulebook](#the-weekend-follows-the-weekday-rulebook)
   - [Failing loudly](#failing-loudly)
   - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
@@ -584,6 +585,39 @@ What flips it is how the formation was left standing, and which shunt moves it
 made on the depot — neither of which the Summary or the Detail records. That
 is why the residue is a list of formations rather than a rule, and why the
 mark-up sheet exists.
+
+### The weekend follows the weekday rulebook
+
+The two pipelines used to keep separate copies of the same conventions, and
+the copies had drifted. They are one rulebook now — the weekend books are
+built by the weekend engine, but to the weekday rules.
+
+| | Was | Now |
+|---|---|---|
+| **Fleet profiles** | A second hand-written `PROFILES` table. It had lost `465/0` from the metro fleet list, gained `SLADE GREEN` in the metro headcode sections, and left the High Speed book with none at all. | `PROFILES` is *derived from* `PROFILES_G`. There is one table, so it cannot drift again. |
+| **Unit order** | Always lowest Position first, everywhere. | The weekday rule: per section from `pos_asc`, with `road_pos_asc` overriding for a road that faces the other way. The prints abbreviate road names, so `ROAD_ALIAS` bridges the two via the siding-note tables rather than adding a third list. |
+| **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: every break of `BREAK_GAP` or more with work still after it. Grove Park is never ruled. |
+| **Headcodes** | Per-profile lists that had drifted. | `HEADCODE_SECTIONS`, the same set the weekday books use. |
+
+**The one weekday rule deliberately not carried over is the pinned unit
+order** (`ORDER_FIX`). Those pins name weekday diagram numbers and the weekend
+prints number their diagrams separately, so a pin could only ever match by
+accident.
+
+This moves weekend output, and the frozen legacy build cannot be the judge of
+it any more. `test/engine.test.mjs` still compares against that build for
+everything else, masking exactly the three fields above, and pins each of the
+three on its own — including the Slade Green headcode the old weekend book
+printed and no weekday book ever has. The weekday books are byte-identical
+through all of it: 703 entries, 0 changed, the same real-book scores.
+
+**What is still not verified.** There is no hand-marked weekend sheet, so
+none of this is measured against a real weekend book the way every weekday
+rule is. What can be said is narrower but true: the weekend books now follow
+the same rules as the weekday books, which *are* measured. `SPLITS` /
+`SPLITS PM` is left as it was — the weekend derives it from the D/E pair
+rather than from a parting time, which already means "they part after this
+berth", so it agrees with the weekday rule in shape if not in mechanism.
 
 ### Failing loudly
 
