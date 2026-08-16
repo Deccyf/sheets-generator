@@ -185,6 +185,28 @@ test("the Genius CSV exports build the same books as the PDFs", async () => {
   assert.deepEqual(norm(mixed.secsByDay), norm(pdfRes.secsByDay), "mixed pair");
 });
 
+test("a report that spells the year long builds the same day", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
+  /* Genius does not always agree with itself about the year. On the 17/08/26
+     export the summary header reads "Diagram Summary for: 17/08/26" and
+     every detail row reads "On 17/08/2026". The date is the string the two
+     halves are joined on, so the day had a summary and a detail and neither
+     could find the other: no date had both, and the build stopped dead with
+     "No weekday dates found in the reports". A whole day's books refused
+     over a year written twice as long. */
+  const short = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv()]);
+  const long = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv(true)]);
+  assert.deepEqual(norm(long.labels), norm(short.labels), "same day, same label");
+  assert.deepEqual(norm(long.secsByDay), norm(short.secsByDay), "same mainline book");
+  assert.deepEqual(norm(long.metroSecs), norm(short.metroSecs), "same metro book");
+  assert.deepEqual(norm(long.hsSecs), norm(short.hsSecs), "same high speed book");
+  // and nothing is quietly reported as a date without its other half
+  const orphan = long.review.filter(m => /no detail report for this date/.test(m));
+  assert.equal(orphan.length, 0,
+    "no half-matched date: " + Array.from(orphan).join(" | "));
+});
+
 test("the sniffers tell the three report formats apart", async () => {
   const N = built();
   const { geniusSummaryCsv, geniusDetailCsv, integraleSummaryCsv } =

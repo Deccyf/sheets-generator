@@ -135,10 +135,15 @@ const GDET = '"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,' +
   '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
   '"Diagram Details for:"," 03/08/26",';
 
-export function geniusDetailCsv() {
+/* longYear writes the per-diagram date as dd/mm/yyyy, which is what Genius
+   started doing on the 17/08/26 export while the summary header stayed on
+   dd/mm/yy. The two are joined on that string, so the mismatch refused the
+   whole day. */
+export function geniusDetailCsv(longYear) {
   const out = [];
   for (const d of fixtureDiagrams()) {
-    const head = GDET + '"Diagram","' + d.code + '","On","' + d.date +
+    const on = longYear ? d.date.replace(/\/(\d\d)$/, "/20$1") : d.date;
+    const head = GDET + '"Diagram","' + d.code + '","On","' + on +
       '","Notes",,"Miles","Fuel Miles",';
     for (let i = 0; i + 1 < d.stops.length; i++) {
       const a = d.stops[i], b = d.stops[i + 1];

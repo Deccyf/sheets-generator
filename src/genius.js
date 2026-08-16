@@ -100,8 +100,8 @@ const GENIUS = (() => {
     let date = null;
     for (const raw of txt.split("\n")) {
       const l = raw.trim();
-      const dm = /Diagram Summary for:\s*(\d\d\/\d\d\/\d\d)/.exec(l);
-      if (dm) { date = dm[1]; continue; }
+      const dm = /Diagram Summary for:\s*(\d\d\/\d\d\/\d{2,4})/.exec(l);
+      if (dm) { date = shortDate(dm[1]); continue; }
       const t = l.split(/\s{2,}/);
       if (!/^[A-Z]{2}\d{3}$/.test(t[0] || "")) continue;
       if (t.length < 8 || !TM.test(t[4]) || !TM.test(t[7])) continue;
@@ -117,10 +117,10 @@ const GENIUS = (() => {
     for (const raw of txt.split("\n")) {
       const l = raw.trim();
       // full header, or the degraded form where "Diagram"/"On" were lost
-      const dm = /Diagram\s+([A-Z]{2}\s?\d\s?\d\s?\d)\s+On\s+(\d\d\/\d\d\/\d\d)/.exec(l)
-              || /^([A-Z]{2}\s?\d\s?\d\s?\d)\s+(\d\d\/\d\d\/\d\d)$/.exec(l);
+      const dm = /Diagram\s+([A-Z]{2}\s?\d\s?\d\s?\d)\s+On\s+(\d\d\/\d\d\/\d{2,4})/.exec(l)
+              || /^([A-Z]{2}\s?\d\s?\d\s?\d)\s+(\d\d\/\d\d\/\d{2,4})$/.exec(l);
       if (dm) {
-        const diag = dm[1].replace(/\s+/g, ""), date = dm[2];
+        const diag = dm[1].replace(/\s+/g, ""), date = shortDate(dm[2]);
         if (!byDate.has(date)) byDate.set(date, new Map());
         cur = []; byDate.get(date).set(diag, cur); prev = -1;
         continue;
@@ -199,8 +199,9 @@ const GENIUS = (() => {
   const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F" };
   const DAY_NAME = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI" };
   function dayKey(date) {
-    const [d, mo, y] = date.split("/").map(Number);
-    return DAY_OF[new Date(2000 + y, mo - 1, d).getDay()] || null;
+    const [d, mo, y] = String(date || "").split("/").map(Number);
+    if (!d || !mo || !y) return null;
+    return DAY_OF[new Date(y < 100 ? 2000 + y : y, mo - 1, d).getDay()] || null;
   }
   // ---- the weekend engine's shapes, over Genius itineraries ----
   function stopsOf(raw) {
@@ -1031,6 +1032,14 @@ const GENIUS = (() => {
     const m = HC_MANGLED.exec(h || "");
     return m ? m[1] + "E" + m[2] : (h || null);
   }
+  /* One spelling of a date, whatever the report used. Genius writes the
+     year both ways and does not always agree with itself: on the 17/08/26
+     export the summary header says "Diagram Summary for: 17/08/26" while
+     every detail row says "On 17/08/2026". Dates are the key the two halves
+     are joined on, so two spellings meant no date had both halves and the
+     build stopped with "No weekday dates found in the reports" - the whole
+     day refused over a year written twice as long. Everything that reads a
+     date goes through here. */
   const shortDate = d => {
     const m = /^(\d\d\/\d\d\/)\d\d(\d\d)$/.exec(d || "");
     return m ? m[1] + m[2] : d;
@@ -1180,12 +1189,12 @@ const GENIUS = (() => {
       if (st === null || en === null) continue;
       // the date belongs in the key: a two-day export repeats a diagram at
       // the same start time on both days, and day two was dropped
-      const key = (r[di] || "").trim() + "\u0000" + f[0] + "\u0000" + f[5];
+      const key = shortDate((r[di] || "").trim()) + "\u0000" + f[0] + "\u0000" + f[5];
       if (seen.has(key)) continue;          // the export repeats rows per page
       seen.add(key);
       // f[1] is the UNITS column - empty on every export seen so far, but it
       // is the allocated unit when the controller has filled it in
-      out.push({ date: (r[di] || "").trim(), diag: f[0], fleet: f[2],
+      out.push({ date: shortDate((r[di] || "").trim()), diag: f[0], fleet: f[2],
                  pos: parseInt(f[4], 10) || 1, start: st,
                  from: f[6], to: f[7], end: en, unit: unitNo(f[1]) });
     }
@@ -1197,7 +1206,7 @@ const GENIUS = (() => {
       const gi = afterLabel(r, "Diagram"), oi = afterLabel(r, "On"),
             fi = afterLabel(r, "Fuel Miles");
       if (gi < 0 || oi < 0 || fi < 0) continue;
-      const diag = (r[gi] || "").trim(), date = (r[oi] || "").trim();
+      const diag = (r[gi] || "").trim(), date = shortDate((r[oi] || "").trim());
       if (!/^[A-Z]{2}\d{3}$/.test(diag)) continue;
       const f = r.slice(fi).map(x => (x || "").trim());
       // from, name, arr, dep, activity, headcode, miles, fuel, to, name, arr
