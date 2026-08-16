@@ -47,13 +47,17 @@ test("parseDiagrams is unchanged", () => {
                    norm(L.SheetsEngine.parseDiagrams(PRINTS_LINES)));
 });
 
-/* The weekend books follow the weekday rulebook now, so three things in the
-   layout are deliberately different from the frozen build: which way a
-   formation reads (per section, as the weekday books do it) and where the
-   double lines fall (every break of BREAK_GAP or more, not the midday and
-   20 00 crossings), and which sections quote a headcode. Everything else
-   still has to match it exactly, so the comparison drops those three and
-   they are pinned on their own below. */
+/* The weekend books follow the weekday rulebook now, so two things in the
+   layout are deliberately different from the frozen build: where the double
+   lines fall (every break of BREAK_GAP or more, not the midday and 20 00
+   crossings), and which sections quote a headcode. Everything else still has
+   to match it exactly, so the comparison drops those two and they are pinned
+   on their own below.
+
+   Reading order was a third, and is not any more: it was taken back out
+   after the verified Sunday 16/08 book disagreed with it 53 times. So the
+   diagram column is compared in full again, which is the strongest check
+   here - it is the column the whole change moved. */
 function sameShape(b) {
   if (b.skipped) return { road: b.road, label: b.label, skipped: true };
   const n = normBook(b);
@@ -63,10 +67,9 @@ function sameShape(b) {
       ...n.layout,
       // c = [r, c, v, look, sides, f]; sides[3] is the bottom border
       cells: n.layout.cells.map(c => [c[0], c[1],
-        c[1] === 3 ? "(diagram)"
         // the notes column: a leading headcode comes and goes with the
         // headcode sections, which are the weekday ones now
-        : c[1] === 8 ? String(c[2] || "").replace(/^\d[A-Z]\d\d\s*/, "")
+        c[1] === 8 ? String(c[2] || "").replace(/^\d[A-Z]\d\d\s*/, "")
         : c[2], c[3],
         [c[4][0], c[4][1], c[4][2], c[4][3] === "double" ? "thin" : c[4][3]],
         c[5]]),
@@ -74,7 +77,7 @@ function sameShape(b) {
   };
 }
 
-test("weekend run matches the legacy build apart from order and rules", () => {
+test("weekend run matches the legacy build apart from headcodes and rules", () => {
   const L = legacy(), N = built();
   const rL = run(L, false), rN = run(N, false);
   assert.equal(rN.date, rL.date);

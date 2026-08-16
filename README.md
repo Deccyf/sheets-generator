@@ -615,27 +615,57 @@ built by the weekend engine, but to the weekday rules.
 | | Was | Now |
 |---|---|---|
 | **Fleet profiles** | A second hand-written `PROFILES` table. It had lost `465/0` from the metro fleet list, gained `SLADE GREEN` in the metro headcode sections, and left the High Speed book with none at all. | `PROFILES` is *derived from* `PROFILES_G`. There is one table, so it cannot drift again. |
-| **Unit order** | Always lowest Position first, everywhere. | The weekday rule: per section from `pos_asc`, with `road_pos_asc` overriding for a road that faces the other way. The prints abbreviate road names, so `ROAD_ALIAS` bridges the two via the siding-note tables rather than adding a third list. |
+| **Unit order** | Always lowest Position first, everywhere. | Unchanged — see below. This one was carried over and then taken back out. |
 | **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: every break of `BREAK_GAP` (three hours) or more with work still after it. Grove Park is never ruled. |
 | **Headcodes** | Per-profile lists that had drifted. | `HEADCODE_SECTIONS`, the same set the weekday books use. |
 
-**The one weekday rule deliberately not carried over is the pinned unit
-order** (`ORDER_FIX`). Those pins name weekday diagram numbers and the weekend
-prints number their diagrams separately, so a pin could only ever match by
-accident.
+**Two weekday rules are deliberately not carried over.**
+
+The **pinned unit order** (`ORDER_FIX`), because those pins name weekday
+diagram numbers and the weekend prints number their diagrams separately, so a
+pin could only ever match by accident.
+
+And the **reading order** — which end of a formation a section is written
+from. Carrying it over looked obviously right: the weekday books read each
+section against the direction of travel (`pos_asc`, with `road_pos_asc` for a
+road that faces the other way), and which end that is ought to be a fact about
+the place rather than the day. It is not. Checked against the verified Sunday
+16/08 book it reordered **53 of the 71 multi-unit entries** — every one at
+Ashford, Slade Green, Victoria, Dartford, West Marina, Tonbridge, Orpington and
+Sidcup — and the book is right. Those directions were scored against
+hand-marked *weekday* books and belong to them. Weekend order is lowest
+Position first, everywhere.
+
+Two things that made it look right, kept in `test/data.test.mjs` so the next
+attempt starts from what is already known:
+
+- The road override could never have fired anyway. `road_pos_asc` names one
+  road in the whole table (Ashford up sidings), so every weekend section fell
+  through to the section default.
+- Bridging the print road names to the weekday ones through the siding notes
+  crosses two different places. A note is a short label, not a name: `UPS` is
+  Dartford's up siding *and* Slade Green's up C.H.S., so the bridge hands
+  Dartford's formations Slade Green's order.
 
 This moves weekend output, and the frozen legacy build cannot be the judge of
 it any more. `test/engine.test.mjs` still compares against that build for
-everything else, masking exactly the three fields above, and pins each of the
-three on its own — including the Slade Green headcode the old weekend book
-printed and no weekday book ever has. The weekday books are byte-identical
+everything else, masking exactly the two fields above, and pins each on its
+own — including the Slade Green headcode the old weekend book printed and no
+weekday book ever has. The diagram column is compared in full: reading order
+was the third masked field, and taking it back out restored that check. The weekday books are byte-identical
 through all of it: 703 entries, 0 changed, the same real-book scores.
 
-**What is still not verified.** There is no hand-marked weekend sheet, so
-none of this is measured against a real weekend book the way every weekday
-rule is. What can be said is narrower but true: the weekend books now follow
-the same rules as the weekday books, which *are* measured. `SPLITS` /
-`SPLITS PM` is left as it was — the weekend derives it from the D/E pair
+**What is and is not verified.** There is still no *hand-marked* weekend
+sheet — nothing with a tester's corrections on it, the way every weekday rule
+is scored. What there is, since 16/08, is a pair of tool-built weekend books
+the tester has read and confirmed (`SHEETS_SAT_15_AUG`, `SHEETS_SUN_16_AUG`),
+and the Sunday diagram prints they were built from. Sunday can therefore be
+rebuilt from source and compared entry by entry, which is how the reading-order
+carry-over above was caught and reversed. That check is only as good as its one
+day and its one book, and it says nothing about the metro or High Speed
+weekend books, which have never been confirmed by anyone.
+
+`SPLITS` / `SPLITS PM` is left as it was — the weekend derives it from the D/E pair
 rather than from a parting time, which already means "they part after this
 berth", so it agrees with the weekday rule in shape if not in mechanism.
 

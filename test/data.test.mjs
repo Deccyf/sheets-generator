@@ -2,6 +2,7 @@
    build carried, plus hold together internally. */
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { legacy, built, norm } from "./helpers/compare.mjs";
 
 test("reference tables match the legacy build", () => {
@@ -141,15 +142,24 @@ test("the exported corrections file reads without the code", async () => {
                    norm(["101", "102"]), "unchanged through the round trip");
 });
 
-test("a siding note is a label, not a road name", () => {
-  const D = built().SHEETS_DATA;
-  /* The weekend prints and the weekday books spell the same road two
-     different ways, so the reading-order table is reached through the two
-     siding-note tables. Notes are short labels and repeat across the
-     network - Dartford up siding and Slade Green up C.H.S. are both "UPS" -
-     so the bridge alone will hand one place another place's order. The
-     engine only accepts a road that is at the section being printed; this
-     pins the collision that made the guard necessary. */
+test("the weekend books do not take the weekday reading order", () => {
+  const N = built(), D = N.SHEETS_DATA;
+  /* The weekend order is lowest Position first everywhere. Carrying the
+     weekday direction rule over here reordered 53 of the 71 multi-unit
+     entries in the verified Sunday 16/08 book, and the book is right, so
+     the weekday directions stay with the weekday books they were scored
+     against. This test is the two traps that made it look right, kept so
+     the next attempt starts from what is already known. */
+
+  // 1. the road override could not have fired anyway: one road is listed,
+  //    so every weekend section falls through to the section default
+  const roads = D.PROFILES.reduce((n, p) =>
+    n + ((p.road_pos_asc && p.road_pos_asc.size) || 0), 0);
+  assert.equal(roads, 1, "the whole road table is one road (Ashford up sidings)");
+
+  // 2. and bridging the print road names to the weekday ones through the
+  //    siding notes crosses two different places: a note is a short label,
+  //    not a name, and "UPS" is Dartford's up siding AND Slade Green's
   const byNote = new Map();
   for (const k of Object.keys(D.SIDING_NOTES))
     byNote.set(String(D.SIDING_NOTES[k]).toUpperCase(), k);
@@ -162,8 +172,18 @@ test("a siding note is a label, not a road name", () => {
   }
   assert.deepEqual(claimed.get("SLADE GREEN UP C.H.S"), ["S Gn U Sd", "Dart USd"],
     "the note bridge really does hand Dartford Slade Green's road");
-  // and the guard the engine applies drops it, while keeping the true pair
-  const at = (sec, w) => !!(w && w.indexOf(sec) === 0);
-  assert.equal(at("SLADE GREEN", "SLADE GREEN UP C.H.S"), true, "kept where it belongs");
-  assert.equal(at("DARTFORD", "SLADE GREEN UP C.H.S"), false, "dropped where it does not");
+
+  // 3. and the engine no longer reads either table when it orders a weekend
+  //    formation - the shipped source is the check, since the tables still
+  //    ride along on the shared profiles
+  const src = readFileSync(new URL("../Sheets Generator.html", import.meta.url), "utf8");
+  const gen = src.slice(src.indexOf("function generate(diags, prof, stabling, warn)"));
+  const body = gen.slice(0, gen.indexOf("\nfunction "));
+  assert.ok(body.length > 100 && body.length < src.length, "found the weekend generate()");
+  assert.ok(body.indexOf("blocks.sort((x,y) => x.pos - y.pos || x.num - y.num)") >= 0,
+    "weekend formations sort on Position, ascending");
+  // the comment above that sort explains all of this, so read the code only
+  const code = body.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.equal(code.indexOf("road_pos_asc"), -1, "and consult no direction table");
+  assert.equal(code.indexOf("pos_asc"), -1, "of either kind");
 });

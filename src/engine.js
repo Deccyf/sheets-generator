@@ -6,26 +6,6 @@
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
         TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
-/* road_pos_asc is keyed on the weekday road names; the prints use their own
-   abbreviations for the same roads. The two siding-note tables are the
-   bridge - both spell a road the same short way ("Up Sidings"), so one can
-   be looked up through the other rather than kept as a third list.
-   A note is only a short label, though, not a name: Dartford up siding and
-   Slade Green up C.H.S. are both written "UPS", so matching on the note
-   alone hands Dartford's formations Slade Green's reading order. The
-   caller checks the road it gets back really is at the place it is
-   printing, and ignores it when it is not. */
-const ROAD_ALIAS = (() => {
-  const byNote = new Map();
-  for (const k of Object.keys(SHEETS_DATA.SIDING_NOTES))
-    byNote.set(String(SHEETS_DATA.SIDING_NOTES[k]).toUpperCase(), k);
-  const out = new Map();
-  for (const k of Object.keys(NOTE_FROM_BERTH)) {
-    const w = byNote.get(String(NOTE_FROM_BERTH[k]).toUpperCase());
-    if (w) out.set(k, w);
-  }
-  return out;
-})();
 const PROFILES = SHEETS_DATA.PROFILES;
 const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
 const QUAL_RE = /(up\s*sd|dn\s*sd|down\s*sd|u\s*sd|d\s*sd|sdg|sidings?|sids?|sd|depot|dep|shed|yard|yd|bk\s*rd|rd|tr|turnback|tb|ebs|dms|jub\s*s|pk\s*s|us|ds)$/i;
@@ -611,23 +591,32 @@ function generate(diags, prof, stabling, warn){
                    pax_after:paxAfter, later:later.length > 0,
                    cls:prof.fleets[fleet]});
     }
-    /* Which way a formation reads is the weekday rule, section by section:
-       the sheets are written against the direction of travel, and which end
-       that is depends on the place, not on the day of the week. A road that
-       faces the other way to the rest of its section overrides it, so long
-       as the whole formation came off that one road. (The one weekday rule
-       NOT carried over is the pinned order - those pins name weekday
-       diagram numbers, which the weekend prints do not use.) */
-    const road = e.origins.size === 1 ? Array.from(e.origins)[0] : null;
-    // an alias is only trusted when it names a road at THIS place
-    const alias = road === null ? undefined : ROAD_ALIAS.get(road);
-    const wkRoad = alias && alias.indexOf(sec) === 0 ? alias : road;
-    const byRoad = road === null ? undefined
-      : (prof.road_pos_asc || new Map()).get(wkRoad);
-    if (byRoad === undefined ? (prof.pos_asc || new Set()).has(sec) : byRoad)
-      blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
-    else
-      blocks.sort((x,y) => y.pos - x.pos || y.num - x.num);
+    /* Lowest Position first, everywhere - which is NOT the weekday rule, and
+       is the one place the two books are meant to differ.
+
+       The weekday books read each section against the direction of travel
+       (pos_asc, with road_pos_asc for a road that faces the other way), and
+       carrying that over here looked obviously right: which end a formation
+       reads from is a fact about the place, not about the day. It is not.
+       Checked against the verified Sunday 16/08 book it reordered 53 of the
+       71 multi-unit entries - every one at Ashford, Slade Green, Victoria,
+       Dartford, West Marina, Tonbridge, Orpington and Sidcup - and the book
+       is right. The weekday directions were scored against hand-marked
+       weekday books and belong to them.
+
+       Two other traps for anyone who tries this again. The weekday
+       road_pos_asc names one road, so on the weekend prints the override
+       never fires at all and every section falls to the section default.
+       And the prints abbreviate road names, so bridging to the weekday
+       names through the siding-note tables looks tempting - but a note is a
+       short label, not a name: Dartford up siding and Slade Green up C.H.S.
+       are both written "UPS", so that bridge hands Dartford's formations
+       Slade Green's order. Both pinned in test/data.test.mjs.
+
+       (The pinned order is not carried over either, for a plainer reason:
+       pins name weekday diagram numbers and the weekend prints number their
+       diagrams separately, so a pin could only ever match by accident.) */
+    blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
     if (blocks.length > 1 && blocks.every(x => x.pos === 999))
       warn.push(["order", sec + " " + e.time_raw, null, ""]);
     e.blocks = blocks;
