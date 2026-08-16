@@ -1707,7 +1707,7 @@ function previewHtml(layout){
         else if (i === n - 1 && n > 1 && lastEnd) notes.push(lastEnd);
       }
       yield { a, cls: u.cls.replace(/\//g, "-"), am: u.am || "", diag: u.diag || "",
-              pm: u.pm || "", flag: i === 0 ? e.flag : "",
+              pm: u.pm || "", unit: u.unit || "", flag: i === 0 ? e.flag : "",
               note: notes.join(" ").trim(), last: i === n - 1 };
     }
   }
@@ -1769,7 +1769,10 @@ function previewHtml(layout){
       let bot = lastSec ? "medium" : (v.last ? "thin" : null);
       if (idx === divideAt && !lastSec) bot = "double";
       rows.push({ kind: "data",
-        vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 7: v.flag, 8: v.note },
+        /* 6 is the unit column: the allocated unit where the export names
+           it, and otherwise an empty ruled cell for the depot to write in. */
+        vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 6: v.unit,
+                7: v.flag, 8: v.note },
         top: first ? "medium" : null,
         bot,
         flag: !!v.flag,
@@ -3371,9 +3374,13 @@ const GENIUS = (() => {
         // later parting is SPLITS PM business, settled by D/E
         const bEnd = stops[stints[u.si][1]];
         const path = bEnd.code + "@" + (bEnd.arr !== null ? bEnd.arr : bEnd.dep);
-        blocks.push({ diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
+        const blk = { diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path,
-                      later: later.length > 0 });
+                      later: later.length > 0 };
+        // only when the export actually carries it, so an entry keeps the
+        // exact shape the golden test pins when it does not
+        if (sum.unit) blk.unit = sum.unit;
+        blocks.push(blk);
       }
       // Which unit leads: the whole ordering mirrors with the book's posAsc
       // (see the fleet profiles), diagram number included - it is only a
@@ -3566,8 +3573,14 @@ const GENIUS = (() => {
         // writer uses this to give Grove Park its two tables
         overnight: e.blocks.every(x => x.si === 0),
         extra_notes: [], review: [],
-        units: e.blocks.map(x => ({ cls: x.cls, am: x.D, pm: x.E,
-                                    diag: x.diag.slice(2), end: x.end })),
+        units: e.blocks.map(x => {
+          const u = { cls: x.cls, am: x.D, pm: x.E,
+                      diag: x.diag.slice(2), end: x.end };
+          // only where the export named the allocated unit, so every other
+          // entry keeps the exact shape the golden test pins
+          if (x.unit) u.unit = x.unit;
+          return u;
+        }),
         attachment: e.attachment ? {} : null,
         flag: e.splits ? "SPLITS" : (e.splits_pm ? "SPLITS PM" : ""),
         pub: { sheet: [...e.origins][0] || e.sec, row: 0, pl: null,
@@ -3753,6 +3766,15 @@ const GENIUS = (() => {
     const m = /^(\d\d\/\d\d\/)\d\d(\d\d)$/.exec(d || "");
     return m ? m[1] + m[2] : d;
   };
+  /* The allocated unit as the sheets write it: last three digits, the class
+     dropped because column B already carries it - 375905 reads "905" beside
+     "4 375-9". Exports pad ("000000395001"), so strip to digits first. A
+     blank, a placeholder or anything that is not a unit number gives "",
+     which leaves the column empty for the depot to fill in by hand. */
+  function unitNo(raw) {
+    const d = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
+    return d.length >= 6 ? d.slice(-3) : "";
+  }
   function headerIndex(rows, wanted) {
     const hdr = rows[0].map(x => x.trim());
     const idx = {};
@@ -3777,6 +3799,10 @@ const GENIUS = (() => {
     const c = headerIndex(rows, ["Code", "Cov", "Type", "Start Time",
       "Position", "Start Location", "End Time", "End Location"]);
     if (!c) throw new Error("That CSV doesn't look like the Integrale Diagram Summary export.");
+    /* Optional, because an older export may not carry it: the allocated unit.
+       Not in the required list above - a missing column must not refuse the
+       file, it just leaves the unit column blank for the depot to write in. */
+    const stockAt = rows[0].map(x => x.trim()).indexOf("Start Stock");
     const out = [];
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
@@ -3794,6 +3820,7 @@ const GENIUS = (() => {
         to: (r[c["End Location"]] || "").trim(),
         end: et[1] ? mins(et[1]) : 0,
         uncovered: (r[c["Cov"]] || "").trim().toUpperCase() === "UNCOVERED",
+        unit: stockAt >= 0 ? unitNo(r[stockAt]) : "",
       });
     }
     return out;
@@ -3878,9 +3905,11 @@ const GENIUS = (() => {
       const key = f[0] + "\u0000" + f[5];
       if (seen.has(key)) continue;          // the export repeats rows per page
       seen.add(key);
+      // f[1] is the UNITS column - empty on every export seen so far, but it
+      // is the allocated unit when the controller has filled it in
       out.push({ date: (r[di] || "").trim(), diag: f[0], fleet: f[2],
                  pos: parseInt(f[4], 10) || 1, start: mins(f[5]),
-                 from: f[6], to: f[7], end: mins(f[8]) });
+                 from: f[6], to: f[7], end: mins(f[8]), unit: unitNo(f[1]) });
     }
     return out;
   }

@@ -274,7 +274,7 @@ function previewHtml(layout){
         else if (i === n - 1 && n > 1 && lastEnd) notes.push(lastEnd);
       }
       yield { a, cls: u.cls.replace(/\//g, "-"), am: u.am || "", diag: u.diag || "",
-              pm: u.pm || "", flag: i === 0 ? e.flag : "",
+              pm: u.pm || "", unit: u.unit || "", flag: i === 0 ? e.flag : "",
               note: notes.join(" ").trim(), last: i === n - 1 };
     }
   }
@@ -336,7 +336,10 @@ function previewHtml(layout){
       let bot = lastSec ? "medium" : (v.last ? "thin" : null);
       if (idx === divideAt && !lastSec) bot = "double";
       rows.push({ kind: "data",
-        vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 7: v.flag, 8: v.note },
+        /* 6 is the unit column: the allocated unit where the export names
+           it, and otherwise an empty ruled cell for the depot to write in. */
+        vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 6: v.unit,
+                7: v.flag, 8: v.note },
         top: first ? "medium" : null,
         bot,
         flag: !!v.flag,
