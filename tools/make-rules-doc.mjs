@@ -143,7 +143,7 @@ parts.push("<header><h1>Berthing sheet rules</h1>" +
   '<p class="stamp">Generated from the tool on ' + stamp +
   " · Southeastern unit berthing</p></header>");
 
-parts.push('<nav><h2>The four books</h2><ol>');
+parts.push('<nav><h2>The four weekday books</h2><ol>');
 for (const b of BOOKS)
   parts.push('<li><a href="#b-' + esc(b.title.replace(/\s+/g, "-")) + '">' +
     esc(b.title) + "</a> — " + esc(b.sub) + "</li>");
@@ -152,6 +152,16 @@ parts.push('<p style="margin:12px 0 0; font-size:13px; color:#3C464D">' +
   "Most rules are the same in all four. Where a book differs — which " +
   "locations read which way round, which times are used, which places keep " +
   "their empty moves — its own section says so.</p>");
+/* The Saturday and Sunday sheets are built from the weekend diagram prints
+   by the other half of the tool. Nearly every rule below is shared, but the
+   which-way-round list is NOT, so the difference is named here as well as in
+   the order section - somebody checking a Sunday sheet has to know before
+   they start reading, not four sections in. */
+parts.push('<p style="margin:8px 0 0; font-size:13px; color:#3C464D">' +
+  "These are the <b>Monday to Friday</b> books. Saturday and Sunday sheets " +
+  "are built from the weekend diagram prints and follow the same rules with " +
+  "one exception: they list units lowest position number first everywhere, " +
+  "rather than by the which-way-round list below.</p>");
 parts.push("</nav>");
 
 for (const b of BOOKS) {

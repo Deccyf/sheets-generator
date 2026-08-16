@@ -1521,6 +1521,18 @@ const SHEETS_RULES = (() => {
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +
       "real book, and they always beat the position numbers." });
+    /* The weekday directions were worked out against hand-marked weekday
+       books. Carrying them onto the weekend books put 53 of 71 formations
+       the wrong way round against the marked Sunday 16/08 book, so they
+       stayed with the books they came from - and a colleague reading this
+       page has to be told, or they will check a Sunday sheet against the
+       wrong rule. */
+    ord.push({ p: "None of this applies to a Saturday or Sunday sheet. Those " +
+      "are built from the weekend diagram prints, and they read lowest " +
+      "number first everywhere, at every location. The which-way-round list " +
+      "above was worked out against the marked-up weekday books and belongs " +
+      "to them: checked against the marked Sunday book it put most " +
+      "formations the wrong way round." });
     push("order", "Which unit prints first", ord);
 
     /* ---- 4. times ---- */
