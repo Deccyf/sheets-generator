@@ -119,27 +119,38 @@ test("Charing Cross codes never swallow Charing in Kent", () => {
   assert.equal(E.codeFor("Charing", E.DEST_CODE, w, "t"), "CHG");
 });
 
-test("the exported corrections file reads without the code", async () => {
+test("a correction reads in words, and there is no export file", async () => {
   const N = built();
   const R = N.SHEETS_RULES;
-  const txt = R.exportText({ "ASHFORD 05 05|101,102": ["101", "102"],
-                             "GROVE PARK|805,806": null },
-                           "MON-17-08", "2026-08-16T09:12:00.000Z");
-  /* It is sent by somebody who pressed Reverse and read by somebody who
-     builds it in, so it has to make sense before the JSON starts. */
-  assert.match(txt, /ASHFORD, the 05 05 departure only/, "where and when");
-  assert.match(txt, /diagrams 101 \+ 102/, "which formation");
-  assert.match(txt, /print 101, then 102/, "and what to print");
-  assert.match(txt, /switched off/, "a removal says so in words");
-  assert.match(txt, /16\/08\/2026/, "when it was made");
-  assert.ok(txt.indexOf("ASHFORD, the 05 05") < txt.indexOf("ORDER_FIX"),
-    "the plain half comes before the code half");
-  // and the machine copy still round-trips
-  const json = txt.slice(txt.indexOf("{"));
-  const back = R.parse(json);
-  assert.ok(back, "the block at the foot parses back");
+  const edits = { "ASHFORD 05 05|101,102": ["101", "102"],
+                  "GROVE PARK|805,806": null };
+
+  /* The Unit order tab is the whole of a correction now: a colleague reads
+     these four columns out and they go into ORDER_FIX. There used to be an
+     "Export order corrections" download as well, saying the same thing in
+     three formats at once - it was one more thing to keep working for a
+     path nobody used. */
+  const row = R.orderRow("ASHFORD 05 05|101,102", ["101", "102"]);
+  assert.equal(row.where, "ASHFORD", "where");
+  assert.equal(row.when, "the 05 05 departure only", "when");
+  assert.equal(row.formation, "101 + 102", "which formation");
+  assert.equal(row.prints, "101, then 102", "and what to print");
+
+  assert.equal(R.exportText, undefined, "no export text builder");
+  assert.equal(R.dataJsLines, undefined, "and nothing left over feeding it");
+  const html = N.SHEETS_RULES.explainHtml({ sections: ["ASHFORD"] });
+  assert.doesNotMatch(html, /Export order corrections/,
+    "and the rules narrative does not send anyone looking for the button");
+
+  /* What does survive is the overlay itself: it is held on the machine that
+     made it, so it has to round-trip through storage unchanged. */
+  const back = R.parse(R.serialize(edits, "2026-08-16T09:12:00.000Z"));
+  assert.ok(back, "the stored overlay parses back");
+  assert.equal(back.saved, "2026-08-16T09:12:00.000Z", "with when it was written");
   assert.deepEqual(norm(back.orderFix["ASHFORD 05 05|101,102"]),
                    norm(["101", "102"]), "unchanged through the round trip");
+  assert.equal(back.orderFix["GROVE PARK|805,806"], null,
+    "and a switched-off pin stays switched off");
 });
 
 test("the weekend books do not take the weekday reading order", () => {

@@ -1218,16 +1218,20 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
 </script>
 <script>
 /* SHEETS_RULES — the pure part of local rule edits: the key grammar, the
-   merge, and the export. No DOM, no storage, no build knowledge, so it can
-   be reasoned about and tested on its own.
+   merge, and the rules in words. No DOM, no storage, no build knowledge, so
+   it can be reasoned about and tested on its own.
 
    An edit is one entry in an object keyed exactly as ORDER_FIX is keyed:
    an array pins the order, null switches a shipped pin off. That is the
-   whole vocabulary - the tool ships a table, the operator overlays it, and
-   the overlay exports as lines that can be pasted back into data.js so the
-   correction stops being local. Editing anything richer than unit order is
-   deliberately not offered: order is the table testers actually correct,
-   and it is the one with a closed, checkable grammar. */
+   whole vocabulary - the tool ships a table and the operator overlays it.
+   Editing anything richer than unit order is deliberately not offered:
+   order is the table testers actually correct, and it is the one with a
+   closed, checkable grammar.
+
+   Corrections stay on the computer that made them until somebody says what
+   they are and they go into ORDER_FIX. There is no export file: the Unit
+   order tab lists every correction in words, which is what a colleague
+   reads out, and it was one more thing to keep working for no one. */
 "use strict";
 const SHEETS_RULES = (() => {
   const VERSION = 1;
@@ -1307,60 +1311,6 @@ const SHEETS_RULES = (() => {
     for (const k of keys) body[k] = orderFix[k];
     return JSON.stringify({ v: VERSION, saved: savedIso || null, orderFix: body },
                           null, 2);
-  }
-
-  /* Exactly the shape of an ORDER_FIX line in data.js, so the answer to a
-     correction is to paste it in - the same convention the mark-up sheet
-     generator already follows. */
-  function dataJsLines(orderFix) {
-    const out = [];
-    for (const k of Object.keys(orderFix || {}).sort()) {
-      const v = orderFix[k];
-      if (v === null) out.push('    // remove from ORDER_FIX: "' + k + '"');
-      else out.push('    "' + k + '": ["' + v.join('", "') + '"],');
-    }
-    return out;
-  }
-
-  /* The file a tester sends back. It is read by two people: whoever made the
-     corrections, checking they exported what they meant to, and whoever
-     builds them into the tool. So it opens in plain English with the same
-     four columns the Unit order tab shows, and keeps the paste-in lines and
-     the machine copy underneath for the second reader. */
-  function exportText(orderFix, tag, savedIso) {
-    const keys = Object.keys(orderFix || {}).sort();
-    const n = keys.length;
-    const out = [
-      "UNIT ORDER CORRECTIONS" + (tag ? " — " + tag : ""),
-      "",
-      n + (n === 1 ? " formation was" : " formations were") +
-        " turned round by hand on the computer that built these books" +
-        (savedIso ? ", last changed " + savedIso.slice(0, 10).split("-")
-                      .reverse().join("/") : "") + ".",
-      "",
-      "Send this file back and they get built into the tool, so every copy of",
-      "it prints them the same way. Until then they are on that one computer",
-      "only, and every book built there says so on its review list.",
-      "",
-      "-".repeat(70),
-      "",
-    ];
-    for (const k of keys) {
-      const v = orderFix[k], r = orderRow(k, v || []);
-      if (!r) { out.push("  (unreadable: " + k + ")", ""); continue; }
-      out.push("  " + r.where + ", " + r.when,
-               "    diagrams " + r.formation,
-               "    " + (v === null ? "correction switched off — back to the reports' order"
-                                    : "print " + r.prints),
-               "");
-    }
-    out.push("-".repeat(70), "",
-      "FOR WHOEVER MAINTAINS THE TOOL", "",
-      "Paste into ORDER_FIX in src/data.js:", "");
-    for (const line of dataJsLines(orderFix)) out.push(line);
-    out.push("", "The same corrections as the page stores them:", "",
-             serialize(orderFix, savedIso || null));
-    return out.join("\n");
   }
 
   /* ------------------------------------------------------------------
@@ -1680,13 +1630,13 @@ const SHEETS_RULES = (() => {
         ? { table: { head: ["Location", "When", "Diagrams running together",
                             "Prints in this order"], rows } }
         : { p: "Nothing in this book needs correcting." },
-      { note: "If you find one that is still wrong, the Rules tab inside the " +
-        "tool has a Reverse button against every coupled formation in the " +
-        "build. Pressing it turns that formation round and rebuilds the " +
-        "books straight away so you can see the result — but the change " +
-        "only lives on the computer you pressed it on. Use “Export " +
-        "order corrections” on the same card and send us the file, and " +
-        "it gets built into the tool for everybody." },
+      { note: "If you find one that is still wrong, the Unit order tab " +
+        "inside the tool has a Reverse button against every coupled " +
+        "formation in the build. Pressing it turns that formation round and " +
+        "rebuilds the books straight away so you can see the result — but " +
+        "the change only lives on the computer you pressed it on. That tab " +
+        "lists everything you have turned round, in words; tell us what it " +
+        "says and it gets built into the tool for everybody." },
     ]);
 
     /* ---- 10. what it will not do ---- */
@@ -1703,12 +1653,14 @@ const SHEETS_RULES = (() => {
         "Anything it was unsure about is written on the Review tab of that " +
         "book rather than guessed at on the sheet.",
       ] },
-      { p: "The weekend sheets are built from the diagram prints rather than " +
-           "the weekday reports, but they follow these same rules — the same " +
-           "tables decide the order, the times, the breaks and the " +
-           "headcodes. The one thing that does not carry over is the list of " +
-           "corrected formations above: those name weekday diagram numbers, " +
-           "and the weekend prints number their diagrams separately." },
+      { p: "The weekend sheets are built from the diagram prints rather " +
+           "than the weekday reports, and they follow these same rules for " +
+           "the times, the breaks, the headcodes and which movements get a " +
+           "line. Two things do not carry over. Which unit prints first: a " +
+           "weekend sheet reads lowest position number first everywhere, " +
+           "not by the which-way-round list. And the corrected formations " +
+           "above, which name weekday diagram numbers — the weekend prints " +
+           "number their diagrams separately." },
       { note: "The sheets are built from the reports you feed in. If the " +
         "report is wrong, the sheet will be wrong in the same way — the " +
         "tool has no other source to check it against." },
@@ -1754,7 +1706,7 @@ const SHEETS_RULES = (() => {
   }
 
   return { VERSION, parseKey, validEdit, mergeOrderFix, keyForms, chooseKey,
-           parse, serialize, dataJsLines, exportText,
+           parse, serialize,
            explain, explainHtml, orderRow };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_RULES;
@@ -5013,8 +4965,8 @@ function orderPane(b, res, rebuild, secNames) {
     h.push('<p class="opts-hint">Reverse turns that formation round and ' +
       "rebuilds the books straight away so you can see it. Anything you have " +
       "turned round is marked, and Undo puts it back. The changes stay on " +
-      "this computer only — use “Export order corrections” on this " +
-      "card and send us the file, and they get built in for everybody.</p>");
+      "this computer only — tell us which formations you have turned round " +
+      "and they get built in for everybody.</p>");
     h.push("</section>");
   }
 
@@ -5022,7 +4974,8 @@ function orderPane(b, res, rebuild, secNames) {
     h.push('<section class="rule-sec"><h3>Changes you have made on this ' +
       "computer</h3>");
     h.push("<p>These are in force for every book built here until you clear " +
-      "them, and they are what “Export order corrections” sends us.</p>");
+      "them. They are on this computer only — the table below is the whole " +
+      "of it, so read it out to us and they get built into the tool.</p>");
     h.push('<table class="rules-t"><thead><tr><th>Location</th><th>When</th>' +
       "<th>Diagrams running together</th><th>Prints in this order</th>" +
       "</tr></thead><tbody>");
@@ -5334,10 +5287,6 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
-      if (editCount()) acts.push(["Export order corrections",
-        () => download("SHEETS_ORDER_CORRECTIONS_" + res.tag + ".txt",
-                       SHEETS_RULES.exportText(ruleEdits, res.tag, savedAt()),
-                       "text/plain")]);
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes, acts));
     });
