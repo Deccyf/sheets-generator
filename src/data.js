@@ -490,6 +490,37 @@ const SIDING_CLASS_RE = new RegExp(
     },
   };
 
+  /* ==== the same destination by two routes ================================
+     Dover and Ramsgate both reach Victoria two ways, and the route decides
+     two things the sheet has to get right: what the destination cell says,
+     and - at Dover Priory - which end of the train leads. Neither export
+     lists the intermediate calls on those legs, so the route has to be read
+     off the headcode, which carries it: a 2C runs via Ashford and the
+     Maidstone East line, everything else goes round by Faversham.
+
+     Read off the SUN 16/08 prints, where the two routes are plainly
+     different journeys - Dover to Victoria is 88 miles in 116 minutes as
+     2C22 and 78 miles in 148 as 2K64/2K66/2K70, and Ramsgate's 2C20 / 2C24 /
+     2C28 / 2C32 sit against 1P20 / 1P22 / 1P26 / 1P30 the same way. A 2C
+     leaves Dover towards Folkestone, so the Folkestone end leads; the
+     Faversham services leave the other way and keep the CBE end in front,
+     which is what the plain destination rules above already say.
+
+     `via` is what the destination cell adds - "VIC Via AFK". `lead` names
+     which end of END_MARKERS leads, and beats the destination sets when it
+     is given. A section with no rule here behaves exactly as before.     */
+  const ROUTE_BY_HC = {
+    "DOVER PRIORY": [{ dest: "VIC", hc: /^2C/, via: "AFK", lead: "fke" }],
+    "RAMSGATE": [{ dest: "VIC", hc: /^2C/, via: "AFK" }],
+  };
+  function routeRule(sec, dest, hc) {
+    const list = ROUTE_BY_HC[sec];
+    if (!list || !dest || !hc) return null;
+    for (const r of list)
+      if (r.dest === dest && r.hc.test(hc)) return r;
+    return null;
+  }
+
 /* ==== weekend prints knowledge (ex SheetsEngine) ==== */
 const DEST_CODE = {
  "Vic (E)":"VIC","CX":"CHX","C St":"CST","Lndon BrE":"LBG",
@@ -650,6 +681,7 @@ return {
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  ROUTE_BY_HC, routeRule,
   SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
   SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,

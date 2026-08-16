@@ -7,7 +7,7 @@ const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
           MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
           SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST } = SHEETS_DATA;
+          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST, routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
@@ -538,7 +538,12 @@ const GENIUS = (() => {
       } else if (mk && blocks.length > 1) {
         const dest = destCode(locName(e.destStop), warn, e.sec);
         let lead = null, rear = null;
-        if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
+        // A destination reached two ways settles it on the route first: the
+        // headcode says which, and the plain destination sets cannot.
+        const rr = routeRule(e.sec, dest, e.hc);
+        if (rr && rr.lead) {
+          lead = mk[rr.lead]; rear = mk[rr.lead === "fke" ? "cbe" : "fke"];
+        } else if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
         else if (mk.cbeLeads.has(dest) || e.route.includes(mk.cbeVia)) {
           lead = mk.cbe; rear = mk.fke;
         } else warn.push({ sec: e.sec, msg: e.sec + " " + e.tmin + " to " + dest +
@@ -546,6 +551,12 @@ const GENIUS = (() => {
         if (lead) { blocks[0].end = lead; blocks[blocks.length - 1].end = rear; }
       }
       e.dest = destCode(locName(e.destStop), warn, e.sec + " " + e.tmin);
+      /* Two routes to one place: say which. Only set when a rule matches, so
+         every other entry keeps the exact shape the golden test pins. */
+      {
+        const rr = routeRule(e.sec, e.dest, e.hc);
+        if (rr && rr.via) e.via = rr.via;
+      }
       // Grove Park's empty moves via New Cross code to where the ECS chain
       // ends, not New Cross itself (hand rule set)
       if (e.sec === "GROVE PARK" && e.dest === "NWX" && e.hc && e.hc[0] === "5") {

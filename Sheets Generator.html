@@ -1070,6 +1070,37 @@ const SIDING_CLASS_RE = new RegExp(
     },
   };
 
+  /* ==== the same destination by two routes ================================
+     Dover and Ramsgate both reach Victoria two ways, and the route decides
+     two things the sheet has to get right: what the destination cell says,
+     and - at Dover Priory - which end of the train leads. Neither export
+     lists the intermediate calls on those legs, so the route has to be read
+     off the headcode, which carries it: a 2C runs via Ashford and the
+     Maidstone East line, everything else goes round by Faversham.
+
+     Read off the SUN 16/08 prints, where the two routes are plainly
+     different journeys - Dover to Victoria is 88 miles in 116 minutes as
+     2C22 and 78 miles in 148 as 2K64/2K66/2K70, and Ramsgate's 2C20 / 2C24 /
+     2C28 / 2C32 sit against 1P20 / 1P22 / 1P26 / 1P30 the same way. A 2C
+     leaves Dover towards Folkestone, so the Folkestone end leads; the
+     Faversham services leave the other way and keep the CBE end in front,
+     which is what the plain destination rules above already say.
+
+     `via` is what the destination cell adds - "VIC Via AFK". `lead` names
+     which end of END_MARKERS leads, and beats the destination sets when it
+     is given. A section with no rule here behaves exactly as before.     */
+  const ROUTE_BY_HC = {
+    "DOVER PRIORY": [{ dest: "VIC", hc: /^2C/, via: "AFK", lead: "fke" }],
+    "RAMSGATE": [{ dest: "VIC", hc: /^2C/, via: "AFK" }],
+  };
+  function routeRule(sec, dest, hc) {
+    const list = ROUTE_BY_HC[sec];
+    if (!list || !dest || !hc) return null;
+    for (const r of list)
+      if (r.dest === dest && r.hc.test(hc)) return r;
+    return null;
+  }
+
 /* ==== weekend prints knowledge (ex SheetsEngine) ==== */
 const DEST_CODE = {
  "Vic (E)":"VIC","CX":"CHX","C St":"CST","Lndon BrE":"LBG",
@@ -1230,6 +1261,7 @@ return {
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  ROUTE_BY_HC, routeRule,
   SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
   SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
@@ -1649,7 +1681,10 @@ function previewHtml(layout){
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
     }
     const ends = END_STYLE[section];
-    const timeA = `${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim();
+    // "08 42 VIC Via AFK" - the route only appears where a destination is
+    // reached more than one way and the rule table says which this is.
+    const timeA = (`${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim() +
+                   (e.via ? ` Via ${e.via}` : "")).trim();
     const n = e.units.length;
     for (let i = 0; i < n; i++) {
       const u = e.units[i];
@@ -1876,7 +1911,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
 "use strict";
 (function (root) {
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
-        TRANSIT, STATIONS, MANUAL_LOC } = SHEETS_DATA;
+        TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 const PROFILES = SHEETS_DATA.PROFILES;
 const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
@@ -2503,7 +2538,13 @@ function generate(diags, prof, stabling, warn){
       const route = new Set(legLocs(meta.get(blocks[0].dk).rows, firstUnit.ei));
       const dest = DEST_CODE[e.dest_loc] !== undefined ? DEST_CODE[e.dest_loc] : e.dest;
       let lead = null, rear = null;
-      if (mk.fke_leads.has(dest)){ lead = mk.fke; rear = mk.cbe; }
+      // A destination reached two ways settles it on the route first - the
+      // headcode carries it, and the leg's stop list does not.
+      const rr = routeRule(sec, dest, e.hc);
+      if (rr && rr.lead){
+        lead = mk[rr.lead]; rear = mk[rr.lead === "fke" ? "cbe" : "fke"];
+      }
+      else if (mk.fke_leads.has(dest)){ lead = mk.fke; rear = mk.cbe; }
       else if (mk.cbe_leads.has(dest) ||
                Array.from(mk.cbe_via).some(function(v){ return route.has(v); })){
         lead = mk.cbe; rear = mk.fke;
@@ -2517,6 +2558,8 @@ function generate(diags, prof, stabling, warn){
     for (const o of Array.from(e.origins).sort())
       if (NOTE_FROM_BERTH[o] !== undefined){ e.note = NOTE_FROM_BERTH[o]; break; }
     e.dest = codeFor(e.dest_loc, DEST_CODE, warn, sec + " " + e.time_raw);
+    // two routes to one place: say which, on the destination cell
+    { const rr = routeRule(sec, e.dest, e.hc); if (rr && rr.via) e.via = rr.via; }
     const dl = e.dest_loc;
     e.time = e.time_raw.replace(/\./g, " ");
     e.suppress = (!prof.ecs_only_ok.has(sec) && !!e.hc && e.hc[0] === "5"
@@ -2619,7 +2662,8 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
           if (prevTk < bound && bound <= tk) doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
-        if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
+        if (i === 0) put(r, 1, e.time + " " + e.dest +
+                                (e.via ? " Via " + e.via : ""), 3);
         put(r, 2, u.cls, 3);
         put(r, 3, dnum(u.num), 3);
         if (u.D) put(r, 4, u.D, 4);
@@ -2886,7 +2930,7 @@ const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
           MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
           SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST } = SHEETS_DATA;
+          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST, routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
@@ -3417,7 +3461,12 @@ const GENIUS = (() => {
       } else if (mk && blocks.length > 1) {
         const dest = destCode(locName(e.destStop), warn, e.sec);
         let lead = null, rear = null;
-        if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
+        // A destination reached two ways settles it on the route first: the
+        // headcode says which, and the plain destination sets cannot.
+        const rr = routeRule(e.sec, dest, e.hc);
+        if (rr && rr.lead) {
+          lead = mk[rr.lead]; rear = mk[rr.lead === "fke" ? "cbe" : "fke"];
+        } else if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
         else if (mk.cbeLeads.has(dest) || e.route.includes(mk.cbeVia)) {
           lead = mk.cbe; rear = mk.fke;
         } else warn.push({ sec: e.sec, msg: e.sec + " " + e.tmin + " to " + dest +
@@ -3425,6 +3474,12 @@ const GENIUS = (() => {
         if (lead) { blocks[0].end = lead; blocks[blocks.length - 1].end = rear; }
       }
       e.dest = destCode(locName(e.destStop), warn, e.sec + " " + e.tmin);
+      /* Two routes to one place: say which. Only set when a rule matches, so
+         every other entry keeps the exact shape the golden test pins. */
+      {
+        const rr = routeRule(e.sec, e.dest, e.hc);
+        if (rr && rr.via) e.via = rr.via;
+      }
       // Grove Park's empty moves via New Cross code to where the ECS chain
       // ends, not New Cross itself (hand rule set)
       if (e.sec === "GROVE PARK" && e.dest === "NWX" && e.hc && e.hc[0] === "5") {

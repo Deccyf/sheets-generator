@@ -4,7 +4,7 @@
 "use strict";
 (function (root) {
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
-        TRANSIT, STATIONS, MANUAL_LOC } = SHEETS_DATA;
+        TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 const PROFILES = SHEETS_DATA.PROFILES;
 const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
@@ -631,7 +631,13 @@ function generate(diags, prof, stabling, warn){
       const route = new Set(legLocs(meta.get(blocks[0].dk).rows, firstUnit.ei));
       const dest = DEST_CODE[e.dest_loc] !== undefined ? DEST_CODE[e.dest_loc] : e.dest;
       let lead = null, rear = null;
-      if (mk.fke_leads.has(dest)){ lead = mk.fke; rear = mk.cbe; }
+      // A destination reached two ways settles it on the route first - the
+      // headcode carries it, and the leg's stop list does not.
+      const rr = routeRule(sec, dest, e.hc);
+      if (rr && rr.lead){
+        lead = mk[rr.lead]; rear = mk[rr.lead === "fke" ? "cbe" : "fke"];
+      }
+      else if (mk.fke_leads.has(dest)){ lead = mk.fke; rear = mk.cbe; }
       else if (mk.cbe_leads.has(dest) ||
                Array.from(mk.cbe_via).some(function(v){ return route.has(v); })){
         lead = mk.cbe; rear = mk.fke;
@@ -645,6 +651,8 @@ function generate(diags, prof, stabling, warn){
     for (const o of Array.from(e.origins).sort())
       if (NOTE_FROM_BERTH[o] !== undefined){ e.note = NOTE_FROM_BERTH[o]; break; }
     e.dest = codeFor(e.dest_loc, DEST_CODE, warn, sec + " " + e.time_raw);
+    // two routes to one place: say which, on the destination cell
+    { const rr = routeRule(sec, e.dest, e.hc); if (rr && rr.via) e.via = rr.via; }
     const dl = e.dest_loc;
     e.time = e.time_raw.replace(/\./g, " ");
     e.suppress = (!prof.ecs_only_ok.has(sec) && !!e.hc && e.hc[0] === "5"
@@ -747,7 +755,8 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
           if (prevTk < bound && bound <= tk) doubleEnds.add(prevLast);
       const lead = r;
       e.blocks.forEach(function(u, i){
-        if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
+        if (i === 0) put(r, 1, e.time + " " + e.dest +
+                                (e.via ? " Via " + e.via : ""), 3);
         put(r, 2, u.cls, 3);
         put(r, 3, dnum(u.num), 3);
         if (u.D) put(r, 4, u.D, 4);

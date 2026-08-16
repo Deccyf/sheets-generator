@@ -248,7 +248,10 @@ function previewHtml(layout){
       if (section === "GROVE PARK" && road) hc = `${hc} ${road}`;
     }
     const ends = END_STYLE[section];
-    const timeA = `${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim();
+    // "08 42 VIC Via AFK" - the route only appears where a destination is
+    // reached more than one way and the rule table says which this is.
+    const timeA = (`${fmtTime(e.time, e.time_kind)} ${e.dest}`.trim() +
+                   (e.via ? ` Via ${e.via}` : "")).trim();
     const n = e.units.length;
     for (let i = 0; i < n; i++) {
       const u = e.units[i];
