@@ -245,9 +245,11 @@ departure, the end markers where the ends of a train are named for the way out
 sections that quote it.
 
 **A few things are left off on purpose.** Empty moves into a berth with no
-passenger work afterwards aren't listed — the same as the hand-built sheets. Any
-that are left off are **named on the review list**, so nothing disappears
-quietly.
+passenger work afterwards aren't listed — the same as the hand-built sheets. So
+is a unit that stands somewhere for the last time in the day and then runs
+empty to a depot without ever being shunted where it stood: that is a wait on
+the way home, and the line belongs to the depot it is going to. Any that are
+left off are **named on the review list**, so nothing disappears quietly.
 
 **Metro timings.** The Metro book is timed off the **first time the unit moves**.
 A unit that runs empty out of the sidings at 05+52 to form the 06 00 off the

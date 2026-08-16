@@ -132,7 +132,9 @@ const GENIUS = (() => {
         prev = Math.max(prev, v);
         if (k === "arr") arr = v; else dep = v;
       }
-      cur.push({ code: t[0], name, arr, dep, hc: hc ? hc.slice(0, 4) : null });
+      // the shunt marker survives the column split as a token of its own
+      cur.push({ code: t[0], name, arr, dep, hc: hc ? hc.slice(0, 4) : null,
+                 act: t.indexOf("#") > 0 ? "#" : null });
     }
     return byDate;
   }
@@ -201,7 +203,8 @@ const GENIUS = (() => {
       for (const x of grp) if (x.arr !== null) { arr = x.arr; break; }
       let dep = null;
       for (let k = grp.length - 1; k >= 0; k--) if (grp[k].dep !== null) { dep = grp[k].dep; break; }
-      out.push({ code: grp[0].code, name: grp[0].name, arr, dep, hcIn: lastHc, hcOut });
+      out.push({ code: grp[0].code, name: grp[0].name, arr, dep, hcIn: lastHc,
+                 hcOut, act: grp.some(x => x.act === "#") ? "#" : null });
       if (hcOut) lastHc = hcOut;
     }
     return out;
@@ -315,6 +318,12 @@ const GENIUS = (() => {
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
       meta.set(diag, { stops, stints, sum: sr, sums: srs });
     }
+    /* Does this report carry the shunt column at all? A PDF that lost it, or
+       an Integrale export that never had it, would otherwise read as "no
+       stand anywhere was shunted" and take the exception below everywhere. */
+    let anyShunt = false;
+    for (const [, m] of meta)
+      if (m.stops.some(s => s.act === "#")) { anyShunt = true; break; }
     const entries = new Map();
     for (const [diag, m] of meta) {
       const { stops, stints } = m;
@@ -448,8 +457,17 @@ const GENIUS = (() => {
         // later parting is SPLITS PM business, settled by D/E
         const bEnd = stops[stints[u.si][1]];
         const path = bEnd.code + "@" + (bEnd.arr !== null ? bEnd.arr : bEnd.dep);
+        /* Was this unit actually shunted while it stood here? Genius marks a
+           move on the spot with "#" in the activity column. A stand with one
+           is the unit being put away; a stand without one can be a pause on
+           the way to somewhere else. */
+        const shunted = (() => {
+          const [sa, sb] = stints[u.si];
+          for (let k = sa; k <= sb; k++) if (stops[k].act === "#") return true;
+          return false;
+        })();
         const blk = { diag: u.diag, si: u.si, pos: posAt(sums, e.tmin), D, E,
-                      cls: prof.fleets[sum.fleet], paxAfter, path,
+                      cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
         // only when the export actually carries it, so an entry keeps the
         // exact shape the golden test pins when it does not
@@ -483,7 +501,11 @@ const GENIUS = (() => {
            so nothing downstream has to re-derive a key and risk deriving a
            different one - the diags here are the pre-filter list. */
         if (blocks.length > 1)
+          /* buildDate runs once per fleet into the same list, so the record
+             has to say which book it belongs to or the mainline Rules tab
+             offers to reverse metro formations. */
           fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
+                            bucket: prof.bucket,
                             lookupDiags: diags, keysTried: [kTimed, kSec, diags],
                             applied, units: blocks.map(x => x.diag.slice(2)) });
         if (fix) blocks.sort((x, y) =>
@@ -596,6 +618,20 @@ const GENIUS = (() => {
                    !blocks.some(x => x.paxAfter) &&
                    (isStabling(dl) || secOf(dl, false) === e.sec) &&
                    sameArea(areaOf(dl), e.sec);
+      /* …and the going-home pause. A unit that stands somewhere for the last
+         time in the day and then runs empty to a depot has been berthed there
+         only if it was actually put away: Genius marks that with "#" in the
+         activity column. Without one the stand is a wait on the way home -
+         SG810 sits in the Dartford Down Siding from 22:53 and runs on to
+         Slade Green at 23:30, which is the Slade Green book's business and
+         not a Dartford berthing at all. Only applies where the report
+         carries the column, so a format that drops it changes nothing. */
+      if (!e.suppress && anyShunt && !prof.ecsOnlyOk.has(e.sec) &&
+          !!e.hc && e.hc[0] === "5" && !blocks.some(x => x.paxAfter) &&
+          isStabling(dl) && blocks.every(x => !x.shunted)) {
+        e.suppress = true;
+        e.pause = true;
+      }
       // …and a shunt that never leaves the Grove Park depot fence is not a
       // move the sheets carry at all, whatever headcode it runs under.
       if (!e.suppress && GP_DEPOT.has(dl.code) &&
@@ -644,7 +680,9 @@ const GENIUS = (() => {
                   msg: "suppressed: " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
                   e.blocks.map(x => x.diag).join("+") + ") - " +
                   (e.gpShunt ? "shunt inside the Grove Park depot"
-                             : "empty move to a berth") });
+                   : e.pause ? "stood here on the way to the depot, never" +
+                               " shunted, so it is not a berthing here"
+                   : "empty move to a berth") });
     }
     // writer-shaped sections
     const secs = new Map();
@@ -997,8 +1035,12 @@ const GENIUS = (() => {
       const arr = TM.test(f[2]) ? roll(mins(f[2])) : null;
       const dep = TM.test(f[3]) ? roll(mins(f[3])) : null;
       if (arr === null && dep === null) continue;
+      /* The activity column is almost always blank; "#" is Genius marking a
+         shunt on the spot. Kept because a stand with one is the unit being
+         put away, and a stand without one can be a pause on the way home. */
       st.out.push({ code: f[0], name: f[1], arr, dep,
-                    hc: f[5] ? f[5].slice(0, 4) : null });
+                    hc: f[5] ? f[5].slice(0, 4) : null,
+                    act: f[4] === "#" ? "#" : null });
       if (TM.test(f[10]))
         st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
                       dep: null, hc: null });

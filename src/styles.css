@@ -282,4 +282,10 @@
   .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron);
     vertical-align:top}
   .rules-t .tag-local{color:var(--amber); font-weight:700}
+  .rule-sec{margin:0 0 18px}
+  .rule-sec + .rule-sec{border-top:1px solid var(--apron); padding-top:12px}
+  .rules ul{margin:0 0 10px; padding-left:18px}
+  .rules li{font-size:12.5px; line-height:1.55; margin:0 0 5px}
+  .rules .rule-note{border-left:2px solid var(--rule); padding-left:10px;
+    color:var(--steel)}
   .editline{color:var(--amber); font-size:12px; margin:0 0 8px}

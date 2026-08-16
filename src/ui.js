@@ -142,126 +142,106 @@ function persistEdits() {
    again at display time - so it cannot drift from what you are looking at.
    Editing is unit order and nothing else: it is the table testers actually
    correct, and it has a closed grammar that can be checked. */
-function rulesPane(b, res, rebuild) {
+function rulesEnv(b, res, secNames) {
+  const isMain = b.hc === "main";
+  const prof = SHEETS_DATA.PROFILES_G[isMain ? 0 : (b.hc === "metro" ? 1 : 2)];
+  const RB = SHEETS_RULEBOOK;
+  const here = [...(secNames || [])].sort();
+  return {
+    sections: here,
+    fleets: prof.fleets,
+    posAsc: [...prof.posAsc],
+    roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
+    firstDep: [...(prof.firstDep || [])].sort(),
+    firstDepAll: !!prof.firstDepAll,
+    ecsOnlyOk: [...(prof.ecsOnlyOk || [])].sort(),
+    headcodeSections: [...SHEETS_DATA.HEADCODE_SECTIONS],
+    endStyle: SHEETS_DATA.END_STYLE,
+    routeByHc: SHEETS_DATA.ROUTE_BY_HC,
+    dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    middayGap: SHEETS_XLSX.MIDDAY_GAP,
+    orderFix: res.rules.orderFix,
+  };
+}
+
+function rulesPane(b, res, rebuild, secNames) {
   const el = document.createElement("div");
   el.className = "rules";
   const R = res.rules;
   const isMain = b.hc === "main";
-  const mine = c => b.ram ? c.sec === "RAMSGATE"
-                          : (isMain ? c.sec !== "RAMSGATE" : true);
-  const coupled = R.coupled.filter(mine);
-  const prof = SHEETS_DATA.PROFILES_G[isMain ? 0 : (b.hc === "metro" ? 1 : 2)];
-  const secsHere = new Set(coupled.map(c => c.sec));
+  /* One list is built per fleet into the same array, so the book is picked
+     out by its bucket first and only then by the Ramsgate split. Listed
+     once each however many days were fed in. */
+  const mine = c => c.bucket === b.hc &&
+    (!isMain || b.ram === (c.sec === "RAMSGATE"));
+  const seenRow = new Set();
+  const coupled = R.coupled.filter(c => {
+    if (!mine(c)) return false;
+    const k = c.sec + "|" + c.timeText + "|" + c.units.join(",");
+    if (seenRow.has(k)) return false;
+    seenRow.add(k);
+    return true;
+  });
   const h = [];
   const esc = escHtml;
 
-  h.push('<p class="sa-src">These are the rules this build ran with, not a ' +
-    'copy of them. Unit order can be corrected here; everything else is ' +
-    'shown so you can see what was applied.</p>');
+  h.push('<p class="sa-src">Everything the tool followed to build this very ' +
+    'book, written out in plain English. It is what actually ran, not a ' +
+    'description of it — change a setting and rebuild, and this changes ' +
+    'with it.</p>');
 
-  /* ---- the editable part ---- */
-  h.push("<h3>Unit order</h3>");
-  const pins = Object.keys(R.orderFix).filter(k => {
-    const pk = SHEETS_RULES.parseKey(k);
-    if (!pk) return false;
-    if (!pk.sec) return true;                       // a bare pin holds anywhere
-    return b.ram ? pk.sec === "RAMSGATE"
-                 : (isMain ? pk.sec !== "RAMSGATE" && secsHere.has(pk.sec)
-                           : secsHere.has(pk.sec));
-  }).sort();
-  if (pins.length) {
-    h.push('<table class="rules-t"><thead><tr><th>Pinned formation</th>' +
-      "<th>Prints</th><th>State</th><th>Where it fired</th></tr></thead><tbody>");
-    for (const k of pins) {
-      const local = Object.prototype.hasOwnProperty.call(R.edits, k);
-      const shipped = Object.prototype.hasOwnProperty.call(R.shipped, k);
-      const state = !local ? "as issued"
-                  : (shipped ? "edited here" : "added here");
-      const fired = coupled.filter(c => c.applied === k)
-        .map(c => c.sec + " " + c.timeText);
-      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
-        esc(R.orderFix[k].join(", ")) + '</td><td class="' +
-        (local ? "tag-local" : "") + '">' + state + "</td><td>" +
-        (fired.length ? esc(fired.join("; "))
-                      : "<i>nothing in these reports</i>") + "</td></tr>");
-    }
-    h.push("</tbody></table>");
-  } else h.push("<p class=\"noreviews\">No order is pinned for this book.</p>");
+  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames)));
 
-  /* every coupled formation this build produced, so an order can be
-     corrected from what is on the sheet rather than by writing a key */
-  h.push("<h3>Coupled formations in this build</h3>");
-  if (!coupled.length) h.push('<p class="noreviews">Nothing runs coupled.</p>');
+  /* Every coupled formation this build produced, so an order can be put
+     right from what is on the sheet rather than by writing anything. */
+  h.push('<section class="rule-sec"><h3>Check the coupled formations in ' +
+    "this build</h3>");
+  if (!coupled.length)
+    h.push('<p class="noreviews">Nothing in this book runs coupled, so there ' +
+      "is no order to check.</p>");
   else {
-    h.push('<table class="rules-t"><thead><tr><th>Where</th><th>Prints</th>' +
-      "<th>Pinned by</th><th></th></tr></thead><tbody>");
+    h.push("<p>Every formation of two or more units the tool printed, and " +
+      "the order it printed them in. Hold it against the real book: if one " +
+      "is the wrong way round, press Reverse.</p>");
+    h.push('<table class="rules-t"><thead><tr><th>Where and when</th>' +
+      "<th>Printed in this order</th><th>Decided by</th><th></th>" +
+      "</tr></thead><tbody>");
     coupled.forEach((c, ix) => {
-      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
       h.push("<tr><td>" + esc(c.sec + " " + c.timeText) + "</td><td>" +
-        esc(c.units.join(", ")) +
-        (c.lookupDiags !== c.units.slice().sort().join(",")
-          ? ' <i>(pin keyed on ' + esc(c.lookupDiags) + ')</i>' : "") +
-        "</td><td>" + (c.applied ? "<code>" + esc(c.applied) + "</code>"
-                                 : "<i>the reports</i>") +
+        esc(c.units.join(", ")) + "</td><td>" +
+        (c.applied ? "the corrections list"
+                   : "the position numbers in the report") +
         '</td><td><button type="button" class="btn ghost" data-flip="' + ix +
         '">Reverse</button></td></tr>');
     });
     h.push("</tbody></table>");
-    h.push('<p class="opts-hint">Reversing writes a pin' +
-      " on this machine and rebuilds the books. Export it from the card and " +
-      "send it back so it can be baked into the tool for everyone.</p>");
+    h.push('<p class="opts-hint">Reverse turns that formation round and ' +
+      "rebuilds the books straight away so you can see it. The change stays " +
+      "on this computer only — use “Export rule edits” on this " +
+      "card and send us the file, and it gets built in for everybody.</p>");
+    h.push("</section>");
   }
-
-  /* ---- view-only: what else decided these books ---- */
-  h.push("<h3>Which way a formation reads</h3>");
-  const asc = [...prof.posAsc].filter(x => !isMain || secsHere.has(x) ||
-    SHEETS_XLSX.MAIN_ORDER.indexOf(x) >= 0).sort();
-  h.push("<p>" + (asc.length
-    ? "Lowest Position first in: " + esc(asc.join(", ")) +
-      ". Every other section prints highest Position first."
-    : "Every section in this book prints highest Position first.") + "</p>");
-  if (prof.roadPosAsc && prof.roadPosAsc.size) {
-    const rows = [...prof.roadPosAsc].map(([road, v]) =>
-      esc(road) + " reads " + (v ? "lowest" : "highest") + " Position first");
-    h.push("<p>Roads that face the other way to their section: " +
-      rows.join("; ") + ".</p>");
-  }
-  h.push("<h3>Timing</h3>");
-  const RB = SHEETS_RULEBOOK, hhmm = m =>
-    String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-  h.push("<p>The day rolls at " + hhmm(RB.DAY_ROLL) + "; the evening starts at " +
-    hhmm(RB.PM_BREAK) + " for PM purposes; a hop out and back inside " +
-    RB.RUN_ROUND + " minutes is a run-round, not a berthing. The double line " +
-    "sits under the last entry before the gap containing midday, when that " +
-    "gap is at least " + SHEETS_XLSX.MIDDAY_GAP + " minutes.</p>");
-  if (prof.firstDep && prof.firstDep.size)
-    h.push("<p>Timed off the first move out of the berth: " +
-      esc([...prof.firstDep].sort().join(", ")) + ".</p>");
-  h.push("<h3>What is left off</h3>");
-  h.push("<p>An empty move onto a berth in this section's own area is a shunt " +
-    "and is not printed; one that takes a unit to another section is. A run " +
-    "through a washer road and back where it came from is not a berthing. A " +
-    "move that never leaves the Grove Park depot fence is not a line. Every " +
-    "move left off is named on the Review tab.</p>");
-  if (prof.ecsOnlyOk && prof.ecsOnlyOk.size)
-    h.push("<p>Sections that keep their empty moves: " +
-      esc([...prof.ecsOnlyOk].sort().join(", ")) + ".</p>");
-  h.push("<h3>Headcodes</h3>");
-  h.push("<p>Quoted as standard in: " +
-    esc([...SHEETS_DATA.HEADCODE_SECTIONS].sort().join(", ")) +
-    ". The toggle above puts every headcode in the notes column.</p>");
 
   if (editCount()) {
-    h.push("<h3>Edits in force on this machine</h3>");
-    h.push('<table class="rules-t"><thead><tr><th>Key</th><th>Order</th>' +
+    h.push('<section class="rule-sec"><h3>Changes you have made on this ' +
+      "computer</h3>");
+    h.push("<p>These are in force for every book built here until you clear " +
+      "them, and they are what “Export rule edits” sends us.</p>");
+    h.push('<table class="rules-t"><thead><tr><th>Location</th><th>When</th>' +
+      "<th>Diagrams running together</th><th>Prints in this order</th>" +
       "</tr></thead><tbody>");
-    for (const k of Object.keys(ruleEdits).sort())
-      h.push("<tr><td><code>" + esc(k) + "</code></td><td>" +
-        (ruleEdits[k] === null ? "<i>pin switched off</i>"
-                               : esc(ruleEdits[k].join(", "))) + "</td></tr>");
+    for (const k of Object.keys(ruleEdits).sort()) {
+      const row = SHEETS_RULES.orderRow(k, ruleEdits[k] || []);
+      if (!row) continue;
+      h.push("<tr><td>" + esc(row.where) + "</td><td>" + esc(row.when) +
+        "</td><td>" + esc(row.formation) + "</td><td>" +
+        (ruleEdits[k] === null ? "<i>correction switched off</i>"
+                               : esc(row.prints)) + "</td></tr>");
+    }
     h.push("</tbody></table>");
     h.push('<p><button type="button" class="btn ghost" data-clear="1">' +
-      "Clear all rule edits</button></p>");
+      "Undo all my changes</button></p>");
+    h.push("</section>");
   }
   el.innerHTML = h.join("");
 
@@ -269,7 +249,10 @@ function rulesPane(b, res, rebuild) {
     const flip = ev.target.getAttribute && ev.target.getAttribute("data-flip");
     if (flip !== null && flip !== undefined) {
       const c = coupled[Number(flip)];
-      const seen = R.coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
+      /* Off the deduplicated list: the same formation on Monday and on
+         Tuesday is one working, not two, and must not be given a time it
+         does not need. Two DIFFERENT departures of it must. */
+      const seen = coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
       const forms = SHEETS_RULES.keyForms(c.sec, c.timeText,
                                           c.lookupDiags.split(","));
       const key = SHEETS_RULES.chooseKey(forms, seen, false);
@@ -537,7 +520,7 @@ function reviewPane(items) {
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
       panes.push(["Rules" + (editCount() ? " (" + editCount() + " edited)" : ""),
-                  () => rulesPane(b, res, rebuildForRules)]);
+                  () => rulesPane(b, res, rebuildForRules, secNames)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];

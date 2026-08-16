@@ -449,8 +449,11 @@ const children = [
   gap(60),
   callout("Left off on purpose",
     "Empty moves into a berth with no passenger work afterwards aren't listed — " +
-    "the same as the hand-built sheets. Every one of them is named on the " +
-    "review list, so nothing disappears quietly."),
+    "the same as the hand-built sheets. So is a unit that stands somewhere for " +
+    "the last time in the day and then runs empty to a depot without ever " +
+    "being shunted where it stood: that is a wait on the way home, and the " +
+    "line belongs to the depot it is going to. Every one of them is named on " +
+    "the review list, so nothing disappears quietly."),
   gap(60),
   h3("The Metro book's timings"),
   p("The Metro book is timed off the **first time the unit moves**. A unit that " +

@@ -17,12 +17,29 @@ test("pdfText is unchanged", () => {
   }
 });
 
+/* The legacy build read the activity column and threw it away; this one
+   keeps it, because a stand with a "#" on it is the unit being put away and
+   a stand without one can be a pause on the way home. That is a field the
+   frozen build cannot have, so the equivalence check is made on the fields
+   it does have - and the new one is pinned by its own tests below. */
+const dropAct = v => {
+  if (v === null || typeof v !== "object") return v;
+  if (Array.isArray(v)) return v.map(dropAct);
+  // the value comes out of the sandbox, so instanceof cannot be used here
+  if (Object.prototype.toString.call(v) === "[object Map]")
+    return new Map([...v].map(([k, x]) => [k, dropAct(x)]));
+  const o = {};
+  for (const k of Object.keys(v)) if (k !== "act") o[k] = dropAct(v[k]);
+  return o;
+};
+
 test("parseSummary / parseDetail are unchanged", () => {
   const L = legacy(), N = built();
   const sumTxt = L.GENIUS.pdfText(makePdf(SUMMARY_LINES, L.fflate));
   const detTxt = L.GENIUS.pdfText(makePdf(DETAIL_LINES, L.fflate));
   assert.deepEqual(norm(N.GENIUS.parseSummary(sumTxt)), norm(L.GENIUS.parseSummary(sumTxt)));
-  assert.deepEqual(norm(N.GENIUS.parseDetail(detTxt)), norm(L.GENIUS.parseDetail(detTxt)));
+  assert.deepEqual(norm(dropAct(N.GENIUS.parseDetail(detTxt))),
+                   norm(L.GENIUS.parseDetail(detTxt)));
 });
 
 test("stop collapsing and berth boundaries are unchanged", () => {
@@ -31,7 +48,7 @@ test("stop collapsing and berth boundaries are unchanged", () => {
   for (const [, diags] of det) {
     for (const [diag, raw] of diags) {
       const sL = L.GENIUS._stopsOf(raw), sN = N.GENIUS._stopsOf(raw);
-      assert.deepEqual(norm(sN), norm(sL), diag + " stops");
+      assert.deepEqual(norm(dropAct(sN)), norm(sL), diag + " stops");
       assert.deepEqual(norm(N.GENIUS._boundaries(sN)), norm(L.GENIUS._boundaries(sL)), diag + " boundaries");
     }
   }
@@ -387,4 +404,97 @@ test("a pin that exists elsewhere but not here is named on the review list", asy
     const diags = mm[1].split("+").map(d => d.slice(2)).sort().join(",");
     assert.ok(pinned.has(diags), "only formations that ARE pinned somewhere: " + m);
   }
+});
+
+/* ---- standing somewhere on the way to the depot is not a berthing ----
+   SG810's real shape on 17/08: in service to Dartford, empty into the Down
+   Siding at 22:53, then empty on to Slade Green depot at 23:30. Nothing is
+   shunted at Dartford, so the unit was never put away there and the Dartford
+   page has no line to carry. Give the same stand a "#" and it IS a berthing,
+   which is the half of the rule that keeps it from eating real entries. */
+const PAUSE_SUM = ['"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,',
+  '"Control:","SouthEastern Trains","Print Date:","August 16, 2026",',
+  '"Diagram Summary for:"," 17/08/26","DIAGRAM","UNITS","FLEET","OFF",',
+  '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",',
+  '"TOT. FUEL  MILES","NOTES","NOTES",',
+  '"SG810","","375/6",0.00,1,"22:38","SLADEGN","SLADEGD","23:39",',
+  '-0.60,100.00,100.00,,\r\n',
+  /* a second diagram purely so the export demonstrably HAS an activity
+     column - the rule is gated on that, and one diagram of its own could
+     never tell a blank column from a missing one */
+  '"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,',
+  '"Control:","SouthEastern Trains","Print Date:","August 16, 2026",',
+  '"Diagram Summary for:"," 17/08/26","DIAGRAM","UNITS","FLEET","OFF",',
+  '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",',
+  '"TOT. FUEL  MILES","NOTES","NOTES",',
+  '"SG811","","375/6",0.00,1,"06:00","SLADEGD","SLADEGD","08:25",',
+  '-0.60,100.00,100.00,,'].join("");
+
+function pauseDetail(act) {
+  const head = d => ['"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,',
+    '"Control:","SouthEastern Trains","Print Date:","August 16, 2026",',
+    '"Diagram Details for:"," 17/08/26","Diagram","' + d + '","On","17/08/26",',
+    '"Notes",,"Miles","Fuel Miles",'].join("");
+  const leg = (d, c, n, arr, dep, a, hc, tc, tn, tarr) =>
+    head(d) + ['"' + c + '"', '"' + n + '"', arr ? '"' + arr + '"' : "",
+      dep ? '"' + dep + '"' : "", a ? '"' + a + '"' : "", '"' + hc + '"',
+      "1.00", "1.00", '"' + tc + '"', '"' + tn + '"', '"' + tarr + '"',
+      '"Off Diagram"', '"  000"', '"Works"', '"  000"'].join(",");
+  return [
+    leg("SG810", "SLADEGN", "Slade Green", "", "22:38", "", "2E73BA",
+        "DARTFD", "Dartford", "22:45"),
+    leg("SG810", "DARTFD", "Dartford", "22:45", "22:50", "", "5E73BA",
+        "DARTFDS", "Dartford Dn Sdg", "22:53"),
+    leg("SG810", "DARTFDS", "Dartford Dn Sdg", "22:53", "23:30", act, "5A73BA",
+        "DARTFD", "Dartford", "23:33"),
+    leg("SG810", "DARTFD", "Dartford", "23:33", "23:33", "", "5A73BA",
+        "SLADEGD", "Slade Green DD", "23:39"),
+    leg("SG811", "SLADEGD", "Slade Green DD", "", "06:00", "", "5X01BA",
+        "SLADEGN", "Slade Green", "06:05"),
+    leg("SG811", "SLADEGN", "Slade Green", "06:05", "06:10", "", "2X01BA",
+        "CANONST", "London Cannon St", "07:00"),
+    leg("SG811", "CANONST", "London Cannon St", "07:00", "07:30", "", "5X02BA",
+        "SLADEGD", "Slade Green DD", "08:20"),
+    leg("SG811", "SLADEGD", "Slade Green DD", "08:20", "08:25", "#", "",
+        "SLADEGD", "Slade Green DD", "08:25"),
+  ].join("\r\n");
+}
+
+const dartfordTimes = res => {
+  const out = [];
+  for (const bag of [res.secsByDay, res.metroSecs, res.hsSecs])
+    for (const d of Object.keys(bag || {}))
+      for (const [name, list] of (bag[d] || new Map()))
+        if (name === "DARTFORD") for (const e of list) out.push(e.time);
+  return out;
+};
+
+test("a stand with no shunt on the way to the depot is not printed", async () => {
+  const N = built();
+  const res = await N.GENIUS.build([PAUSE_SUM, pauseDetail("")]);
+  assert.deepEqual(Array.from(dartfordTimes(res)), [],
+    "Dartford gets no line for a unit that only paused there");
+  const note = res.review.find(m => /DARTFORD/.test(m) && /suppressed/.test(m));
+  assert.ok(note, "and the Review tab says why: " + res.review.join(" | "));
+  assert.match(note, /never shunted/);
+});
+
+test("the same stand WITH a shunt is a berthing and is printed", async () => {
+  const N = built();
+  const res = await N.GENIUS.build([PAUSE_SUM, pauseDetail("#")]);
+  assert.deepEqual(Array.from(dartfordTimes(res)), [23 * 60 + 33],
+    "a unit that was put away at Dartford keeps its line");
+});
+
+test("the exception needs the activity column to be there at all", async () => {
+  const N = built();
+  const S = await import("./helpers/synth.mjs");
+  /* The PDF fixtures carry no "#" anywhere. If a missing column read as
+     "nothing was ever shunted", the rule would strip real entries out of
+     every PDF-fed book - so with no column it must change nothing. */
+  const res = await N.GENIUS.build(
+    [S.makePdf(S.SUMMARY_LINES, N.fflate), S.makePdf(S.DETAIL_LINES, N.fflate)]);
+  const paused = res.review.filter(m => /never shunted/.test(m));
+  assert.deepEqual(Array.from(paused), [],
+    "no entry is dropped as a pause when the report has no activity column");
 });
