@@ -167,7 +167,7 @@ The columns are:
 | C | The unit's three-digit diagram number. |
 | D | **AM** — where the unit goes next (its next berth) during the day. |
 | E | **PM** — where the unit ends its day. |
-| G | Flag — `SPLITS` when the units of this departure part company during the day, `SPLITS PM` when they only part in the evening (the D/E columns settle who goes where). Merged vertically across the entry's rows. |
+| G | Flag — `SPLITS` when the units of this departure part company during the day, `SPLITS PM` when they are put away first and only part on the second half of the diagram (the D/E columns settle who goes where). Merged vertically across the entry's rows. |
 | H | Notes — see below. |
 
 **Notes column (H)** carries the house annotations:
@@ -390,12 +390,17 @@ ones, all commented at the point of implementation:
 * **SPLITS / SPLITS PM.** The flag follows where the units of a departure
   part company, read off their whole day rather than off this stint: two
   diagrams worked as one train carry identical rows until they divide, so the
-  first row that differs is the parting. `SPLITS PM` is for a morning
-  departure whose units only part after 20:00; everything else that parts is
-  `SPLITS`, an afternoon departure included — by then the parting is not
-  "PM", it is now. `GT107`/`GT108` prove why the stint is the wrong window:
-  they leave Ashford as one train at 06 40, berth together, go out together
-  again, and part at Maidstone East at 18 12, and the book flags the 06 40.
+  first row that differs is the parting. `GT107`/`GT108` prove why the stint
+  is the wrong window: they leave Ashford as one train at 06 40, berth
+  together, go out together again, and part at Maidstone East at 18 12, and
+  the book flags the 06 40.
+  **"PM" is a place in the diagram, not a time of day** — the units go into a
+  depot after the berth they leave here, and the parting comes after that, on
+  the second half of the diagram. A formation that parts before it is put
+  away parts on this working and says plain `SPLITS`, however late in the day
+  that is. Read from a clock instead (parting after 20:00, departure before
+  14:00) the tool disagreed with the real books on ten flags; read from the
+  berth it disagrees on seven.
 * **ECS suppression.** An ECS departure ending at a berth in its own section
   with no passenger work after it is left off (except in sections where
   ECS-only entries belong, such as West Marina, Grove Park and Slade Green) —

@@ -381,7 +381,10 @@ const SHEETS_RULES = (() => {
          "leave the same place in the same minute, and a unit that joins " +
          "further down the line is that place's note, not this one's."],
         ["SPLITS", "These units come apart again later today."],
-        ["SPLITS PM", "They come apart, but not until this evening."],
+        ["SPLITS PM", "They are put away together first, and only come " +
+         "apart later on — on the second half of the diagram, after the " +
+         "depot. It is about where in the day's work the parting falls, " +
+         "not what time it happens."],
         ["UP SIDINGS, EAST SIDINGS, UPS, DNM, JUB",
          "Short names for the road the unit came off, printed where the " +
          "location has more than one."],

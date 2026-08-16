@@ -347,11 +347,15 @@ test("SPLITS follows where the units part, over the whole day", async () => {
     const e = list.find(x => x.units.some(u => u.diag === diag));
     return e ? e.flag : "(not built)";
   };
-  // they run as one train to Maidstone East and sit there together: the old
-  // stint-end test saw no split at all
-  assert.equal(norm(flagOf("971")), "SPLITS", "parting at 18 12");
-  assert.equal(norm(flagOf("973")), "SPLITS PM", "parting at 20 55");
+  /* SPLITS is read over the whole day, not from where this stint ends: 971
+     and 972 run as one train to Maidstone East and sit there together, and
+     the old stint-end test saw no split at all. */
+  assert.equal(norm(flagOf("971")), "SPLITS", "parting at 18 12, before berthing");
+  assert.equal(norm(flagOf("973")), "SPLITS", "parting at 20 55, also before berthing");
   assert.equal(norm(flagOf("975")), "", "never parting");
+  /* "PM" is a place in the diagram, not a time of day: 977/978 go back on
+     their own berth at 09 40 and part on the second half of the day. */
+  assert.equal(norm(flagOf("977")), "SPLITS PM", "parts after it is put away");
 });
 
 test("an order fix with no section holds the formation everywhere", async () => {

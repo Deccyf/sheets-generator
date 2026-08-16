@@ -587,12 +587,26 @@ const GENIUS = (() => {
       // flags the 06 40. "PM" says the parting is still to come this
       // evening, so an entry that is itself in the afternoon just says
       // SPLITS.
+      /* "PM" is not a time of day, it is a place in the diagram: the units
+         go into a depot after the berth they leave here, and the parting
+         comes after that - the second half of the diagram. A formation that
+         parts before it berths again parts on this working, and says plain
+         SPLITS however late in the day that happens. */
       {
         const t = partsAt(e.blocks.map(x => x.diag),
                           e.blocks.map(x => x.exitIdx));
         const parting = t !== null && sortkey(t) > sortkey(e.tmin);
-        e.splits_pm = parting && sortkey(t) >= PM_BREAK &&
-                      sortkey(e.tmin) < AM_CUTOFF;
+        let berthT = null;
+        for (const u of e.units) {
+          const m = meta.get(u.diag);
+          const s = m.stops[m.stints[u.si][1]];
+          const v = s.arr !== null ? s.arr : s.dep;
+          // the first of them to be put away is when the formation is berthed
+          if (v !== null && (berthT === null || sortkey(v) < sortkey(berthT)))
+            berthT = v;
+        }
+        e.splits_pm = parting && berthT !== null &&
+                      sortkey(t) > sortkey(berthT);
         e.splits = parting && !e.splits_pm;
       }
       e.attachment = e.attachment || e.origins.size > 1;

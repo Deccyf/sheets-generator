@@ -540,7 +540,8 @@ export const SPLITS_SUMMARY = [
   "Diagram Comments,Coverage Notes",
   ...[["AA971", "05:50", "19:20"], ["AA972", "05:50", "19:50"],
       ["AA973", "06:20", "22:00"], ["AA974", "06:20", "22:40"],
-      ["AA975", "06:50", "18:10"], ["AA976", "06:50", "18:10"]].map(([d, s, e], i) =>
+      ["AA975", "06:50", "18:10"], ["AA976", "06:50", "18:10"],
+      ["AA977", "07:20", "21:40"], ["AA978", "07:20", "22:10"]].map(([d, s, e], i) =>
     d + ",Covered,375/6,,0,10/08/2026 " + s + "," + (i % 2 + 1) +
     ",5S71,ASHFDNS,10/08/2026 " + e + ",ASHFDNS,60,,,,,," + d + ",,"),
 ].join("\r\n");
@@ -560,6 +561,18 @@ export const SPLITS_DETAIL = [
       orderLeg(d, 60, "ASHFKY", "Ashford", dep + ":00", hc, "MSTONEE", "Maidstone East", "07:30:00"),
       orderLeg(d, 60, "MSTONEE", "Maidstone East", back + ":00", "5S99", "ASHFDNS", "Ashford Down Sidings", home + ":00"),
     ]),
+  /* AA977/AA978 are the "PM" shape: out together, back on the SAME berth
+     at midday, and only then - on the second half of the diagram - do they
+     part. AA971's pair part at Maidstone East before they are put away at
+     all, which is a plain SPLITS however late in the day it happens. */
+  ...[["AA977", "16:30"], ["AA978", "17:10"]].flatMap(([d, back]) => [
+    orderLeg(d, 60, "ASHFDNS", "Ashford Down Sidings", "07:20:00", "5S80", "ASHFKY", "Ashford", "07:25:00"),
+    orderLeg(d, 60, "ASHFKY", "Ashford", "07:30:00", "2S85", "MSTONEE", "Maidstone East", "08:30:00"),
+    orderLeg(d, 60, "MSTONEE", "Maidstone East", "08:40:00", "5S86", "ASHFDNS", "Ashford Down Sidings", "09:40:00"),
+    orderLeg(d, 60, "ASHFDNS", "Ashford Down Sidings", "15:00:00", "5S87", "ASHFKY", "Ashford", "15:05:00"),
+    orderLeg(d, 60, "ASHFKY", "Ashford", "15:10:00", "2S88", "MSTONEE", "Maidstone East", "16:10:00"),
+    orderLeg(d, 60, "MSTONEE", "Maidstone East", back + ":00", "5S89", "ASHFDNS", "Ashford Down Sidings", "21:40:00"),
+  ]),
 ].join("\r\n");
 
 /* A 12-car Networker made up as 465 + 465 + 466
