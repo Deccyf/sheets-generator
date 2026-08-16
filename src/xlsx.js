@@ -10,8 +10,8 @@ const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
-/* How long the gap containing midday has to be before the double line is
-   drawn in it - a section worked steadily through midday gets no line. */
+/* How long the morning's break has to be before the double line is drawn in
+   it - a section worked steadily through the morning gets no line. */
 const MIDDAY_GAP = 120;
 
 /* ==== generic writer (ex weekend engine) ==== */
@@ -270,11 +270,18 @@ function previewHtml(layout){
         if (e.attachment) notes.push("ATTACHMENT");
         for (const x of e.extra_notes) notes.push(x);
       }
+      /* Where a section names BOTH ends - Dover Priory's FKE/CBE pair - the
+         marker says which of the two leads, so it takes two units to mean
+         anything and a lone unit gets none. Where a section names only one
+         end - West Marina's HGS END - it says which way the unit leaves,
+         which is as true of one unit as of three, and the hand book marks
+         those singles (05+55 and 07+13 on 12/08). The rear marker already
+         required a pair; the leading one did not. */
       if (u.end) notes.push(u.end);
-      else if (ends) {
+      else if (ends && (n > 1 || !ends[1])) {
         const [firstEnd, lastEnd] = ends;
         if (i === 0 && firstEnd) notes.push(firstEnd);
-        else if (i === n - 1 && n > 1 && lastEnd) notes.push(lastEnd);
+        else if (i === n - 1 && lastEnd) notes.push(lastEnd);
       }
       yield { a, cls: u.cls.replace(/\//g, "-"), am: u.am || "", diag: u.diag || "",
               pm: u.pm || "", unit: u.unit || "", flag: i === 0 ? e.flag : "",
@@ -301,25 +308,27 @@ function previewHtml(layout){
       const t = e.time % 1440;
       return t < 180 ? t + 1440 : t;
     };
-    /* The double line rules off the morning: the hand books draw it under
-       the last entry before the midday break, and nowhere else - Ashford
-       after 08 28, Victoria after 07+14, Slade Green after 06+36 in the
-       12/08 book. Not "the biggest gap": those two readings agreed on every
-       section of 12/08 and came apart the day a late ECS row opened a
-       bigger evening gap, which pulled the line down to it. A section
-       worked steadily through midday (Gillingham, Faversham) draws no line,
-       so the crossing only counts when the gap under it is berthing-length.
-       Grove Park is never ruled - its two-table layout has no divide. */
+    /* The double line rules off the morning: the biggest break in the day's
+       work that STARTS before midday. Not "the biggest gap" - a long evening
+       lull outbids the real one (Ashford's 16 00 to 22+53). Not "the gap
+       containing midday" either - a section that works through the middle of
+       the day puts its break earlier, and Tonbridge's 06 16 to 11+32 is the
+       break even though noon falls in the 11+32 to 14+40 gap after it. Both
+       readings were tried against the 12/08 book's own borders; only this one
+       reproduces all six of them, and it is the one the sheets are read by.
+       The break still has to be berthing-length, so a section worked steadily
+       through the morning draws no line. Grove Park's two-table layout is
+       never ruled. */
     const NOON = 12 * 60;
-    let gapI = null;
+    let gapI = null, gap = 0;
     if (name !== "GROVE PARK") {
       for (let i = 1; i < entries.length; i++) {
-        const a = tkey(entries[i - 1]), b = tkey(entries[i]);
-        if (a < NOON && b >= NOON) {
-          if (b - a >= MIDDAY_GAP) gapI = i;
-          break;
-        }
+        const a = tkey(entries[i - 1]);
+        if (a >= NOON) continue;
+        const g = tkey(entries[i]) - a;
+        if (g > gap) { gap = g; gapI = i; }
       }
+      if (gap < MIDDAY_GAP) gapI = null;
     }
     let divideAt = null;
     const flagSpans = [];
