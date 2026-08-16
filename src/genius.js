@@ -538,8 +538,15 @@ const GENIUS = (() => {
         outer:
         for (const [od, om] of meta) {
           if (inUnits.has(od)) continue;
+          /* Same place and same minute is not enough - two unrelated trains
+             leave a junction station in the same minute all morning. The
+             other unit has to be leaving on THIS working, which is what the
+             outbound headcode says. (Tonbridge 06+07: RM066 runs 5E56 to
+             Tunbridge Wells and attaches there, while RM001 and RM903 leave
+             Tonbridge at 06 07 on 2W08 - a different train entirely.) */
           for (const s of om.stops)
-            if (s.code === ex.code && s.dep === ex.dep) { e.attachment = true; break outer; }
+            if (s.code === ex.code && s.dep === ex.dep &&
+                s.hcOut === ex.hcOut) { e.attachment = true; break outer; }
         }
       }
       for (const x of blocks) x.end = "";
