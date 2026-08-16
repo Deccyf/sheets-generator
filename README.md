@@ -416,9 +416,16 @@ ones, all commented at the point of implementation:
   report carrying the column at all (`anyShunt`), so a PDF or an Integrale
   export that never had it is unaffected; across GEN-MON/WED/FRI × three
   books it removes that one entry and nothing else.
-* **The metro Victoria headcode.** Victoria's note carries the ECS headcode
-  off the sidings while the time stays the platform departure — on the
-  mainline book. On the metro book, timed off the first move, that first
+* **The Victoria headcode.** Victoria's note carries the ECS headcode off
+  the sidings, because that is what the shunter and the platform staff watch
+  for — **unless one empty in forms two services out of the platform**, in
+  which case that headcode names both rows and identifies neither, so each
+  row shows its own departure instead (`05 42` prints `2K06`, not the `5K06`
+  it shares with `06 05`'s feed). 11 of the 13 Victoria notes on 12/08 now
+  match the book; the two that do not (`05+50` wants `3N90` over feed
+  `5N89`, `17+19` wants `5Y97` over `5Y96`) are both empty departures whose
+  feed and working are consecutively numbered, and no rule is claimed for
+  them yet. This is the mainline book. On the metro book, timed off the first move, that first
   headcode *is* the empty feed out of Grosvenor, so the note takes the
   working leg's headcode instead (`hcWork`): the operator crossed out all six
   of the other kind by hand (`5U04`→`2U04`, `5K92`→`3K92`, `5M83`→`3M84`,

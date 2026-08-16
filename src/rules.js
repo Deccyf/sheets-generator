@@ -365,10 +365,12 @@ const SHEETS_RULES = (() => {
         : "No location in this book carries headcodes as standard. Tick " +
           "“Show every headcode” before you build to put one on " +
           "every line." },
-      { p: "Two local habits: at Victoria the note carries the empty-stock " +
+      { p: "Two local habits. At Victoria the note carries the empty-stock " +
            "headcode off the sidings while the time stays the platform " +
-           "departure, and at Grove Park the road is printed after the " +
-           "headcode." },
+           "departure — except where one empty in forms two services out " +
+           "of the platform, when that headcode would name both rows and " +
+           "identify neither, so each row shows its own departure. At " +
+           "Grove Park the road is printed after the headcode." },
     ]);
 
     /* ---- 8. words on the sheet ---- */

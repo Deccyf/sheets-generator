@@ -761,6 +761,20 @@ const GENIUS = (() => {
     const sorted = [...entries.values()].filter(e => !e.suppress)
       .sort((x, y) => x.sec === y.sec ? sortkey(x.tmin) - sortkey(y.tmin)
                                       : (x.sec < y.sec ? -1 : 1));
+    /* Victoria's note is the ECS headcode off the sidings, because that is
+       what the shunter and the platform staff are watching for. But one
+       empty in can form TWO services out of the platform, and then that
+       headcode names both rows and identifies neither - so where a feed is
+       shared, each row shows its own departure instead. */
+    const sharedFeed = new Set();
+    {
+      const seen = new Map();
+      for (const e of sorted) {
+        if (e.sec !== "VICTORIA" || !e.hc0) continue;
+        seen.set(e.hc0, (seen.get(e.hc0) || 0) + 1);
+      }
+      for (const [hc, n] of seen) if (n > 1) sharedFeed.add(hc);
+    }
     for (const e of sorted) {
       const kind = e.hc && /^[12]/.test(e.hc) ? "pax" : "ecs";
       const entry = {
@@ -769,7 +783,8 @@ const GENIUS = (() => {
         // Victoria's notes column shows the ECS headcode off the sidings,
         // while the time stays from the platform
         headcode: (e.sec === "VICTORIA"
-          ? (prof.firstDepAll ? (e.hcWork || e.hc) : (e.hc0 || e.hc))
+          ? (prof.firstDepAll ? (e.hcWork || e.hc)
+             : (e.hc0 && !sharedFeed.has(e.hc0) ? e.hc0 : e.hc))
           : e.hc) || null,
         // first-stint departures are the overnight-berthed block: the
         // writer uses this to give Grove Park its two tables
