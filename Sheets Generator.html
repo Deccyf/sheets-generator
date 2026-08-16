@@ -255,6 +255,56 @@
   .unit svg{height:16px; width:auto; display:block}
 
 
+  /* ---------- paste the reports in instead of dropping files ----------
+     Some machines will not let the reports be saved anywhere the browser can
+     reach. The panel stays shut until it is wanted, so the ordinary route
+     still reads as the ordinary route. */
+  .orpaste{margin:14px 0 0}
+  .linkish{
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    color:var(--rail); background:none; border:0; padding:0; cursor:pointer;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .linkish:hover{color:var(--signal)}
+  .linkish:focus-visible{outline:2px solid var(--signal); outline-offset:3px}
+  .linkish::before{content:"+ "; text-decoration:none}
+  [aria-expanded="true"].linkish::before{content:"\2212 "}
+  .pastebox{
+    margin:12px 0 0; padding:14px; border:1px solid var(--apron-dk);
+    background:var(--paper);
+  }
+  .paste-hint{margin:0 0 12px; font-size:12.5px; line-height:1.45;
+    color:var(--chalk)}
+  .paste-hint em{font-style:normal; color:var(--steel)}
+  .paste-pair{display:flex; gap:14px; flex-wrap:wrap}
+  /* stretch so the two boxes line up at the bottom whatever their labels do */
+  .paste-fld{flex:1 1 260px; display:flex; flex-direction:column; gap:5px}
+  .paste-fld textarea{flex:1 1 auto}
+  .paste-fld > span{
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--steel); font-weight:700;
+  }
+  .paste-fld em{
+    display:block; font-family:var(--sans); font-size:11.5px; font-style:normal;
+    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400;
+    margin-top:2px;
+  }
+  .paste-fld textarea{
+    font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
+    border:1px solid var(--apron-dk); background:#fff; color:var(--steel);
+    resize:vertical; min-height:96px; width:100%;
+  }
+  .paste-fld textarea:focus-visible{outline:2px solid var(--signal);
+    outline-offset:-1px}
+  /* a box with something in it should look answered at a glance */
+  .paste-fld textarea.filled{border-color:var(--signal);
+    box-shadow:inset 3px 0 0 var(--signal)}
+  .paste-acts{margin:12px 0 0; display:flex; gap:10px; flex-wrap:wrap}
+  .paste-say{margin:10px 0 0; font-family:var(--mono); font-size:12px;
+    letter-spacing:.04em; color:var(--chalk); min-height:18px}
+  .paste-say.err{color:#9B2226}
+  .paste-say.go{color:var(--signal)}
+
   /* ---------- per-book options ---------- */
   .opts{
     margin:14px 0 0; padding:9px 14px 11px; border:1px solid var(--apron-dk);
@@ -380,7 +430,13 @@
           </details></li>
         <li><strong>Drop them on the matching panel below</strong> — weekday PDFs on
           the first panel, weekend prints on the second. Or click a panel to
-          browse for the files.</li>
+          browse for the files.
+          <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
+            On a machine that will not let the files be saved anywhere the
+            browser can reach, use <strong>&ldquo;Paste the data instead&rdquo;</strong>
+            under the weekday panel: open each CSV, copy it, and paste the two
+            into their own boxes. Weekday CSVs only &mdash; PDFs and the
+            weekend prints have no text to copy.</span></li>
         <li><strong>Look the sheets over on screen, then save.</strong> Every build
           shows a preview and a review list of anything that needs a human eye
           before the books go out.</li>
@@ -407,6 +463,39 @@
       </span>
     </button>
     <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="pastetoggle"
+              aria-expanded="false" aria-controls="pastebox">Can&rsquo;t get the
+        files onto this machine? Paste the data instead</button>
+    </p>
+
+    <div class="pastebox" id="pastebox" hidden>
+      <p class="paste-hint">Open each CSV, select all and copy &mdash; Notepad
+        or Excel, either reads. Paste each into its own box below: both boxes,
+        both for the same date. Integrale calls the second one
+        <em>Diagrams</em>. Only the CSV exports can be pasted; a PDF has no
+        text to copy, so those still have to be dropped as files.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary
+            <em>one line per diagram</em></span>
+          <textarea id="paste_sum" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Summary here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail
+            <em>every stop of every diagram</em></span>
+          <textarea id="paste_det" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Detail here"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="paste_go">Build from the pasted data</button>
+        <button type="button" class="btn ghost" id="paste_clear">Clear both</button>
+      </div>
+      <p class="paste-say" id="paste_say" role="status" aria-live="polite"></p>
+    </div>
 
     <p class="status" id="status" role="status" aria-live="polite"></p>
 
@@ -4475,6 +4564,42 @@ const GENIUS = (() => {
     if (row.length > 1 || row[0] !== "") rows.push(row);
     return rows;
   }
+  /* Text pasted into the page instead of a file dropped on it. The same
+     report reaches the clipboard two ways and only one of them is a CSV:
+     opened in Notepad it is the file, commas and all, but opened in Excel
+     and copied as cells it arrives TAB separated, which the reader above
+     sees as one enormous field per line and refuses as "not a report this
+     reads". Excel is the likely route, so a tab-separated paste is turned
+     back into CSV rather than rejected.
+
+     The test is the first line only: more tabs on it than commas outside
+     quotes. Not "no commas" - these reports carry a print date reading
+     "August 17, 2026", and Excel does not quote it on the clipboard
+     because a comma is not the tab it is separating on, so one bare comma
+     turns up in a paste that is plainly tab separated. A real CSV of these
+     reports has thirty-odd commas and no tabs; a copy out of Excel has
+     thirty-odd tabs and that one comma. Nothing that already worked
+     changes shape. */
+  function pastedCsv(text) {
+    let t = String(text == null ? "" : text);
+    if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+    t = t.replace(/\r\n?/g, "\n").replace(/^\n+/, "").replace(/\s+$/, "");
+    if (!t) return "";
+    const nl = t.indexOf("\n");
+    const first = t.slice(0, nl < 0 ? t.length : nl);
+    let tabs = 0, bare = 0, q = false;
+    for (const c of first) {
+      if (c === '"') q = !q;
+      else if (c === "\t" && !q) tabs++;
+      else if (c === "," && !q) bare++;
+    }
+    if (!tabs || tabs <= bare) return t;
+    // tab separated: re-emit as CSV, quoting only what has to be quoted
+    return t.split("\n").map(line => line.split("\t").map(f =>
+      /[",\n]/.test(f) ? '"' + f.replace(/"/g, '""') + '"' : f).join(",")
+    ).join("\r\n");
+  }
+
   // Excel-mangled headcodes: "2.00E+05" was 2E05 before the spreadsheet
   // read it as a number. The mapping back is unambiguous.
   const HC_MANGLED = /^(\d)\.00E\+(\d{2})$/;
@@ -4717,7 +4842,8 @@ const GENIUS = (() => {
     return assemble(sumRows, det.byDate, notes, opts);
   }
 
-  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
+  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
+           pdfText,
            parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
@@ -4840,9 +4966,10 @@ function tabbed(panes) {
 /* ---------------- local rule edits ----------------
    The tool ships one order table; a tester can overlay it here to see a
    correction take effect straight away. The overlay lives on this machine
-   only, so the point of it is the export: a correction is not finished
-   until it is baked into the tool for everyone. Everything below is built
-   so that state cannot go quiet - see the banner and the review notes. */
+   only, and a correction is not finished until it is baked into the tool
+   for everyone - so the Unit order tab lists what has been changed, in
+   words, for somebody to read out. Everything below is built so that state
+   cannot go quiet - see the banner and the review notes. */
 const RULES_LS_KEY = "sheetsRules.v1";
 const rulesStore = (() => {
   try { return window.localStorage; } catch (e) { return null; }
@@ -4853,12 +4980,6 @@ let ruleEdits = (() => {
   return parsed ? parsed.orderFix : {};
 })();
 const editCount = () => Object.keys(ruleEdits).length;
-/* when the overlay was last written, so the exported file can say */
-const savedAt = () => {
-  if (!rulesStore) return null;
-  const p = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
-  return p ? p.saved : null;
-};
 function persistEdits() {
   if (!rulesStore) return false;
   try {
@@ -5439,6 +5560,79 @@ function reviewPane(items) {
       } catch (err) { say("Rebuild failed: " + err.message, "err"); }
     });
   });
+  /* ---- the same two reports pasted in as text ----
+     Some machines will not let the reports be saved anywhere the browser can
+     reach, so the CSVs can be pasted instead of dropped. Everything after
+     the sniff is the drop path exactly: the same stash slots, the same
+     drained(), so a pasted pair and a dropped pair cannot build differently.
+     PDFs are not offered - there is no text in one to copy. */
+  const pasteWrap = $("#pastebox"), pasteToggle = $("#pastetoggle"),
+        pasteSum = $("#paste_sum"), pasteDet = $("#paste_det"),
+        pasteSay = $("#paste_say");
+  const pSay = (msg, cls) => {
+    if (!pasteSay) return;
+    pasteSay.textContent = msg || "";
+    pasteSay.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const markFilled = el => {
+    if (el) el.classList.toggle("filled", !!el.value.trim());
+  };
+  if (pasteToggle && pasteWrap) {
+    pasteToggle.addEventListener("click", () => {
+      const open = pasteWrap.hidden;
+      pasteWrap.hidden = !open;
+      pasteToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && pasteSum) pasteSum.focus();
+    });
+  }
+  for (const el of [pasteSum, pasteDet])
+    if (el) el.addEventListener("input", () => { markFilled(el); pSay(""); });
+  if ($("#paste_clear")) $("#paste_clear").addEventListener("click", () => {
+    for (const el of [pasteSum, pasteDet])
+      if (el) { el.value = ""; markFilled(el); }
+    pSay("Both boxes cleared.");
+    if (pasteSum) pasteSum.focus();
+  });
+
+  /* Which report a box holds is read off the text, not off which box it is,
+     so a pair pasted the wrong way round still builds - it says so rather
+     than refusing over something it can see the answer to. */
+  function sniffPaste(el, label) {
+    const text = GENIUS.pastedCsv(el ? el.value : "");
+    if (!text) return { err: "Paste the " + label + " into its box as well — " +
+      "both reports are needed, both for the same date.", el };
+    let kind = null, fmt = "csv";
+    try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
+    if (!kind) { try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {} }
+    if (!kind) return { err: "The " + label + " box does not read as one of " +
+      "the reports. Copy the whole file, first line and all — and paste a " +
+      "CSV export, not a PDF.", el };
+    return { kind, fmt, text };
+  }
+
+  async function buildFromPaste() {
+    const got = [sniffPaste(pasteSum, "Diagram Summary"),
+                 sniffPaste(pasteDet, "Diagram Detail")];
+    for (const g of got)
+      if (g.err) { pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
+    if (got[0].kind === got[1].kind) {
+      pSay("Both boxes hold the " + (got[0].kind === "sum" ? "Summary" : "Detail") +
+           " — put the other report in the other box.", "err");
+      return;
+    }
+    const swapped = got[0].kind !== "sum";
+    dropId++;
+    for (const g of got) have[g.kind] = { fmt: g.fmt, data: [g.text], drop: dropId };
+    pSay(swapped
+      ? "Read the boxes the other way round — the Summary was in the Detail box."
+      : "", swapped ? "go" : "");
+    await drained();
+  }
+  if ($("#paste_go")) $("#paste_go").addEventListener("click", () => {
+    queue = queue.then(buildFromPaste).catch(err =>
+      pSay("Couldn't read that: " + (err && err.message || err), "err"));
+  });
+
   /* One drop is one job: every file in it is read before anything is built.
      Reading them as separate jobs meant a pair dropped together built once
      off the first file and a leftover half from an earlier drop - Friday's

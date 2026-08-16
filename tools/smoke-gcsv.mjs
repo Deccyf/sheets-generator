@@ -23,5 +23,54 @@ await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
 console.log("after the detail :", await page.textContent("#status"));
 console.log("roads:", await page.locator("#roads .road").count());
+
+/* ---- and the same two reports pasted in instead of dropped ---- */
+await page.reload();
+const say = () => page.textContent("#paste_say");
+const put = (sel, text) => page.evaluate(([s, v]) => {
+  // as a paste leaves it: value set, one input event. fill() re-types the
+  // value a character at a time and cannot cope with a real report.
+  const el = document.querySelector(s);
+  el.value = v;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}, [sel, text]);
+
+if (!(await page.locator("#pastebox").isHidden()))
+  throw new Error("the paste panel should start shut");
+await page.locator("#pastetoggle").click();
+if (await page.locator("#pastebox").isHidden())
+  throw new Error("the paste panel should open when the link is used");
+
+// one box filled is not a pair
+await put("#paste_sum", geniusSummaryCsv());
+await page.locator("#paste_go").click();
+console.log("one box  :", (await say()).trim());
+if (!/Diagram Detail/.test(await say())) throw new Error("should ask for the other report");
+
+// pasted the wrong way round: it says so and builds anyway
+await put("#paste_sum", geniusDetailCsv());
+await put("#paste_det", geniusSummaryCsv());
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("swapped  :", (await say()).trim());
+if (!/other way round/.test(await say())) throw new Error("a swapped pair should say so");
+
+// and the right way round
+await put("#paste_sum", geniusSummaryCsv());
+await put("#paste_det", geniusDetailCsv());
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("pasted   :", await page.textContent("#status"));
+const pastedRoads = await page.locator("#roads .road").count();
+console.log("roads    :", pastedRoads);
+if (!pastedRoads) throw new Error("a pasted pair built no roads");
+if ((await say()).trim()) throw new Error("a clean build should leave no note: " + await say());
+
+await page.locator("#paste_clear").click();
+if (await page.$eval("#paste_sum", e => e.value) !== "")
+  throw new Error("Clear both should empty the boxes");
+
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");

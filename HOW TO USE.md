@@ -48,7 +48,8 @@ installed. You can use it on a train with no signal.
 
 1. Double-click **`Sheets Generator.html`**.
 2. Drop the **two weekday reports** on the top panel (or the **weekend prints**
-   on the bottom one).
+   on the bottom one). Can't get the files onto the machine? Paste the two
+   CSVs in instead — see [section 5](#5-building-the-weekday-books-mon--fri).
 3. The books appear straight away. Click **Look at it** on each and read the
    **Review** tab.
 4. Click **Save book** on each, or **Save all books (.zip)** for the lot.
@@ -155,6 +156,35 @@ skipped, with a note telling you to use the weekend panel.
 **A book with nothing in it** says so — *"No Metro diagrams in these reports —
 nothing to berth"* — instead of giving you an empty workbook. For Metro and High
 Speed it reminds you to check the Control Cycle.
+
+### If you can't get the files onto the machine
+
+Some machines won't let you save the reports anywhere the browser can reach.
+Under the drop zone there's a link — **"Can't get the files onto this machine?
+Paste the data instead"** — which opens two boxes:
+
+1. Open the **Diagram Summary** CSV. Notepad or Excel, either reads it.
+2. **Select all** (Ctrl+A), **copy** (Ctrl+C).
+3. Paste it into the **Diagram Summary** box.
+4. Same again with the other report, into the **Diagram Detail** box.
+5. Click **Build from the pasted data**.
+
+From there it is exactly the same as dropping the files — same checks, same
+books.
+
+Worth knowing:
+
+* **CSV exports only.** A PDF has no text to copy, and neither do the weekend
+  prints. Those still have to be dropped as files.
+* **Excel is fine.** Copying cells out of Excel puts them on the clipboard
+  separated by tabs rather than commas. The page spots that and converts it,
+  so you don't have to think about which program you opened the file in.
+* **The boxes aren't fussy about which is which.** It reads each box to see
+  what's in it. Paste them the wrong way round and it builds anyway, and tells
+  you — *"Read the boxes the other way round"*.
+* **Both boxes, both for the same date.** One on its own gets you *"Paste the
+  Diagram Detail into its box as well"*.
+* **Clear both** empties them.
 
 ---
 

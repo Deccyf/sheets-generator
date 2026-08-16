@@ -114,9 +114,10 @@ function tabbed(panes) {
 /* ---------------- local rule edits ----------------
    The tool ships one order table; a tester can overlay it here to see a
    correction take effect straight away. The overlay lives on this machine
-   only, so the point of it is the export: a correction is not finished
-   until it is baked into the tool for everyone. Everything below is built
-   so that state cannot go quiet - see the banner and the review notes. */
+   only, and a correction is not finished until it is baked into the tool
+   for everyone - so the Unit order tab lists what has been changed, in
+   words, for somebody to read out. Everything below is built so that state
+   cannot go quiet - see the banner and the review notes. */
 const RULES_LS_KEY = "sheetsRules.v1";
 const rulesStore = (() => {
   try { return window.localStorage; } catch (e) { return null; }
@@ -127,12 +128,6 @@ let ruleEdits = (() => {
   return parsed ? parsed.orderFix : {};
 })();
 const editCount = () => Object.keys(ruleEdits).length;
-/* when the overlay was last written, so the exported file can say */
-const savedAt = () => {
-  if (!rulesStore) return null;
-  const p = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
-  return p ? p.saved : null;
-};
 function persistEdits() {
   if (!rulesStore) return false;
   try {
@@ -713,6 +708,79 @@ function reviewPane(items) {
       } catch (err) { say("Rebuild failed: " + err.message, "err"); }
     });
   });
+  /* ---- the same two reports pasted in as text ----
+     Some machines will not let the reports be saved anywhere the browser can
+     reach, so the CSVs can be pasted instead of dropped. Everything after
+     the sniff is the drop path exactly: the same stash slots, the same
+     drained(), so a pasted pair and a dropped pair cannot build differently.
+     PDFs are not offered - there is no text in one to copy. */
+  const pasteWrap = $("#pastebox"), pasteToggle = $("#pastetoggle"),
+        pasteSum = $("#paste_sum"), pasteDet = $("#paste_det"),
+        pasteSay = $("#paste_say");
+  const pSay = (msg, cls) => {
+    if (!pasteSay) return;
+    pasteSay.textContent = msg || "";
+    pasteSay.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const markFilled = el => {
+    if (el) el.classList.toggle("filled", !!el.value.trim());
+  };
+  if (pasteToggle && pasteWrap) {
+    pasteToggle.addEventListener("click", () => {
+      const open = pasteWrap.hidden;
+      pasteWrap.hidden = !open;
+      pasteToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && pasteSum) pasteSum.focus();
+    });
+  }
+  for (const el of [pasteSum, pasteDet])
+    if (el) el.addEventListener("input", () => { markFilled(el); pSay(""); });
+  if ($("#paste_clear")) $("#paste_clear").addEventListener("click", () => {
+    for (const el of [pasteSum, pasteDet])
+      if (el) { el.value = ""; markFilled(el); }
+    pSay("Both boxes cleared.");
+    if (pasteSum) pasteSum.focus();
+  });
+
+  /* Which report a box holds is read off the text, not off which box it is,
+     so a pair pasted the wrong way round still builds - it says so rather
+     than refusing over something it can see the answer to. */
+  function sniffPaste(el, label) {
+    const text = GENIUS.pastedCsv(el ? el.value : "");
+    if (!text) return { err: "Paste the " + label + " into its box as well — " +
+      "both reports are needed, both for the same date.", el };
+    let kind = null, fmt = "csv";
+    try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
+    if (!kind) { try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {} }
+    if (!kind) return { err: "The " + label + " box does not read as one of " +
+      "the reports. Copy the whole file, first line and all — and paste a " +
+      "CSV export, not a PDF.", el };
+    return { kind, fmt, text };
+  }
+
+  async function buildFromPaste() {
+    const got = [sniffPaste(pasteSum, "Diagram Summary"),
+                 sniffPaste(pasteDet, "Diagram Detail")];
+    for (const g of got)
+      if (g.err) { pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
+    if (got[0].kind === got[1].kind) {
+      pSay("Both boxes hold the " + (got[0].kind === "sum" ? "Summary" : "Detail") +
+           " — put the other report in the other box.", "err");
+      return;
+    }
+    const swapped = got[0].kind !== "sum";
+    dropId++;
+    for (const g of got) have[g.kind] = { fmt: g.fmt, data: [g.text], drop: dropId };
+    pSay(swapped
+      ? "Read the boxes the other way round — the Summary was in the Detail box."
+      : "", swapped ? "go" : "");
+    await drained();
+  }
+  if ($("#paste_go")) $("#paste_go").addEventListener("click", () => {
+    queue = queue.then(buildFromPaste).catch(err =>
+      pSay("Couldn't read that: " + (err && err.message || err), "err"));
+  });
+
   /* One drop is one job: every file in it is read before anything is built.
      Reading them as separate jobs meant a pair dropped together built once
      off the first file and a leftover half from an earlier drop - Friday's

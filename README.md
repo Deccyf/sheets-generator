@@ -91,10 +91,25 @@ The weekday panel reads either planning system:
 Then: drop **both files** on the first panel (*Weekdays · Mon – Fri*),
 together or one after the other — the tool recognises which report is which
 from its contents and waits until it has a matching pair. You can also click
-the panel to browse for them. The books are built immediately: look them over
-in the on-screen preview (per-day tables for Mainline, Metro and High Speed,
-plus the Review, Unit order and Rules tabs), then save each book, or all of
-them at once as a single zip.
+the panel to browse for them.
+
+**Or paste the data in.** Some machines will not let the reports be saved
+anywhere the browser can reach. *"Can't get the files onto this machine? Paste
+the data instead"*, under the drop zone, opens two boxes — one for the Diagram
+Summary, one for the Diagram Detail — and builds from what is pasted into
+them. CSV exports only: a PDF has no text to copy, and neither do the weekend
+prints. Open each CSV in Notepad or in Excel, select all, copy, paste. Copying
+out of Excel puts it on the clipboard tab-separated rather than
+comma-separated; that is recognised and converted, so either works. Which box
+is which is read off the text, not off the box, so a pair pasted the wrong way
+round still builds and says so. Everything after that is the drop path
+exactly — same pairing checks, same build — so a pasted pair and a dropped
+pair cannot produce different books.
+
+Either way, the books are built immediately: look them over in the on-screen
+preview (per-day tables for Mainline, Metro and High Speed, plus the Review,
+Unit order and Rules tabs), then save each book, or all of them at once as a
+single zip.
 
 Four roads are always shown — **SHEETS**, **RAM SHEETS**, **METRO SHEETS** and
 **HS SHEETS**. A road whose fleet has no diagrams in the reports says so

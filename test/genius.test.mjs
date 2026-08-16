@@ -629,3 +629,62 @@ test("a short stand is a turnround, not a berthing", async () => {
       [], "and not worth a review line either");
   }
 });
+
+test("pasted text reads the same as the file it was copied from", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
+  const P = N.GENIUS.pastedCsv;
+  const sum = geniusSummaryCsv(), det = geniusDetailCsv();
+
+  // a real CSV goes through untouched but for the line endings and the edges
+  assert.equal(P(sum), sum.replace(/\r\n?/g, "\n").replace(/^\n+/, "").replace(/\s+$/, ""),
+    "a pasted CSV is left as it is");
+  assert.equal(N.GENIUS.sniffGeniusCsv(P(sum)), "sum", "and still sniffs");
+  assert.equal(P(""), "", "an empty box is empty");
+  assert.equal(P("   \n\n "), "", "and so is a box of whitespace");
+  assert.equal(P("﻿a,b"), "a,b", "a byte order mark is dropped");
+
+  /* Copied out of Excel rather than Notepad, the same report arrives TAB
+     separated - the reader sees one enormous field per line and refuses it.
+     Excel is the likely route to the clipboard, so that is turned back into
+     CSV. The catch is the report's own print date, "August 17, 2026": Excel
+     does not quote it when the separator is a tab, so a paste that is
+     plainly tab separated still carries a bare comma. The test is which
+     there are more of. */
+  const cells = csv => {
+    const rows = []; let row = [], f = "", q = false;
+    for (let i = 0; i < csv.length; i++) {
+      const c = csv[i];
+      if (q) { if (c === '"') { if (csv[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && csv[i + 1] === "\n") i++;
+        row.push(f); f = ""; rows.push(row); row = [];
+      } else f += c;
+    }
+    row.push(f); if (row.length > 1 || row[0] !== "") rows.push(row);
+    return rows;
+  };
+  const excelClipboard = csv => cells(csv).map(r =>
+    r.map(x => /[\t"\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x).join("\t")
+  ).join("\n");
+
+  const tsvSum = excelClipboard(sum), tsvDet = excelClipboard(det);
+  assert.ok(tsvSum.indexOf("\t") > 0, "the fixture really is tab separated now");
+  assert.equal(N.GENIUS.sniffGeniusCsv(tsvSum), null, "and unreadable as it stands");
+  assert.equal(N.GENIUS.sniffGeniusCsv(P(tsvSum)), "sum", "readable once converted");
+  assert.equal(N.GENIUS.sniffGeniusCsv(P(tsvDet)), "det", "both halves of it");
+
+  // the whole point: the books are the books, whichever way it was copied
+  const fromFiles = await N.GENIUS.build([sum, det]);
+  const fromPaste = await N.GENIUS.build([P(tsvSum), P(tsvDet)]);
+  assert.deepEqual(norm(fromPaste.secsByDay), norm(fromFiles.secsByDay), "mainline");
+  assert.deepEqual(norm(fromPaste.metroSecs), norm(fromFiles.metroSecs), "metro");
+  assert.deepEqual(norm(fromPaste.hsSecs), norm(fromFiles.hsSecs), "high speed");
+  assert.deepEqual(norm(fromPaste.labels), norm(fromFiles.labels), "labels");
+
+  // a line with more commas than tabs is a CSV that happens to hold a tab
+  const csvWithTab = 'a,b,"has\ttab",c\n1,2,3,4';
+  assert.equal(P(csvWithTab), csvWithTab, "left alone");
+});

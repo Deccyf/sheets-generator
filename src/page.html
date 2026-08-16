@@ -81,7 +81,13 @@
           </details></li>
         <li><strong>Drop them on the matching panel below</strong> — weekday PDFs on
           the first panel, weekend prints on the second. Or click a panel to
-          browse for the files.</li>
+          browse for the files.
+          <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
+            On a machine that will not let the files be saved anywhere the
+            browser can reach, use <strong>&ldquo;Paste the data instead&rdquo;</strong>
+            under the weekday panel: open each CSV, copy it, and paste the two
+            into their own boxes. Weekday CSVs only &mdash; PDFs and the
+            weekend prints have no text to copy.</span></li>
         <li><strong>Look the sheets over on screen, then save.</strong> Every build
           shows a preview and a review list of anything that needs a human eye
           before the books go out.</li>
@@ -108,6 +114,39 @@
       </span>
     </button>
     <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="pastetoggle"
+              aria-expanded="false" aria-controls="pastebox">Can&rsquo;t get the
+        files onto this machine? Paste the data instead</button>
+    </p>
+
+    <div class="pastebox" id="pastebox" hidden>
+      <p class="paste-hint">Open each CSV, select all and copy &mdash; Notepad
+        or Excel, either reads. Paste each into its own box below: both boxes,
+        both for the same date. Integrale calls the second one
+        <em>Diagrams</em>. Only the CSV exports can be pasted; a PDF has no
+        text to copy, so those still have to be dropped as files.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary
+            <em>one line per diagram</em></span>
+          <textarea id="paste_sum" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Summary here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail
+            <em>every stop of every diagram</em></span>
+          <textarea id="paste_det" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Detail here"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="paste_go">Build from the pasted data</button>
+        <button type="button" class="btn ghost" id="paste_clear">Clear both</button>
+      </div>
+      <p class="paste-say" id="paste_say" role="status" aria-live="polite"></p>
+    </div>
 
     <p class="status" id="status" role="status" aria-live="polite"></p>
 

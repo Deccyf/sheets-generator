@@ -1025,6 +1025,42 @@ const GENIUS = (() => {
     if (row.length > 1 || row[0] !== "") rows.push(row);
     return rows;
   }
+  /* Text pasted into the page instead of a file dropped on it. The same
+     report reaches the clipboard two ways and only one of them is a CSV:
+     opened in Notepad it is the file, commas and all, but opened in Excel
+     and copied as cells it arrives TAB separated, which the reader above
+     sees as one enormous field per line and refuses as "not a report this
+     reads". Excel is the likely route, so a tab-separated paste is turned
+     back into CSV rather than rejected.
+
+     The test is the first line only: more tabs on it than commas outside
+     quotes. Not "no commas" - these reports carry a print date reading
+     "August 17, 2026", and Excel does not quote it on the clipboard
+     because a comma is not the tab it is separating on, so one bare comma
+     turns up in a paste that is plainly tab separated. A real CSV of these
+     reports has thirty-odd commas and no tabs; a copy out of Excel has
+     thirty-odd tabs and that one comma. Nothing that already worked
+     changes shape. */
+  function pastedCsv(text) {
+    let t = String(text == null ? "" : text);
+    if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);
+    t = t.replace(/\r\n?/g, "\n").replace(/^\n+/, "").replace(/\s+$/, "");
+    if (!t) return "";
+    const nl = t.indexOf("\n");
+    const first = t.slice(0, nl < 0 ? t.length : nl);
+    let tabs = 0, bare = 0, q = false;
+    for (const c of first) {
+      if (c === '"') q = !q;
+      else if (c === "\t" && !q) tabs++;
+      else if (c === "," && !q) bare++;
+    }
+    if (!tabs || tabs <= bare) return t;
+    // tab separated: re-emit as CSV, quoting only what has to be quoted
+    return t.split("\n").map(line => line.split("\t").map(f =>
+      /[",\n]/.test(f) ? '"' + f.replace(/"/g, '""') + '"' : f).join(",")
+    ).join("\r\n");
+  }
+
   // Excel-mangled headcodes: "2.00E+05" was 2E05 before the spreadsheet
   // read it as a number. The mapping back is unambiguous.
   const HC_MANGLED = /^(\d)\.00E\+(\d{2})$/;
@@ -1267,7 +1303,8 @@ const GENIUS = (() => {
     return assemble(sumRows, det.byDate, notes, opts);
   }
 
-  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pdfText,
+  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
+           pdfText,
            parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
