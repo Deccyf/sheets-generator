@@ -203,8 +203,9 @@ const SHEETS_RULES = (() => {
                  "not, the cell is left ruled and empty for the depot to " +
                  "write in — and you can type into it in Excel."],
         ["Flag", "Written once across the whole formation. SPLITS means these " +
-                 "units come apart later in the day; SPLITS PM means that " +
-                 "happens in the evening."],
+                 "units come apart later in the day; SPLITS PM means they are " +
+                 "put away together first and part on the second half of the " +
+                 "diagram."],
         ["Notes", "Anything else about that one unit: the headcode, the " +
                   "siding it came off, ATTACHMENT, and which end of the " +
                   "train it is."],
@@ -458,9 +459,16 @@ const SHEETS_RULES = (() => {
 
   /* The same sections as HTML. Both readers use this, so the tab and the
      handout cannot say different things. */
-  function explainHtml(env) {
+  /* `pick` selects which sections to render: {only:[ids]} or {skip:[ids]}.
+     The tool splits them across two tabs - the order corrections sit with
+     the Reverse buttons that write them, and everything else is reference -
+     while the printed handout takes the lot. Same call either way. */
+  function explainHtml(env, pick) {
+    const only = pick && pick.only, skip = (pick && pick.skip) || [];
     const out = [];
     for (const sec of explain(env)) {
+      if (only && only.indexOf(sec.id) < 0) continue;
+      if (skip.indexOf(sec.id) >= 0) continue;
       out.push('<section class="rule-sec" id="r-' + esc(sec.id) + '">');
       out.push("<h3>" + esc(sec.title) + "</h3>");
       for (const b of sec.blocks) {

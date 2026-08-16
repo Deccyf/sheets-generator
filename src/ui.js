@@ -165,7 +165,27 @@ function rulesEnv(b, res, secNames) {
   };
 }
 
-function rulesPane(b, res, rebuild, secNames) {
+/* The reference half: every rule this build followed, in plain English.
+   Read-only on purpose - it is the thing a new starter opens, and nothing
+   on it can change a book. The order corrections live on the Unit order
+   tab instead, next to the buttons that write them. */
+function rulesPane(b, res, secNames) {
+  const el = document.createElement("div");
+  el.className = "rules";
+  const h = [];
+  h.push('<p class="sa-src">Everything the tool followed to build this very ' +
+    'book, written out in plain English. It is what actually ran, not a ' +
+    'description of it — change a setting and rebuild, and this changes ' +
+    'with it. To put a formation right, use the Unit order tab.</p>');
+  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames),
+                                  { skip: ["corrections"] }));
+  el.innerHTML = h.join("");
+  return el;
+}
+
+/* The working half: what this build printed coupled, and a button to turn
+   any of it round. */
+function orderPane(b, res, rebuild, secNames) {
   const el = document.createElement("div");
   el.className = "rules";
   const R = res.rules;
@@ -185,13 +205,6 @@ function rulesPane(b, res, rebuild, secNames) {
   });
   const h = [];
   const esc = escHtml;
-
-  h.push('<p class="sa-src">Everything the tool followed to build this very ' +
-    'book, written out in plain English. It is what actually ran, not a ' +
-    'description of it — change a setting and rebuild, and this changes ' +
-    'with it.</p>');
-
-  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames)));
 
   /* Every coupled formation this build produced, so an order can be put
      right from what is on the sheet rather than by writing anything. */
@@ -244,6 +257,8 @@ function rulesPane(b, res, rebuild, secNames) {
       "Undo all my changes</button></p>");
     h.push("</section>");
   }
+  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames),
+                                  { only: ["corrections"] }));
   el.innerHTML = h.join("");
 
   el.addEventListener("click", ev => {
@@ -521,8 +536,9 @@ function reviewPane(items) {
       }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
-      panes.push(["Rules" + (editCount() ? " (" + editCount() + " edited)" : ""),
-                  () => rulesPane(b, res, rebuildForRules, secNames)]);
+      panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
+                  () => orderPane(b, res, rebuildForRules, secNames)]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
