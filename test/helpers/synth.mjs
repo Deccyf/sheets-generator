@@ -562,7 +562,7 @@ export const SPLITS_DETAIL = [
     ]),
 ].join("\r\n");
 
-/* A 12-car Networker made up the way the Appendix forbids - 465 + 465 + 466
+/* A 12-car Networker made up as 465 + 465 + 466
    + 466 rather than three 4-car 465s - standing on the Slade Green Up CHS,
    which will not hold twelve either way. */
 export const APPENDIX_BREACH_SUMMARY = [

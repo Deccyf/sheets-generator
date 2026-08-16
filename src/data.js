@@ -374,94 +374,6 @@ const SIDING_CLASS_RE = new RegExp(
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
 
-  /* ==== Sectional Appendix ==========================================
-     Kent / Sussex / Wessex Routes Sectional Appendix, June 2026.
-
-     The SA_ tables below are checks and nothing else: conditions
-     decidable from what the reports actually carry, which is the car
-     count, the class, the section, the berthing road, the destination
-     code and whether the move is passenger or empty. Each fires on one
-     row of one book and names the Appendix as its source.
-
-     There is deliberately no standing-notes briefing here any more. A
-     page of prose restating the Appendix reads as authoritative, gets
-     believed without being checked, and an audit of the 24 notes we did
-     carry found a class invented, three lists short enough to mislead,
-     and two claims a reader had no way to verify. The Appendix itself
-     is the reference; this tool is not a substitute for it.
-
-     Rules that turn on a platform number, a signal or a siding road
-     number are deliberately absent and must not be added - the reports
-     do not carry them, so such a rule would guess, and a review note
-     that cries wolf teaches the reader to skip the whole list. Every
-     check here was counted against the real 12/08 and 10/08 books
-     before it went in; all seven are silent on both.                */
-
-  // "4 375-9" -> "375", "2 466" -> "466", "5 707" -> "707"
-  const SA_CLASS_RE = /^\d+\s+(\d{3})/;
-  // Berths where the Appendix names who may stand there.
-  const SA_BERTH_CLASS = {
-    "FAVERSHAM UP SIDINGS": { line: 16677,
-      allow: ["375", "376", "377", "395", "465", "466"],
-      msg: "only Classes 375, 376, 377, 395, 465 and 466 are authorised to" +
-           " berth in the Faversham Up Sidings" },
-    // Table D2A, Lee Spur Jn - Chislehurst Jn, note R7. The 375 and 376 are
-    // unrestricted on that same row, so this is a 377-only bar.
-    "GROVE PARK UP C.H.S": { line: 24809, deny: ["377"],
-      msg: "a Class 377 is not cleared for the Grove Park Up Sidings or the" +
-           " washer roads" },
-  };
-  /* Sidings that will not hold a 12-car Networker. Only the two whose bar
-     carries no road-number exception: the Appendix lets Dartford Up No. 1
-     and Plumstead No. 1 take twelve, and the reports never give a road
-     number, so listing those would flag lawful use. */
-  const SA_NO_12CAR = {
-    "SLADE GREEN UP C.H.S": { line: 9730,
-      msg: "the Slade Green Up Sidings will not hold 12 cars" },
-    "DARTFORD DOWN SIDINGS": { line: 9728,
-      msg: "the Dartford Down Sidings will not hold 12 cars" },
-  };
-  // 12-car Class 465, routes not permitted (SA 9718-9722). Only the limbs a
-  // destination code can settle; "via Herne Hill or Catford" and the New
-  // Beckenham spur need a route the reports do not carry.
-  const SA_NO_12CAR_DEST = {
-    VIC: { line: 9719, msg: "out of Victoria" },
-    BFR: { line: 9719, msg: "to Blackfriars" },
-    BMN: { line: 9721, msg: "on the Bromley North branch" },
-  };
-  /* Route clearance, modules KSWRC D2A (06/12/2025) and D2C (13/09/2025).
-     "N" in a class column means NO PUBLISHED CLEARANCE - the General Notes
-     allow separate authorisation - so for those the wording says "no
-     clearance", never "prohibited". The 377 at Dover is the exception: its
-     cells are not N but a clearance hedged with explicit "Prohibited" notes,
-     which is a stronger statement, so that message says what the table says
-     rather than borrowing the N wording.
-     Key: "<class>|<destination or section>". */
-  const SA_NO_CLEARANCE = {
-    "377|DVP": { line: 24894, msg: "a Class 377 has no clean way in and out of" +
-      " Dover Priory - off the Chatham only the 377/1 and 377/5 are cleared at" +
-      " all, and both are barred through Priory Tunnel on the Up and south of" +
-      " the station; the Folkestone approach is prohibited at Martello and" +
-      " Abbotscliffe tunnels and Archcliffe Jn. The reports do not carry the" +
-      " subclass, so check which 377 this is" },
-    "707|DVP": { line: 26094, msg: "no route clearance for a Class 707 on" +
-      " either approach to Dover Priory" },
-    "707|SSS": { line: 26091, msg: "no route clearance for a Class 707 to" +
-      " Sheerness-on-Sea" },
-    "707|MDW": { line: 26101, msg: "no route clearance for a Class 707 to" +
-      " Maidstone West" },
-    "707|TBW": { line: 26097, msg: "no route clearance for a Class 707 to" +
-      " Tunbridge Wells" },
-    "707|HGS": { line: 26100, msg: "no route clearance for a Class 707 to" +
-      " Hastings" },
-    "707|RAM": { line: 26014, msg: "no route clearance for a Class 707 beyond" +
-      " Ramsgate station" },
-  };
-  // A lone 2-car unit in passenger service may not work into Cannon Street
-  // (SO130 Cannon Street, line 16684). ECS is not caught.
-  const SA_LONE_2CAR_DEST = { CST: { line: 16684,
-    msg: "Cannon Street will not take a lone 2-car unit in passenger service" } };
-
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
@@ -682,8 +594,6 @@ return {
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   ROUTE_BY_HC, routeRule,
-  SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-  SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   PROFILES,

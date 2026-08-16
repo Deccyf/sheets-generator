@@ -6,8 +6,7 @@
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
           MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
-          SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST, routeRule } = SHEETS_DATA;
+          routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
@@ -694,59 +693,6 @@ const GENIUS = (() => {
     const fixTable = hasEdits
       ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
     const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
-    /* Sectional Appendix checks. Each one is decidable from what the reports
-       carry - car count, class, berthing road, destination, and whether the
-       move is passenger or empty - and each was counted against the real
-       12/08 and 10/08 books before it went in: all seven are silent on both,
-       which is what a guard should look like. See the SA_ tables in data.js
-       for the source line behind every message. */
-    function appendixChecks(secs, warn) {
-      if (!secs) return;
-      const classOf = u => (SA_CLASS_RE.exec(u.cls || "") || [])[1] || "";
-      const carsOf = u => parseInt(u.cls, 10) || 0;
-      for (const [sec, list] of secs) {
-        for (const e of list) {
-          const at = sec + " " + fmtT(e.time, e.headcode) + ": ";
-          const road = (e.pub && e.pub.sheet) || sec;
-          const cars = e.units.reduce((n, u) => n + carsOf(u), 0);
-          const all465 = e.units.length > 0 &&
-            e.units.every(u => classOf(u) === "465");
-          /* Name the source. Everything else in the Review tab is the tool
-             saying it cannot tell from the reports; these say a published
-             document forbids it. The reader should be able to tell those
-             apart at a glance and go and look this one up. */
-          const say = m => warn.push({ sec, msg: at + "Sectional Appendix - " + m });
-
-          const bc = SA_BERTH_CLASS[road];
-          if (bc) for (const u of e.units) {
-            const c = classOf(u);
-            if ((bc.allow && c && !bc.allow.includes(c)) ||
-                (bc.deny && bc.deny.includes(c))) { say(bc.msg); break; }
-          }
-          if (cars === 12 && e.units.some(u => classOf(u) === "465") &&
-              !(e.units.length === 3 && all465 && e.units.every(u => carsOf(u) === 4)))
-            say("a 12-car Networker must be three 4-car 465s with no 466 in" +
-                " the formation - this one is " +
-                e.units.map(u => u.cls).join(" + "));
-          if (cars === 12 && all465) {
-            const sd = SA_NO_12CAR[road];
-            if (sd) say(sd.msg);
-            const dd = SA_NO_12CAR_DEST[e.dest] ||
-                       (sec === "VICTORIA" ? SA_NO_12CAR_DEST.VIC : null);
-            if (dd) say("12-car Networker operation is not permitted " + dd.msg);
-          }
-          if (e.time_kind === "pax" && e.units.length === 1 &&
-              carsOf(e.units[0]) === 2 && SA_LONE_2CAR_DEST[e.dest])
-            say(SA_LONE_2CAR_DEST[e.dest].msg);
-          for (const u of e.units) {
-            const c = classOf(u);
-            const nc = SA_NO_CLEARANCE[c + "|" + e.dest] ||
-                       SA_NO_CLEARANCE[c + "|" + sec];
-            if (nc) { say(nc.msg); break; }
-          }
-        }
-      }
-    }
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)
@@ -781,10 +727,6 @@ const GENIUS = (() => {
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
       hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
-      for (const [secs, warn] of [[secsByDay[dk], warnMain],
-                                  [metroSecs[dk], warnMetro],
-                                  [hsSecs[dk], warnHs]])
-        appendixChecks(secs, warn);
       for (const [warn, bag] of [[warnMain, reviews.main],
                                  [warnMetro, reviews.metro],
                                  [warnHs, reviews.hs]]) {

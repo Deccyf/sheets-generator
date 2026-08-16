@@ -78,7 +78,7 @@ test("GENIUS.build output is identical to the legacy build", async () => {
   /* The legacy build is frozen, so it cannot grow review items the new one
      learned to raise. Compare only the kinds both builds know about; the
      added kind has its own test below. */
-  const SINCE_LEGACY = /a unit order is recorded for this formation|Sectional Appendix - /;
+  const SINCE_LEGACY = /a unit order is recorded for this formation/;
   assert.deepEqual(norm(resN.review.filter(m => !SINCE_LEGACY.test(m))),
                    norm(resL.review), "review list");
   assert.equal(resN.tag, resL.tag, "tag");
@@ -335,28 +335,6 @@ test("SPLITS follows where the units part, over the whole day", async () => {
   assert.equal(norm(flagOf("971")), "SPLITS", "parting at 18 12");
   assert.equal(norm(flagOf("973")), "SPLITS PM", "parting at 20 55");
   assert.equal(norm(flagOf("975")), "", "never parting");
-});
-
-test("the Sectional Appendix checks flag a breach and stay quiet otherwise", async () => {
-  const N = built();
-  const S = await import("./helpers/synth.mjs");
-  const bad = N.GENIUS.buildIntegrale(
-    [S.APPENDIX_BREACH_SUMMARY, S.APPENDIX_BREACH_DETAIL]);
-  const msgs = norm(bad.reviews.metro.map(x => x.msg));
-  assert.ok(msgs.some(m => /12-car Networker must be three 4-car 465s/.test(m)),
-    "the make-up is flagged: " + msgs.join(" | "));
-  /* A review line that asserts a rule has to say whose rule it is - the rest
-     of the tab is the tool doubting the reports, which is a different claim. */
-  for (const m of msgs.filter(m => /Networker|route clearance|will not hold|authorised to berth|lone 2-car/.test(m)))
-    assert.match(m, /Sectional Appendix - /,
-      "an Appendix finding names its source: " + m);
-  // …and an ordinary day trips none of them
-  const ok = N.GENIUS.buildIntegrale(
-    [S.REVERSED_ORDER_SUMMARY, S.REVERSED_ORDER_DETAIL]);
-  const all = [].concat(ok.reviews.main, ok.reviews.metro, ok.reviews.hs)
-    .map(x => x.msg);
-  assert.ok(!all.some(m => /Networker|no route clearance|will not hold|lone 2-car/.test(m)),
-    "nothing flagged on ordinary work: " + all.join(" | "));
 });
 
 test("an order fix with no section holds the formation everywhere", async () => {

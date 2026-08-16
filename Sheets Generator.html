@@ -433,12 +433,6 @@
           review list so nothing disappears silently. A move that takes a unit
           out of its section, though, is the unit going away for the night and
           is printed: the section it leaves has to show it going.</p>
-        <p>It also tests each working against the few Sectional Appendix rules
-          the reports can actually settle — formation make-up, who may berth on
-          a road, route clearance and the 12-car limits — and anything that
-          breaks one goes on the review list marked as the Appendix's rule
-          rather than the tool's. That is a prompt to go and look the rule up,
-          not a substitute for the Appendix.</p>
       </div>
     </details>
 
@@ -514,10 +508,6 @@
           format — Mainline, Metro and High Speed. Use <em>Look at it</em> on each book
           to see the finished sheet on screen before saving. When a reissue has
           been merged, an updated prints document is offered as well.</p>
-        <p>The Sectional Appendix checks run on the weekday panel only — the
-          prints do not carry the class and formation detail those rules are
-          tested against. The Appendix applies just the same on a Saturday, so
-          check a weekend book against it yourself.</p>
       </div>
     </details>
 
@@ -554,13 +544,10 @@
 
   <footer>
     <h2>Before anything goes out</h2>
-    <p>Read the review list on every build. It carries two kinds of item and
-      they are not the same claim. Most are the tool showing its working —
-      locations that needed looking up, empty moves left off, diagrams whose
-      pages didn't read cleanly; nothing is quietly guessed at. The ones marked
-      <em>Sectional Appendix</em> are the other kind: a published document says
-      the working is not permitted, and those are worth taking back to the
-      Appendix itself before the book goes out.</p>
+    <p>Read the review list on every build. Anything the rules had to decide
+      for themselves is named there — locations that needed looking up, empty
+      moves left off, diagrams whose pages didn't read cleanly, a unit order
+      pinned somewhere but not here. Nothing is quietly guessed at.</p>
     <p class="checknote"><b>Always double-check</b>These are drafting tools,
       and mistakes and bad uploads happen — check every book against the
       reports, the prints and the ACWNs before it goes out.</p>
@@ -970,94 +957,6 @@ const SIDING_CLASS_RE = new RegExp(
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
 
-  /* ==== Sectional Appendix ==========================================
-     Kent / Sussex / Wessex Routes Sectional Appendix, June 2026.
-
-     The SA_ tables below are checks and nothing else: conditions
-     decidable from what the reports actually carry, which is the car
-     count, the class, the section, the berthing road, the destination
-     code and whether the move is passenger or empty. Each fires on one
-     row of one book and names the Appendix as its source.
-
-     There is deliberately no standing-notes briefing here any more. A
-     page of prose restating the Appendix reads as authoritative, gets
-     believed without being checked, and an audit of the 24 notes we did
-     carry found a class invented, three lists short enough to mislead,
-     and two claims a reader had no way to verify. The Appendix itself
-     is the reference; this tool is not a substitute for it.
-
-     Rules that turn on a platform number, a signal or a siding road
-     number are deliberately absent and must not be added - the reports
-     do not carry them, so such a rule would guess, and a review note
-     that cries wolf teaches the reader to skip the whole list. Every
-     check here was counted against the real 12/08 and 10/08 books
-     before it went in; all seven are silent on both.                */
-
-  // "4 375-9" -> "375", "2 466" -> "466", "5 707" -> "707"
-  const SA_CLASS_RE = /^\d+\s+(\d{3})/;
-  // Berths where the Appendix names who may stand there.
-  const SA_BERTH_CLASS = {
-    "FAVERSHAM UP SIDINGS": { line: 16677,
-      allow: ["375", "376", "377", "395", "465", "466"],
-      msg: "only Classes 375, 376, 377, 395, 465 and 466 are authorised to" +
-           " berth in the Faversham Up Sidings" },
-    // Table D2A, Lee Spur Jn - Chislehurst Jn, note R7. The 375 and 376 are
-    // unrestricted on that same row, so this is a 377-only bar.
-    "GROVE PARK UP C.H.S": { line: 24809, deny: ["377"],
-      msg: "a Class 377 is not cleared for the Grove Park Up Sidings or the" +
-           " washer roads" },
-  };
-  /* Sidings that will not hold a 12-car Networker. Only the two whose bar
-     carries no road-number exception: the Appendix lets Dartford Up No. 1
-     and Plumstead No. 1 take twelve, and the reports never give a road
-     number, so listing those would flag lawful use. */
-  const SA_NO_12CAR = {
-    "SLADE GREEN UP C.H.S": { line: 9730,
-      msg: "the Slade Green Up Sidings will not hold 12 cars" },
-    "DARTFORD DOWN SIDINGS": { line: 9728,
-      msg: "the Dartford Down Sidings will not hold 12 cars" },
-  };
-  // 12-car Class 465, routes not permitted (SA 9718-9722). Only the limbs a
-  // destination code can settle; "via Herne Hill or Catford" and the New
-  // Beckenham spur need a route the reports do not carry.
-  const SA_NO_12CAR_DEST = {
-    VIC: { line: 9719, msg: "out of Victoria" },
-    BFR: { line: 9719, msg: "to Blackfriars" },
-    BMN: { line: 9721, msg: "on the Bromley North branch" },
-  };
-  /* Route clearance, modules KSWRC D2A (06/12/2025) and D2C (13/09/2025).
-     "N" in a class column means NO PUBLISHED CLEARANCE - the General Notes
-     allow separate authorisation - so for those the wording says "no
-     clearance", never "prohibited". The 377 at Dover is the exception: its
-     cells are not N but a clearance hedged with explicit "Prohibited" notes,
-     which is a stronger statement, so that message says what the table says
-     rather than borrowing the N wording.
-     Key: "<class>|<destination or section>". */
-  const SA_NO_CLEARANCE = {
-    "377|DVP": { line: 24894, msg: "a Class 377 has no clean way in and out of" +
-      " Dover Priory - off the Chatham only the 377/1 and 377/5 are cleared at" +
-      " all, and both are barred through Priory Tunnel on the Up and south of" +
-      " the station; the Folkestone approach is prohibited at Martello and" +
-      " Abbotscliffe tunnels and Archcliffe Jn. The reports do not carry the" +
-      " subclass, so check which 377 this is" },
-    "707|DVP": { line: 26094, msg: "no route clearance for a Class 707 on" +
-      " either approach to Dover Priory" },
-    "707|SSS": { line: 26091, msg: "no route clearance for a Class 707 to" +
-      " Sheerness-on-Sea" },
-    "707|MDW": { line: 26101, msg: "no route clearance for a Class 707 to" +
-      " Maidstone West" },
-    "707|TBW": { line: 26097, msg: "no route clearance for a Class 707 to" +
-      " Tunbridge Wells" },
-    "707|HGS": { line: 26100, msg: "no route clearance for a Class 707 to" +
-      " Hastings" },
-    "707|RAM": { line: 26014, msg: "no route clearance for a Class 707 beyond" +
-      " Ramsgate station" },
-  };
-  // A lone 2-car unit in passenger service may not work into Cannon Street
-  // (SO130 Cannon Street, line 16684). ECS is not caught.
-  const SA_LONE_2CAR_DEST = { CST: { line: 16684,
-    msg: "Cannon Street will not take a lone 2-car unit in passenger service" } };
-
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
@@ -1278,8 +1177,6 @@ return {
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   ROUTE_BY_HC, routeRule,
-  SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-  SA_NO_CLEARANCE, SA_LONE_2CAR_DEST,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   PROFILES,
@@ -3080,8 +2977,7 @@ root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
           MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
-          SA_CLASS_RE, SA_BERTH_CLASS, SA_NO_12CAR, SA_NO_12CAR_DEST,
-          SA_NO_CLEARANCE, SA_LONE_2CAR_DEST, routeRule } = SHEETS_DATA;
+          routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
      Bare keys are left out on purpose: they fire everywhere, so they can
@@ -3768,59 +3664,6 @@ const GENIUS = (() => {
     const fixTable = hasEdits
       ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
     const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [] };
-    /* Sectional Appendix checks. Each one is decidable from what the reports
-       carry - car count, class, berthing road, destination, and whether the
-       move is passenger or empty - and each was counted against the real
-       12/08 and 10/08 books before it went in: all seven are silent on both,
-       which is what a guard should look like. See the SA_ tables in data.js
-       for the source line behind every message. */
-    function appendixChecks(secs, warn) {
-      if (!secs) return;
-      const classOf = u => (SA_CLASS_RE.exec(u.cls || "") || [])[1] || "";
-      const carsOf = u => parseInt(u.cls, 10) || 0;
-      for (const [sec, list] of secs) {
-        for (const e of list) {
-          const at = sec + " " + fmtT(e.time, e.headcode) + ": ";
-          const road = (e.pub && e.pub.sheet) || sec;
-          const cars = e.units.reduce((n, u) => n + carsOf(u), 0);
-          const all465 = e.units.length > 0 &&
-            e.units.every(u => classOf(u) === "465");
-          /* Name the source. Everything else in the Review tab is the tool
-             saying it cannot tell from the reports; these say a published
-             document forbids it. The reader should be able to tell those
-             apart at a glance and go and look this one up. */
-          const say = m => warn.push({ sec, msg: at + "Sectional Appendix - " + m });
-
-          const bc = SA_BERTH_CLASS[road];
-          if (bc) for (const u of e.units) {
-            const c = classOf(u);
-            if ((bc.allow && c && !bc.allow.includes(c)) ||
-                (bc.deny && bc.deny.includes(c))) { say(bc.msg); break; }
-          }
-          if (cars === 12 && e.units.some(u => classOf(u) === "465") &&
-              !(e.units.length === 3 && all465 && e.units.every(u => carsOf(u) === 4)))
-            say("a 12-car Networker must be three 4-car 465s with no 466 in" +
-                " the formation - this one is " +
-                e.units.map(u => u.cls).join(" + "));
-          if (cars === 12 && all465) {
-            const sd = SA_NO_12CAR[road];
-            if (sd) say(sd.msg);
-            const dd = SA_NO_12CAR_DEST[e.dest] ||
-                       (sec === "VICTORIA" ? SA_NO_12CAR_DEST.VIC : null);
-            if (dd) say("12-car Networker operation is not permitted " + dd.msg);
-          }
-          if (e.time_kind === "pax" && e.units.length === 1 &&
-              carsOf(e.units[0]) === 2 && SA_LONE_2CAR_DEST[e.dest])
-            say(SA_LONE_2CAR_DEST[e.dest].msg);
-          for (const u of e.units) {
-            const c = classOf(u);
-            const nc = SA_NO_CLEARANCE[c + "|" + e.dest] ||
-                       SA_NO_CLEARANCE[c + "|" + sec];
-            if (nc) { say(nc.msg); break; }
-          }
-        }
-      }
-    }
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these
     // carry each fleet's own items (date-level notices go to every book)
@@ -3855,10 +3698,6 @@ const GENIUS = (() => {
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
       hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
-      for (const [secs, warn] of [[secsByDay[dk], warnMain],
-                                  [metroSecs[dk], warnMetro],
-                                  [hsSecs[dk], warnHs]])
-        appendixChecks(secs, warn);
       for (const [warn, bag] of [[warnMain, reviews.main],
                                  [warnMetro, reviews.metro],
                                  [warnHs, reviews.hs]]) {

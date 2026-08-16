@@ -495,29 +495,10 @@ const children = [
     "**The Folkestone East Train Roads arrivals**, worked out " +
       "last-in-first-out from tonight's arrivals — always worth checking " +
       "against the ACWN.",
-    "**A Sectional Appendix breach**, marked *Sectional Appendix* at the front " +
-      "of the line — *“a 12-car Networker must be three 4-car 465s with no 466 " +
-      "in the formation”*. This one is the odd one out, and the marking is " +
-      "there so you can spot it: everything else on the list is the tool " +
-      "telling you what it could not settle, but this says a published " +
-      "document forbids the working. Take it back to the Appendix before " +
-      "acting on it. Weekday builds only.",
   ]),
   p("A clean list is normal on a straightforward day. A long one isn't a fault " +
-    "— mostly it is the tool showing its working. The *Sectional Appendix* " +
-    "lines are the exception: those are a rule being broken, not a decision " +
-    "being explained."),
+    "— it is the tool showing its working."),
   gap(60),
-  h3("About the Sectional Appendix lines"),
-  p("These are the only place the tool quotes the Appendix, and they are a " +
-    "**prompt to go and look the rule up** — not a copy of it. The tool holds " +
-    "no summary of the Appendix and is not a substitute for reading it."),
-  callout("Weekday builds only",
-    "The Appendix checks do not run on the weekend books: the prints do not " +
-    "carry the class and formation detail those rules are tested against. The " +
-    "Appendix applies just the same on a Saturday, so check a weekend book " +
-    "against it yourself."),
-
   h2("10. The headcode switches"),
   p("Above each drop zone there is a box marked **HEADCODES** with three " +
     "tick-boxes: **Mainline**, **Metro**, **High Speed**."),
@@ -578,9 +559,7 @@ const children = [
 
   h2("12. Before the books go out"),
   ...bullets([
-    "**Read the review list.** Every time. It exists to be read — and treat the " +
-      "*Sectional Appendix* lines as a rule broken rather than a decision " +
-      "explained.",
+    "**Read the review list.** Every time. It exists to be read.",
     "**Check the sheets against the ACWNs** — especially the Folkestone East " +
       "Train Roads notes, which are worked out from last night's arrivals and " +
       "flagged for exactly that reason.",

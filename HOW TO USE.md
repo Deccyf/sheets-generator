@@ -294,27 +294,8 @@ Typical items:
   tool says so and leaves it for you.
 * **The Folkestone East Train Roads arrivals**, worked out last-in-first-out
   from tonight's arrivals. Always double-check these against the ACWN.
-* **A Sectional Appendix breach**, marked *Sectional Appendix* at the front of
-  the line — *"a 12-car Networker must be three 4-car 465s with no 466 in the
-  formation"*. This one is the odd one out, and the marking is there so you can
-  spot it: everything else on the list is the tool telling you what it couldn't
-  settle, but this says a published document forbids the working. Take it back
-  to the Appendix before acting on it. Weekday builds only.
-
 A clean review list is normal on a straightforward day. A long one isn't a
-fault — mostly it's the tool showing its working. The *Sectional Appendix*
-lines are the exception: those are a rule being broken, not a decision being
-explained.
-
-### About the Sectional Appendix lines
-
-These are the only place the tool quotes the Appendix, and they are a **prompt
-to go and look the rule up** — not a copy of it. The tool holds no summary of
-the Appendix and is not a substitute for reading it.
-
-The checks run on weekday builds only: the weekend prints don't carry the class
-and formation detail the rules are tested against. The Appendix applies just the
-same on a Saturday, so check a weekend book against it yourself.
+fault — it's the tool showing its working.
 
 ---
 
@@ -360,8 +341,7 @@ save them again afterwards; it'll remind you.
 
 ## 12. Before the books go out
 
-* **Read the review list.** Every time. It exists to be read — and treat the
-  *Sectional Appendix* lines as a rule broken rather than a decision explained.
+* **Read the review list.** Every time. It exists to be read.
 * **Check the sheets against the ACWNs** — especially the Folkestone East Train
   Roads notes, which are worked out from last night's arrivals and flagged for
   exactly this reason.
