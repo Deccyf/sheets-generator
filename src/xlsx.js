@@ -13,7 +13,7 @@ const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
 /* How long a break in a location's work has to be before a double line is
    ruled in it. Every break this long gets one, so a page can carry several -
    see sectionRows. */
-const BREAK_GAP = 120;
+const BREAK_GAP = 180;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
