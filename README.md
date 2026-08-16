@@ -456,7 +456,7 @@ ones, all commented at the point of implementation:
   formation — not from the pre-filter list. Before this, the Rules tab
   offered a Reverse button for `ASHFORD 07 55 — 116, 117` on a row that
   prints one unit, and a correction written there could never show up.
-* **The double lines.** A break of at least `BREAK_GAP` (90 min) with work
+* **The double lines.** A break of at least `BREAK_GAP` (two hours) with work
   still to come after it is ruled off, so a page carries as many lines as it
   has breaks — the 12/08 book rules Slade Green under 06+36 *and* under
   18+04, which no single-line rule can draw. Three earlier readings were each
@@ -464,11 +464,12 @@ ones, all commented at the point of implementation:
   gap (a long evening lull outbids the real break — Ashford 16 00 → 22+53),
   the gap containing midday (a section working through the middle of the day
   breaks earlier), and the biggest gap starting before midday (6 of 7, and
-  structurally unable to draw Slade Green's second). At 90 minutes every rule
-  all three real books draw is drawn — mainline 6/6, Ramsgate 1/1, metro 5/5
-  once its two are matched through the first-move timing (the tool's `07+24`
-  is the book's `07 33`) — with 13 extra lines across the three books. Grove
-  Park is never ruled: neither real book rules it.
+  structurally unable to draw Slade Green's second). At two hours every rule
+  all three real books draw is still drawn — mainline 6/6, Ramsgate 1/1,
+  metro 5/5 once its two are matched through the first-move timing (the
+  tool's `07+24` is the book's `07 33`) — with 9 extra lines across the three
+  books, against 13 at 90 minutes. Grove Park is never ruled: neither real
+  book rules it.
 * **End markers and attachments** — as described in
   [How to read a sheet](#how-to-read-a-sheet).
 * **Position changes during the day.** The Genius Summary carries one row per
@@ -596,7 +597,7 @@ built by the weekend engine, but to the weekday rules.
 |---|---|---|
 | **Fleet profiles** | A second hand-written `PROFILES` table. It had lost `465/0` from the metro fleet list, gained `SLADE GREEN` in the metro headcode sections, and left the High Speed book with none at all. | `PROFILES` is *derived from* `PROFILES_G`. There is one table, so it cannot drift again. |
 | **Unit order** | Always lowest Position first, everywhere. | The weekday rule: per section from `pos_asc`, with `road_pos_asc` overriding for a road that faces the other way. The prints abbreviate road names, so `ROAD_ALIAS` bridges the two via the siding-note tables rather than adding a third list. |
-| **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: every break of `BREAK_GAP` or more with work still after it. Grove Park is never ruled. |
+| **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: every break of `BREAK_GAP` (two hours) or more with work still after it. Grove Park is never ruled. |
 | **Headcodes** | Per-profile lists that had drifted. | `HEADCODE_SECTIONS`, the same set the weekday books use. |
 
 **The one weekday rule deliberately not carried over is the pinned unit

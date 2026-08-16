@@ -1496,7 +1496,7 @@ const SHEETS_RULES = (() => {
         "the sheet calls PM.",
       ] },
       { p: "Heavy double lines rule off the breaks in the day's work. Any " +
-        "break of " + hours(env.breakGap || 90) + " or more with work still " +
+        "break of " + hours(env.breakGap || 120) + " or more with work still " +
         "to come after it gets one, so a page can carry two or three — Slade " +
         "Green is ruled under its 06+36 and again under its 18+04. A page " +
         "that is busy right through gets none, and Grove Park is never " +
@@ -1865,7 +1865,7 @@ const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
 /* How long a break in a location's work has to be before a double line is
    ruled in it. Every break this long gets one, so a page can carry several -
    see sectionRows. */
-const BREAK_GAP = 90;
+const BREAK_GAP = 120;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){

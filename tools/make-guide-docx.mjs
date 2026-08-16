@@ -463,7 +463,7 @@ const children = [
     "platform keeps its platform time. Mainline and High Speed are timed off " +
     "the platform call, as always."),
   h3("The double lines"),
-  p("Double lines rule off the breaks in the day's work. Any break of **1½ " +
+  p("Double lines rule off the breaks in the day's work. Any break of **two " +
     "hours or more** with work still to come after it gets one, so a page can " +
     "carry two or three — Slade Green is ruled under its 06+36 and again " +
     "under its 18+04. A page that is busy right through gets none, and Grove " +

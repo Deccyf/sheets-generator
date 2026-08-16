@@ -258,7 +258,7 @@ where the service it forms is going. A train that starts in the platform keeps
 its platform time. The Mainline and High Speed books are timed off the platform
 call as always.
 
-**Double lines** rule off the breaks in the day's work. Any break of **1½ hours
+**Double lines** rule off the breaks in the day's work. Any break of **two hours
 or more** with work still to come after it gets one, so a page can carry two or
 three — Slade Green is ruled under its 06+36 and again under its 18+04. A page
 that is busy right through gets none, and Grove Park is never ruled. The

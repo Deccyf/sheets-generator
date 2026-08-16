@@ -152,10 +152,11 @@ test("a double line rules off every break in the day's work", () => {
   assert.deepEqual(doubles(lay(dense)), [], "50-minute gaps are not breaks");
 
   // exactly on the threshold counts; one minute under does not
-  const edge = [mk(6 * 60, "pax", "001"), mk(7 * 60 + 30, "pax", "002")];
-  assert.deepEqual(doubles(lay(edge)), [0], "90 minutes is a break");
-  const under = [mk(6 * 60, "pax", "001"), mk(7 * 60 + 29, "pax", "002")];
-  assert.deepEqual(doubles(lay(under)), [], "89 minutes is not");
+  const G = X.BREAK_GAP;
+  const edge = [mk(6 * 60, "pax", "001"), mk(6 * 60 + G, "pax", "002")];
+  assert.deepEqual(doubles(lay(edge)), [0], G + " minutes is a break");
+  const under = [mk(6 * 60, "pax", "001"), mk(6 * 60 + G - 1, "pax", "002")];
+  assert.deepEqual(doubles(lay(under)), [], (G - 1) + " minutes is not");
 
   // nothing is ruled after the last entry, however long the day's tail
   const two = [mk(6 * 60, "pax", "001"), mk(20 * 60, "pax", "002")];
