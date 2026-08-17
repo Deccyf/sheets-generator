@@ -323,6 +323,11 @@ builds them that way:
 * Each sheet ends with **DATED**, **NAME** and **SIGNATURE**, and the
   *"please e-mail sheets to…"* line, the same as your own.
 * Columns widen to fit what's in them, so nothing clips.
+* On screen it has **a tab per location** rather than per day, and its
+  **Rules** tab describes this sheet rather than a berthing one. There is no
+  **Unit order** tab on it — that turns a formation round, and this sheet
+  reads by Position — and the **Metro** headcode tick box has gone, because
+  every line of it carries its headcode already.
 
 One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
 plus the updated prints document when a reissue has been merged.

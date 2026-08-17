@@ -141,7 +141,49 @@ const SHEETS_RULES = (() => {
     const inBook = n => !secs.length || secs.indexOf(n) >= 0;
     const push = (id, title, blocks) => S.push({ id, title, blocks });
 
-    /* ---- 1. the page itself ---- */
+    /* ---- 1. the page itself ----
+       The Metro book is a different document, so it gets a different
+       description rather than the berthing sheet's with caveats bolted on. */
+    if (env.metro) {
+      push("sheet", "What you are looking at", [
+        { p: "This is the Metro sheet, not a berthing sheet. One worksheet " +
+             "per location, landscape, listing every service that starts " +
+             "there through the day in the order they leave. One line is " +
+             "one unit, so a pair is two lines and a twelve-car is three." },
+        { p: "Grove Park and Slade Green get an AM sheet and a PM sheet, " +
+             "split at " + hhmm(env.pmBreak || 1200) + ", the way the " +
+             "hand-kept workbook splits them." },
+        { p: "Reading a line from left to right:" },
+        { table: { head: ["Column", "What it holds"], rows: [
+          ["TRAIN I.D.", "The headcode, written once against the top line of " +
+           "the formation."],
+          ["SIDINGS", "When it leaves. A space in the time (08 42) means it " +
+           "leaves in service; a plus (08+42) means it leaves empty."],
+          ["STATION, or SIGNAL at Grove Park and Slade Green",
+           "Left ruled and empty — the timing point is not in the reports."],
+          ["DESTINATION", "Where it goes, in full."],
+          ["POS", "The unit's position in the formation, out of the plan. " +
+           "This sheet reads by it: 1, 2, 3 straight down."],
+          ["DIAG", "The day's work the unit is booked to, with its code."],
+          ["FORMATION", "The unit number where the plan names one."],
+          ["ROAD, or PLATFORM at a terminus",
+           "Left ruled and empty, to write in."],
+          ["COMMENTS", "Left ruled and empty, to write in."],
+          ["S, R/T, L/S", "Left ruled and empty, to write in."],
+          ["ENDS", "Where the diagram finishes, and which half of the day it " +
+           "finishes in — GP PM, SG AM."],
+          ["MILES", "What the diagram runs, out of the Diagram Detail export. " +
+           "A report saved as a PDF carries no mileage and the cell stays " +
+           "empty."],
+        ] } },
+        { p: "The sheet ends with the date it was built for, room for a name " +
+             "and a signature, and where to send it back to." },
+        { note: "Which unit prints first is NOT the berthing books' rule " +
+          "here. Those list the units the way they stand on the ground; this " +
+          "sheet reads by Position, lowest first, which is how the hand-kept " +
+          "workbook numbers every formation on it." },
+      ]);
+    } else
     push("sheet", "What you are looking at", [
       { p: "One page per location. Each page is a list of every unit that " +
            "stands there through the day and then leaves again, in the order " +
@@ -315,7 +357,9 @@ const SHEETS_RULES = (() => {
       ] },
       /* The two examples are the real books' own, and each is only worth
          printing in a book that has that page - the Ramsgate book is one
-         page and was explaining Slade Green and Tonbridge on it. */
+         page and was explaining Slade Green and Tonbridge on it. The Metro
+         sheet has no rules across it at all. */
+      env.metro ? null :
       { p: "Heavy double lines rule off the breaks in the day's work: the " +
         "first break of " + hours(env.breakGap || 180) + " or more, and any " +
         "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
@@ -329,7 +373,7 @@ const SHEETS_RULES = (() => {
         " A page that is busy right through gets none" +
         (inBook("GROVE PARK") ? ", and Grove Park is never ruled." : ".") },
     ];
-    push("times", "Times, and the line across the page", t);
+    push("times", env.metro ? "Times" : "Times, and the line across the page", t);
 
     /* ---- 5. end markers ---- */
     const es = env.endStyle || {};
@@ -384,7 +428,12 @@ const SHEETS_RULES = (() => {
 
     /* ---- 7. headcodes ---- */
     const hcs = (env.headcodeSections || []).filter(inBook).sort();
-    push("headcodes", "Headcodes", [
+    push("headcodes", "Headcodes", env.metro ? [
+      { p: "Every line of this sheet carries its headcode, in the TRAIN I.D. " +
+           "column, written once against the top line of the formation. The " +
+           "“Show every headcode” tick box is for the berthing books and " +
+           "makes no difference here." },
+    ] : [
       { p: hcs.length
         ? "Printed as standard at " + list(hcs) + ", because those books " +
           "carry them. Anywhere else, tick “Show every headcode” " +
@@ -467,8 +516,8 @@ const SHEETS_RULES = (() => {
     push("limits", "What the tool will not decide for you", [
       { ul: [
         "It does not know which way a train physically faces. Everything " +
-        "about formation order comes from the position numbers and the " +
-        "corrections list above.",
+        "about formation order comes from the position numbers" +
+        (env.metro ? "." : " and the corrections list above."),
         "It does not read the Sectional Appendix, and it makes no claim " +
         "about gauge clearance, route availability or what may run where. " +
         "Those questions go to the Appendix and the Weekly Operating Notice.",

@@ -560,9 +560,10 @@
       <p class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Tick a book to put one on every line of it —
         empty moves and platform starters alike. The books rebuild as you
-        tick, so save them again afterwards.</p>
+        tick, so save them again afterwards. The <b>Metro</b> sheet is not
+        affected: every line of it carries its headcode already, in the
+        TRAIN I.D. column.</p>
       <label><input type="checkbox" id="hc_main"> Mainline</label>
-      <label><input type="checkbox" id="hc_metro"> Metro</label>
       <label><input type="checkbox" id="hc_hs"> High Speed</label>
     </fieldset>
 
@@ -589,6 +590,10 @@
           where each unit berths, and writes the entries the way the
           hand-built books do — times, diagram numbers, AM and PM columns,
           flags, siding notes and end markers, all filled in.</p>
+        <p>The <b>Metro</b> book is the exception: that one is not a berthing
+          sheet at all but the depot's own Metro document, and it is built to
+          match — a worksheet per location, landscape, and its own columns.
+          Same reports, same rules underneath.</p>
         <p>It also leaves things off on purpose: an empty move onto a berth
           with no passenger work after it is not a line, the same as the
           hand-built sheets. Every one is named on the review list, so
@@ -757,7 +762,11 @@
       <li><b>RAM_SHEETS</b> — Ramsgate's own book, cut out of the mainline
         day. Ramsgate has its own depot and its own people, so its section is
         lifted into a book of its own rather than printed with the rest.</li>
-      <li><b>METRO_SHEETS</b> — the metro book (465 / 466 / 707 units).</li>
+      <li><b>METRO_SHEETS</b> — the metro book (465 / 466 / 707 units). This
+        one is <b>not a berthing sheet</b>: it is the depot's own Metro
+        document, a worksheet per location rather than per day, landscape,
+        with the POS, ENDS and MILES columns and six more left ruled and
+        empty to fill in by hand.</li>
       <li><b>HS_SHEETS</b> — the High Speed book (395 units), built whenever the
         reports contain High Speed diagrams.</li>
       <li><b>Weekend</b> — Mainline, Metro and High Speed workbooks, one per
@@ -1561,7 +1570,49 @@ const SHEETS_RULES = (() => {
     const inBook = n => !secs.length || secs.indexOf(n) >= 0;
     const push = (id, title, blocks) => S.push({ id, title, blocks });
 
-    /* ---- 1. the page itself ---- */
+    /* ---- 1. the page itself ----
+       The Metro book is a different document, so it gets a different
+       description rather than the berthing sheet's with caveats bolted on. */
+    if (env.metro) {
+      push("sheet", "What you are looking at", [
+        { p: "This is the Metro sheet, not a berthing sheet. One worksheet " +
+             "per location, landscape, listing every service that starts " +
+             "there through the day in the order they leave. One line is " +
+             "one unit, so a pair is two lines and a twelve-car is three." },
+        { p: "Grove Park and Slade Green get an AM sheet and a PM sheet, " +
+             "split at " + hhmm(env.pmBreak || 1200) + ", the way the " +
+             "hand-kept workbook splits them." },
+        { p: "Reading a line from left to right:" },
+        { table: { head: ["Column", "What it holds"], rows: [
+          ["TRAIN I.D.", "The headcode, written once against the top line of " +
+           "the formation."],
+          ["SIDINGS", "When it leaves. A space in the time (08 42) means it " +
+           "leaves in service; a plus (08+42) means it leaves empty."],
+          ["STATION, or SIGNAL at Grove Park and Slade Green",
+           "Left ruled and empty — the timing point is not in the reports."],
+          ["DESTINATION", "Where it goes, in full."],
+          ["POS", "The unit's position in the formation, out of the plan. " +
+           "This sheet reads by it: 1, 2, 3 straight down."],
+          ["DIAG", "The day's work the unit is booked to, with its code."],
+          ["FORMATION", "The unit number where the plan names one."],
+          ["ROAD, or PLATFORM at a terminus",
+           "Left ruled and empty, to write in."],
+          ["COMMENTS", "Left ruled and empty, to write in."],
+          ["S, R/T, L/S", "Left ruled and empty, to write in."],
+          ["ENDS", "Where the diagram finishes, and which half of the day it " +
+           "finishes in — GP PM, SG AM."],
+          ["MILES", "What the diagram runs, out of the Diagram Detail export. " +
+           "A report saved as a PDF carries no mileage and the cell stays " +
+           "empty."],
+        ] } },
+        { p: "The sheet ends with the date it was built for, room for a name " +
+             "and a signature, and where to send it back to." },
+        { note: "Which unit prints first is NOT the berthing books' rule " +
+          "here. Those list the units the way they stand on the ground; this " +
+          "sheet reads by Position, lowest first, which is how the hand-kept " +
+          "workbook numbers every formation on it." },
+      ]);
+    } else
     push("sheet", "What you are looking at", [
       { p: "One page per location. Each page is a list of every unit that " +
            "stands there through the day and then leaves again, in the order " +
@@ -1735,7 +1786,9 @@ const SHEETS_RULES = (() => {
       ] },
       /* The two examples are the real books' own, and each is only worth
          printing in a book that has that page - the Ramsgate book is one
-         page and was explaining Slade Green and Tonbridge on it. */
+         page and was explaining Slade Green and Tonbridge on it. The Metro
+         sheet has no rules across it at all. */
+      env.metro ? null :
       { p: "Heavy double lines rule off the breaks in the day's work: the " +
         "first break of " + hours(env.breakGap || 180) + " or more, and any " +
         "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
@@ -1749,7 +1802,7 @@ const SHEETS_RULES = (() => {
         " A page that is busy right through gets none" +
         (inBook("GROVE PARK") ? ", and Grove Park is never ruled." : ".") },
     ];
-    push("times", "Times, and the line across the page", t);
+    push("times", env.metro ? "Times" : "Times, and the line across the page", t);
 
     /* ---- 5. end markers ---- */
     const es = env.endStyle || {};
@@ -1804,7 +1857,12 @@ const SHEETS_RULES = (() => {
 
     /* ---- 7. headcodes ---- */
     const hcs = (env.headcodeSections || []).filter(inBook).sort();
-    push("headcodes", "Headcodes", [
+    push("headcodes", "Headcodes", env.metro ? [
+      { p: "Every line of this sheet carries its headcode, in the TRAIN I.D. " +
+           "column, written once against the top line of the formation. The " +
+           "“Show every headcode” tick box is for the berthing books and " +
+           "makes no difference here." },
+    ] : [
       { p: hcs.length
         ? "Printed as standard at " + list(hcs) + ", because those books " +
           "carry them. Anywhere else, tick “Show every headcode” " +
@@ -1887,8 +1945,8 @@ const SHEETS_RULES = (() => {
     push("limits", "What the tool will not decide for you", [
       { ul: [
         "It does not know which way a train physically faces. Everything " +
-        "about formation order comes from the position numbers and the " +
-        "corrections list above.",
+        "about formation order comes from the position numbers" +
+        (env.metro ? "." : " and the corrections list above."),
         "It does not read the Sectional Appendix, and it makes no claim " +
         "about gauge clearance, route availability or what may run where. " +
         "Those questions go to the Appendix and the Weekly Operating Notice.",
@@ -5745,16 +5803,23 @@ function rulesEnv(b, res, secNames) {
    Read-only on purpose - it is the thing a new starter opens, and nothing
    on it can change a book. The order corrections live on the Unit order
    tab instead, next to the buttons that write them. */
-function rulesPane(b, res, secNames) {
+function rulesPane(b, res, secNames, metro) {
   const el = document.createElement("div");
   el.className = "rules";
   const h = [];
   h.push('<p class="sa-src">Everything the tool followed to build this very ' +
     'book, written out in plain English. It is what actually ran, not a ' +
     'description of it — change a setting and rebuild, and this changes ' +
-    'with it. To put a formation right, use the Unit order tab.</p>');
-  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames),
-                                  { skip: ["corrections"] }));
+    'with it.' + (metro ? '' : ' To put a formation right, use the Unit ' +
+    'order tab.') + '</p>');
+  const env = rulesEnv(b, res, secNames);
+  env.metro = !!metro;
+  /* The Metro sheet is not a berthing sheet, so the parts of the rulebook
+     that are about one do not belong on its tab: which unit prints first and
+     the corrected formations are both about an order it does not use. */
+  h.push(SHEETS_RULES.explainHtml(env,
+    { skip: metro ? ["corrections", "order", "ends", "routes", "words"]
+                  : ["corrections"] }));
   el.innerHTML = h.join("");
   return el;
 }
@@ -6030,8 +6095,10 @@ function reviewPane(items) {
   let lastInputs = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
+  /* No Metro toggle on this panel any more: the Metro sheet carries every
+     headcode already, so a tick box for it would change nothing. */
   const hcToggles = {
-    main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
+    main: $("#hc_main"), hs: $("#hc_hs"),
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
   const platStand = $("#platstand");
@@ -6145,9 +6212,16 @@ function reviewPane(items) {
           }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
-      panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
-                  () => orderPane(b, res, rebuildForRules, secNames)]);
-      panes.push(["Rules", () => rulesPane(b, res, secNames)]);
+      /* No Unit order tab on the Metro book. That tab turns a formation
+         round on the sheet, and the Metro sheet does not read that way: it
+         reads by Position, 1, 2, 3 down the page, which is the depot's own
+         convention and not something a correction should silently fight.
+         Offering a button that changes nothing you can see is worse than
+         not offering it. */
+      if (!b.metro)
+        panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
+                    () => orderPane(b, res, rebuildForRules, secNames)]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames, !!b.metro)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];

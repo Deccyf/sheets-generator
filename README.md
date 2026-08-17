@@ -285,6 +285,14 @@ builds it in the depot's own format, taken from their May 2026 workbook:
 * Every sheet ends with the block the real ones carry: a blank row, then
   `DATED dd.mm.yy` with `NAME` and `SIGNATURE` beside it, then
   *PLEASE E-MAIL SHEETS TO…*.
+* The book's own tabs follow it: the preview is **per location** rather than
+  per day, there is **no Unit order tab** (that turns a formation round on the
+  sheet, and this one reads by Position — a button that changes nothing you
+  can see is worse than no button), and the Rules tab describes *this* sheet
+  rather than a berthing one, with the sections that are about a berthing
+  sheet — which unit prints first, the corrections, end markers, routes, the
+  notes column — left off. The weekday **Metro headcode tick box is gone**:
+  every line of this sheet carries its headcode already.
 * `ENDS` is the berth the diagram finishes on plus which half of the day it
   finishes in — `GP PM`, `SG AM`. The codes are the berthing books' own; the
   real workbook's vocabulary differs in places (it writes `GP` where the tool
@@ -454,7 +462,8 @@ test suite drives them.
 | `src/core.js` | **`SHEETS_CORE`** — shared helpers: name normalisation, destination codes, time formatting, and the berth AM/PM rule (`amPm`). |
 | `src/rulebook.js` | **`SHEETS_RULEBOOK`** — the day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`) and the stop-collapsing walk both engines share. |
 | `src/rules.js` | **`SHEETS_RULES`** — the pure part of local unit-order corrections (key grammar, merge, storage round-trip) *and* `explain()`/`explainHtml()`, which turn a build's rules into plain English. `explainHtml(env, pick)` takes `{only:[ids]}` or `{skip:[ids]}`, which is how the tool splits the same call across two tabs — **Unit order** carries the corrections next to the Reverse buttons that write them, **Rules** carries everything else as read-only reference, and `BERTHING SHEET RULES.html` takes the lot. No DOM, no tables of its own: it takes a plain object describing the build. |
-| `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. |
+| `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. Widths and page setup come from the layout, so one workbook can be portrait eight-column and another landscape fourteen. |
+| `src/metro.js` | **`SHEETS_METRO`** — the Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns, read by Position. Not a berthing sheet — see [The Metro sheets](#the-metro-sheets). |
 | `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
 | `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/ui.js` | Page wiring for both panels, the fleet sprites, and the tabbed previews. |

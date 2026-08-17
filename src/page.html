@@ -189,9 +189,10 @@
       <p class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Tick a book to put one on every line of it —
         empty moves and platform starters alike. The books rebuild as you
-        tick, so save them again afterwards.</p>
+        tick, so save them again afterwards. The <b>Metro</b> sheet is not
+        affected: every line of it carries its headcode already, in the
+        TRAIN I.D. column.</p>
       <label><input type="checkbox" id="hc_main"> Mainline</label>
-      <label><input type="checkbox" id="hc_metro"> Metro</label>
       <label><input type="checkbox" id="hc_hs"> High Speed</label>
     </fieldset>
 
@@ -218,6 +219,10 @@
           where each unit berths, and writes the entries the way the
           hand-built books do — times, diagram numbers, AM and PM columns,
           flags, siding notes and end markers, all filled in.</p>
+        <p>The <b>Metro</b> book is the exception: that one is not a berthing
+          sheet at all but the depot's own Metro document, and it is built to
+          match — a worksheet per location, landscape, and its own columns.
+          Same reports, same rules underneath.</p>
         <p>It also leaves things off on purpose: an empty move onto a berth
           with no passenger work after it is not a line, the same as the
           hand-built sheets. Every one is named on the review list, so
@@ -386,7 +391,11 @@
       <li><b>RAM_SHEETS</b> — Ramsgate's own book, cut out of the mainline
         day. Ramsgate has its own depot and its own people, so its section is
         lifted into a book of its own rather than printed with the rest.</li>
-      <li><b>METRO_SHEETS</b> — the metro book (465 / 466 / 707 units).</li>
+      <li><b>METRO_SHEETS</b> — the metro book (465 / 466 / 707 units). This
+        one is <b>not a berthing sheet</b>: it is the depot's own Metro
+        document, a worksheet per location rather than per day, landscape,
+        with the POS, ENDS and MILES columns and six more left ruled and
+        empty to fill in by hand.</li>
       <li><b>HS_SHEETS</b> — the High Speed book (395 units), built whenever the
         reports contain High Speed diagrams.</li>
       <li><b>Weekend</b> — Mainline, Metro and High Speed workbooks, one per

@@ -215,16 +215,23 @@ function rulesEnv(b, res, secNames) {
    Read-only on purpose - it is the thing a new starter opens, and nothing
    on it can change a book. The order corrections live on the Unit order
    tab instead, next to the buttons that write them. */
-function rulesPane(b, res, secNames) {
+function rulesPane(b, res, secNames, metro) {
   const el = document.createElement("div");
   el.className = "rules";
   const h = [];
   h.push('<p class="sa-src">Everything the tool followed to build this very ' +
     'book, written out in plain English. It is what actually ran, not a ' +
     'description of it — change a setting and rebuild, and this changes ' +
-    'with it. To put a formation right, use the Unit order tab.</p>');
-  h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames),
-                                  { skip: ["corrections"] }));
+    'with it.' + (metro ? '' : ' To put a formation right, use the Unit ' +
+    'order tab.') + '</p>');
+  const env = rulesEnv(b, res, secNames);
+  env.metro = !!metro;
+  /* The Metro sheet is not a berthing sheet, so the parts of the rulebook
+     that are about one do not belong on its tab: which unit prints first and
+     the corrected formations are both about an order it does not use. */
+  h.push(SHEETS_RULES.explainHtml(env,
+    { skip: metro ? ["corrections", "order", "ends", "routes", "words"]
+                  : ["corrections"] }));
   el.innerHTML = h.join("");
   return el;
 }
@@ -500,8 +507,10 @@ function reviewPane(items) {
   let lastInputs = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
+  /* No Metro toggle on this panel any more: the Metro sheet carries every
+     headcode already, so a tick box for it would change nothing. */
   const hcToggles = {
-    main: $("#hc_main"), metro: $("#hc_metro"), hs: $("#hc_hs"),
+    main: $("#hc_main"), hs: $("#hc_hs"),
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
   const platStand = $("#platstand");
@@ -615,9 +624,16 @@ function reviewPane(items) {
           }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
-      panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
-                  () => orderPane(b, res, rebuildForRules, secNames)]);
-      panes.push(["Rules", () => rulesPane(b, res, secNames)]);
+      /* No Unit order tab on the Metro book. That tab turns a formation
+         round on the sheet, and the Metro sheet does not read that way: it
+         reads by Position, 1, 2, 3 down the page, which is the depot's own
+         convention and not something a correction should silently fight.
+         Offering a button that changes nothing you can see is worse than
+         not offering it. */
+      if (!b.metro)
+        panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
+                    () => orderPane(b, res, rebuildForRules, secNames)]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames, !!b.metro)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
