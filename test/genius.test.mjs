@@ -777,3 +777,78 @@ test("a report with the right name and the wrong columns says which", async () =
   const ok = N.GENIUS.buildIntegrale([integraleSummaryCsv(), det]);
   assert.ok(Object.keys(ok.labels).length, "the whole export still builds");
 });
+
+test("a late berth is the PM one when the unit goes back out in service", async () => {
+  const N = built();
+
+  /* A unit that stands somewhere late and then leaves has either been put
+     away there, or is pausing on its way home. The two look identical up to
+     the headcode of what comes next.
+
+     375/3 diagram 301 on 12/08 stands at Ramsgate from 20 34, is shunted,
+     and then works 2U80 out again, finishing at Gillingham depot. Ramsgate
+     is where it spent the night as the sheet means it, so its PM reads RE -
+     and the entry that leaves Ramsgate is the one that reads GI.
+
+     377 diagram 105 is the same shape and the opposite answer: it stands at
+     Ashford east sidings from 20 03, shunted too, then runs 5R96 EMPTY to
+     the Folkestone train roads. All empty, so that is the run home and the
+     PM is FKE throughout.
+
+     Built through the CSV reader rather than the PDF one because these rows
+     can be written out exactly, without disturbing the shared fixture the
+     golden tests are pinned to. */
+  const SHEAD = '"GENIUS","DIAGRAM SUMMARY REPORT",' +
+    '"Diagram Summary for:"," 03/08/26","NOTES","NOTES",';
+  const srow = (diag, fleet, pos, start, from, to, end) =>
+    SHEAD + ['"' + diag + '"', "", '"' + fleet + '"', "0.00", pos,
+      '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
+      "0.00", "1.00", "1.00", "", ""].join(",");
+  const DHEAD = d => '"GENIUS","Diagram Detail Report",' +
+    '"Diagram Details for:"," 03/08/26",' +
+    '"Diagram","' + d + '","On","03/08/26","Notes",,"Miles","Fuel Miles",';
+  const dleg = (d, from, arr, dep, act, hc, to, toArr) =>
+    DHEAD(d) + ['"' + from + '"', '"' + from + '"',
+      arr ? '"' + arr + '"' : "", dep ? '"' + dep + '"' : "",
+      act ? '"' + act + '"' : "", '"' + hc + '"', "1.00", "1.00",
+      '"' + to + '"', '"' + to + '"', '"' + toArr + '"'].join(",");
+
+  const sum = [
+    srow("GT201", "375/3", 1, "05:00", "ASHFDNS", "RAMSGTD", "08:00"),
+    srow("GT201", "375/3", 1, "20:40", "RAMSGTD", "GLNGDEP", "23:30"),
+    srow("GT202", "377/5", 1, "05:00", "ASHFDNS", "ASHFEBS", "08:00"),
+    srow("GT202", "377/5", 1, "20:40", "ASHFEBS", "FLKSETR", "23:30"),
+  ].join("\r\n");
+  const det = [
+    dleg("GT201", "ASHFDNS", "", "05:00", "", "5A01", "RAMSGTD", "08:00"),
+    dleg("GT201", "RAMSGTD", "08:00", "08:01", "#", "", "RAMSGTD", "08:01"),
+    dleg("GT201", "RAMSGTD", "08:01", "20:40", "", "5U80", "RAMSGTE", "20:50"),
+    dleg("GT201", "RAMSGTE", "20:50", "21:00", "", "2U80", "GLNGHMK", "23:00"),
+    dleg("GT201", "GLNGHMK", "23:00", "23:10", "", "5U80", "GLNGDEP", "23:30"),
+    dleg("GT202", "ASHFDNS", "", "05:00", "", "5A02", "ASHFEBS", "08:00"),
+    dleg("GT202", "ASHFEBS", "08:00", "08:01", "#", "", "ASHFEBS", "08:01"),
+    dleg("GT202", "ASHFEBS", "08:01", "20:40", "", "5R96", "ASHFKY", "20:50"),
+    dleg("GT202", "ASHFKY", "20:50", "21:00", "", "5R96", "FLKSETR", "23:30"),
+  ].join("\r\n");
+
+  assert.equal(N.GENIUS.sniffGeniusCsv(sum), "sum", "the summary rows read");
+  assert.equal(N.GENIUS.sniffGeniusCsv(det), "det", "and so do the legs");
+  const res = await N.GENIUS.build([sum, det]);
+  const pmOf = diag => {
+    for (const day of Object.keys(res.labels))
+      for (const m of [res.secsByDay[day], res.metroSecs[day], res.hsSecs[day]]) {
+        if (!m) continue;
+        for (const [, list] of m)
+          for (const e of list)
+            for (const u of e.units) if (u.diag === diag && u.pm) return u.pm;
+      }
+    return null;
+  };
+  /* If the reader cannot place these the test proves nothing, so it says so
+     rather than passing on an empty build. */
+  assert.ok(pmOf("201") || pmOf("202"), "the fixture built something to look at");
+  assert.equal(pmOf("201"), "RE",
+    "back out in service, so the berth it stood on is the PM one");
+  assert.equal(pmOf("202"), "FKE",
+    "empty all the way home, so the sheets follow it there");
+});
