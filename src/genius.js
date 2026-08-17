@@ -331,6 +331,22 @@ const GENIUS = (() => {
       for (const r of rows) if (sortkey(r.start) <= k) best = r;
       return best.pos;
     };
+    /* The allocated unit, taken the same way round as the Position: off the
+       working being printed, not off the diagram's first row.
+
+       A diagram whose morning is cancelled keeps its summary row with the
+       allocation blank, and the unit is named on the workings that survived
+       - so reading row one only printed nothing at all for a diagram that
+       has a unit allocated all afternoon. The fall-back is any row that
+       names one, because a blank cell is the absence of an answer and
+       another row's is better than none. */
+    const unitAt = (rows, t) => {
+      const k = sortkey(t);
+      for (const r of rows)
+        if (r.unit && sortkey(r.start) <= k && k <= sortkey(r.end)) return r.unit;
+      for (const r of rows) if (r.unit) return r.unit;
+      return "";
+    };
     const autoSec = new Map();
     const secOf = (stop, endpoint) => {
       const bi = berthInfo(stop);
@@ -350,7 +366,12 @@ const GENIUS = (() => {
     // scope + stints
     for (const [diag, raw] of details) {
       const srs = summ.get(diag);
-      const sr = srs && srs[0];
+      /* Which book the diagram belongs to comes from the first row that
+         names a fleet this book knows, not from row one flat: a diagram
+         whose morning is cancelled can leave a row behind with the fleet
+         cell empty, and reading only that dropped the whole diagram - its
+         whole afternoon with it - without a word. */
+      const sr = srs && (srs.find(r => r.fleet in prof.fleets) || srs[0]);
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }
       const stops = stopsOf(raw);
@@ -578,7 +599,8 @@ const GENIUS = (() => {
                       later: later.length > 0 };
         // only when the export actually carries it, so an entry keeps the
         // exact shape the golden test pins when it does not
-        if (sum.unit) blk.unit = sum.unit;
+        const unit = unitAt(sums, e.tmin);
+        if (unit) blk.unit = unit;
         blocks.push(blk);
       }
       // Which unit leads: the whole ordering mirrors with the book's posAsc

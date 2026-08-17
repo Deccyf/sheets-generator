@@ -248,6 +248,57 @@ test("a Saturday pair says where the weekend sheets come from", async () => {
   assert.ok(Object.keys(ok.labels).length, "the weekday pair is untouched");
 });
 
+test("a diagram whose morning is cancelled still shows its afternoon unit", async () => {
+  const N = built();
+
+  /* The allocated unit is read off the working being printed, the same way
+     round as the Position, not off the diagram's first summary row. A
+     diagram whose morning is cancelled keeps that row with the allocation
+     cell empty, and names the unit on the workings that survived - so
+     reading row one only printed no unit at all for a diagram that has one
+     allocated all afternoon. Reported on 811/812. */
+  const SHEAD = '"GENIUS","DIAGRAM SUMMARY REPORT",' +
+    '"Diagram Summary for:"," 03/08/26","NOTES","NOTES",';
+  const srow = (diag, unit, fleet, pos, start, from, to, end) =>
+    SHEAD + ['"' + diag + '"', '"' + unit + '"', '"' + fleet + '"', "0.00", pos,
+      '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
+      "0.00", "1.00", "1.00", "", ""].join(",");
+  const DHEAD = d => '"GENIUS","Diagram Detail Report",' +
+    '"Diagram Details for:"," 03/08/26",' +
+    '"Diagram","' + d + '","On","03/08/26","Notes",,"Miles","Fuel Miles",';
+  const dleg = (d, from, arr, dep, hc, to, toArr) =>
+    DHEAD(d) + ['"' + from + '"', '"' + from + '"',
+      arr ? '"' + arr + '"' : "", dep ? '"' + dep + '"' : "", "",
+      '"' + hc + '"', "1.00", "1.00",
+      '"' + to + '"', '"' + to + '"', '"' + toArr + '"'].join(",");
+
+  const sum = [
+    // the cancelled morning: the row is still there, the allocation is not
+    srow("GT401", "", "375/3", 1, "05:00", "ASHFDNS", "RAMSGTD", "08:00"),
+    srow("GT401", "375301", "375/3", 1, "14:00", "RAMSGTD", "ASHFDNS", "17:00"),
+    srow("GT401", "375301", "375/3", 1, "20:40", "ASHFDNS", "RAMSGTD", "23:30"),
+  ].join("\r\n");
+  const det = [
+    dleg("GT401", "ASHFDNS", "", "05:00", "5A01", "RAMSGTD", "08:00"),
+    dleg("GT401", "RAMSGTD", "08:00", "14:00", "2A02", "ASHFDNS", "17:00"),
+    dleg("GT401", "ASHFDNS", "17:00", "20:40", "2A03", "RAMSGTD", "23:30"),
+  ].join("\r\n");
+
+  const res = await N.GENIUS.build([sum, det]);
+  const units = [];
+  for (const day of Object.keys(res.labels))
+    for (const m of [res.secsByDay[day], res.metroSecs[day], res.hsSecs[day]]) {
+      if (!m) continue;
+      for (const [sec, list] of m)
+        for (const e of list)
+          for (const u of e.units)
+            if (u.diag === "401") units.push(sec + " " + e.time + " = " + (u.unit || "-"));
+    }
+  assert.ok(units.length, "the fixture printed something to look at");
+  assert.ok(units.every(x => /= 301$/.test(x)),
+    "every row carries the unit the surviving workings name: " + units.join(" | "));
+});
+
 test("the sniffers tell the three report formats apart", async () => {
   const N = built();
   const { geniusSummaryCsv, geniusDetailCsv, integraleSummaryCsv } =

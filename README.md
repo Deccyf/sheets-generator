@@ -593,6 +593,17 @@ ones, all commented at the point of implementation:
   a passenger working followed; both gates are gone. Five cells in the real
   12/08 book disagree, and the operator has confirmed the book is wrong in
   them.
+* **The allocated unit is read off the working, not off row one.** The
+  Position already was — `posAt` picks the summary row covering the entry's
+  time — but the unit came from `srs[0]` flat. A diagram whose morning is
+  cancelled keeps that row with the allocation cell empty and names the unit
+  on the workings that survived, so the Unit column came out blank for a
+  diagram that has one allocated all afternoon (reported on `SG811`/`SG812`).
+  `unitAt` mirrors `posAt`, falling back to any row that names a unit. Which
+  book a diagram belongs to now comes from the first row naming a known fleet
+  for the same reason: a blank fleet cell on row one dropped the whole
+  diagram, its afternoon with it, without a word. Inert on every export held:
+  1431 printed rows, 0 changes to the Unit column.
 * **The AM cell of an overnight berth.** A unit that leaves its overnight
   berth and is back on it before 14:00 gets that berth in its AM cell; the
   blanking rule is for units that only return at night.
