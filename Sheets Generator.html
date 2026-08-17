@@ -397,11 +397,12 @@
     <div class="quick">
       <h2>Quick start</h2>
       <ol class="steps">
-        <li><strong>Get the paperwork as files.</strong> For a weekday: the
+        <li><strong>Get the paperwork as files.</strong> The
           <em>Diagram Summary</em> and <em>Diagram Detail</em> reports for the
           date — from Genius as PDFs, or from Integrale as the two CSV exports.
-          For the weekend: the diagram prints Word document(s), or the same
-          text.
+          Any day of the week. For a Saturday or Sunday you can use the
+          weekend diagram prints Word document(s) instead, or the same text —
+          that is the usual source for a weekend book.
           <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
             In Genius, a <strong>Control Cycle</strong> must be created before the
             Diagram Summary and Diagram Detail reports can be run &mdash; and if
@@ -465,13 +466,13 @@
                 below.</span>
             </span>
           </details></li>
-        <li><strong>Drop them on the matching panel below</strong> — the weekday
+        <li><strong>Drop them on the matching panel below</strong> — the two
           reports on the first panel, the weekend prints on the second. Or click
           a panel to browse for the files.
           <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
             On a machine that will not let the files be saved anywhere the
             browser can reach, either panel will take the paperwork pasted in
-            instead &mdash; the weekday CSVs into their two boxes, the weekend
+            instead &mdash; the report CSVs into their two boxes, the weekend
             prints into theirs. The one thing that cannot be pasted is a PDF:
             there is no text in one to copy.</span></li>
         <li><strong>Look the sheets over on screen, then save.</strong> Every build
@@ -487,13 +488,15 @@
   </header>
 
   <section class="platform" aria-labelledby="wk-h">
-    <span class="sign">Weekdays · Mon – Fri</span>
-    <h2 id="wk-h">Weekday sheets from the planning reports</h2>
+    <span class="sign">Any day · from the reports</span>
+    <h2 id="wk-h">Sheets from the planning reports</h2>
     <p class="whatfor">Needs <strong>both</strong> reports for the date —
       the Diagram Summary (one line per diagram) and the Diagram Detail (every
       stop of every diagram) — from Genius as PDFs or CSVs, or from
       Integrale as its two CSV exports.
-      Drop the pair together; a Monday pair builds the Monday books.</p>
+      Drop the pair together; a Monday pair builds the Monday books.
+      A Saturday or Sunday pair builds those too &mdash; see below for
+      which of the two weekend builds you want.</p>
 
     <button class="berth" id="berth" type="button">
       <span class="berth-inner">
@@ -625,7 +628,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>The prints as .docx, .doc or text · not the Summary and Detail reports · reissues welcome, together or afterwards · or click to choose</span>
+          <span>The prints as .docx, .doc or text · reissues welcome, together or afterwards · or click to choose</span>
         </span>
       </span>
     </button>
@@ -711,13 +714,16 @@
             lost. The diagram lines are held together by them, so the page
             refuses rather than half-reading it. Copy the document out of Word
             again and paste it as it comes, without tidying it up.</dd>
-          <dt>Can the Genius or Integrale CSVs build a weekend?</dt>
-          <dd>No. Saturday and Sunday books come from the diagram prints and
-            nothing else &mdash; this panel reads the prints whatever the file
-            is called, Word document or plain text, but it cannot read a
-            Diagram Summary or Diagram Detail export. A weekend-dated pair
-            dropped on the weekday panel above says so rather than building
-            an empty book.</dd>
+          <dt>Which weekend build do I want?</dt>
+          <dd>Both routes reach a Saturday or Sunday book and they are not the
+            same build. <strong>This panel</strong> reads the weekend diagram
+            prints &mdash; the usual source, and the only one that can produce
+            an updated prints document. <strong>The panel above</strong> reads
+            the Diagram Summary and Diagram Detail for a weekend date and
+            builds the same four books it builds for a weekday, with a SAT or
+            SUN tab. The books are named differently so they cannot be
+            confused, the reports build says on its review list which it is,
+            and if you have both, check they agree.</dd>
           <dt>A book says "skipped"</dt>
           <dd>No diagrams for that fleet exist in this weekend's prints —
             nothing to build, nothing wrong.</dd>
@@ -937,7 +943,15 @@ const SIDING_CLASS_RE = new RegExp(
     "WEST MARINA": ["HGS END", null],
     "FOLKESTONE EAST": ["AFK END", "DVP END"],
     "DOVER PRIORY": ["FKE END", "CBE END"] };
-  const DAY_SHEET = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI" };
+  /* The seven day columns a book can carry, in reading order. Saturday and
+     Sunday are here because the planning reports export a weekend date like
+     any other and the books build from it - the weekend PRINTS are a
+     separate pipeline and a separate set of workbooks, not the only way to
+     a Saturday sheet. DAY_KEYS is the order tabs appear in; nothing should
+     spell the list out for itself. */
+  const DAY_SHEET = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI",
+                      SA: "SAT", SU: "SUN" };
+  const DAY_KEYS = ["M", "T", "W", "TH", "F", "SA", "SU"];
   const METRO_ORDER = ["CANNON STREET", "CHARING CROSS", "DARTFORD",
     "GILLINGHAM", "GROVE PARK", "ORPINGTON", "PLUMSTEAD", "RAMSGATE",
     "SLADE GREEN", "TONBRIDGE", "VICTORIA"];
@@ -1383,7 +1397,7 @@ const PROFILES = [
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
-  SIDING_NOTES, END_STYLE, DAY_SHEET,
+  SIDING_NOTES, END_STYLE, DAY_SHEET, DAY_KEYS,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   ROUTE_BY_HC, routeRule,
@@ -1669,18 +1683,24 @@ const SHEETS_RULES = (() => {
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +
       "real book, and they always beat the position numbers." });
-    /* The weekday directions were worked out against hand-marked weekday
-       books. Carrying them onto the weekend books put 53 of 71 formations
-       the wrong way round against the marked Sunday 16/08 book, so they
-       stayed with the books they came from - and a colleague reading this
-       page has to be told, or they will check a Sunday sheet against the
-       wrong rule. */
-    ord.push({ p: "None of this applies to a Saturday or Sunday sheet. Those " +
-      "are built from the weekend diagram prints, and they read lowest " +
-      "number first everywhere, at every location. The which-way-round list " +
-      "above was worked out against the marked-up weekday books and belongs " +
-      "to them: checked against the marked Sunday book it put most " +
-      "formations the wrong way round." });
+    /* The directions were worked out against hand-marked books built from
+       the planning reports. Carrying them onto the books built from the
+       weekend PRINTS put 53 of 71 formations the wrong way round against the
+       marked Sunday 16/08 book, so they stayed with the source they came
+       from - and it is the SOURCE that decides, not the day: the reports now
+       export a Saturday like any other date, and a Saturday built from them
+       carries the reports' own Position field, which is the field this list
+       was measured on. A colleague reading this page has to be told, or they
+       will check a sheet against the wrong rule. */
+    ord.push({ p: "None of this applies to a sheet built from the weekend " +
+      "diagram prints. Those read lowest number first everywhere, at every " +
+      "location. The which-way-round list above was worked out against the " +
+      "marked-up books built from the planning reports and belongs to them: " +
+      "checked against the marked Sunday prints book it put most formations " +
+      "the wrong way round. What decides is which paperwork the book came " +
+      "from, not what day it is — a Saturday or Sunday built from the " +
+      "reports carries the reports' own position numbers and reads by the " +
+      "list above." });
     push("order", "Which unit prints first", ord);
 
     /* ---- 4. times ---- */
@@ -1875,14 +1895,15 @@ const SHEETS_RULES = (() => {
         "Anything it was unsure about is written on the Review tab of that " +
         "book rather than guessed at on the sheet.",
       ] },
-      { p: "The weekend sheets are built from the diagram prints rather " +
-           "than the weekday reports, and they follow these same rules for " +
-           "the times, the breaks, the headcodes and which movements get a " +
-           "line. Two things do not carry over. Which unit prints first: a " +
-           "weekend sheet reads lowest position number first everywhere, " +
-           "not by the which-way-round list. And the corrected formations " +
-           "above, which name weekday diagram numbers — the weekend prints " +
-           "number their diagrams separately." },
+      { p: "A sheet built from the weekend diagram prints follows these same " +
+           "rules for the times, the breaks, the headcodes and which " +
+           "movements get a line. Two things do not carry over. Which unit " +
+           "prints first: a prints-built sheet reads lowest position number " +
+           "first everywhere, not by the which-way-round list. And the " +
+           "corrected formations above, which name the reports' diagram " +
+           "numbers — the weekend prints number their diagrams separately. " +
+           "A Saturday or Sunday built from the planning reports has neither " +
+           "exception: it is a report-built book like any other." },
       { note: "The sheets are built from the reports you feed in. If the " +
         "report is wrong, the sheet will be wrong in the same way — the " +
         "tool has no other source to check it against." },
@@ -2103,7 +2124,7 @@ const SHEETS_XLSX = (() => {
 const CORE = SHEETS_CORE;
 const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
-        SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
+        SIDING_NOTES, END_STYLE, DAY_SHEET, DAY_KEYS } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
 /* How long a break in a location's work has to be before a double line is
    ruled in it, and the hour after which a second one is drawn - see
@@ -2669,7 +2690,7 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const splitRamsgate = opts.splitRamsgate !== false;
   const fullOrder = bookOrder(secsByDay, base, splitRamsgate);
   const gpSplit = opts.gpSplit !== undefined ? !!opts.gpSplit : base === MAIN_ORDER;
-  const dayKeys = ["M", "T", "W", "TH", "F"].filter(d => d in dateLabels);
+  const dayKeys = DAY_KEYS.filter(d => d in dateLabels);
   const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
@@ -2684,7 +2705,8 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
+         DAY_SHEET, DAY_KEYS, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP,
+         printPlan };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
@@ -3991,8 +4013,14 @@ const GENIUS = (() => {
     const c = viaResolver(name, SE() ? SE().BERTH_CODE : {}, warn, where);
     return FIX_CODE[c] || c;
   }
-  const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F" };
-  const DAY_NAME = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI" };
+  /* All seven. The planning reports export a Saturday or a Sunday like any
+     other date and the same rules read it, so a weekend pair builds the same
+     four books with a SAT or SUN column. The weekend diagram PRINTS are a
+     different pipeline and a different set of workbooks - having both is the
+     point, not a clash, and a weekend built from the reports says so on the
+     review list. */
+  const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F", 6: "SA", 0: "SU" };
+  const DAY_NAME = SHEETS_DATA.DAY_SHEET;
   function dayKey(date) {
     const [d, mo, y] = String(date || "").split("/").map(Number);
     if (!d || !mo || !y) return null;
@@ -4720,7 +4748,17 @@ const GENIUS = (() => {
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
-      if (!dk) { noteAll(date + ": falls on a weekend - use the weekend prints panel"); continue; }
+      if (!dk) { noteAll(date + ": unreadable date - left out of these books"); continue; }
+      /* A weekend date builds, but the books it builds are not the ones the
+         weekend diagram prints make: different workbooks, different file
+         names, and the prints are what a Saturday or Sunday book is normally
+         written from. Nobody should ship one without knowing which they have
+         in front of them. */
+      if (dk === "SA" || dk === "SU")
+        noteAll(date + " is a " + DAY_NAME[dk] + ", built from the planning" +
+          " reports. The weekend diagram prints are the usual source for a" +
+          " Saturday or Sunday book and they are a separate build on the" +
+          " weekend panel - check the two agree before either goes out");
       const det = byDate.get(date);
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       /* A book has one column per weekday, so a second date on the same day
@@ -4755,19 +4793,9 @@ const GENIUS = (() => {
         }
       }
     }
-    /* Saturday and Sunday reports land here rather than on the weekend
-       panel often enough that the message has to say where to take them -
-       the notes above name the date, but nothing is built, so only this is
-       seen. */
-    if (!Object.keys(secsByDay).length) {
-      const wknd = dates.filter(d => d && !dayKey(d));
-      throw new Error(wknd.length
-        ? "No weekday dates found in the reports — " + wknd.join(", ") +
-          (wknd.length === 1 ? " falls" : " fall") + " on a weekend. Saturday" +
-          " and Sunday sheets are built from the diagram prints, on the" +
-          " weekend panel below; these reports do not build them."
-        : "No weekday dates found in the reports.");
-    }
+    if (!Object.keys(secsByDay).length)
+      throw new Error("No dated reports found — check both exports carry a " +
+        "date, and that they carry the same one.");
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {
@@ -5688,7 +5716,7 @@ function reviewPane(items) {
   async function renderBooks(res) {
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
-    const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
+    const dayKeys = X.DAY_KEYS.filter(k => k in res.labels);
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
     // Each book carries its own fleet's review items. The Ramsgate book is

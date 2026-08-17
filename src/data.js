@@ -153,7 +153,15 @@ const SIDING_CLASS_RE = new RegExp(
     "WEST MARINA": ["HGS END", null],
     "FOLKESTONE EAST": ["AFK END", "DVP END"],
     "DOVER PRIORY": ["FKE END", "CBE END"] };
-  const DAY_SHEET = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI" };
+  /* The seven day columns a book can carry, in reading order. Saturday and
+     Sunday are here because the planning reports export a weekend date like
+     any other and the books build from it - the weekend PRINTS are a
+     separate pipeline and a separate set of workbooks, not the only way to
+     a Saturday sheet. DAY_KEYS is the order tabs appear in; nothing should
+     spell the list out for itself. */
+  const DAY_SHEET = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI",
+                      SA: "SAT", SU: "SUN" };
+  const DAY_KEYS = ["M", "T", "W", "TH", "F", "SA", "SU"];
   const METRO_ORDER = ["CANNON STREET", "CHARING CROSS", "DARTFORD",
     "GILLINGHAM", "GROVE PARK", "ORPINGTON", "PLUMSTEAD", "RAMSGATE",
     "SLADE GREEN", "TONBRIDGE", "VICTORIA"];
@@ -599,7 +607,7 @@ const PROFILES = [
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
-  SIDING_NOTES, END_STYLE, DAY_SHEET,
+  SIDING_NOTES, END_STYLE, DAY_SHEET, DAY_KEYS,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   ROUTE_BY_HC, routeRule,

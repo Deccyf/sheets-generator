@@ -271,18 +271,24 @@ const SHEETS_RULES = (() => {
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +
       "real book, and they always beat the position numbers." });
-    /* The weekday directions were worked out against hand-marked weekday
-       books. Carrying them onto the weekend books put 53 of 71 formations
-       the wrong way round against the marked Sunday 16/08 book, so they
-       stayed with the books they came from - and a colleague reading this
-       page has to be told, or they will check a Sunday sheet against the
-       wrong rule. */
-    ord.push({ p: "None of this applies to a Saturday or Sunday sheet. Those " +
-      "are built from the weekend diagram prints, and they read lowest " +
-      "number first everywhere, at every location. The which-way-round list " +
-      "above was worked out against the marked-up weekday books and belongs " +
-      "to them: checked against the marked Sunday book it put most " +
-      "formations the wrong way round." });
+    /* The directions were worked out against hand-marked books built from
+       the planning reports. Carrying them onto the books built from the
+       weekend PRINTS put 53 of 71 formations the wrong way round against the
+       marked Sunday 16/08 book, so they stayed with the source they came
+       from - and it is the SOURCE that decides, not the day: the reports now
+       export a Saturday like any other date, and a Saturday built from them
+       carries the reports' own Position field, which is the field this list
+       was measured on. A colleague reading this page has to be told, or they
+       will check a sheet against the wrong rule. */
+    ord.push({ p: "None of this applies to a sheet built from the weekend " +
+      "diagram prints. Those read lowest number first everywhere, at every " +
+      "location. The which-way-round list above was worked out against the " +
+      "marked-up books built from the planning reports and belongs to them: " +
+      "checked against the marked Sunday prints book it put most formations " +
+      "the wrong way round. What decides is which paperwork the book came " +
+      "from, not what day it is — a Saturday or Sunday built from the " +
+      "reports carries the reports' own position numbers and reads by the " +
+      "list above." });
     push("order", "Which unit prints first", ord);
 
     /* ---- 4. times ---- */
@@ -477,14 +483,15 @@ const SHEETS_RULES = (() => {
         "Anything it was unsure about is written on the Review tab of that " +
         "book rather than guessed at on the sheet.",
       ] },
-      { p: "The weekend sheets are built from the diagram prints rather " +
-           "than the weekday reports, and they follow these same rules for " +
-           "the times, the breaks, the headcodes and which movements get a " +
-           "line. Two things do not carry over. Which unit prints first: a " +
-           "weekend sheet reads lowest position number first everywhere, " +
-           "not by the which-way-round list. And the corrected formations " +
-           "above, which name weekday diagram numbers — the weekend prints " +
-           "number their diagrams separately." },
+      { p: "A sheet built from the weekend diagram prints follows these same " +
+           "rules for the times, the breaks, the headcodes and which " +
+           "movements get a line. Two things do not carry over. Which unit " +
+           "prints first: a prints-built sheet reads lowest position number " +
+           "first everywhere, not by the which-way-round list. And the " +
+           "corrected formations above, which name the reports' diagram " +
+           "numbers — the weekend prints number their diagrams separately. " +
+           "A Saturday or Sunday built from the planning reports has neither " +
+           "exception: it is a report-built book like any other." },
       { note: "The sheets are built from the reports you feed in. If the " +
         "report is wrong, the sheet will be wrong in the same way — the " +
         "tool has no other source to check it against." },

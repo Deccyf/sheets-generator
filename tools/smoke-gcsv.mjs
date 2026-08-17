@@ -72,5 +72,25 @@ await page.locator("#paste_clear").click();
 if (await page.$eval("#paste_sum", e => e.value) !== "")
   throw new Error("Clear both should empty the boxes");
 
+/* ---- a Saturday pair builds a SAT book through the same panel ---- */
+await page.reload();
+const sat = t => t.replace(/03\/08\/26/g, "15/08/26").replace(/03\/08\/2026/g, "15/08/2026");
+await page.setInputFiles("#file",
+  [f("sat-sum.csv", sat(geniusSummaryCsv())), f("sat-det.csv", sat(geniusDetailCsv()))]);
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+const tabs = await page.locator("#roads .road").first().locator(".tab").allTextContents();
+console.log("saturday :", await page.textContent("#status"));
+console.log("tabs     :", tabs.join(" | "));
+if (!tabs.some(t => /^SAT$/.test(t.trim())))
+  throw new Error("a Saturday pair should build a SAT tab, got: " + tabs.join(","));
+const road1 = page.locator("#roads .road").first();
+await road1.locator(".btn", { hasText: "Look at it" }).click();   // opens the panes
+await road1.locator(".tab", { hasText: /^Review/ }).click();
+const revd = await road1.textContent();
+if (!/is a SAT/.test(revd))
+  throw new Error("the review list should say the book came from the reports");
+console.log("review   : names the source ✓");
+
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");
