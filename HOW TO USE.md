@@ -295,10 +295,31 @@ Worth knowing:
 |---|---|---|
 | **SHEETS** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
 | **RAM SHEETS** | `RAM_SHEETS_…xlsx` | Ramsgate's own book, cut from the same day's work |
-| **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s |
+| **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s. **Not a berthing sheet** — see below |
 | **HS SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s |
 
 ### Weekends — three books
+
+### The Metro book is a different document
+
+The Metro sheets are the depot's own format, not a berthing sheet, and the tool
+builds them that way:
+
+* **A tab per location** rather than a tab per day, **landscape**, running down
+  as many pages as it needs. Grove Park and Slade Green get an **AM** tab and a
+  **PM** tab.
+* Fourteen columns: `TRAIN I.D.`, `SIDINGS`, `STATION` (or `SIGNAL`),
+  `DESTINATION`, `POS`, `DIAG`, `FORMATION`, `ROAD` (or `PLATFORM` at a
+  terminus), `COMMENTS`, `S`, `R/T`, `L/S`, `ENDS`, `MILES`.
+* The reports fill eight of them. **Six are ruled and left empty** for you to
+  write in — the timing point, the road, comments, S, R/T and L/S — the same
+  ones that are hand-kept in your own workbook.
+* It reads **by Position, lowest first** — 1, 2, 3 straight down each
+  formation. That is not the berthing books' order and is not meant to be.
+* `MILES` is the diagram's own total for the day, off the Detail export. A PDF
+  report carries no mileage, so the column stays blank.
+* `ENDS` is where the diagram finishes and in which half of the day — `GP PM`,
+  `SG AM`.
 
 One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
 plus the updated prints document when a reissue has been merged.

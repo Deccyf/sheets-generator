@@ -2259,7 +2259,8 @@ const MARGIN = { l: 0.7, r: 0.7, t: 0.75, b: 0.75 };
    split by Excel as before - better than printing the whole book too small
    to read. 74% is the smallest scale seen on a real book. */
 const MIN_SCALE = 74;
-function printPlan(merges, rowHeights, maxRow){
+function printPlan(merges, rowHeights, maxRow, opts){
+  opts = opts || {};
   /* A row merged clean across A..G is a section header - the weekday and
      weekend layouts both write one, and nothing else in either book is
      merged that way. */
@@ -2278,16 +2279,22 @@ function printPlan(merges, rowHeights, maxRow){
     for (let r = h; r <= end; r++) pts += rowH(r);
     return { start: h, pts };
   });
-  const pageW = (PAPER.w - MARGIN.l - MARGIN.r) * 72;
-  const pageH = (PAPER.h - MARGIN.t - MARGIN.b) * 72;
+  // landscape turns the paper on its side, so the two swap over
+  const land = !!opts.landscape;
+  const pw = land ? PAPER.h : PAPER.w, ph = land ? PAPER.w : PAPER.h;
+  const pageW = (pw - MARGIN.l - MARGIN.r) * 72;
+  const pageH = (ph - MARGIN.t - MARGIN.b) * 72;
   // Excel's character width -> pixels, and pixels -> points at 96dpi
-  const contentW = HOUSE_WIDTHS.reduce(function(t, w){
+  const contentW = (opts.widths || HOUSE_WIDTHS).reduce(function(t, w){
     return t + Math.round(w * 7) + 5;
   }, 0) * 0.75;
   /* The width has to fit whatever the book is - a Ramsgate book is one
      section and needs no breaks, but its eight columns still have to land on
-     one page across, which is the half of this that was going wrong. */
-  const tallest = secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
+     one page across, which is the half of this that was going wrong. A sheet
+     that runs down as many pages as it needs (fitToHeight 0, which is how
+     the Metro sheets are set) is a width question only. */
+  const tallest = opts.fitToHeight === 0
+    ? 0 : secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
   const fit = tallest ? Math.min(pageW / contentW, pageH / tallest)
                       : pageW / contentW;
   const scale = Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
@@ -2301,8 +2308,12 @@ function printPlan(merges, rowHeights, maxRow){
   return { scale, breaks };
 }
 
-function buildSheetXml(cells, merges, rowHeights, maxRow){
-  const widths = HOUSE_WIDTHS;
+function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
+  /* The Metro sheets are a different document - fourteen columns, landscape,
+     and as many pages down as the day needs - so the widths and the page
+     setup come from the layout where it has an opinion. */
+  opts = opts || {};
+  const widths = opts.widths || HOUSE_WIDTHS;
   let cols = '<cols>';
   widths.forEach(function(w, i){
     cols += '<col min="' + (i+1) + '" max="' + (i+1) +
@@ -2338,7 +2349,7 @@ function buildSheetXml(cells, merges, rowHeights, maxRow){
          merges.map(function(m){ return '<mergeCell ref="' + m + '"/>'; }).join("") +
          '</mergeCells>';
   }
-  const plan = printPlan(merges, rowHeights, maxRow);
+  const plan = printPlan(merges, rowHeights, maxRow, opts);
   // rowBreaks comes after pageSetup in the schema, and Excel rejects the
   // part outright if it does not
   const brk = plan.breaks.length
@@ -2348,15 +2359,18 @@ function buildSheetXml(cells, merges, rowHeights, maxRow){
         return '<brk id="' + r + '" max="16383" man="1"/>';
       }).join("") + '</rowBreaks>'
     : "";
+  const lastCol = colName(widths.length);
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-   '<dimension ref="A1:H' + Math.max(1, maxRow) + '"/>' +
+   '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
    '<sheetFormatPr defaultRowHeight="15"/>' + cols + sd + mg +
    '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
    MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
-   '<pageSetup paperSize="9" scale="' + plan.scale +
-   '" orientation="portrait"/>' + brk + '</worksheet>';
+   '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
+   (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
+   ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>' +
+   brk + '</worksheet>';
 }
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
@@ -2367,7 +2381,7 @@ function writeWorkbook(sheets, zipFn){
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells) c.s = sb.style(c.look, sb.border(c.sides));
     return buildSheetXml(s.layout.cells, s.layout.merges,
-                         s.layout.rowHeights, s.layout.maxRow);
+                         s.layout.rowHeights, s.layout.maxRow, s.layout.opts);
   });
   const enc = new TextEncoder();
   let types =
@@ -2421,6 +2435,12 @@ function colNum(s){
   return n;
 }
 function previewHtml(layout){
+  // as many columns as the layout has: eight on a berthing sheet, fourteen
+  // on a Metro one
+  const NCOL = ((layout.opts && layout.opts.widths) || PREVIEW_PX).length;
+  const PX = (layout.opts && layout.opts.widths)
+    ? layout.opts.widths.map(function(w){ return Math.round(w * 7) + 5; })
+    : PREVIEW_PX;
   const at = new Map();
   for (const c of layout.cells) at.set(c.r + "," + c.c, c);
   const spans = new Map(), covered = new Set();
@@ -2445,13 +2465,14 @@ function previewHtml(layout){
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
   let h = '<table class="sheet"><colgroup>';
-  for (const px of PREVIEW_PX) h += '<col style="width:' + px + 'px">';
+  for (const px of PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
     if (pageAt.has(r))
-      h += '<tr class="pbrk"><td colspan="8">Page ' + pageAt.get(r) + '</td></tr>';
+      h += '<tr class="pbrk"><td colspan="' + NCOL + '">Page ' + pageAt.get(r) +
+           '</td></tr>';
     h += "<tr>";
-    for (let c = 1; c <= 8; c++){
+    for (let c = 1; c <= NCOL; c++){
       if (covered.has(r + "," + c)) continue;
       const cell = at.get(r + "," + c);
       const sp = spans.get(r + "," + c);
@@ -2739,6 +2760,170 @@ return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
+</script>
+<script>
+/* SHEETS_METRO — the Metro book in the depot's own format.
+
+   This is not the berthing sheet. The Metro sheets are a separate document
+   with its own shape, taken from the operator's own May 2026 workbook:
+
+     * one worksheet per location, not one per day, landscape A4;
+     * a title row, "SERVICES STARTING <WHERE> MONDAY TO FRIDAY", and the
+       date against it;
+     * one row per unit, the headcode, time and destination written once on
+       the entry's first row and the rest of the formation under it;
+     * fourteen columns, of which the reports fill eight. The other six are
+       ruled and left empty for the depot to write in, the way the Unit
+       column already is on the berthing books - they are hand-kept in the
+       real workbook too (COMMENTS is filled on 13% of its rows, ROAD on 19%,
+       R/T and L/S on 6%).
+
+   Grove Park and Slade Green get an AM and a PM sheet, which is how the real
+   workbook splits them. */
+"use strict";
+const SHEETS_METRO = (() => {
+const X = SHEETS_XLSX;
+const { norm } = SHEETS_CORE;
+const { DEST_TLC } = SHEETS_DATA;
+const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
+
+/* Column widths, and the two headings that change with the location: a
+   terminus has PLATFORMs where a depot has ROADs, and the two big depots
+   call the timing point a SIGNAL where everywhere else calls it a STATION.
+   Both are the real workbook's own wording. */
+const WIDTHS = [11.3, 11, 16.3, 17.9, 8.1, 14, 14.9, 9.1, 16.1, 2.9, 2.9, 3.7, 10.6, 9.1];
+const SIGNAL_AT = new Set(["GROVE PARK", "SLADE GREEN"]);
+const PLATFORM_AT = new Set(["CANNON STREET", "CHARING CROSS", "VICTORIA",
+                             "LONDON BRIDGE", "BLACKFRIARS"]);
+function headings(sec) {
+  return ["TRAIN I.D.", "SIDINGS", SIGNAL_AT.has(sec) ? "SIGNAL" : "STATION",
+          "DESTINATION", "POS", "DIAG", "FORMATION",
+          PLATFORM_AT.has(sec) ? "PLATFORM" : "ROAD", "COMMENTS",
+          "S", "R/T", "L/S", "ENDS", "MILES"];
+}
+/* The destination in full, which is how this sheet writes it - the berthing
+   books use the three-letter code. The name table is keyed the other way
+   round, so it is turned once here. */
+const NAME_OF = (() => {
+  const m = {};
+  for (const name of Object.keys(DEST_TLC)) {
+    const code = DEST_TLC[name];
+    // the first spelling wins: the table has several names per code and the
+    // earliest is the plain one ("VICTORIA" before "LONDON VICTORIA")
+    if (!(code in m)) m[code] = name;
+  }
+  return m;
+})();
+const destName = code => NAME_OF[String(code || "").toUpperCase()] || code || "";
+
+const hhmm = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
+  (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
+
+/* Which sheet an entry belongs on. Grove Park and Slade Green are split by
+   the time of day, the way the real workbook splits them; everywhere else
+   is one sheet. */
+function sheetFor(sec, e) {
+  if (!SIGNAL_AT.has(sec)) return sec;
+  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < 180 ? " PM" : " AM");
+}
+
+/* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
+const HEAD_LOOK = 6, BODY_LOOK = 3, TITLE_LOOK = 1;
+function layoutSection(name, entries, dateLbl) {
+  const cells = [], merges = [], rowHeights = new Map();
+  const put = (r, c, v, look, sides) =>
+    cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
+                 look, sides: sides || [null, null, null, null] });
+  let r = 1;
+  put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
+  put(r, 13, dateLbl, 2);
+  merges.push("A1:E1");
+  rowHeights.set(r, 18); r++;
+  const head = headings(name.replace(/ (AM|PM)$/, ""));
+  head.forEach((h, i) =>
+    put(r, i + 1, h, HEAD_LOOK, [null, null, "medium", "medium"]));
+  rowHeights.set(r, 18); r++;
+
+  const sorted = entries.slice().sort((a, b) => {
+    const ka = (a.time % 1440) < 180 ? (a.time % 1440) + 1440 : a.time % 1440;
+    const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
+    return ka - kb;
+  });
+  for (const e of sorted) {
+    const first = r;
+    /* This sheet reads by POSITION, lowest first, which is not the berthing
+       books' order - they list the units the way they stand on the ground,
+       front one first. The operator's own workbook numbers the POS column
+       1, 2, 3 straight down every formation on it. */
+    const units = e.units.slice().sort((a, b) => {
+      const pa = a.pos == null ? 99 : a.pos, pb = b.pos == null ? 99 : b.pos;
+      return pa - pb || (a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0);
+    });
+    units.forEach((u, i) => {
+      const lastOfEntry = i === units.length - 1;
+      const bot = lastOfEntry ? "thin" : null;
+      const col = (c, v, look) =>
+        put(r, c, v, look === undefined ? BODY_LOOK : look,
+            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot]);
+      // written once, against the top row of the formation
+      col(1, i === 0 ? (e.headcode || "") : "");
+      col(2, i === 0 ? hhmm(e) : "");
+      col(3, "");                                   // STATION / SIGNAL: by hand
+      col(4, i === 0 ? destName(e.dest) : "");
+      col(5, u.pos == null ? "" : u.pos);
+      col(6, (u.code || "") + u.diag);
+      col(7, u.unit || "");                         // the allocated unit
+      col(8, "");                                   // ROAD / PLATFORM: by hand
+      col(9, "");                                   // COMMENTS: by hand
+      col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
+      col(13, u.ends || "");
+      col(14, u.miles == null ? "" : Math.round(u.miles), 5);
+      rowHeights.set(r, 18);
+      r++;
+    });
+    if (units.length > 1) merges.push("A" + first + ":A" + first);
+  }
+  return { cells, merges, rowHeights, maxRow: r,
+           opts: { widths: WIDTHS, landscape: true, fitToHeight: 0 } };
+}
+
+/* One workbook, one worksheet per location, in the section order the book
+   already uses with the AM/PM splits slotted in where they fall. */
+function sheetsFor(secsByDay, dateLabels, order) {
+  const bySheet = new Map();
+  const days = Object.keys(dateLabels);
+  for (const day of days) {
+    const secs = secsByDay[day];
+    if (!secs) continue;
+    for (const [sec, list] of secs)
+      for (const e of list) {
+        const name = sheetFor(sec, e);
+        if (!bySheet.has(name)) bySheet.set(name, { day, entries: [] });
+        bySheet.get(name).entries.push(e);
+      }
+  }
+  const rank = new Map((order || []).map((s, i) => [s, i]));
+  const names = Array.from(bySheet.keys()).sort((a, b) => {
+    const ra = rank.has(a.replace(/ (AM|PM)$/, "")) ? rank.get(a.replace(/ (AM|PM)$/, "")) : 999;
+    const rb = rank.has(b.replace(/ (AM|PM)$/, "")) ? rank.get(b.replace(/ (AM|PM)$/, "")) : 999;
+    return ra - rb || (a < b ? -1 : a > b ? 1 : 0);
+  });
+  return names.map(name => ({
+    // Excel will not take more than 31 characters in a tab name
+    name: name.slice(0, 31),
+    layout: layoutSection(name, bySheet.get(name).entries,
+                          dateLabels[bySheet.get(name).day] || ""),
+  }));
+}
+function writeMetroBook(secsByDay, dateLabels, order, zipFn) {
+  const sheets = sheetsFor(secsByDay, dateLabels, order);
+  return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
+}
+
+return { writeMetroBook, sheetsFor, layoutSection, sheetFor, destName, headings, WIDTHS };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;
 </script>
 <script>
 /* SheetsEngine — the weekend pipeline, a JS port of make_sheets.py.
@@ -4275,7 +4460,7 @@ const GENIUS = (() => {
       }
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
-      meta.set(diag, { stops, stints, sum: sr, sums: srs });
+      meta.set(diag, { stops, stints, sum: sr, sums: srs, miles: raw.miles });
     }
     /* Does this report carry the shunt column at all? A PDF that lost it, or
        an Integrale export that never had it, would otherwise read as "no
@@ -4406,7 +4591,7 @@ const GENIUS = (() => {
       const blocks = [];
       for (const u of e.units) {
         const m = meta.get(u.diag);
-        const { stops, stints, sum, sums } = m;
+        const { stops, stints, sum, sums, miles } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
         // finalBerth: still on a berth at 20 00 = the PM end point, as long
         // as the late working keeps the unit in the same berthing area (see
@@ -4464,7 +4649,17 @@ const GENIUS = (() => {
           for (let k = sa; k <= sb; k++) if (stops[k].act === "#") return true;
           return false;
         })();
+        /* Where the DIAGRAM ends, which is one answer for the whole day
+           rather than one per row: the Metro sheet's ENDS column reads
+           "GP PM" or "SG AM" - the berth, then which half of the day it
+           finishes in. */
+        const endT = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
+        const endCode = bcode(locName(lastStop), warn, u.diag);
+        const dayEnd = endCode
+          ? endCode + (endT !== null && sortkey(endT) < AM_CUTOFF ? " AM" : " PM")
+          : "";
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
+                      dayEnd, miles,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -4757,7 +4952,13 @@ const GENIUS = (() => {
         extra_notes: [], review: [],
         units: e.blocks.map(x => {
           const u = { cls: x.cls, am: x.D, pm: x.E,
-                      diag: x.diag.slice(2), end: x.end };
+                      diag: x.diag.slice(2), end: x.end,
+                      /* the Metro sheet's own columns: it prints the diagram
+                         with its two-letter code, the Position as a column of
+                         its own, where the diagram ends and how far it runs.
+                         The berthing books use none of them. */
+                      code: x.diag.slice(0, 2), pos: x.pos,
+                      ends: x.dayEnd || "", miles: x.miles };
           // only where the export named the allocated unit, so every other
           // entry keeps the exact shape the golden test pins
           if (x.unit) u.unit = x.unit;
@@ -5224,6 +5425,15 @@ const GENIUS = (() => {
       st.out.push({ code: f[0], name: f[1], arr, dep,
                     hc: f[5] ? f[5].slice(0, 4) : null,
                     act: f[4] === "#" ? "#" : null });
+      /* The Metro sheet has a MILES column and the export carries the figure
+         already RUNNING - 0.10, 6.72, 10.31 down the diagram, with the leg's
+         own mileage in the next column - so the diagram's total is the last
+         one, not the sum of them. Summing them gave SG712 5,445 miles for a
+         day's work. It rides on the array because that is what reaches the
+         derivation; the PDF reader has no such column and leaves it
+         undefined, which the sheet prints as blank. */
+      const ml = parseFloat(f[6]);
+      if (!isNaN(ml)) st.out.miles = Math.max(st.out.miles || 0, ml);
       if (TM.test(f[10]))
         st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
                       dep: null, hc: null });
@@ -5286,6 +5496,7 @@ if (document.readyState === "loading") {
 }
 function init() {
 const $ = s => document.querySelector(s);
+const METRO = SHEETS_METRO;
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const DOCX_MIME =
@@ -5836,6 +6047,7 @@ function reviewPane(items) {
       { road: "METRO SHEETS", fleet: "Metro", label: "Metro 465/466/707",
         spriteCls: "465", file: "METRO_SHEETS_", hc: "metro", cycle: true,
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
+        metro: true,
         opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
       { road: "HS SHEETS", fleet: "High Speed", label: "High Speed 395",
         spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
@@ -5865,15 +6077,25 @@ function reviewPane(items) {
       const allHc = hcOn(b.hc);
       const opts = { allHeadcodes: allHc };
       for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
+      /* The Metro book is the depot's own document, not a berthing book:
+         a worksheet per location rather than per day, so its preview is per
+         location too. */
+      const metroSheets = b.metro
+        ? METRO.sheetsFor(b.secs, res.labels, b.order) : null;
       const book = { road: b.road, name: b.file + res.tag + ".xlsx",
-        bytes: X.writeBooks(b.secs, res.labels, b.ram, opts) };
+        bytes: b.metro
+          ? METRO.writeMetroBook(b.secs, res.labels, b.order,
+                                 f => fflate.zipSync(f, { level: 6 }))
+          : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
-      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
-        const secs = b.secs[d];
-        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
-                                b.hc === "main");
-      }]);
+      const panes = b.metro
+        ? metroSheets.map(sh => [sh.name, () => X.previewHtml(sh.layout)])
+        : dayKeys.map(d => [X.DAY_SHEET[d], () => {
+            const secs = b.secs[d];
+            if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
+            return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
+                                    b.hc === "main");
+          }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
       panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),

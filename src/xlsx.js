@@ -113,7 +113,8 @@ const MARGIN = { l: 0.7, r: 0.7, t: 0.75, b: 0.75 };
    split by Excel as before - better than printing the whole book too small
    to read. 74% is the smallest scale seen on a real book. */
 const MIN_SCALE = 74;
-function printPlan(merges, rowHeights, maxRow){
+function printPlan(merges, rowHeights, maxRow, opts){
+  opts = opts || {};
   /* A row merged clean across A..G is a section header - the weekday and
      weekend layouts both write one, and nothing else in either book is
      merged that way. */
@@ -132,16 +133,22 @@ function printPlan(merges, rowHeights, maxRow){
     for (let r = h; r <= end; r++) pts += rowH(r);
     return { start: h, pts };
   });
-  const pageW = (PAPER.w - MARGIN.l - MARGIN.r) * 72;
-  const pageH = (PAPER.h - MARGIN.t - MARGIN.b) * 72;
+  // landscape turns the paper on its side, so the two swap over
+  const land = !!opts.landscape;
+  const pw = land ? PAPER.h : PAPER.w, ph = land ? PAPER.w : PAPER.h;
+  const pageW = (pw - MARGIN.l - MARGIN.r) * 72;
+  const pageH = (ph - MARGIN.t - MARGIN.b) * 72;
   // Excel's character width -> pixels, and pixels -> points at 96dpi
-  const contentW = HOUSE_WIDTHS.reduce(function(t, w){
+  const contentW = (opts.widths || HOUSE_WIDTHS).reduce(function(t, w){
     return t + Math.round(w * 7) + 5;
   }, 0) * 0.75;
   /* The width has to fit whatever the book is - a Ramsgate book is one
      section and needs no breaks, but its eight columns still have to land on
-     one page across, which is the half of this that was going wrong. */
-  const tallest = secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
+     one page across, which is the half of this that was going wrong. A sheet
+     that runs down as many pages as it needs (fitToHeight 0, which is how
+     the Metro sheets are set) is a width question only. */
+  const tallest = opts.fitToHeight === 0
+    ? 0 : secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
   const fit = tallest ? Math.min(pageW / contentW, pageH / tallest)
                       : pageW / contentW;
   const scale = Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
@@ -155,8 +162,12 @@ function printPlan(merges, rowHeights, maxRow){
   return { scale, breaks };
 }
 
-function buildSheetXml(cells, merges, rowHeights, maxRow){
-  const widths = HOUSE_WIDTHS;
+function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
+  /* The Metro sheets are a different document - fourteen columns, landscape,
+     and as many pages down as the day needs - so the widths and the page
+     setup come from the layout where it has an opinion. */
+  opts = opts || {};
+  const widths = opts.widths || HOUSE_WIDTHS;
   let cols = '<cols>';
   widths.forEach(function(w, i){
     cols += '<col min="' + (i+1) + '" max="' + (i+1) +
@@ -192,7 +203,7 @@ function buildSheetXml(cells, merges, rowHeights, maxRow){
          merges.map(function(m){ return '<mergeCell ref="' + m + '"/>'; }).join("") +
          '</mergeCells>';
   }
-  const plan = printPlan(merges, rowHeights, maxRow);
+  const plan = printPlan(merges, rowHeights, maxRow, opts);
   // rowBreaks comes after pageSetup in the schema, and Excel rejects the
   // part outright if it does not
   const brk = plan.breaks.length
@@ -202,15 +213,18 @@ function buildSheetXml(cells, merges, rowHeights, maxRow){
         return '<brk id="' + r + '" max="16383" man="1"/>';
       }).join("") + '</rowBreaks>'
     : "";
+  const lastCol = colName(widths.length);
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-   '<dimension ref="A1:H' + Math.max(1, maxRow) + '"/>' +
+   '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
    '<sheetFormatPr defaultRowHeight="15"/>' + cols + sd + mg +
    '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
    MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
-   '<pageSetup paperSize="9" scale="' + plan.scale +
-   '" orientation="portrait"/>' + brk + '</worksheet>';
+   '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
+   (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
+   ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>' +
+   brk + '</worksheet>';
 }
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
@@ -221,7 +235,7 @@ function writeWorkbook(sheets, zipFn){
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells) c.s = sb.style(c.look, sb.border(c.sides));
     return buildSheetXml(s.layout.cells, s.layout.merges,
-                         s.layout.rowHeights, s.layout.maxRow);
+                         s.layout.rowHeights, s.layout.maxRow, s.layout.opts);
   });
   const enc = new TextEncoder();
   let types =
@@ -275,6 +289,12 @@ function colNum(s){
   return n;
 }
 function previewHtml(layout){
+  // as many columns as the layout has: eight on a berthing sheet, fourteen
+  // on a Metro one
+  const NCOL = ((layout.opts && layout.opts.widths) || PREVIEW_PX).length;
+  const PX = (layout.opts && layout.opts.widths)
+    ? layout.opts.widths.map(function(w){ return Math.round(w * 7) + 5; })
+    : PREVIEW_PX;
   const at = new Map();
   for (const c of layout.cells) at.set(c.r + "," + c.c, c);
   const spans = new Map(), covered = new Set();
@@ -299,13 +319,14 @@ function previewHtml(layout){
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
   let h = '<table class="sheet"><colgroup>';
-  for (const px of PREVIEW_PX) h += '<col style="width:' + px + 'px">';
+  for (const px of PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
     if (pageAt.has(r))
-      h += '<tr class="pbrk"><td colspan="8">Page ' + pageAt.get(r) + '</td></tr>';
+      h += '<tr class="pbrk"><td colspan="' + NCOL + '">Page ' + pageAt.get(r) +
+           '</td></tr>';
     h += "<tr>";
-    for (let c = 1; c <= 8; c++){
+    for (let c = 1; c <= NCOL; c++){
       if (covered.has(r + "," + c)) continue;
       const cell = at.get(r + "," + c);
       const sp = spans.get(r + "," + c);

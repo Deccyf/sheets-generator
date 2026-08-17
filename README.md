@@ -33,6 +33,7 @@ also rebuilds the two generated documents.
 
 - [Quick start](#quick-start)
 - [The books it produces](#the-books-it-produces)
+  - [The Metro sheets](#the-metro-sheets)
 - [How to read a sheet](#how-to-read-a-sheet)
 - [The review list](#the-review-list)
 - [Troubleshooting](#troubleshooting)
@@ -239,7 +240,7 @@ at. Check the finished books against the reports, the prints and the ACWNs.
 |---|---|---|
 | **SHEETS** | `SHEETS_<tag>.xlsx` | The mainline book (classes 375 / 375-9 / 376 / 377), every section from Ashford to West Marina. Ramsgate is cut out into its own book. |
 | **RAM_SHEETS** | `RAM_SHEETS_<tag>.xlsx` | Ramsgate's own book, cut from the same day's workings. |
-| **METRO_SHEETS** | `METRO_SHEETS_<tag>.xlsx` | The metro book (classes 465 / 466 / 707). |
+| **METRO_SHEETS** | `METRO_SHEETS_<tag>.xlsx` | The metro book (classes 465 / 466 / 707) — **not a berthing sheet**: the depot's own document, one worksheet per location, landscape, fourteen columns. See [The Metro sheets](#the-metro-sheets). |
 | **HS_SHEETS** | `HS_SHEETS_<tag>.xlsx` | The High Speed book (class 395) — built whenever the reports contain High Speed diagrams. |
 | **Weekend** | `SHEETS_<stamp>.xlsx`, `SHEETS_465_466_707_<stamp>.xlsx`, `SHEETS_395_<stamp>.xlsx` | One workbook per fleet for the weekend day, plus `<prints>_UPDATED.docx` when a reissue was merged. |
 
@@ -247,6 +248,40 @@ at. Check the finished books against the reports, the prints and the ACWNs.
 comes from the prints' own date (e.g. `SAT_02_AUG`). Weekday workbooks carry
 one worksheet per day (`MON`, `TUE`, …); each weekend workbook is a single
 day's sheet.
+
+### The Metro sheets
+
+The Metro book is a different document from the berthing books, and the tool
+builds it in the depot's own format, taken from their May 2026 workbook:
+
+* **One worksheet per location**, not one per day, landscape A4, running down
+  as many pages as the day needs (`fitToHeight="0"`). Grove Park and Slade
+  Green get an AM and a PM sheet, split at `PM_BREAK`, the way the real
+  workbook splits them.
+* A title row — `SERVICES STARTING <WHERE> MONDAY TO FRIDAY` — with the date
+  against it, then the header row, then one row per unit.
+* **Fourteen columns**: `TRAIN I.D.`, `SIDINGS`, `STATION`/`SIGNAL`,
+  `DESTINATION`, `POS`, `DIAG`, `FORMATION`, `ROAD`/`PLATFORM`, `COMMENTS`,
+  `S`, `R/T`, `L/S`, `ENDS`, `MILES`. A terminus has PLATFORMs where a depot
+  has ROADs; Grove Park and Slade Green call the timing point a SIGNAL.
+* The reports fill eight of them. **Six are ruled and left empty** for the
+  depot to write in — `STATION`/`SIGNAL`, `ROAD`, `COMMENTS`, `S`, `R/T`,
+  `L/S` — which is how they are kept in the real workbook too (COMMENTS is
+  filled on 13% of its rows, ROAD on 19%, R/T and L/S on 6%).
+* **It reads by Position, lowest first** — not the berthing books' order,
+  which lists the units the way they stand on the ground. Every formation in
+  the real workbook numbers its POS column 1, 2, 3 straight down.
+* `MILES` comes off the Detail export's own column, which carries the figure
+  **already running** (0.10, 6.72, 10.31 down the diagram, with the leg's own
+  mileage in the next column) — so the total is the last of them, not the sum.
+  Summing them gave one Metro diagram 5,445 miles for a day's work. The PDF
+  report has no such column and the cell stays blank.
+* `ENDS` is the berth the diagram finishes on plus which half of the day it
+  finishes in — `GP PM`, `SG AM`. The codes are the berthing books' own; the
+  real workbook's vocabulary differs in places (it writes `GP` where the tool
+  distinguishes `GPD` from `GPU`, and `PLUS` for `PLU`) and no mapping is
+  claimed, because a May sheet against August reports cannot tell a different
+  vocabulary from a diagram that now ends somewhere else.
 
 **They are set up to print.** Every sheet comes out A4 portrait with the house
 margins, scaled so the eight columns land on **one page across** and so the

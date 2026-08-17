@@ -13,6 +13,7 @@ if (document.readyState === "loading") {
 }
 function init() {
 const $ = s => document.querySelector(s);
+const METRO = SHEETS_METRO;
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const DOCX_MIME =
@@ -563,6 +564,7 @@ function reviewPane(items) {
       { road: "METRO SHEETS", fleet: "Metro", label: "Metro 465/466/707",
         spriteCls: "465", file: "METRO_SHEETS_", hc: "metro", cycle: true,
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
+        metro: true,
         opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
       { road: "HS SHEETS", fleet: "High Speed", label: "High Speed 395",
         spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
@@ -592,15 +594,25 @@ function reviewPane(items) {
       const allHc = hcOn(b.hc);
       const opts = { allHeadcodes: allHc };
       for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
+      /* The Metro book is the depot's own document, not a berthing book:
+         a worksheet per location rather than per day, so its preview is per
+         location too. */
+      const metroSheets = b.metro
+        ? METRO.sheetsFor(b.secs, res.labels, b.order) : null;
       const book = { road: b.road, name: b.file + res.tag + ".xlsx",
-        bytes: X.writeBooks(b.secs, res.labels, b.ram, opts) };
+        bytes: b.metro
+          ? METRO.writeMetroBook(b.secs, res.labels, b.order,
+                                 f => fflate.zipSync(f, { level: 6 }))
+          : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
-      const panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
-        const secs = b.secs[d];
-        if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-        return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
-                                b.hc === "main");
-      }]);
+      const panes = b.metro
+        ? metroSheets.map(sh => [sh.name, () => X.previewHtml(sh.layout)])
+        : dayKeys.map(d => [X.DAY_SHEET[d], () => {
+            const secs = b.secs[d];
+            if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
+            return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
+                                    b.hc === "main");
+          }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
       panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),

@@ -1,0 +1,162 @@
+/* SHEETS_METRO — the Metro book in the depot's own format.
+
+   This is not the berthing sheet. The Metro sheets are a separate document
+   with its own shape, taken from the operator's own May 2026 workbook:
+
+     * one worksheet per location, not one per day, landscape A4;
+     * a title row, "SERVICES STARTING <WHERE> MONDAY TO FRIDAY", and the
+       date against it;
+     * one row per unit, the headcode, time and destination written once on
+       the entry's first row and the rest of the formation under it;
+     * fourteen columns, of which the reports fill eight. The other six are
+       ruled and left empty for the depot to write in, the way the Unit
+       column already is on the berthing books - they are hand-kept in the
+       real workbook too (COMMENTS is filled on 13% of its rows, ROAD on 19%,
+       R/T and L/S on 6%).
+
+   Grove Park and Slade Green get an AM and a PM sheet, which is how the real
+   workbook splits them. */
+"use strict";
+const SHEETS_METRO = (() => {
+const X = SHEETS_XLSX;
+const { norm } = SHEETS_CORE;
+const { DEST_TLC } = SHEETS_DATA;
+const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
+
+/* Column widths, and the two headings that change with the location: a
+   terminus has PLATFORMs where a depot has ROADs, and the two big depots
+   call the timing point a SIGNAL where everywhere else calls it a STATION.
+   Both are the real workbook's own wording. */
+const WIDTHS = [11.3, 11, 16.3, 17.9, 8.1, 14, 14.9, 9.1, 16.1, 2.9, 2.9, 3.7, 10.6, 9.1];
+const SIGNAL_AT = new Set(["GROVE PARK", "SLADE GREEN"]);
+const PLATFORM_AT = new Set(["CANNON STREET", "CHARING CROSS", "VICTORIA",
+                             "LONDON BRIDGE", "BLACKFRIARS"]);
+function headings(sec) {
+  return ["TRAIN I.D.", "SIDINGS", SIGNAL_AT.has(sec) ? "SIGNAL" : "STATION",
+          "DESTINATION", "POS", "DIAG", "FORMATION",
+          PLATFORM_AT.has(sec) ? "PLATFORM" : "ROAD", "COMMENTS",
+          "S", "R/T", "L/S", "ENDS", "MILES"];
+}
+/* The destination in full, which is how this sheet writes it - the berthing
+   books use the three-letter code. The name table is keyed the other way
+   round, so it is turned once here. */
+const NAME_OF = (() => {
+  const m = {};
+  for (const name of Object.keys(DEST_TLC)) {
+    const code = DEST_TLC[name];
+    // the first spelling wins: the table has several names per code and the
+    // earliest is the plain one ("VICTORIA" before "LONDON VICTORIA")
+    if (!(code in m)) m[code] = name;
+  }
+  return m;
+})();
+const destName = code => NAME_OF[String(code || "").toUpperCase()] || code || "";
+
+const hhmm = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
+  (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
+
+/* Which sheet an entry belongs on. Grove Park and Slade Green are split by
+   the time of day, the way the real workbook splits them; everywhere else
+   is one sheet. */
+function sheetFor(sec, e) {
+  if (!SIGNAL_AT.has(sec)) return sec;
+  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < 180 ? " PM" : " AM");
+}
+
+/* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
+const HEAD_LOOK = 6, BODY_LOOK = 3, TITLE_LOOK = 1;
+function layoutSection(name, entries, dateLbl) {
+  const cells = [], merges = [], rowHeights = new Map();
+  const put = (r, c, v, look, sides) =>
+    cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
+                 look, sides: sides || [null, null, null, null] });
+  let r = 1;
+  put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
+  put(r, 13, dateLbl, 2);
+  merges.push("A1:E1");
+  rowHeights.set(r, 18); r++;
+  const head = headings(name.replace(/ (AM|PM)$/, ""));
+  head.forEach((h, i) =>
+    put(r, i + 1, h, HEAD_LOOK, [null, null, "medium", "medium"]));
+  rowHeights.set(r, 18); r++;
+
+  const sorted = entries.slice().sort((a, b) => {
+    const ka = (a.time % 1440) < 180 ? (a.time % 1440) + 1440 : a.time % 1440;
+    const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
+    return ka - kb;
+  });
+  for (const e of sorted) {
+    const first = r;
+    /* This sheet reads by POSITION, lowest first, which is not the berthing
+       books' order - they list the units the way they stand on the ground,
+       front one first. The operator's own workbook numbers the POS column
+       1, 2, 3 straight down every formation on it. */
+    const units = e.units.slice().sort((a, b) => {
+      const pa = a.pos == null ? 99 : a.pos, pb = b.pos == null ? 99 : b.pos;
+      return pa - pb || (a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0);
+    });
+    units.forEach((u, i) => {
+      const lastOfEntry = i === units.length - 1;
+      const bot = lastOfEntry ? "thin" : null;
+      const col = (c, v, look) =>
+        put(r, c, v, look === undefined ? BODY_LOOK : look,
+            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot]);
+      // written once, against the top row of the formation
+      col(1, i === 0 ? (e.headcode || "") : "");
+      col(2, i === 0 ? hhmm(e) : "");
+      col(3, "");                                   // STATION / SIGNAL: by hand
+      col(4, i === 0 ? destName(e.dest) : "");
+      col(5, u.pos == null ? "" : u.pos);
+      col(6, (u.code || "") + u.diag);
+      col(7, u.unit || "");                         // the allocated unit
+      col(8, "");                                   // ROAD / PLATFORM: by hand
+      col(9, "");                                   // COMMENTS: by hand
+      col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
+      col(13, u.ends || "");
+      col(14, u.miles == null ? "" : Math.round(u.miles), 5);
+      rowHeights.set(r, 18);
+      r++;
+    });
+    if (units.length > 1) merges.push("A" + first + ":A" + first);
+  }
+  return { cells, merges, rowHeights, maxRow: r,
+           opts: { widths: WIDTHS, landscape: true, fitToHeight: 0 } };
+}
+
+/* One workbook, one worksheet per location, in the section order the book
+   already uses with the AM/PM splits slotted in where they fall. */
+function sheetsFor(secsByDay, dateLabels, order) {
+  const bySheet = new Map();
+  const days = Object.keys(dateLabels);
+  for (const day of days) {
+    const secs = secsByDay[day];
+    if (!secs) continue;
+    for (const [sec, list] of secs)
+      for (const e of list) {
+        const name = sheetFor(sec, e);
+        if (!bySheet.has(name)) bySheet.set(name, { day, entries: [] });
+        bySheet.get(name).entries.push(e);
+      }
+  }
+  const rank = new Map((order || []).map((s, i) => [s, i]));
+  const names = Array.from(bySheet.keys()).sort((a, b) => {
+    const ra = rank.has(a.replace(/ (AM|PM)$/, "")) ? rank.get(a.replace(/ (AM|PM)$/, "")) : 999;
+    const rb = rank.has(b.replace(/ (AM|PM)$/, "")) ? rank.get(b.replace(/ (AM|PM)$/, "")) : 999;
+    return ra - rb || (a < b ? -1 : a > b ? 1 : 0);
+  });
+  return names.map(name => ({
+    // Excel will not take more than 31 characters in a tab name
+    name: name.slice(0, 31),
+    layout: layoutSection(name, bySheet.get(name).entries,
+                          dateLabels[bySheet.get(name).day] || ""),
+  }));
+}
+function writeMetroBook(secsByDay, dateLabels, order, zipFn) {
+  const sheets = sheetsFor(secsByDay, dateLabels, order);
+  return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
+}
+
+return { writeMetroBook, sheetsFor, layoutSection, sheetFor, destName, headings, WIDTHS };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;

@@ -404,7 +404,7 @@ const GENIUS = (() => {
       }
       const stints = [];
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
-      meta.set(diag, { stops, stints, sum: sr, sums: srs });
+      meta.set(diag, { stops, stints, sum: sr, sums: srs, miles: raw.miles });
     }
     /* Does this report carry the shunt column at all? A PDF that lost it, or
        an Integrale export that never had it, would otherwise read as "no
@@ -535,7 +535,7 @@ const GENIUS = (() => {
       const blocks = [];
       for (const u of e.units) {
         const m = meta.get(u.diag);
-        const { stops, stints, sum, sums } = m;
+        const { stops, stints, sum, sums, miles } = m;
         const later = stints.slice(u.si + 1).map(([a]) => stops[a]);
         // finalBerth: still on a berth at 20 00 = the PM end point, as long
         // as the late working keeps the unit in the same berthing area (see
@@ -593,7 +593,17 @@ const GENIUS = (() => {
           for (let k = sa; k <= sb; k++) if (stops[k].act === "#") return true;
           return false;
         })();
+        /* Where the DIAGRAM ends, which is one answer for the whole day
+           rather than one per row: the Metro sheet's ENDS column reads
+           "GP PM" or "SG AM" - the berth, then which half of the day it
+           finishes in. */
+        const endT = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
+        const endCode = bcode(locName(lastStop), warn, u.diag);
+        const dayEnd = endCode
+          ? endCode + (endT !== null && sortkey(endT) < AM_CUTOFF ? " AM" : " PM")
+          : "";
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
+                      dayEnd, miles,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -886,7 +896,13 @@ const GENIUS = (() => {
         extra_notes: [], review: [],
         units: e.blocks.map(x => {
           const u = { cls: x.cls, am: x.D, pm: x.E,
-                      diag: x.diag.slice(2), end: x.end };
+                      diag: x.diag.slice(2), end: x.end,
+                      /* the Metro sheet's own columns: it prints the diagram
+                         with its two-letter code, the Position as a column of
+                         its own, where the diagram ends and how far it runs.
+                         The berthing books use none of them. */
+                      code: x.diag.slice(0, 2), pos: x.pos,
+                      ends: x.dayEnd || "", miles: x.miles };
           // only where the export named the allocated unit, so every other
           // entry keeps the exact shape the golden test pins
           if (x.unit) u.unit = x.unit;
@@ -1353,6 +1369,15 @@ const GENIUS = (() => {
       st.out.push({ code: f[0], name: f[1], arr, dep,
                     hc: f[5] ? f[5].slice(0, 4) : null,
                     act: f[4] === "#" ? "#" : null });
+      /* The Metro sheet has a MILES column and the export carries the figure
+         already RUNNING - 0.10, 6.72, 10.31 down the diagram, with the leg's
+         own mileage in the next column - so the diagram's total is the last
+         one, not the sum of them. Summing them gave SG712 5,445 miles for a
+         day's work. It rides on the array because that is what reaches the
+         derivation; the PDF reader has no such column and leaves it
+         undefined, which the sheet prints as blank. */
+      const ml = parseFloat(f[6]);
+      if (!isNaN(ml)) st.out.miles = Math.max(st.out.miles || 0, ml);
       if (TM.test(f[10]))
         st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
                       dep: null, hc: null });
