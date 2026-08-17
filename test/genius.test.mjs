@@ -101,7 +101,7 @@ test("GENIUS.build output is identical to the legacy build", async () => {
      as the sheet prints them, and no "Position" or "pinned". Compare the
      kinds both builds raise, in the shape this one uses. */
   const SINCE_LEGACY =
-    /has a corrected order recorded at|as a berthing —/;
+    /has a corrected order recorded at|as a berthing —|one line per diagram/;
   const asNow = m => m
     .replace(/^suppressed: /, "Left off — ")
     .replace(/\) - /, "): ")
@@ -130,12 +130,21 @@ test("per-book review lists carry only their own fleet's items", async () => {
   // …and the unknown Belvedere Sidings berth to the metro book alone.
   assert.ok(res.reviews.metro.some(x => /Belvedere/.test(x.msg)), "metro has its item");
   assert.ok(!res.reviews.main.some(x => /Belvedere/.test(x.msg)), "main clean of it");
-  // Together the per-book lists are exactly the combined list.
+  /* Together the per-book lists cover the combined list. Not a partition:
+     an item with no section belongs to every book and is deliberately on
+     all three, so it is one line in the combined list and three in the
+     concatenation. Compared as sets for that reason. */
+  const uniq = a => norm([...new Set(a)].sort());
   assert.deepEqual(
-    norm([...res.reviews.main, ...res.reviews.metro, ...res.reviews.hs]
-      .map(x => x.msg).sort()),
-    norm([...res.review].sort()),
-    "partition covers the combined list");
+    uniq([...res.reviews.main, ...res.reviews.metro, ...res.reviews.hs].map(x => x.msg)),
+    uniq([...res.review]),
+    "every item is on some book's list, and every book's item is on the combined one");
+  const general = res.review.filter(m =>
+    res.reviews.main.some(x => x.msg === m && !x.sec));
+  for (const m of general)
+    for (const bag of ["main", "metro", "hs"])
+      assert.ok(res.reviews[bag].some(x => x.msg === m),
+        "a general item is on the " + bag + " list too: " + m.slice(0, 40));
 });
 
 test("warnings carry their section, and the Ramsgate cut works", async () => {
@@ -166,7 +175,20 @@ test("Integrale CSVs build the same books as the Genius PDFs", async () => {
   assert.deepEqual(norm(csvRes.hsSecs), norm(pdfRes.hsSecs), "high speed sections");
   assert.deepEqual(norm(csvRes.labels), norm(pdfRes.labels), "labels");
   assert.equal(csvRes.tag, pdfRes.tag, "tag");
-  assert.deepEqual(norm(csvRes.reviews), norm(pdfRes.reviews), "review lists");
+  /* One documented difference in the lists. The Genius path warns when its
+     Summary gives one line per diagram rather than one per working, because
+     that is a broken export of a report that normally carries both and the
+     fix is to run it again. Integrale has no other shape to offer - one row
+     per diagram is what it exports - so the warning would be advice nobody
+     can take. The books either source builds are identical, which is what
+     the four assertions above check. */
+  const OWN = /one line per diagram/;
+  const drop = r => Object.fromEntries(Object.entries(r)
+    .map(([k, v]) => [k, v.filter(x => !OWN.test(x.msg))]));
+  assert.deepEqual(norm(drop(csvRes.reviews)), norm(drop(pdfRes.reviews)),
+    "review lists");
+  assert.ok(pdfRes.review.some(m => OWN.test(m)),
+    "and the fixture summary really is the one-per-diagram shape");
 });
 
 test("the Genius CSV exports build the same books as the PDFs", async () => {
@@ -687,4 +709,40 @@ test("pasted text reads the same as the file it was copied from", async () => {
   // a line with more commas than tabs is a CSV that happens to hold a tab
   const csvWithTab = 'a,b,"has\ttab",c\n1,2,3,4';
   assert.equal(P(csvWithTab), csvWithTab, "left alone");
+});
+
+test("a summary with one line per diagram says so", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
+  const sum = geniusSummaryCsv(), det = geniusDetailCsv();
+
+  /* Which way round a formation reads comes from the Position, and the
+     Position only means anything if the summary gives one per WORKING. The
+     12/08 export did - 449 rows for 303 diagrams - and the 17/08 one gave
+     322 rows for 322 diagrams, one apiece: the start-of-day Position and
+     nothing else. Afternoon formations were then ordered on where their
+     units stood that morning. Four of the six Grove Park PM formations that
+     could be checked came out wrong, and nothing on the sheet said so. The
+     order cannot be recovered - the Detail report carries no Position and no
+     formation column - so the review list has to carry the warning.
+
+     The check is the two reports against each other, not the row count: a
+     short day would fail a count. The synthetic summary is itself the thin
+     shape, one row per diagram, so it is the fixture for the bad case and
+     the good one is made by giving a diagram its second working. */
+  const said = r => r.review.filter(m => /one line per diagram/.test(m));
+
+  const thin = await N.GENIUS.build([sum, det]);
+  assert.equal(said(thin).length, 1, "one row per diagram is called out");
+  assert.match(said(thin)[0], /START of the day/, "says what is missing");
+  assert.match(said(thin)[0], /working more than once/, "and how it knows");
+  assert.match(said(thin)[0], /Reverse/, "and what to do about it");
+
+  // the same day with any diagram listed per working instead of once
+  const rows = sum.split("\r\n");
+  const withWorking = rows.concat([rows[0].replace(/"(\d\d:\d\d)"/, '"23:59"')])
+    .join("\r\n");
+  const full = await N.GENIUS.build([withWorking, det]);
+  assert.equal(said(full).length, 0,
+    "a summary that lists a working twice says nothing: " + said(full).join(" | "));
 });

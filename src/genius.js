@@ -990,7 +990,52 @@ const GENIUS = (() => {
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
     if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
-    return assemble(sumRows, byDate, undefined, opts);
+    return assemble(sumRows, byDate, startOfDayOnly(sumRows, byDate), opts);
+  }
+
+  /* Which way round a formation reads comes from the Position, and the
+     Position only means anything if the summary gives one PER WORKING. The
+     12/08 export did: 449 rows for 303 diagrams, 124 of them appearing more
+     than once, so the 16 50 off Grove Park carried its own Positions. The
+     17/08 export carried 322 rows for 322 diagrams - one apiece, the
+     start-of-day Position and nothing else - and every afternoon formation
+     was then ordered on where its units stood that morning.
+
+     It is not a small effect and it is not visible on the sheet: of the six
+     Grove Park PM formations that could be checked against 12/08, four came
+     out wrong, including the 16 50 and the 16 41. The order cannot be
+     recovered from anywhere else - the Detail report carries no Position and
+     no formation column - so the only honest thing is to say so, in the one
+     place somebody is going to read.
+
+     The check is not "how many rows" - a short day would fail that. It is
+     the two reports against each other: the Detail lists every working, so
+     if it shows diagrams working several times over while the Summary gives
+     each of them one line, the Summary is the start-of-day one. */
+  function startOfDayOnly(sumRows, byDate) {
+    const seen = new Map();
+    for (const r of sumRows)
+      seen.set(r.diag + "\u0000" + r.date, (seen.get(r.diag + "\u0000" + r.date) || 0) + 1);
+    for (const n of seen.values()) if (n > 1) return undefined;
+    // how many diagrams the Detail shows doing more than one working
+    let busy = 0;
+    for (const [date, m] of byDate)
+      for (const [diag, stops] of m) {
+        if (!seen.has(diag + "\u0000" + date)) continue;
+        const hcs = new Set();
+        for (const st of stops) if (st.dep !== null && st.hc) hcs.add(st.hc);
+        if (hcs.size > 1) busy++;
+      }
+    if (busy < 5 || busy * 3 < seen.size) return undefined;
+    return ["This Diagram Summary has one line per diagram (" + seen.size +
+      " diagrams, " + sumRows.length + " lines) while the Detail report shows " +
+      busy + " of them working more than once, so the only Position it " +
+      "gives is where each unit stood at the START of the day. Formations " +
+      "that come together later are printed in that morning " +
+      "order, which is often not the order they stand in - the afternoon " +
+      "Grove Park departures especially. Run the Summary export again so it " +
+      "lists every working, or put the affected formations right with " +
+      "Reverse on the Unit order tab."];
   }
 
 
