@@ -101,7 +101,7 @@ test("GENIUS.build output is identical to the legacy build", async () => {
      as the sheet prints them, and no "Position" or "pinned". Compare the
      kinds both builds raise, in the shape this one uses. */
   const SINCE_LEGACY =
-    /has a corrected order recorded at|as a berthing —|one line per diagram/;
+    /has a corrected order recorded at|as a berthing —|AM unit positions only/;
   const asNow = m => m
     .replace(/^suppressed: /, "Left off — ")
     .replace(/\) - /, "): ")
@@ -182,7 +182,7 @@ test("Integrale CSVs build the same books as the Genius PDFs", async () => {
      per diagram is what it exports - so the warning would be advice nobody
      can take. The books either source builds are identical, which is what
      the four assertions above check. */
-  const OWN = /one line per diagram/;
+  const OWN = /AM unit positions only/;
   const drop = r => Object.fromEntries(Object.entries(r)
     .map(([k, v]) => [k, v.filter(x => !OWN.test(x.msg))]));
   assert.deepEqual(norm(drop(csvRes.reviews)), norm(drop(pdfRes.reviews)),
@@ -711,7 +711,7 @@ test("pasted text reads the same as the file it was copied from", async () => {
   assert.equal(P(csvWithTab), csvWithTab, "left alone");
 });
 
-test("a summary with one line per diagram says so", async () => {
+test("a summary with the AM positions only says so", async () => {
   const N = built();
   const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
   const sum = geniusSummaryCsv(), det = geniusDetailCsv();
@@ -730,11 +730,12 @@ test("a summary with one line per diagram says so", async () => {
      short day would fail a count. The synthetic summary is itself the thin
      shape, one row per diagram, so it is the fixture for the bad case and
      the good one is made by giving a diagram its second working. */
-  const said = r => r.review.filter(m => /one line per diagram/.test(m));
+  const said = r => r.review.filter(m => /AM unit positions only/.test(m));
 
   const thin = await N.GENIUS.build([sum, det]);
   assert.equal(said(thin).length, 1, "one row per diagram is called out");
-  assert.match(said(thin)[0], /START of the day/, "says what is missing");
+  assert.match(said(thin)[0], /not the PM ones/, "in the terms a reader cares about");
+  assert.match(said(thin)[0], /start of the day/, "says what is missing");
   assert.match(said(thin)[0], /working more than once/, "and how it knows");
   assert.match(said(thin)[0], /Reverse/, "and what to do about it");
 

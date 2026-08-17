@@ -92,10 +92,12 @@ panel by mistake it will tell you, politely, and point you downstairs.
 > **File → Session Settings** → make sure **"Show diagram sections on the
 > diagram summary report"** is **ticked**.
 >
+> **Without it you only get the AM unit positions. It needs to be ticked to
+> get the PM positions as well.**
+>
 > A "diagram section" is a working. With that box unticked, the Diagram Summary
 > gives you one line per diagram instead of one line per working — and the only
-> unit **Position** it carries is where each unit stood at the *start of the
-> day*.
+> unit position it carries is where each unit stood at the *start of the day*.
 >
 > The books still build. But every formation that comes together later in the
 > day gets printed in its morning order, which is usually not the order the
@@ -441,8 +443,8 @@ St Pancras or Swanley is not a berthing question.
 | A road says *"nothing to berth"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
 | A location has its own heading | A unit berthed somewhere the section list has never heard of. It's on the review list; check where it should live. |
 | A train seems to be missing | Read the review list first — empty moves into a berth are left off deliberately and each one is named. If it isn't there, note the diagram number and report it. |
-| Two units are the wrong way round | Check the review list for *"one line per diagram"* first — if it's there, the Summary was exported without **File → Session Settings → "Show diagram sections on the diagram summary report"**, and every afternoon formation is in its morning order. Re-export with it ticked. Otherwise: if the review list flagged that entry, the reports couldn't settle it; if it didn't, the order came from the tables and is wrong there — report the section, time and diagram numbers and it can be pinned. |
-| *"This Diagram Summary has one line per diagram"* | The Genius setting above. The books are built, but the afternoon unit order can't be trusted and can't be recovered from what was exported. |
+| Two units are the wrong way round | Check the review list for *"AM unit positions only"* first — if it's there, the Summary was exported without **File → Session Settings → "Show diagram sections on the diagram summary report"**, and every afternoon formation is in its morning order. Re-export with it ticked. Otherwise: if the review list flagged that entry, the reports couldn't settle it; if it didn't, the order came from the tables and is wrong there — report the section, time and diagram numbers and it can be pinned. |
+| *"This Diagram Summary carries the AM unit positions only"* | The Genius setting above wasn't ticked. The books are built, but the afternoon unit order can't be trusted and can't be recovered from what was exported. |
 | *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
 | *"That looks like a reissue on its own"* | Drop the full weekly prints with it, or first. |
 | *"…belongs to a different day"* | The reissue's date doesn't match the prints it was dropped with. |

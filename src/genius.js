@@ -1034,17 +1034,17 @@ const GENIUS = (() => {
         if (hcs.size > 1) busy++;
       }
     if (busy < 5 || busy * 3 < seen.size) return undefined;
-    return ["This Diagram Summary has one line per diagram (" + seen.size +
-      " diagrams, " + sumRows.length + " lines) while the Detail report shows " +
-      busy + " of them working more than once, so the only Position it " +
-      "gives is where each unit stood at the START of the day. Formations " +
-      "that come together later are printed in that morning " +
-      "order, which is often not the order they stand in - the afternoon " +
-      "Grove Park departures especially. In Genius, tick File > Session " +
-      "Settings > \u201cShow diagram sections on the diagram summary " +
-      "report\u201d and run the Summary again - that is the setting that " +
-      "makes it list every working. Until then, put the affected formations " +
-      "right with Reverse on the Unit order tab."];
+    return ["This Diagram Summary carries the AM unit positions only, not " +
+      "the PM ones: " + seen.size + " diagrams on " + sumRows.length +
+      " lines, one apiece, while the Detail report shows " + busy +
+      " of them working more than once. So the only position it gives is " +
+      "where each unit stood at the start of the day, and every formation " +
+      "made up during the day is printed in its morning order - the " +
+      "afternoon Grove Park departures especially. In Genius, tick File > " +
+      "Session Settings > \u201cShow diagram sections on the diagram " +
+      "summary report\u201d and run the Summary again: that is the setting " +
+      "that gives you the PM positions. Until then, put the affected " +
+      "formations right with Reverse on the Unit order tab."];
   }
 
 

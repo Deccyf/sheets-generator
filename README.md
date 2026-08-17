@@ -69,17 +69,18 @@ The weekday panel reads either planning system:
   CSV detail if that is what you have.
 
   > **Check one setting first.** `File › Session Settings` → tick **"Show
-  > diagram sections on the diagram summary report"**. A diagram section *is* a
-  > working, so with it off the Diagram Summary collapses to one line per
-  > diagram and the only unit **Position** it carries is where each unit stood
-  > at the start of the day. Afternoon formations then print in their morning
-  > order — the Grove Park PM departures especially, where units are re-formed
-  > all afternoon. Measured on 17/08: four of the fourteen checkable
+  > diagram sections on the diagram summary report"**.
+  >
+  > **Without it you get the AM unit positions only. Ticked, you get the PM
+  > positions too.** A diagram section *is* a working: unticked, the Summary
+  > collapses to one line per diagram carrying only where each unit stood at
+  > the start of the day, so every formation made up later is printed in its
+  > morning order — the Grove Park PM departures especially, where units are
+  > re-formed all afternoon. Measured on 17/08: four of the fourteen checkable
   > formations came out wrong, all four Grove Park PM. The books still build
   > and the review list names the problem, but the order cannot be recovered
   > afterwards — the Detail report carries no Position and no formation
-  > column. With the box ticked the Summary lists every working and the order
-  > is right: against the real 12/08 book, 13 out of 13.
+  > column. With the box ticked, against the real 12/08 book: 13 out of 13.
 * **Integrale**: export the **Diagram Summary** and **Diagrams** CSVs for the
   date. Activity markers (ATTACH/DETACH/STABLD) are understood, stable-all-day
   placeholder diagrams are left out with a review note, and headcodes mangled
@@ -306,7 +307,7 @@ entries:
 |---|---|
 | *"No Diagram Summary rows found"* / *"No Diagram Detail itineraries found"* | One of the two weekday PDFs is missing or is the wrong kind of report. Both must be dropped, printed for the same date. |
 | *"…doesn't look like a Genius report"* | The PDF's text couldn't be matched to either report — make sure it was saved from Genius itself (the extractor reads machine-produced PDFs, not scans/photographs). |
-| *"This Diagram Summary has one line per diagram"* | The Summary was exported with `File › Session Settings` → **"Show diagram sections on the diagram summary report"** unticked, so it carries only the start-of-day unit Position. The books build, but afternoon formations are in their morning order and it cannot be recovered — the Detail report has no Position column. Re-export with the box ticked. |
+| *"This Diagram Summary carries the AM unit positions only"* | The Summary was exported with `File › Session Settings` → **"Show diagram sections on the diagram summary report"** unticked, so it carries only the start-of-day unit Position. The books build, but afternoon formations are in their morning order and it cannot be recovered — the Detail report has no Position column. Re-export with the box ticked. |
 | *"It is missing the … column"* | An Integrale export run without a column the reader needs — the message names them. They are all column-picker options; add them and export again. |
 | A location comes up under its own heading | A unit berthed somewhere the section list doesn't know. It gets its own section in alphabetical order and a review note — check it, and if it should live under an existing section, add it to the tables (see [Reference data](#reference-data--where-the-knowledge-lives)). |
 | A train is missing | Check the review list first: empty moves to a berth are left off deliberately and each one is named there. If it isn't listed, trace the diagram number. |
