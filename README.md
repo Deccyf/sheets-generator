@@ -276,6 +276,15 @@ builds it in the depot's own format, taken from their May 2026 workbook:
   mileage in the next column) — so the total is the last of them, not the sum.
   Summing them gave one Metro diagram 5,445 miles for a day's work. The PDF
   report has no such column and the cell stays blank.
+* **Column widths are sized to what is in them**, never narrower than the real
+  workbook's. Measured on a canvas against Excel's own width unit: in capitals
+  the body's bold Arial 11 runs about 1.40 to the character, so `CANNON STREET`
+  wants 18.2 where the workbook's DESTINATION column is 17.9 — that last third
+  of a character is why it clipped. `TUNBRIDGE WELLS` wants 20.5. The real
+  workbook wraps the long ones over two rows instead; the tool widens.
+* Every sheet ends with the block the real ones carry: a blank row, then
+  `DATED dd.mm.yy` with `NAME` and `SIGNATURE` beside it, then
+  *PLEASE E-MAIL SHEETS TO…*.
 * `ENDS` is the berth the diagram finishes on plus which half of the day it
   finishes in — `GP PM`, `SG AM`. The codes are the berthing books' own; the
   real workbook's vocabulary differs in places (it writes `GP` where the tool

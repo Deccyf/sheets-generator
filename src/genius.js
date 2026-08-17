@@ -960,6 +960,7 @@ const GENIUS = (() => {
         " back so they can be baked in");
     }
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {}, built = {};
+    const dayDate = {};      // the full dd/mm/yy behind each label
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
@@ -989,6 +990,7 @@ const GENIUS = (() => {
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
       hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
+      dayDate[dk] = date;
       for (const [warn, bag] of [[warnMain, reviews.main],
                                  [warnMetro, reviews.metro],
                                  [warnHs, reviews.hs]]) {
@@ -1018,7 +1020,7 @@ const GENIUS = (() => {
       noteAll("local rule edit " + k + " matched nothing in these reports" +
               " - the working may have moved; re-pin it or clear it");
     }
-    return { secsByDay, metroSecs, hsSecs, labels, review, reviews,
+    return { secsByDay, metroSecs, hsSecs, labels, dates: dayDate, review, reviews,
              /* what this build actually ran with, for the Rules tab to
                 render - never a second copy of the tables read separately */
              rules: { orderFix: fixTable, edits, coupled: fx.coupled,

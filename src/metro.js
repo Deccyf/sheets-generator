@@ -65,7 +65,12 @@ function sheetFor(sec, e) {
 
 /* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
 const HEAD_LOOK = 6, BODY_LOOK = 3, TITLE_LOOK = 1;
-function layoutSection(name, entries, dateLbl) {
+const EMAIL_LINE =
+  "PLEASE E-MAIL SHEETS TO .Engineering Stock Maintenance Controllers Metro";
+/* dd/mm/yy as the sheets write it: DATED 18.05.26 */
+const dated = d => String(d || "").replace(/\//g, ".");
+function layoutSection(name, entries, dateLbl, dateFull) {
+  const issued = dated(dateFull);
   const cells = [], merges = [], rowHeights = new Map();
   const put = (r, c, v, look, sides) =>
     cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
@@ -119,13 +124,48 @@ function layoutSection(name, entries, dateLbl) {
     });
     if (units.length > 1) merges.push("A" + first + ":A" + first);
   }
+  /* The block every sheet in the real workbook ends with: a blank row, the
+     issue date with room for a name and a signature beside it, and the line
+     saying where the finished sheet goes back to. */
+  r++;
+  put(r, 1, "DATED " + issued, BODY_LOOK);
+  put(r, 5, "NAME", BODY_LOOK);
+  put(r, 11, "SIGNATURE", BODY_LOOK);
+  rowHeights.set(r, 18); r++;
+  put(r, 1, EMAIL_LINE, 4);
+  rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
-           opts: { widths: WIDTHS, landscape: true, fitToHeight: 0 } };
+           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0 } };
+}
+
+/* Column widths sized to what is actually in them, never narrower than the
+   real workbook's. The body is bold Arial 11 where a column width counts in
+   Calibri 11 characters, so a value fills about a fifth more room than its
+   length suggests: DESTINATION at the workbook's own 17.9 clipped
+   "TUNBRIDGE WELLS", and Cannon Street's destinations with it. The title row
+   is left out of the measurement - it is merged across five columns and
+   would otherwise stretch column A on its own. */
+/* Measured, not guessed: a canvas at each look's own font, against Excel's
+   width unit of one Calibri 11 digit. In capitals, bold Arial 11 runs about
+   1.40 to the character - "CANNON STREET" wants 18.2 where the workbook's own
+   column is 17.9, which is exactly the clipping that was reported. */
+const LOOK_WIDE = { 1: 1.53, 2: 1.60, 3: 1.40, 4: 1.15, 5: 1.15, 6: 1.27 };
+const MAX_WIDTH = 32;
+function fitWidths(cells) {
+  const need = WIDTHS.slice();
+  for (const c of cells) {
+    if (c.r === 1) continue;
+    const i = c.c - 1;
+    if (i < 0 || i >= need.length) continue;
+    const w = String(c.v || "").length * (LOOK_WIDE[c.look] || 1.1) + 1.6;
+    if (w > need[i]) need[i] = w;
+  }
+  return need.map(w => Math.round(Math.min(w, MAX_WIDTH) * 10) / 10);
 }
 
 /* One workbook, one worksheet per location, in the section order the book
    already uses with the AM/PM splits slotted in where they fall. */
-function sheetsFor(secsByDay, dateLabels, order) {
+function sheetsFor(secsByDay, dateLabels, order, dates) {
   const bySheet = new Map();
   const days = Object.keys(dateLabels);
   for (const day of days) {
@@ -148,15 +188,16 @@ function sheetsFor(secsByDay, dateLabels, order) {
     // Excel will not take more than 31 characters in a tab name
     name: name.slice(0, 31),
     layout: layoutSection(name, bySheet.get(name).entries,
-                          dateLabels[bySheet.get(name).day] || ""),
+                          dateLabels[bySheet.get(name).day] || "",
+                          (dates || {})[bySheet.get(name).day] || ""),
   }));
 }
-function writeMetroBook(secsByDay, dateLabels, order, zipFn) {
-  const sheets = sheetsFor(secsByDay, dateLabels, order);
+function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates) {
+  const sheets = sheetsFor(secsByDay, dateLabels, order, dates);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeMetroBook, sheetsFor, layoutSection, sheetFor, destName, headings, WIDTHS };
+return { writeMetroBook, sheetsFor, layoutSection, fitWidths, sheetFor, destName, headings, WIDTHS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;

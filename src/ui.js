@@ -598,11 +598,11 @@ function reviewPane(items) {
          a worksheet per location rather than per day, so its preview is per
          location too. */
       const metroSheets = b.metro
-        ? METRO.sheetsFor(b.secs, res.labels, b.order) : null;
+        ? METRO.sheetsFor(b.secs, res.labels, b.order, res.dates) : null;
       const book = { road: b.road, name: b.file + res.tag + ".xlsx",
         bytes: b.metro
           ? METRO.writeMetroBook(b.secs, res.labels, b.order,
-                                 f => fflate.zipSync(f, { level: 6 }))
+                                 f => fflate.zipSync(f, { level: 6 }), res.dates)
           : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
       const panes = b.metro

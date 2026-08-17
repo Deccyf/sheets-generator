@@ -320,6 +320,9 @@ builds them that way:
   report carries no mileage, so the column stays blank.
 * `ENDS` is where the diagram finishes and in which half of the day — `GP PM`,
   `SG AM`.
+* Each sheet ends with **DATED**, **NAME** and **SIGNATURE**, and the
+  *"please e-mail sheets to…"* line, the same as your own.
+* Columns widen to fit what's in them, so nothing clips.
 
 One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
 plus the updated prints document when a reissue has been merged.

@@ -107,3 +107,42 @@ test("MILES is the diagram's own total, not the running one added up", async () 
   const worst = Math.max(...miles);
   assert.ok(worst < 2000, "a day's diagram does not run thousands of miles: " + worst);
 });
+
+test("every Metro sheet ends with the dated, name and signature block", () => {
+  const N = built();
+  const M = N.SHEETS_METRO;
+  const entry = { time: 5 * 60 + 56, time_kind: "ecs", dest: "VIC", headcode: "5B80",
+                  units: [{ diag: "401", code: "SG", pos: 1, ends: "VIC PM", miles: 306 }] };
+  const lay = M.layoutSection("BELLINGHAM", [entry], "MON 18/05", "18/05/26");
+  const at = new Map();
+  for (const c of lay.cells) at.set(c.r + "," + c.c, c.v);
+  // a blank row after the work, then the block the real sheets carry
+  assert.equal(at.get("4,1"), undefined, "a blank row under the last entry");
+  assert.equal(at.get("5,1"), "DATED 18.05.26", "the issue date, as the sheets write it");
+  assert.equal(at.get("5,5"), "NAME");
+  assert.equal(at.get("5,11"), "SIGNATURE");
+  assert.match(at.get("6,1"), /^PLEASE E-MAIL SHEETS TO /, "and where it goes back to");
+});
+
+test("a column is never narrower than what is in it", () => {
+  const N = built();
+  const M = N.SHEETS_METRO;
+  /* Measured on a canvas against Excel's own width unit: in capitals, the
+     body's bold Arial 11 runs about 1.40 to the character, so "CANNON
+     STREET" wants 18.2 where the real workbook's DESTINATION column is 17.9.
+     That last third of a character is the clipping that was reported. */
+  const mk = dest => ({ time: 6 * 60, time_kind: "ecs", dest, headcode: "5A01",
+                        units: [{ diag: "401", code: "SG", pos: 1, ends: "GP PM" }] });
+  const wide = M.layoutSection("DARTFORD", [mk("CST")], "MON 03/08", "03/08/26");
+  const dCol = Array.from(wide.opts.widths)[3];
+  const at = new Map();
+  for (const c of wide.cells) at.set(c.r + "," + c.c, c.v);
+  assert.equal(at.get("3,4"), "CANNON STREET", "the destination in full");
+  assert.ok(dCol >= 18.2, "wide enough for it: " + dCol);
+  // and a short one is left at the workbook's own width, not shrunk
+  const narrow = M.layoutSection("DARTFORD", [mk("VIC")], "MON 03/08", "03/08/26");
+  assert.equal(Array.from(narrow.opts.widths)[3], Array.from(M.WIDTHS)[3],
+    "a short destination leaves the column at the house width");
+  assert.deepEqual(Array.from(M.fitWidths([])), Array.from(M.WIDTHS),
+    "and an empty sheet is the house widths exactly");
+});
