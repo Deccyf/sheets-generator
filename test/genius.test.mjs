@@ -229,6 +229,25 @@ test("a report that spells the year long builds the same day", async () => {
     "no half-matched date: " + Array.from(orphan).join(" | "));
 });
 
+test("a Saturday pair says where the weekend sheets come from", async () => {
+  const N = built();
+  const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
+  /* The reports do build for a weekend date - Genius will happily export
+     one - but these are not what a Saturday or Sunday book is made from,
+     and the weekday pipeline has nowhere to put them: a book has one column
+     per weekday. It used to stop with a bare "No weekday dates found in the
+     reports", which reads like the export is broken. */
+  const sat = t => t.replace(/03\/08\/26/g, "15/08/26")   // a Saturday
+                    .replace(/03\/08\/2026/g, "15/08/2026");
+  await assert.rejects(
+    () => N.GENIUS.build([sat(geniusSummaryCsv()), sat(geniusDetailCsv())]),
+    /15\/08\/26 falls on a weekend[\s\S]*weekend panel/,
+    "names the date and sends them to the prints panel");
+  // and a weekday pair still builds, with the plain message left alone
+  const ok = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv()]);
+  assert.ok(Object.keys(ok.labels).length, "the weekday pair is untouched");
+});
+
 test("the sniffers tell the three report formats apart", async () => {
   const N = built();
   const { geniusSummaryCsv, geniusDetailCsv, integraleSummaryCsv } =

@@ -625,7 +625,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>.docx, .doc or .txt · reissues welcome, together or afterwards · or click to choose</span>
+          <span>The prints as .docx, .doc or text · not the Summary and Detail reports · reissues welcome, together or afterwards · or click to choose</span>
         </span>
       </span>
     </button>
@@ -711,6 +711,13 @@
             lost. The diagram lines are held together by them, so the page
             refuses rather than half-reading it. Copy the document out of Word
             again and paste it as it comes, without tidying it up.</dd>
+          <dt>Can the Genius or Integrale CSVs build a weekend?</dt>
+          <dd>No. Saturday and Sunday books come from the diagram prints and
+            nothing else &mdash; this panel reads the prints whatever the file
+            is called, Word document or plain text, but it cannot read a
+            Diagram Summary or Diagram Detail export. A weekend-dated pair
+            dropped on the weekday panel above says so rather than building
+            an empty book.</dd>
           <dt>A book says "skipped"</dt>
           <dd>No diagrams for that fleet exist in this weekend's prints —
             nothing to build, nothing wrong.</dd>
@@ -4748,7 +4755,19 @@ const GENIUS = (() => {
         }
       }
     }
-    if (!Object.keys(secsByDay).length) throw new Error("No weekday dates found in the reports.");
+    /* Saturday and Sunday reports land here rather than on the weekend
+       panel often enough that the message has to say where to take them -
+       the notes above name the date, but nothing is built, so only this is
+       seen. */
+    if (!Object.keys(secsByDay).length) {
+      const wknd = dates.filter(d => d && !dayKey(d));
+      throw new Error(wknd.length
+        ? "No weekday dates found in the reports — " + wknd.join(", ") +
+          (wknd.length === 1 ? " falls" : " fall") + " on a weekend. Saturday" +
+          " and Sunday sheets are built from the diagram prints, on the" +
+          " weekend panel below; these reports do not build them."
+        : "No weekday dates found in the reports.");
+    }
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {

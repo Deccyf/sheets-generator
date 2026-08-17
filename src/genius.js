@@ -960,7 +960,19 @@ const GENIUS = (() => {
         }
       }
     }
-    if (!Object.keys(secsByDay).length) throw new Error("No weekday dates found in the reports.");
+    /* Saturday and Sunday reports land here rather than on the weekend
+       panel often enough that the message has to say where to take them -
+       the notes above name the date, but nothing is built, so only this is
+       seen. */
+    if (!Object.keys(secsByDay).length) {
+      const wknd = dates.filter(d => d && !dayKey(d));
+      throw new Error(wknd.length
+        ? "No weekday dates found in the reports — " + wknd.join(", ") +
+          (wknd.length === 1 ? " falls" : " fall") + " on a weekend. Saturday" +
+          " and Sunday sheets are built from the diagram prints, on the" +
+          " weekend panel below; these reports do not build them."
+        : "No weekday dates found in the reports.");
+    }
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {

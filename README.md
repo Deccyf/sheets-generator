@@ -168,8 +168,19 @@ The catch is the **tabs**. `Diagram:\tAZ\t601` is the whole structure, so the
 text is handed over exactly as pasted and never tidied — the opposite of the
 weekday boxes, where an Excel copy *is* converted. Prints whose tabs have been
 flattened are refused with a reason rather than half-read. The same goes for a
-`.txt`: the weekend panel now takes one, recognised by content rather than by
-its extension.
+`.txt`: the weekend panel takes one, recognised by content rather than by its
+extension. `readPrints` sniffs the first bytes — a zip is a `.docx`, an OLE
+header is a `.doc`, anything else is decoded as text and accepted if
+`looksLikePrints` finds a tabbed `Diagram:` line. So the prints build whatever
+the file is called, `.txt` and `.csv` alike.
+
+**What the weekend panel cannot take is the Genius or Integrale CSV reports.**
+The Diagram Summary and Diagram Detail exports feed the *weekday* pipeline,
+which has one column per weekday and refuses a Saturday or Sunday date
+outright. Dropped there, a weekend-dated pair now names the date and points at
+the prints panel rather than stopping at a bare "No weekday dates found in the
+reports", which read like a broken export. Weekend books come from the prints
+and nothing else.
 
 One thing a paste cannot do is produce the **updated prints document**. That
 splices the reissued diagrams into the original `.docx`, and a paste has no
