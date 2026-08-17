@@ -4466,8 +4466,12 @@ const GENIUS = (() => {
       /* Which book the diagram belongs to comes from the first row that
          names a fleet this book knows, not from row one flat: a diagram
          whose morning is cancelled can leave a row behind with the fleet
-         cell empty, and reading only that dropped the whole diagram - its
-         whole afternoon with it - without a word. */
+         cell empty, and reading only that would drop the whole diagram -
+         its whole afternoon with it - without a word.
+
+         Belt and braces rather than a reported fault: 811/812 lost their
+         unit numbers, not their rows, and no export held has a blank fleet
+         cell on row one. */
       const sr = srs && (srs.find(r => r.fleet in prof.fleets) || srs[0]);
       if (!sr || !(sr.fleet in prof.fleets)) continue;
       if (!raw.length) { warn.push({ sec: null, msg: date + " " + diag + ": no detail itinerary" }); continue; }

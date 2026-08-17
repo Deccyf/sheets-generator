@@ -643,11 +643,15 @@ ones, all commented at the point of implementation:
   cancelled keeps that row with the allocation cell empty and names the unit
   on the workings that survived, so the Unit column came out blank for a
   diagram that has one allocated all afternoon (reported on `SG811`/`SG812`).
-  `unitAt` mirrors `posAt`, falling back to any row that names a unit. Which
-  book a diagram belongs to now comes from the first row naming a known fleet
-  for the same reason: a blank fleet cell on row one dropped the whole
-  diagram, its afternoon with it, without a word. Inert on every export held:
-  1431 printed rows, 0 changes to the Unit column.
+  `unitAt` mirrors `posAt`, falling back to any row that names a unit. Inert on
+  every export held: 1431 printed rows, 0 changes to the Unit column.
+
+  **This was the whole of the reported fault** — the rows were all there and
+  only the Unit column was blank, confirmed by the operator. Which book a
+  diagram belongs to also comes from the first row naming a known fleet now,
+  found while looking for the above rather than reported: a blank fleet cell
+  on row one would drop the whole diagram, its afternoon with it, without a
+  word. No export held has one, so nothing has ever been seen to hit it.
 * **The AM cell of an overnight berth.** A unit that leaves its overnight
   berth and is back on it before 14:00 gets that berth in its AM cell; the
   blanking rule is for units that only return at night.
