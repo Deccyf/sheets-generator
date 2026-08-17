@@ -96,5 +96,42 @@ for (const [order, first, second] of [
     throw new Error(order + " built no roads");
 }
 
+/* ---- the two routes that need no clipboard at all ----
+   Some machines block Ctrl+V into a browser. Dragging is a different road,
+   and the page used to swallow it: a document-level drop handler called
+   preventDefault on everything, so a selection dragged out of Excel into a
+   box did nothing at all. */
+await page.reload();
+await page.locator("#pastetoggle").click();
+const swallowed = await page.evaluate(() => {
+  const el = document.querySelector("#paste_sum");
+  const dt = new DataTransfer();
+  dt.setData("text/plain", "x");
+  const ev = new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true });
+  el.dispatchEvent(ev);
+  return ev.defaultPrevented;
+});
+console.log("text dragged into a box  :", swallowed ? "SWALLOWED" : "left to the browser");
+if (swallowed) throw new Error("the page must not swallow a text drop into a box");
+
+const dropFile = (sel, text, fname) => page.evaluate(([s, t, n]) => {
+  const el = document.querySelector(s);
+  const dt = new DataTransfer();
+  dt.items.add(new File([t], n, { type: "text/csv" }));
+  for (const type of ["dragenter", "dragover", "drop"])
+    el.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
+}, [sel, text, fname]);
+await dropFile("#paste_sum", geniusSummaryCsv(), "udiagsum.csv");
+await dropFile("#paste_det", geniusDetailCsv(), "diagdet.csv");
+await page.waitForFunction(() =>
+  document.querySelector("#paste_sum").value.length > 100 &&
+  document.querySelector("#paste_det").value.length > 100, null, { timeout: 10000 });
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("files dragged into boxes :", await page.textContent("#status"));
+if (!await page.locator("#roads .road").count())
+  throw new Error("files dragged into the boxes built no roads");
+
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");

@@ -129,6 +129,22 @@ sniff as one — a copy that began part way through a line, which is easy to do
 because a Genius export repeats its title on every line — now says exactly
 that instead of "does not read as one of the reports".
 
+**And two routes that never touch the clipboard**, because some machines block
+Ctrl+V into a browser outright:
+
+* **Drag the selection** out of Excel or Notepad straight into a box. This
+  used to do nothing at all: `["dragover", "drop"].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault()))` — there to stop a
+  stray file navigating the page away from itself — swallowed every drop on
+  the page, a text drop into a textarea included. It now bows out for text
+  going into a text box, and still preventDefaults a *file* dropped there,
+  which would navigate away.
+* **Drag the CSV file itself into a box** and it is read in. Saves opening the
+  file at all.
+
+Both are checked in `tools/smoke-gcsv.mjs`, the first by asserting the page
+does *not* call `preventDefault` on a text drop.
+
 Either way, the books are built immediately: look them over in the on-screen
 preview (per-day tables for Mainline, Metro and High Speed, plus the Review,
 Unit order and Rules tabs), then save each book, or all of them at once as a

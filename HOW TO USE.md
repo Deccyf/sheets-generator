@@ -217,6 +217,13 @@ Worth knowing:
   as a file and paste the Summary**, or the other way round: whichever report
   is already loaded gets used, and the page tells you it did. Only a report
   that is nowhere at all is refused, and it says which one by name.
+* **If the machine won't let you paste at all.** Some block Ctrl+V into a
+  browser, and right-click → Paste with it. Two ways round it, neither of
+  which goes near the clipboard:
+  * **Drag the selection.** Highlight the rows in Excel or Notepad and drag
+    them straight into the box.
+  * **Drag the file.** Drag the CSV itself out of the folder and into the box,
+    and it is read in — you don't even have to open it.
 * **CSV exports only on this panel.** A PDF has no text in it to copy, so the
   Genius PDFs still have to be dropped as files. (The weekend prints *can* be
   pasted — see [section 6](#6-building-the-weekend-sheets-sat--sun).)

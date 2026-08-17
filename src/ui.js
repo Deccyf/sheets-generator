@@ -66,8 +66,52 @@ function wireDrop(berth, fileIn, onFiles) {
     if (f && f.length) onFiles(Array.from(f));
   });
 }
+/* A file dropped anywhere but a drop zone must not navigate the page away
+   from itself, which is what this is for. It must NOT swallow a drop into a
+   text box, though, and it did: dragging a selection out of Excel or Notepad
+   is a different road from the clipboard, and where policy blocks Ctrl+V - as
+   it does on some depot machines - it is often the only road still open. */
+const carriesFiles = e => {
+  const dt = e.dataTransfer;
+  if (!dt) return false;
+  if (dt.types) for (let i = 0; i < dt.types.length; i++)
+    if (dt.types[i] === "Files") return true;
+  return !!(dt.files && dt.files.length);
+};
+const isTextBox = t => !!t && (t.tagName === "TEXTAREA" ||
+  (t.tagName === "INPUT" && /^(text|search|url|tel|email)$/i.test(t.type || "")));
 ["dragover", "drop"].forEach(ev =>
-  document.addEventListener(ev, e => e.preventDefault()));
+  document.addEventListener(ev, e => {
+    // text into a text box is the browser's own business; everything else,
+    // including a FILE dropped on a text box, would take the page with it
+    if (isTextBox(e.target) && !carriesFiles(e)) return;
+    e.preventDefault();
+  }));
+
+/* And the file itself dropped straight into a box. A machine that will not
+   paste will usually still drag, and this saves opening the CSV at all. */
+function wireBoxDrop(el, after) {
+  if (!el) return;
+  for (const evn of ["dragenter", "dragover"])
+    el.addEventListener(evn, e => {
+      if (carriesFiles(e)) { e.preventDefault(); el.classList.add("dragover"); }
+    });
+  for (const evn of ["dragleave", "dragend"])
+    el.addEventListener(evn, () => el.classList.remove("dragover"));
+  el.addEventListener("drop", e => {
+    el.classList.remove("dragover");
+    const f = e.dataTransfer && e.dataTransfer.files;
+    if (!f || !f.length) return;          // a text drop: leave it to the browser
+    e.preventDefault();
+    const fr = new FileReader();
+    fr.onload = () => {
+      el.value = String(fr.result || "");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      if (after) after(f[0].name);
+    };
+    fr.readAsText(f[0]);
+  });
+}
 
 /* Tab strip with lazy panes and arrow-key navigation. */
 function tabbed(panes) {
@@ -735,6 +779,9 @@ function reviewPane(items) {
   }
   for (const el of [pasteSum, pasteDet])
     if (el) el.addEventListener("input", () => { markFilled(el); pSay(""); });
+  // the CSV dragged straight into a box, for a machine that will not paste
+  for (const el of [pasteSum, pasteDet])
+    wireBoxDrop(el, name => pSay("Read " + name + " into the box.", "go"));
   if ($("#paste_clear")) $("#paste_clear").addEventListener("click", () => {
     for (const el of [pasteSum, pasteDet])
       if (el) { el.value = ""; markFilled(el); }
@@ -968,6 +1015,8 @@ function reviewPane(items) {
   }
   for (const el of [wePasteMain, wePasteRe])
     if (el) el.addEventListener("input", () => { weMark(el); wSay(""); });
+  for (const el of [wePasteMain, wePasteRe])
+    wireBoxDrop(el, name => wSay("Read " + name + " into the box.", "go"));
   if ($("#we_paste_clear")) $("#we_paste_clear").addEventListener("click", () => {
     for (const el of [wePasteMain, wePasteRe])
       if (el) { el.value = ""; weMark(el); }
