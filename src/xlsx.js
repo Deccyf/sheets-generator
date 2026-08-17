@@ -292,10 +292,18 @@ function previewHtml(layout){
   const edge = function(name, s){
     return "border-" + name + ":" + (SIDE_CSS[s] || "0") + ";";
   };
+  /* The preview is meant to be what gets saved, so the page breaks show on
+     it too - otherwise the only way to see where the paper falls is to save
+     the book and open Page Break Preview in Excel. */
+  const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow);
+  const pageAt = new Map();
+  plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
   let h = '<table class="sheet"><colgroup>';
   for (const px of PREVIEW_PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
+    if (pageAt.has(r))
+      h += '<tr class="pbrk"><td colspan="8">Page ' + pageAt.get(r) + '</td></tr>';
     h += "<tr>";
     for (let c = 1; c <= 8; c++){
       if (covered.has(r + "," + c)) continue;

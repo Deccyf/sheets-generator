@@ -172,7 +172,11 @@ const SHEETS_RULES = (() => {
            : "")],
         ["Diagram", "The day's work the unit is booked to."],
         ["A.M.", "Where this unit goes to stand next during the day."],
-        ["P.M.", "Where this unit stands for the night."],
+        ["P.M.", "Where this unit is standing at the end of its day's work. " +
+                 "A diagram that goes out a third time has two of those, and " +
+                 "the column means a different one on each line: the lines " +
+                 "before its last journey read the berth it is sitting on, " +
+                 "and the line for that journey reads where it finishes."],
         ["Unit", "The unit number where the report names one. Where it does " +
                  "not, the cell is left ruled and empty for the depot to " +
                  "write in — and you can type into it in Excel."],
@@ -184,6 +188,9 @@ const SHEETS_RULES = (() => {
                   "siding it came off, ATTACHMENT, and which end of the " +
                   "train it is."],
       ] } },
+      { p: "The workbook comes out set up to print: A4 portrait, sized so " +
+           "all eight columns land on one page across, and broken so that no " +
+           "location is cut in half between two pages. Print it as it comes." },
     ]);
 
     /* ---- 2. which movements get printed ---- */
@@ -200,7 +207,9 @@ const SHEETS_RULES = (() => {
         "printed, because that location's page needs to know it is coming.",
         "A run out to a carriage washer and straight back to the road it " +
         "came from is not a berthing.",
-        "A move that never leaves the Grove Park depot fence is not a line.",
+        inBook("GROVE PARK")
+          ? "A move that never leaves the Grove Park depot fence is not a line."
+          : null,
         "A unit standing in a platform for an hour or more has arguably " +
         "berthed there. It gets a line where the report shunts it on the " +
         "spot; otherwise it is named on the Review tab and left off, and " +
@@ -214,10 +223,14 @@ const SHEETS_RULES = (() => {
         " minutes has been run round, not berthed twice — one line, not two.",
       ] },
     ];
-    if (has(env.ecsOnlyOk))
-      off.push({ p: "Three places work differently because their empty moves " +
-        "are the whole point of the location: " + list(env.ecsOnlyOk) +
-        " keep their empty moves even inside their own area." });
+    /* Only the ones this book has. The Ramsgate book is one page and was
+       explaining Grove Park, Slade Green and West Marina on it. */
+    const ecsOk = (env.ecsOnlyOk || []).filter(inBook);
+    if (has(ecsOk))
+      off.push({ p: (ecsOk.length > 1 ? "Some places work" : "One place works") +
+        " differently because their empty moves are the whole point of the " +
+        "location: " + list(ecsOk) + " keep their empty moves even inside " +
+        "their own area." });
     off.push({ note: "Nothing is dropped quietly. Every movement the tool " +
       "left off is named on the Review tab of the book it would have been in, " +
       "with the reason. If you think something should be on the sheet, look " +
@@ -239,13 +252,19 @@ const SHEETS_RULES = (() => {
            "follows that." },
     ];
     const asc = (env.posAsc || []).filter(inBook).slice().sort();
-    ord.push({ p: asc.length
-      ? "Lowest number first at: " + list(asc) +
-        ". Everywhere else in this book, highest number first."
-      : "Every location in this book reads highest number first." });
-    if (has(env.roadPosAsc))
+    // "everywhere else" is nothing at all in a one-page book like Ramsgate's
+    ord.push({ p: !asc.length
+      ? "Every location in this book reads highest number first."
+      : (secs.length && asc.length === secs.length
+         ? "Every location in this book reads lowest number first."
+         : "Lowest number first at: " + list(asc) +
+           ". Everywhere else in this book, highest number first.") });
+    // a road is named for its location, so it belongs to whichever book has it
+    const roads = (env.roadPosAsc || [])
+      .filter(([road]) => !secs.length || secs.some(s => road.startsWith(s)));
+    if (has(roads))
       ord.push({ p: "Individual roads that face the opposite way to the rest " +
-        "of their location: " + env.roadPosAsc.map(([road, up]) =>
+        "of their location: " + roads.map(([road, up]) =>
           road + " reads " + (up ? "lowest" : "highest") + " number first")
           .join("; ") + "." });
     ord.push({ p: "Where a formation still comes out the wrong way round, we " +
@@ -272,29 +291,43 @@ const SHEETS_RULES = (() => {
         "The day runs from " + hhmm(env.dayRoll || 180) + " round to " +
         hhmm(env.dayRoll || 180) + " the next morning, so a departure at " +
         "01:30 belongs to the night before, not to the new day.",
-        "The time printed is the departure time.",
+        /* One line, three ways round - two of them used to print alongside a
+           flat "the time printed is the departure time", which said the same
+           thing twice on any book with no first-departure section (the High
+           Speed one, every time). The named sections are filtered to the
+           ones this book actually has, the way every other list here is:
+           the Ramsgate book was naming Grove Park and Slade Green. */
         (env.firstDepAll
           ? "Every entry in this book is timed off the moment the unit first " +
             "moves, so a unit that comes out of the sidings empty before " +
             "picking up its platform working shows the sidings time. A unit " +
             "that starts in the platform shows its platform time, because " +
             "that IS its first move."
-          : (has(env.firstDep)
-             ? "At " + list(env.firstDep) + " the time is the moment the " +
-               "unit first moves off the berth, not the platform departure a " +
-               "minute or two later — that is how those books are written."
-             : "The time is the booked departure.")),
+          : (has((env.firstDep || []).filter(inBook))
+             ? "The time printed is the booked departure — except at " +
+               list((env.firstDep || []).filter(inBook)) + ", where it is the " +
+               "moment the unit first moves off the berth, not the platform " +
+               "departure a minute or two later. That is how those books are " +
+               "written."
+             : "The time printed is the booked departure.")),
         "The evening starts at " + hhmm(env.pmBreak || 1200) + " for anything " +
         "the sheet calls PM.",
       ] },
+      /* The two examples are the real books' own, and each is only worth
+         printing in a book that has that page - the Ramsgate book is one
+         page and was explaining Slade Green and Tonbridge on it. */
       { p: "Heavy double lines rule off the breaks in the day's work: the " +
         "first break of " + hours(env.breakGap || 180) + " or more, and any " +
         "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
-        ". So a page can carry two — Slade Green is ruled under its 06+36 " +
-        "and again under its 18+04 — but a lull in the middle of the " +
-        "afternoon draws nothing: Tonbridge stands from 11+32 to 14+40 and " +
-        "is left unruled. A page that is busy right through gets none, and " +
-        "Grove Park is never ruled." },
+        ". So a page can carry two" +
+        (inBook("SLADE GREEN")
+          ? " — Slade Green is ruled under its 06+36 and again under its" +
+            " 18+04 —" : ",") +
+        " but a lull in the middle of the afternoon draws nothing" +
+        (inBook("TONBRIDGE")
+          ? ": Tonbridge stands from 11+32 to 14+40 and is left unruled." : ".") +
+        " A page that is busy right through gets none" +
+        (inBook("GROVE PARK") ? ", and Grove Park is never ruled." : ".") },
     ];
     push("times", "Times, and the line across the page", t);
 
@@ -359,15 +392,24 @@ const SHEETS_RULES = (() => {
         : "No location in this book carries headcodes as standard. Tick " +
           "“Show every headcode” before you build to put one on " +
           "every line." },
-      { p: "Two local habits. At Victoria the note carries the empty-stock " +
-           "headcode off the sidings while the time stays the platform " +
-           "departure — except where one empty in forms two services out " +
-           "of the platform, when that headcode would name both rows and " +
-           "identify neither, so each row shows its own departure. At " +
-           "Grove Park the road is printed after the headcode." },
+      // both habits belong to one page each, so only their own book says so
+      (inBook("VICTORIA") || inBook("GROVE PARK")) ? { p: "Local habits. " +
+        (inBook("VICTORIA")
+          ? "At Victoria the note carries the empty-stock headcode off the " +
+            "sidings while the time stays the platform departure — except " +
+            "where one empty in forms two services out of the platform, when " +
+            "that headcode would name both rows and identify neither, so each " +
+            "row shows its own departure. " : "") +
+        (inBook("GROVE PARK")
+          ? "At Grove Park the road is printed after the headcode." : "")
+        } : null,
     ]);
 
-    /* ---- 8. words on the sheet ---- */
+    /* ---- 8. words on the sheet ----
+       The end markers are read back off the same table section 5 draws, so a
+       book cannot be told to look for a marker no page in it prints. */
+    const marks = [];
+    for (const k of esKeys) for (const m of es[k]) if (m && marks.indexOf(m) < 0) marks.push(m);
     push("words", "The words you will see in the notes", [
       { table: { head: ["Note", "What it means"], rows: [
         ["ATTACHMENT", "Another unit joins this train and the two run on as " +
@@ -384,14 +426,13 @@ const SHEETS_RULES = (() => {
         ["UP SIDINGS, EAST SIDINGS, UPS, DNM, JUB",
          "Short names for the road the unit came off, printed where the " +
          "location has more than one."],
-        ["EX 22+15 ARR",
+      ].concat(inBook("FOLKESTONE EAST") ? [["EX 22+15 ARR",
          "Folkestone East only. The Train Roads are unmanned and work " +
          "last in, first out, so the note says which of last night's " +
          "arrivals formed this unit. It is worked out from the reports — " +
-         "check it against the ACWN."],
-        ["TON END, ORE END, HGS END, AFK END, DVP END, FKE END, CBE END",
-         "Which end of the station this unit stands at. See above."],
-      ] } },
+         "check it against the ACWN."]] : [],
+        marks.length ? [[marks.join(", "),
+         "Which end of the station this unit stands at. See above."]] : []) } },
     ]);
 
     /* ---- 9. the corrections list ---- */

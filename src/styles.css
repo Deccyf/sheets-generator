@@ -121,6 +121,12 @@
     padding:1px 3px; height:23px; vertical-align:middle;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  /* where the paper falls when the book is printed */
+  table.sheet tr.pbrk td{
+    border-top:2px dashed #7A8A94; height:18px; padding:2px 3px 0;
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:#7A8A94; text-align:left;
+  }
   ul.reviews{margin:0; padding:14px 16px 14px 32px; font-size:13.5px; color:#3C464D}
   ul.reviews li{margin:0 0 6px}
   ul.reviews li:last-child{margin:0}

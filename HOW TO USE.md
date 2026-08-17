@@ -312,7 +312,7 @@ diagram numbers.
 | **B** | What the unit is — cars and class | `4 375` |
 | **C** | The three-digit diagram number | `117` |
 | **D** | **AM** — the unit's next berth during the day | `DFU` |
-| **E** | **PM** — where it finishes the day | `SG` |
+| **E** | **PM** — where it stands at the end of its work | `SG` |
 | **G** | Flag — `SPLITS` or `SPLITS PM` | |
 | **H** | Notes — sidings, attachments, end markers, headcodes | `EAST SIDINGS` |
 
@@ -322,6 +322,13 @@ stock: `05+32`. That's the usual house convention.
 **Reading a row.** `06 45 CHX │ 4 375 │ 117 │ DFU │ SG` says: the 06:45 to
 Charing Cross, a four-car 375 on diagram 117, which goes to Dartford Up Sidings
 next and finishes the day at Slade Green.
+
+A diagram that goes out a **third** time has two PM berths, and the column
+means a different one on each row: the rows before its last journey read the
+berth it is sitting on, and the row for that journey reads where it finishes.
+Diagram 103 works out of Grove Park, stands at Ashford east sidings from 20 03,
+then runs empty to the Folkestone train roads — so its Ashford 05 42 and Grove
+Park 16+04 rows read `AFE`, and only its 22+53 row reads `FKE`.
 
 **SPLITS** means the units on this departure part company during the day.
 **SPLITS PM** means they only part in the evening — the AM and PM columns tell
