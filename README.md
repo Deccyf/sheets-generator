@@ -119,6 +119,16 @@ round still builds and says so. Everything after that is the drop path
 exactly — same pairing checks, same build — so a pasted pair and a dropped
 pair cannot produce different books.
 
+**One box at a time is allowed**, and the panels mix. The Diagram Detail is
+megabytes where the Summary is a couple of hundred kilobytes, so it is the one
+a locked-down machine baulks at pasting: drop it on the zone as a file, paste
+the Summary, and the build uses both — or the other way round. A box left
+empty is filled from whatever has already arrived, and only a report that is
+nowhere at all is refused, by name. A box that holds a report but does not
+sniff as one — a copy that began part way through a line, which is easy to do
+because a Genius export repeats its title on every line — now says exactly
+that instead of "does not read as one of the reports".
+
 Either way, the books are built immediately: look them over in the on-screen
 preview (per-day tables for Mainline, Metro and High Speed, plus the Review,
 Unit order and Rules tabs), then save each book, or all of them at once as a

@@ -72,5 +72,29 @@ await page.locator("#paste_clear").click();
 if (await page.$eval("#paste_sum", e => e.value) !== "")
   throw new Error("Clear both should empty the boxes");
 
+/* ---- the awkward half dropped, the easy half pasted ----
+   The Diagram Detail is megabytes where the Summary is a couple of hundred
+   kilobytes, so it is the one a locked-down machine will not paste. Dropping
+   it and pasting the other has to work, in either order. */
+for (const [order, first, second] of [
+  ["detail dropped, summary pasted", "det", "sum"],
+  ["summary dropped, detail pasted", "sum", "det"],
+]) {
+  await page.reload();
+  await page.setInputFiles("#file",
+    [first === "det" ? det : sum]);
+  await page.waitForFunction(() =>
+    document.querySelector("#status").textContent.includes("loaded"), null, { timeout: 10000 });
+  await page.locator("#pastetoggle").click();
+  await put(second === "sum" ? "#paste_sum" : "#paste_det",
+            second === "sum" ? geniusSummaryCsv() : geniusDetailCsv());
+  await page.locator("#paste_go").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+  console.log(order.padEnd(31) + ": " + (await say()).trim());
+  if (!await page.locator("#roads .road").count())
+    throw new Error(order + " built no roads");
+}
+
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");

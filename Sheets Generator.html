@@ -514,10 +514,15 @@
 
     <div class="pastebox" id="pastebox" hidden>
       <p class="paste-hint">Open each CSV, select all and copy &mdash; Notepad
-        or Excel, either reads. Paste each into its own box below: both boxes,
-        both for the same date. Integrale calls the second one
+        or Excel, either reads. Paste each into its own box below: both
+        reports, both for the same date. Integrale calls the second one
         <em>Diagrams</em>. Only the CSV exports can be pasted; a PDF has no
-        text to copy, so those still have to be dropped as files.</p>
+        text to copy, so those still have to be dropped as files.
+        <b>One at a time is fine.</b> The Diagram Detail is far the bigger of
+        the two and is the one a machine is most likely to baulk at pasting
+        &mdash; drop that one on the panel above as a file and paste the
+        Summary here, or the other way round. Whichever is already loaded is
+        used.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary
@@ -5981,16 +5986,27 @@ function reviewPane(items) {
      so a pair pasted the wrong way round still builds - it says so rather
      than refusing over something it can see the answer to. */
   function sniffPaste(el, label) {
-    const text = GENIUS.pastedCsv(el ? el.value : "");
-    if (!text) return { err: "Paste the " + label + " into its box as well — " +
-      "both reports are needed, both for the same date.", el };
+    const raw = el ? el.value : "";
+    const text = GENIUS.pastedCsv(raw);
+    if (!text) return { empty: true, el, label };
     let kind = null, fmt = "csv";
     try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
     if (!kind) { try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {} }
-    if (!kind) return { err: "The " + label + " box does not read as one of " +
-      "the reports. Copy the whole file, first line and all — and paste a " +
-      "CSV export, not a PDF.", el };
-    return { kind, fmt, text };
+    if (kind) return { kind, fmt, text, el, label };
+    /* Say what is actually in the box. The report titles sit on EVERY line of
+       a Genius export, and the sniffer only reads the first one, so text that
+       names the report but does not sniff is a copy that began part way
+       through a line - which "does not read as one of the reports" never
+       told anybody. */
+    const names = /Diagram Detail Report|DIAGRAM SUMMARY REPORT|Diagram Code|Diagram Summary for:/
+      .test(text);
+    return { err: names
+      ? "The " + label + " box holds a report, but the copy starts part way " +
+        "through a line — select from the very top of the file, first line " +
+        "and all, and copy again."
+      : "The " + label + " box does not read as one of the reports (" +
+        Math.round(raw.length / 1000) + "k characters in it). Copy the whole " +
+        "file, first line and all — and paste a CSV export, not a PDF.", el };
   }
 
   async function buildFromPaste() {
@@ -5998,17 +6014,46 @@ function reviewPane(items) {
                  sniffPaste(pasteDet, "Diagram Detail")];
     for (const g of got)
       if (g.err) { pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
-    if (got[0].kind === got[1].kind) {
-      pSay("Both boxes hold the " + (got[0].kind === "sum" ? "Summary" : "Detail") +
+    const filled = got.filter(g => !g.empty);
+    if (!filled.length) {
+      pSay("Paste a report into one of the boxes — both are needed, both for " +
+           "the same date.", "err");
+      if (pasteSum) pasteSum.focus();
+      return;
+    }
+    if (filled.length === 2 && filled[0].kind === filled[1].kind) {
+      pSay("Both boxes hold the " + (filled[0].kind === "sum" ? "Summary" : "Detail") +
            " — put the other report in the other box.", "err");
       return;
     }
-    const swapped = got[0].kind !== "sum";
+    /* One box at a time is allowed, because one of the two is often the one
+       that will not go through: the Diagram Detail is megabytes where the
+       Summary is a couple of hundred kilobytes, and a machine that chokes on
+       the paste chokes on that one. So a box left empty is filled from
+       whatever has already arrived - dropped as a file, or pasted before -
+       and only a report that is nowhere at all is refused. */
+    const from = {};
+    for (const g of filled) from[g.kind] = g;
+    const NAME = { sum: "Diagram Summary", det: "Diagram Detail" };
+    const missing = ["sum", "det"].filter(k => !from[k] && !have[k]);
+    if (missing.length) {
+      pSay("Still needs the " + NAME[missing[0]] + " — paste it into the other " +
+           "box, or drop the file on the panel above. Either way round works.",
+           "err");
+      const other = got.find(g => g.empty);
+      if (other && other.el) other.el.focus();
+      return;
+    }
     dropId++;
-    for (const g of got) have[g.kind] = { fmt: g.fmt, data: [g.text], drop: dropId };
+    for (const k of Object.keys(from))
+      have[k] = { fmt: from[k].fmt, data: [from[k].text], drop: dropId };
+    const swapped = !got[0].empty && got[0].kind !== "sum";
+    const used = ["sum", "det"].filter(k => !from[k]);
     pSay(swapped
       ? "Read the boxes the other way round — the Summary was in the Detail box."
-      : "", swapped ? "go" : "");
+      : (used.length
+         ? "Built with the " + NAME[used[0]] + " already loaded."
+         : ""), swapped || used.length ? "go" : "");
     await drained();
   }
   if ($("#paste_go")) $("#paste_go").addEventListener("click", () => {

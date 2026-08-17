@@ -211,6 +211,12 @@ books.
 
 Worth knowing:
 
+* **You don't have to paste both.** The Diagram Detail is far the bigger of the
+  two — megabytes against a couple of hundred kilobytes — so it's the one a
+  locked-down machine is most likely to baulk at. **Drop that one on the panel
+  as a file and paste the Summary**, or the other way round: whichever report
+  is already loaded gets used, and the page tells you it did. Only a report
+  that is nowhere at all is refused, and it says which one by name.
 * **CSV exports only on this panel.** A PDF has no text in it to copy, so the
   Genius PDFs still have to be dropped as files. (The weekend prints *can* be
   pasted — see [section 6](#6-building-the-weekend-sheets-sat--sun).)
