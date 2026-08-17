@@ -206,10 +206,19 @@ longest single section fits the page **down**, with a manual page break before
 each section that would otherwise be cut in half. Without the scale Excel put
 a break down the middle of the columns and every page printed twice, the notes
 column stranded on a sheet of its own. Against the operator's own hand-set TUE
-18/08 — A4 portrait at 88% with six manual breaks — the tool builds the same
-day at 85% with breaks in the same places, one section to a page boundary.
-A section too long for a page at 74% is left to Excel, rather than shrinking
-the whole book past reading.
+18/08 — A4 portrait at 88% with six manual breaks at rows 47, 76, 104, 149,
+188 and 234 — the tool builds the same day at 87% and breaks at 47, 86, 104,
+149, 188 and 234: seven pages either way, five of the six breaks in the same
+place, and the sections land on the same row numbers (only Gillingham sits on
+page 2 rather than page 3). A section too long for a page at 74% is left to
+Excel, rather than shrinking the whole book past reading.
+
+**One blank row between sections**, which is how the hand-built books space
+them — Ashford to row 46, 47 blank, Dover Priory heading row 48. The frozen
+build left two, which cost a row a section on paper and put the tool's sheet
+15 rows longer than the same day's real book. The golden test compares rows by
+position among the used ones for that reason; the spacing itself is pinned by
+its own test.
 
 **Section order.** The mainline book runs Ashford → Dover Priory → Faversham →
 Folkestone East → Gillingham → Grove Park → Hastings → Orpington → Slade Green

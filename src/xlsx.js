@@ -457,7 +457,11 @@ function previewHtml(layout){
         flag: !!v.flag,
         flagSpan: spanStart.has(idx) ? spanStart.get(idx) : 0 });
     });
-    rows.push({ kind: "gap" });
+    /* One blank row between sections, which is what the hand-built books
+       use - the operator's TUE 18/08 runs Ashford to row 46, leaves 47
+       blank and heads Dover Priory at 48. Two of them cost a row a section
+       on paper and put the tool's sheet 15 rows longer than the same day's
+       real book. */
     rows.push({ kind: "gap" });
   }
 

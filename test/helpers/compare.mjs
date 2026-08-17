@@ -32,7 +32,13 @@ export function norm(v) {
    the fields the house format cares about, skipping merge-slave cells.
    The bytes may come from either sandbox realm, so they are copied into the
    reader's realm first — JSZip type-sniffs with instanceof. */
-export async function normalizeWorkbook(readerCtx, bytes) {
+/* opts.rowsRelative renumbers rows by their position among the rows that
+   carry anything, so blank-row spacing drops out of the comparison and
+   everything else - order, content, fonts, borders, merges - still counts.
+   The weekday books now leave ONE blank row between sections where the
+   frozen build left two (the real books leave one), and that is the only
+   thing it is there to let through. */
+export async function normalizeWorkbook(readerCtx, bytes, opts) {
   const ExcelJS = readerCtx.ExcelJS;
   const mk = vm.runInContext("(n) => new Uint8Array(n)", readerCtx.__ctx);
   const local = mk(bytes.length);
@@ -75,15 +81,24 @@ export async function normalizeWorkbook(readerCtx, bytes) {
         cells.push([r, c, rec]);
       }
     });
+    let rowOf = r => r;
+    if (opts && opts.rowsRelative) {
+      const used = Array.from(new Set(cells.map(c => c[0]))).sort((a, b) => a - b);
+      const idx = new Map(used.map((r, i) => [r, i + 1]));
+      rowOf = r => idx.has(r) ? idx.get(r) : "blank";
+    }
     out.push({
       name: ws.name,
       pageSetup: { paperSize: (ws.pageSetup || {}).paperSize || null,
                    orientation: (ws.pageSetup || {}).orientation || null },
       widths: Array.from({ length: 8 }, (_, i) =>
         Math.round(((ws.getColumn(i + 1).width) || 0) * 100) / 100),
-      merges,
-      heights: heights.sort((a, b) => a[0] - b[0]),
-      cells: cells.sort((a, b) => (a[0] - b[0]) || (a[1] - b[1])),
+      merges: merges.map(m => m.replace(/([A-Z]+)(\d+)/g,
+        (_, col, r) => col + rowOf(+r))).sort(),
+      heights: heights.sort((a, b) => a[0] - b[0])
+        .map(([r, h]) => [rowOf(r), h]).filter(([r]) => r !== "blank"),
+      cells: cells.sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+        .map(([r, c, rec]) => [rowOf(r), c, rec]),
     });
   }
   return out;

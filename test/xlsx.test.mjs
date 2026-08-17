@@ -32,10 +32,37 @@ test("weekday books: new writer matches the ExcelJS output cell for cell", async
       opts ? opts(L) : undefined);
     const bytesN = N.SHEETS_XLSX.writeBooks(secs, labels, ram,
       opts ? opts(N) : undefined);
-    const wbL = await normalizeWorkbook(L, bytesL);
-    const wbN = await normalizeWorkbook(L, bytesN);
+    /* Rows are compared by position among the used ones, not by absolute
+       number: the frozen build left TWO blank rows between sections and
+       these books leave one, the way the hand-built books do. Everything
+       else - order, content, fonts, borders, heights, merges - still has
+       to match exactly. The spacing itself is pinned below. */
+    const wbL = await normalizeWorkbook(L, bytesL, { rowsRelative: true });
+    const wbN = await normalizeWorkbook(L, bytesN, { rowsRelative: true });
     assert.deepEqual(wbN, wbL, name);
   }
+});
+
+test("one blank row between sections, the way the real books space them", async () => {
+  const N = built();
+  const X = N.SHEETS_XLSX;
+  const res = await geniusRes(N);
+  const day = Object.keys(res.labels)[0];
+  const rows = X.layoutSheet(res.secsByDay[day], res.labels[day], false,
+                             X.bookOrder(res.secsByDay, X.MAIN_ORDER, true),
+                             false, true);
+  const kinds = Array.from(rows).map(r => r.kind);
+  assert.ok(kinds.filter(k => k === "hdr").length > 1, "several sections built");
+  /* The operator's TUE 18/08 runs Ashford to row 46, leaves 47 blank and
+     heads Dover Priory at 48 - so exactly one gap between a section's last
+     line and the next section's header, and one after the last section. */
+  for (let i = 0; i < kinds.length; i++) {
+    if (kinds[i] !== "gap") continue;
+    assert.notEqual(kinds[i + 1], "gap",
+      "two blank rows in a row at index " + i + ": " +
+      kinds.slice(Math.max(0, i - 2), i + 3).join(","));
+  }
+  assert.equal(kinds[kinds.length - 1], "gap", "the last section is closed off");
 });
 
 test("weekend books: shared writer matches the legacy zipXlsx output", async () => {
