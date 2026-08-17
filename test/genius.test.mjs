@@ -746,3 +746,33 @@ test("a summary with one line per diagram says so", async () => {
   assert.equal(said(full).length, 0,
     "a summary that lists a working twice says nothing: " + said(full).join(" | "));
 });
+
+test("a report with the right name and the wrong columns says which", async () => {
+  const N = built();
+  const { integraleSummaryCsv, integraleDetailCsv } =
+    await import("./helpers/synth.mjs");
+  /* The 16/08 Integrale Summary came out without Cov and Position - both
+     things the exporter lets you pick - and the refusal only said it did not
+     look like the Diagram Summary export, which sends somebody hunting for
+     the wrong file when what they need is two tick boxes. */
+  const drop = (csv, col) => {
+    const rows = csv.replace(/^﻿/, "").split(/\r?\n/).filter(Boolean)
+      .map(l => l.split(","));
+    const i = rows[0].map(x => x.trim()).indexOf(col);
+    assert.ok(i >= 0, "the fixture has a " + col + " column to drop");
+    return rows.map(r => r.filter((_, j) => j !== i).join(",")).join("\r\n");
+  };
+  const det = integraleDetailCsv();
+  assert.throws(
+    () => N.GENIUS.buildIntegrale([drop(integraleSummaryCsv(), "Position"), det]),
+    /missing the Position column - add it to the export/,
+    "one missing column is named, in the singular");
+  assert.throws(
+    () => N.GENIUS.buildIntegrale(
+      [drop(drop(integraleSummaryCsv(), "Position"), "Cov"), det]),
+    /missing the Cov, Position columns - add them/,
+    "two are named, in the plural");
+  // and a complete export is still built without complaint
+  const ok = N.GENIUS.buildIntegrale([integraleSummaryCsv(), det]);
+  assert.ok(Object.keys(ok.labels).length, "the whole export still builds");
+});

@@ -4732,15 +4732,27 @@ const GENIUS = (() => {
     const d = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
     return d.length >= 6 ? d.slice(-3) : "";
   }
+  /* Returns the column numbers, or the names that are not there. An export
+     can be the right report with the wrong columns picked - the 16/08
+     Integrale Summary came out without Cov, Position and Last Train Note,
+     which are all things the exporter lets you choose - and "that doesn't
+     look like the Diagram Summary export" sends somebody hunting for the
+     wrong file when what they need is three tick boxes. */
   function headerIndex(rows, wanted) {
     const hdr = rows[0].map(x => x.trim());
-    const idx = {};
+    const idx = {}, missing = [];
     for (const w of wanted) {
       idx[w] = hdr.indexOf(w);
-      if (idx[w] < 0) return null;
+      if (idx[w] < 0) missing.push(w);
     }
-    return idx;
+    return missing.length ? { missing } : idx;
   }
+  const missingCols = c => c && c.missing
+    ? " It is missing the " + c.missing.join(", ") + " column" +
+      (c.missing.length === 1 ? "" : "s") +
+      " - add " + (c.missing.length === 1 ? "it" : "them") +
+      " to the export and run it again."
+    : "";
   function sniffIntegrale(text) {
     const rows = csvParse(text.slice(0, 4000));
     if (!rows.length) return null;
@@ -4755,7 +4767,8 @@ const GENIUS = (() => {
     const rows = csvParse(text);
     const c = headerIndex(rows, ["Code", "Cov", "Type", "Start Time",
       "Position", "Start Location", "End Time", "End Location"]);
-    if (!c) throw new Error("That CSV doesn't look like the Integrale Diagram Summary export.");
+    if (!c || c.missing) throw new Error(
+      "That CSV doesn't look like the Integrale Diagram Summary export." + missingCols(c));
     /* Optional, because an older export may not carry it: the allocated unit.
        Not in the required list above - a missing column must not refuse the
        file, it just leaves the unit column blank for the depot to write in. */
@@ -4787,7 +4800,8 @@ const GENIUS = (() => {
     const c = headerIndex(rows, ["Diagram Code", "Diagram Date", "Start Tiploc",
       "Start Location Name", "Start Time", "Activity", "Headcode",
       "End Tiploc", "End Location Name", "End Time"]);
-    if (!c) throw new Error("That CSV doesn't look like the Integrale Diagrams export.");
+    if (!c || c.missing) throw new Error(
+      "That CSV doesn't look like the Integrale Diagrams export." + missingCols(c));
     const diags = new Map();     // code -> {date, legs, stabledOnly}
     let mangled = 0, badTime = 0;
     for (let i = 1; i < rows.length; i++) {
