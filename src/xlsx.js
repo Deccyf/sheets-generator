@@ -8,7 +8,7 @@ const SHEETS_XLSX = (() => {
 const CORE = SHEETS_CORE;
 const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
-        SIDING_NOTES, END_STYLE, DAY_SHEET, DAY_KEYS } = SHEETS_DATA;
+        SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
 /* How long a break in a location's work has to be before a double line is
    ruled in it, and the hour after which a second one is drawn - see
@@ -574,7 +574,7 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const splitRamsgate = opts.splitRamsgate !== false;
   const fullOrder = bookOrder(secsByDay, base, splitRamsgate);
   const gpSplit = opts.gpSplit !== undefined ? !!opts.gpSplit : base === MAIN_ORDER;
-  const dayKeys = DAY_KEYS.filter(d => d in dateLabels);
+  const dayKeys = ["M", "T", "W", "TH", "F"].filter(d => d in dateLabels);
   const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
@@ -589,8 +589,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, DAY_KEYS, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP,
-         printPlan };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

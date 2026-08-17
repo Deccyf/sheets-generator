@@ -196,14 +196,8 @@ const GENIUS = (() => {
     const c = viaResolver(name, SE() ? SE().BERTH_CODE : {}, warn, where);
     return FIX_CODE[c] || c;
   }
-  /* All seven. The planning reports export a Saturday or a Sunday like any
-     other date and the same rules read it, so a weekend pair builds the same
-     four books with a SAT or SUN column. The weekend diagram PRINTS are a
-     different pipeline and a different set of workbooks - having both is the
-     point, not a clash, and a weekend built from the reports says so on the
-     review list. */
-  const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F", 6: "SA", 0: "SU" };
-  const DAY_NAME = SHEETS_DATA.DAY_SHEET;
+  const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F" };
+  const DAY_NAME = { M: "MON", T: "TUE", W: "WED", TH: "THU", F: "FRI" };
   function dayKey(date) {
     const [d, mo, y] = String(date || "").split("/").map(Number);
     if (!d || !mo || !y) return null;
@@ -931,17 +925,7 @@ const GENIUS = (() => {
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
-      if (!dk) { noteAll(date + ": unreadable date - left out of these books"); continue; }
-      /* A weekend date builds, but the books it builds are not the ones the
-         weekend diagram prints make: different workbooks, different file
-         names, and the prints are what a Saturday or Sunday book is normally
-         written from. Nobody should ship one without knowing which they have
-         in front of them. */
-      if (dk === "SA" || dk === "SU")
-        noteAll(date + " is a " + DAY_NAME[dk] + ", built from the planning" +
-          " reports. The weekend diagram prints are the usual source for a" +
-          " Saturday or Sunday book and they are a separate build on the" +
-          " weekend panel - check the two agree before either goes out");
+      if (!dk) { noteAll(date + ": falls on a weekend - use the weekend prints panel"); continue; }
       const det = byDate.get(date);
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       /* A book has one column per weekday, so a second date on the same day
@@ -976,9 +960,19 @@ const GENIUS = (() => {
         }
       }
     }
-    if (!Object.keys(secsByDay).length)
-      throw new Error("No dated reports found — check both exports carry a " +
-        "date, and that they carry the same one.");
+    /* Saturday and Sunday reports land here rather than on the weekend
+       panel often enough that the message has to say where to take them -
+       the notes above name the date, but nothing is built, so only this is
+       seen. */
+    if (!Object.keys(secsByDay).length) {
+      const wknd = dates.filter(d => d && !dayKey(d));
+      throw new Error(wknd.length
+        ? "No weekday dates found in the reports — " + wknd.join(", ") +
+          (wknd.length === 1 ? " falls" : " fall") + " on a weekend. Saturday" +
+          " and Sunday sheets are built from the diagram prints, on the" +
+          " weekend panel below; these reports do not build them."
+        : "No weekday dates found in the reports.");
+    }
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {

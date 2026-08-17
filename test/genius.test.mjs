@@ -229,42 +229,23 @@ test("a report that spells the year long builds the same day", async () => {
     "no half-matched date: " + Array.from(orphan).join(" | "));
 });
 
-test("a Saturday or Sunday pair builds its own column", async () => {
+test("a Saturday pair says where the weekend sheets come from", async () => {
   const N = built();
-  const X = N.SHEETS_XLSX;
   const { geniusSummaryCsv, geniusDetailCsv } = await import("./helpers/synth.mjs");
-  /* Genius exports a weekend date like any other and the same rules read it,
-     so the pair builds rather than being refused. The weekend diagram prints
-     stay a separate pipeline and separate workbooks, which is why the review
-     list says which of the two this book came from. */
-  const on = d => t => t.replace(/03\/08\/26/g, d + "/08/26")
-                         .replace(/03\/08\/2026/g, d + "/08/2026");
-  const wd = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv()]);
-  assert.deepEqual(Object.keys(wd.labels), ["M"], "03/08 is a Monday");
-
-  for (const [day, key, name] of [["15", "SA", "SAT"], ["16", "SU", "SUN"]]) {
-    const set = on(day);
-    const res = await N.GENIUS.build([set(geniusSummaryCsv()), set(geniusDetailCsv())]);
-    assert.deepEqual(Object.keys(res.labels), [key], name + " builds its column");
-    assert.equal(res.labels[key], name + " " + day + "/08", "and is labelled " + name);
-    assert.equal(res.tag, name + "-" + day + "-08", "the books are named for it");
-    // the same sections, built by the same rules as the weekday pair
-    assert.deepEqual(norm(Array.from(res.secsByDay[key].keys())),
-                     norm(Array.from(wd.secsByDay.M.keys())),
-                     "the same pages as the weekday build of the same workings");
-    // and the workbook carries a worksheet named for the day
-    const files = N.fflate.unzipSync(X.writeBooks(res.secsByDay, res.labels, false, {}));
-    const wbXml = new TextDecoder().decode(files["xl/workbook.xml"]);
-    assert.match(wbXml, new RegExp('<sheet name="' + name + '"'),
-      "the workbook has a " + name + " sheet: " + wbXml.slice(0, 400));
-    /* Two routes now reach a Saturday book and they are not the same build,
-       so the one that came from the reports has to say so. */
-    const said = res.review.filter(m => /is a SAT|is a SUN/.test(m));
-    assert.equal(said.length, 1,
-      "the review list names the source: " + Array.from(res.review).join(" | "));
-    assert.match(said[0], /weekend diagram prints[\s\S]*check the two agree/,
-      "and says to check it against the prints build");
-  }
+  /* The reports do build for a weekend date - Genius will happily export
+     one - but these are not what a Saturday or Sunday book is made from,
+     and the weekday pipeline has nowhere to put them: a book has one column
+     per weekday. It used to stop with a bare "No weekday dates found in the
+     reports", which reads like the export is broken. */
+  const sat = t => t.replace(/03\/08\/26/g, "15/08/26")   // a Saturday
+                    .replace(/03\/08\/2026/g, "15/08/2026");
+  await assert.rejects(
+    () => N.GENIUS.build([sat(geniusSummaryCsv()), sat(geniusDetailCsv())]),
+    /15\/08\/26 falls on a weekend[\s\S]*weekend panel/,
+    "names the date and sends them to the prints panel");
+  // and a weekday pair still builds, with the plain message left alone
+  const ok = await N.GENIUS.build([geniusSummaryCsv(), geniusDetailCsv()]);
+  assert.ok(Object.keys(ok.labels).length, "the weekday pair is untouched");
 });
 
 test("the sniffers tell the three report formats apart", async () => {

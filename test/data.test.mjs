@@ -33,14 +33,7 @@ test("reference tables match the legacy build", () => {
   assert.deepEqual(norm(D.MAIN_ORDER), norm(L.SHEETS_XLSX.MAIN_ORDER), "MAIN_ORDER");
   assert.deepEqual(norm(D.METRO_ORDER), norm(L.SHEETS_XLSX.METRO_ORDER), "METRO_ORDER");
   assert.deepEqual(norm(D.HS_ORDER), norm(L.SHEETS_XLSX.HS_ORDER), "HS_ORDER");
-  /* Deliberate divergence: a book can now carry a SAT or SUN column. The
-     planning reports export a weekend date like any other and the same rules
-     read it, so a weekend pair builds rather than being refused; the weekend
-     diagram prints remain a separate pipeline and separate workbooks. */
-  assert.deepEqual(norm({ ...L.SHEETS_XLSX.DAY_SHEET, SA: "SAT", SU: "SUN" }),
-    norm(D.DAY_SHEET), "DAY_SHEET (with the weekend columns)");
-  assert.deepEqual(norm(D.DAY_KEYS), norm(Object.keys(D.DAY_SHEET)),
-    "DAY_KEYS names every column, in reading order");
+  assert.deepEqual(norm(D.DAY_SHEET), norm(L.SHEETS_XLSX.DAY_SHEET), "DAY_SHEET");
   /* Deliberate divergence: the weekend profiles are no longer a second copy
      of the weekday ones - they ARE the weekday ones, so the weekend books
      follow the same rulebook. The copy had drifted (the metro fleet list had

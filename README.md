@@ -174,30 +174,13 @@ header is a `.doc`, anything else is decoded as text and accepted if
 `looksLikePrints` finds a tabbed `Diagram:` line. So the prints build whatever
 the file is called, `.txt` and `.csv` alike.
 
-**What the weekend panel cannot take is the Genius or Integrale CSV reports** —
-but the *reports* panel now can. See below.
-
-### A weekend from the reports instead
-
-The planning reports export a Saturday or a Sunday like any other date, and the
-same rules read it, so a weekend-dated pair on the reports panel builds the same
-four books it builds for a weekday, with a **SAT** or **SUN** column
-(`SHEETS_SAT-15-08.xlsx`). `DAY_SHEET`/`DAY_KEYS` carry all seven days and
-nothing enumerates the weekdays for itself any more.
-
-Both routes now reach a Saturday book and **they are not the same build**, so
-the reports-built one says which it is on its review list and tells you to check
-it against the prints. The file names differ, so the two cannot be confused on
-disk. The prints route remains the usual source, and the only one that can
-produce an updated prints document.
-
-**Which unit prints first is decided by the source, not by the day.** A
-prints-built weekend sheet reads lowest position first everywhere; a
-reports-built one — whatever day it is — carries the reports' own Position
-field, which is the field the which-way-round list was measured on, so it
-follows that list. The same goes for the order-corrections table, which names
-the reports' diagram numbers. This is the one part of the feature that has not
-been held against a real Saturday book, which is what the review note is for.
+**What the weekend panel cannot take is the Genius or Integrale CSV reports.**
+The Diagram Summary and Diagram Detail exports feed the *weekday* pipeline,
+which has one column per weekday and refuses a Saturday or Sunday date
+outright. Dropped there, a weekend-dated pair now names the date and points at
+the prints panel rather than stopping at a bare "No weekday dates found in the
+reports", which read like a broken export. Weekend books come from the prints
+and nothing else.
 
 One thing a paste cannot do is produce the **updated prints document**. That
 splices the reissued diagrams into the original `.docx`, and a paste has no

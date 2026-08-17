@@ -490,7 +490,7 @@ function reviewPane(items) {
   async function renderBooks(res) {
     say("Writing books …"); await paint();
     const X = SHEETS_XLSX;
-    const dayKeys = X.DAY_KEYS.filter(k => k in res.labels);
+    const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
     const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
     const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
     // Each book carries its own fleet's review items. The Ramsgate book is

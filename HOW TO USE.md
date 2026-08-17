@@ -31,11 +31,10 @@ flag and note filled in the way the hand-built books do them.
 
 You give it:
 
-* **The *Diagram Summary* and *Diagram Detail* reports** for the date: from
-  Genius as PDFs or CSVs, or from Integrale as its two CSVs. Any day of the
-  week, Monday to Sunday.
-* **Or, for a Saturday or Sunday** — the weekend *diagram prints* Word
-  document, plus any reissues. That is the usual source for a weekend book.
+* **Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports for
+  the date: from Genius as PDFs or CSVs, or from Integrale as its two CSVs.
+* **Saturday and Sunday** — the weekend *diagram prints* Word document, plus any
+  reissues.
 
 You get finished Excel workbooks, ready to check and send out.
 
@@ -48,8 +47,8 @@ installed. You can use it on a train with no signal.
 ## 2. The two-minute version
 
 1. Double-click **`Sheets Generator.html`**.
-2. Drop the **two Diagram reports** on the top panel (or, for a Saturday or
-   Sunday, the **weekend prints** on the bottom one). Can't get the files onto the machine? Either panel will
+2. Drop the **two weekday reports** on the top panel (or the **weekend prints**
+   on the bottom one). Can't get the files onto the machine? Either panel will
    take the paperwork pasted in instead — sections
    [5](#5-building-the-weekday-books-mon--fri) and
    [6](#6-building-the-weekend-sheets-sat--sun).
@@ -76,18 +75,15 @@ The page has **two panels**, one above the other:
 
 | Panel | Sign at the top | What it takes |
 |---|---|---|
-| Top | **Any day · from the reports** | the two Diagram reports — Genius (.pdf or .csv) or Integrale (.csv) |
+| Top | **Weekdays · Mon – Fri** | the two Diagram reports — Genius (.pdf or .csv) or Integrale (.csv) |
 | Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc, or the same thing as text) |
 
 Drop your files on the matching one. If you put weekend prints on the weekday
 panel by mistake it will tell you, politely, and point you downstairs.
 
-**Two routes reach a Saturday or Sunday book.** The **prints** on the bottom
-panel are the usual source. The **two Diagram reports** on the top panel also
-build a weekend date now — the same four books you get for a weekday, with a
-SAT or SUN tab. They are different builds: the file names differ, the
-reports-built one says so on its review list, and if you have both, check they
-agree.
+**The two Diagram reports never build a weekend.** Saturday and Sunday books
+come from the prints and nothing else — the CSVs go on the top panel, and a
+weekend-dated pair dropped there says so and points you down here.
 
 ---
 
@@ -169,7 +165,7 @@ If **reissued** prints have come out, get those too. Any file with *reissue* or
 The panel reads the prints by what is **inside** the file, not by what it is
 called, so the prints saved as plain text work just as well — `.txt`, `.csv`,
 whatever the extension. What it cannot read is a Diagram Summary or Diagram
-Detail export: those go on the top panel, which builds a weekend date too.
+Detail export: those are weekday reports and belong on the top panel.
 
 ---
 
@@ -190,9 +186,8 @@ Detail export: those go on the top panel, which builds a weekend date too.
    the bottom for everything in a single zip.
 
 **Several dates at once.** If the reports cover a whole week, you get one tab
-per date inside each workbook — MON to SUN. A Saturday or Sunday builds its
-own tab, with a note on the review list saying the book came from the reports
-rather than from the weekend diagram prints.
+per date inside each workbook — MON to FRI. Dates that fall on a weekend are
+skipped, with a note telling you to use the weekend panel.
 
 **A book with nothing in it** says so — *"No Metro diagrams in these reports —
 nothing to berth"* — instead of giving you an empty workbook. For Metro and High
