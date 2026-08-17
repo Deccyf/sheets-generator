@@ -234,7 +234,7 @@ test("a diagram that starts stabled still gets berthed; one that never moves is 
   assert.match(metro.report, /GN622/, "and its diagram number");
 });
 
-test("the prints read the same pasted as they do dropped", () => {
+test("the prints read the same pasted, dropped, or saved as a CSV", async () => {
   const N = built();
   const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f, { level: 6 }) };
   const docx = makeDocx(PRINTS_LINES, N.fflate);
@@ -253,10 +253,41 @@ test("the prints read the same pasted as they do dropped", () => {
   assert.deepEqual(norm(fromText.books.map(normBook)),
                    norm(fromDocx.books.map(normBook)), "and the same books");
 
-  // the tabs ARE the structure, so a paste that lost them is refused
+  /* The prints saved as a CSV: a spreadsheet writes a comma where the .docx
+     has a tab, and the columns are the structure either way. This used to be
+     refused as "not the diagram prints". */
+  const asCsv = PRINTS_LINES.map(l => l.split("\t")
+    .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
+    .join(",")).join("\r\n");
+  const fromCsv = N.SheetsEngine.run(
+    [{ name: "PRINTS.csv", bytes: new TextEncoder().encode(asCsv) }], zip.un, zip.z);
+  assert.equal(fromCsv.banner, fromDocx.banner, "the CSV is the same weekend");
+  assert.equal(fromCsv.diagrams, fromDocx.diagrams, "and the same diagrams");
+  assert.deepEqual(norm(fromCsv.books.map(normBook)),
+                   norm(fromDocx.books.map(normBook)), "and the same books");
+  // a spreadsheet pads every row to the widest; the padding must not survive
+  const padded = PRINTS_LINES.map(l => l.split("\t")
+    .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
+    .join(",") + ",,,").join("\r\n");
+  const fromPadded = N.SheetsEngine.run(
+    [{ name: "PADDED.csv", bytes: new TextEncoder().encode(padded) }], zip.un, zip.z);
+  assert.deepEqual(norm(fromPadded.books.map(normBook)),
+                   norm(fromDocx.books.map(normBook)), "trailing empty cells go");
+
+  // the columns ARE the structure, so a paste that lost them is refused
   const noTabs = new TextEncoder().encode(PRINTS_LINES.join("\n").replace(/\t/g, " "));
   assert.throws(() => N.SheetsEngine.run([{ name: "flat.txt", bytes: noTabs }], zip.un, zip.z),
     /isn't the diagram prints/, "flattened text is refused, not half-read");
+  /* And a CSV that is NOT the prints stays refused - the weekday Diagram
+     Summary export is a CSV too, and half-reading one into an empty book
+     would be worse than saying no. */
+  const { geniusSummaryCsv } = await import("./helpers/synth.mjs");
+  assert.throws(() => N.SheetsEngine.run(
+    [{ name: "udiagsum.csv", bytes: new TextEncoder().encode(geniusSummaryCsv()) }],
+    zip.un, zip.z),
+    /isn't the diagram prints/, "a Diagram Summary export is not the prints");
+  assert.equal(N.SheetsEngine.printsFromCsv("a,b,c\n1,2,3"), null,
+    "nor is any other CSV");
   assert.equal(N.SheetsEngine.looksLikePrints(PRINTS_LINES.join("\n")), true, "prints");
   assert.equal(N.SheetsEngine.looksLikePrints("Diagram: GT 501 Sat"), false,
     "a line without tabs is not the prints");

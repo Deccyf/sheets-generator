@@ -111,5 +111,24 @@ await page.locator("#roads").scrollIntoViewIfNeeded();
 await page.screenshot({ path: "tools/smoke-weekday.png" });
 await page.locator("#we_roads").scrollIntoViewIfNeeded();
 await page.screenshot({ path: "tools/smoke-weekend.png" });
+/* ---- the prints saved as a CSV, dropped and pasted ---- */
+const asCsv = PRINTS_LINES.map(l => l.split("\t")
+  .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
+  .join(",")).join("\r\n");
+await page.reload();
+await page.setInputFiles("#we_file", [f("WEEKEND PRINTS.csv", Buffer.from(asCsv, "utf8"))]);
+await page.waitForFunction(() =>
+  document.querySelector("#we_status").textContent.includes("Berthed"), null, { timeout: 20000 });
+console.log("csv dropped :", await page.textContent("#we_status"));
+await page.locator("#we_pastetoggle").click();
+await page.evaluate(v => {
+  const el = document.querySelector("#we_paste_main");
+  el.value = v; el.dispatchEvent(new Event("input", { bubbles: true }));
+}, asCsv);
+await page.locator("#we_paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#we_status").textContent.includes("Berthed"), null, { timeout: 20000 });
+console.log("csv pasted  :", await page.textContent("#we_paste_say"));
+
 await browser.close();
 console.log("SMOKE OK");

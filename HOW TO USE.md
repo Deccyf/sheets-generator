@@ -76,7 +76,7 @@ The page has **two panels**, one above the other:
 | Panel | Sign at the top | What it takes |
 |---|---|---|
 | Top | **Weekdays · Mon – Fri** | the two Diagram reports — Genius (.pdf or .csv) or Integrale (.csv) |
-| Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc, or the same thing as text) |
+| Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc, or the same thing as .txt or .csv) |
 
 Drop your files on the matching one. If you put weekend prints on the weekday
 panel by mistake it will tell you, politely, and point you downstairs.
@@ -163,9 +163,10 @@ If **reissued** prints have come out, get those too. Any file with *reissue* or
 *re-issue* in its name is treated as a reissue.
 
 The panel reads the prints by what is **inside** the file, not by what it is
-called, so the prints saved as plain text work just as well — `.txt`, `.csv`,
-whatever the extension. What it cannot read is a Diagram Summary or Diagram
-Detail export: those are weekday reports and belong on the top panel.
+called, so the prints saved out of Word work just as well — as plain text
+(`.txt`) or as a **`.csv`**, where the commas are the columns. What it cannot
+read is a Diagram Summary or Diagram Detail export: those are the weekday
+reports and belong on the top panel.
 
 ---
 

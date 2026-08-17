@@ -248,7 +248,7 @@
     <span class="sign">Weekend · Sat &amp; Sun</span>
     <h2 id="we-h">Saturday &amp; Sunday sheets from the diagram prints</h2>
     <p class="whatfor">Needs the weekend <strong>diagram prints</strong> Word
-      document (.docx or .doc, or the same thing saved as plain text). If
+      document (.docx or .doc, or the same thing saved as text or as a CSV). If
       reissued prints exist, drop them too — together or in a later drop —
       and the reissued diagrams replace their originals before anything is
       built.</p>
@@ -258,7 +258,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>The prints as .docx, .doc or text · not the Summary and Detail reports · reissues welcome, together or afterwards · or click to choose</span>
+          <span>The prints as .docx, .doc, .txt or .csv · not the Diagram reports · reissues welcome, together or afterwards · or click to choose</span>
         </span>
       </span>
     </button>
@@ -273,9 +273,10 @@
     <div class="pastebox" id="we_pastebox" hidden>
       <p class="paste-hint">Open the prints in Word, press <b>Ctrl+A</b> then
         <b>Ctrl+C</b>, and paste into the first box. The diagram lines have to
-        keep their <b>tabs</b>, so paste as it comes &mdash; do not tidy it up.
-        The second box is only for reissued prints; leave it empty if there
-        are none.</p>
+        keep their <b>columns</b>, so paste as it comes &mdash; do not tidy it
+        up. Word puts them on the clipboard tab-separated and a spreadsheet
+        saves them comma-separated; both are read. The second box is only for
+        reissued prints; leave it empty if there are none.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram prints
@@ -340,10 +341,15 @@
           <dd>Open the prints in Word and save them again as .docx, then drop
             the new file.</dd>
           <dt>"That isn't the diagram prints"</dt>
-          <dd>Pasted or plain-text prints whose <strong>tabs</strong> have been
-            lost. The diagram lines are held together by them, so the page
-            refuses rather than half-reading it. Copy the document out of Word
-            again and paste it as it comes, without tidying it up.</dd>
+          <dd>Pasted or plain-text prints whose <strong>columns</strong> have
+            been lost &mdash; the tabs flattened to spaces. The diagram lines
+            are held together by them, so the page refuses rather than
+            half-reading it. Copy the document out of Word again and paste it
+            as it comes, without tidying it up. A <b>.csv</b> of the prints is
+            fine: the commas are the columns and are read as such. What this
+            panel cannot read is a Diagram Summary or Diagram Detail export
+            &mdash; those are the weekday reports, and they go on the panel
+            above.</dd>
           <dt>Can the Genius or Integrale CSVs build a weekend?</dt>
           <dd>No. Saturday and Sunday books come from the diagram prints and
             nothing else &mdash; this panel reads the prints whatever the file

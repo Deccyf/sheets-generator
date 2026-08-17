@@ -320,9 +320,34 @@ function readPrints(bytes, unzip){
                     "it as a Word Document.");
   const text = dec.decode(bytes).replace(/^\uFEFF/, "");
   if (looksLikePrints(text)) return text.replace(/\r\n?/g, "\n").split("\n");
+  const csv = printsFromCsv(text);
+  if (csv) return csv;
   throw new Error("That isn't the diagram prints. Drop the Word document, or " +
-                  "save it as plain text — the diagram lines have to keep " +
-                  "their tabs.");
+                  "save it as plain text or as a CSV — the diagram lines " +
+                  "have to keep their columns.");
+}
+/* The prints saved as a CSV. Word tables and spreadsheets both write the
+   prints out with a comma between the cells instead of a tab, which the
+   reader above cannot see: "Diagram:,AZ,601" is the same line as
+   "Diagram:\tAZ\t601" and used to be refused as "not the diagram prints".
+   So the cells are read back and re-joined with tabs, which is the shape
+   everything downstream reads. Trailing empty cells go: a spreadsheet pads
+   every row out to the widest one, and a run of tabs at the end of a line
+   is not what the .docx produces.
+
+   Only a file that turns out to BE the prints is taken - a Diagram Summary
+   export is a CSV too, and it has to keep being refused rather than
+   half-read into an empty book. */
+function printsFromCsv(text){
+  if (text.indexOf(",") < 0) return null;
+  const rows = SHEETS_CORE.csvParse(text);
+  if (!rows.length) return null;
+  const lines = rows.map(function(r){
+    let end = r.length;
+    while (end > 0 && String(r[end - 1]).trim() === "") end--;
+    return r.slice(0, end).join("\t");
+  });
+  return looksLikePrints(lines.join("\n")) ? lines : null;
 }
 
 function parseDiagrams(lines){
@@ -1095,7 +1120,7 @@ function run(input, unzipFn, zipFn, opts){
           updated: updated};
 }
 root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
-                    looksLikePrints,
+                    looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};
 })(typeof globalThis !== "undefined" ? globalThis : this);

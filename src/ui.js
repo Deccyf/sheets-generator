@@ -945,14 +945,19 @@ function reviewPane(items) {
     }
     /* Say what is wrong before the engine does, because by then the reason
        is one line deep in a document that was never a document. */
-    if (!SheetsEngine.looksLikePrints(main)) {
+    /* Both shapes the dropped path takes: tab-separated as Word puts it on
+       the clipboard, or comma-separated as a spreadsheet saves it. Pasted
+       and dropped must not disagree about what the prints are. */
+    const readsAsPrints = t => SheetsEngine.looksLikePrints(t) ||
+                               !!SheetsEngine.printsFromCsv(t);
+    if (!readsAsPrints(main)) {
       wSay("That does not read as the diagram prints — no \u201cDiagram:\u201d " +
-           "line with tabs in it. Copy the whole document out of Word, and " +
-           "paste it as it comes.", "err");
+           "line with its columns intact. Copy the whole document out of " +
+           "Word, and paste it as it comes.", "err");
       if (wePasteMain) wePasteMain.focus();
       return;
     }
-    if (re.trim() && !SheetsEngine.looksLikePrints(re)) {
+    if (re.trim() && !readsAsPrints(re)) {
       wSay("The reissue box does not read as diagram prints. Leave it empty " +
            "if there is no reissue.", "err");
       if (wePasteRe) wePasteRe.focus();

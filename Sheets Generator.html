@@ -615,7 +615,7 @@
     <span class="sign">Weekend · Sat &amp; Sun</span>
     <h2 id="we-h">Saturday &amp; Sunday sheets from the diagram prints</h2>
     <p class="whatfor">Needs the weekend <strong>diagram prints</strong> Word
-      document (.docx or .doc, or the same thing saved as plain text). If
+      document (.docx or .doc, or the same thing saved as text or as a CSV). If
       reissued prints exist, drop them too — together or in a later drop —
       and the reissued diagrams replace their originals before anything is
       built.</p>
@@ -625,7 +625,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>The prints as .docx, .doc or text · not the Summary and Detail reports · reissues welcome, together or afterwards · or click to choose</span>
+          <span>The prints as .docx, .doc, .txt or .csv · not the Diagram reports · reissues welcome, together or afterwards · or click to choose</span>
         </span>
       </span>
     </button>
@@ -640,9 +640,10 @@
     <div class="pastebox" id="we_pastebox" hidden>
       <p class="paste-hint">Open the prints in Word, press <b>Ctrl+A</b> then
         <b>Ctrl+C</b>, and paste into the first box. The diagram lines have to
-        keep their <b>tabs</b>, so paste as it comes &mdash; do not tidy it up.
-        The second box is only for reissued prints; leave it empty if there
-        are none.</p>
+        keep their <b>columns</b>, so paste as it comes &mdash; do not tidy it
+        up. Word puts them on the clipboard tab-separated and a spreadsheet
+        saves them comma-separated; both are read. The second box is only for
+        reissued prints; leave it empty if there are none.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram prints
@@ -707,10 +708,15 @@
           <dd>Open the prints in Word and save them again as .docx, then drop
             the new file.</dd>
           <dt>"That isn't the diagram prints"</dt>
-          <dd>Pasted or plain-text prints whose <strong>tabs</strong> have been
-            lost. The diagram lines are held together by them, so the page
-            refuses rather than half-reading it. Copy the document out of Word
-            again and paste it as it comes, without tidying it up.</dd>
+          <dd>Pasted or plain-text prints whose <strong>columns</strong> have
+            been lost &mdash; the tabs flattened to spaces. The diagram lines
+            are held together by them, so the page refuses rather than
+            half-reading it. Copy the document out of Word again and paste it
+            as it comes, without tidying it up. A <b>.csv</b> of the prints is
+            fine: the commas are the columns and are read as such. What this
+            panel cannot read is a Diagram Summary or Diagram Detail export
+            &mdash; those are the weekday reports, and they go on the panel
+            above.</dd>
           <dt>Can the Genius or Integrale CSVs build a weekend?</dt>
           <dd>No. Saturday and Sunday books come from the diagram prints and
             nothing else &mdash; this panel reads the prints whatever the file
@@ -2051,8 +2057,37 @@ function amPm(visits, flags) {
   return [am, "", flags];
 }
 
+/* One CSV reader for the whole tool. Both weekday report exports are CSVs,
+   and so are the weekend prints when somebody has saved them out of a
+   spreadsheet, so it cannot live in either engine. Quoted fields, doubled
+   quotes inside them, CRLF or LF, and a leading byte-order mark. */
+function csvParse(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [], field = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else q = false;
+      } else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+
 return { strip, pyStr, pad2, cleanLoc, norm, sheetStation, isSiding,
-         locBinfo, destTlc, fmtTime, amPm,
+         locBinfo, destTlc, fmtTime, amPm, csvParse,
          BERTH_SHEETS, DEST_TLC, NON_BERTH_VISIT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_CORE;
@@ -3012,9 +3047,34 @@ function readPrints(bytes, unzip){
                     "it as a Word Document.");
   const text = dec.decode(bytes).replace(/^\uFEFF/, "");
   if (looksLikePrints(text)) return text.replace(/\r\n?/g, "\n").split("\n");
+  const csv = printsFromCsv(text);
+  if (csv) return csv;
   throw new Error("That isn't the diagram prints. Drop the Word document, or " +
-                  "save it as plain text — the diagram lines have to keep " +
-                  "their tabs.");
+                  "save it as plain text or as a CSV — the diagram lines " +
+                  "have to keep their columns.");
+}
+/* The prints saved as a CSV. Word tables and spreadsheets both write the
+   prints out with a comma between the cells instead of a tab, which the
+   reader above cannot see: "Diagram:,AZ,601" is the same line as
+   "Diagram:\tAZ\t601" and used to be refused as "not the diagram prints".
+   So the cells are read back and re-joined with tabs, which is the shape
+   everything downstream reads. Trailing empty cells go: a spreadsheet pads
+   every row out to the widest one, and a run of tabs at the end of a line
+   is not what the .docx produces.
+
+   Only a file that turns out to BE the prints is taken - a Diagram Summary
+   export is a CSV too, and it has to keep being refused rather than
+   half-read into an empty book. */
+function printsFromCsv(text){
+  if (text.indexOf(",") < 0) return null;
+  const rows = SHEETS_CORE.csvParse(text);
+  if (!rows.length) return null;
+  const lines = rows.map(function(r){
+    let end = r.length;
+    while (end > 0 && String(r[end - 1]).trim() === "") end--;
+    return r.slice(0, end).join("\t");
+  });
+  return looksLikePrints(lines.join("\n")) ? lines : null;
 }
 
 function parseDiagrams(lines){
@@ -3787,7 +3847,7 @@ function run(input, unzipFn, zipFn, opts){
           updated: updated};
 }
 root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
-                    looksLikePrints,
+                    looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};
 })(typeof globalThis !== "undefined" ? globalThis : this);
@@ -4872,30 +4932,7 @@ const GENIUS = (() => {
   // headcode), plus activity marker rows (ATTACH/DETACH/STABLD). The
   // adapter translates both into the shapes assemble() already consumes,
   // so either source produces the same books through the same rulebook.
-  function csvParse(text) {
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-    const rows = [];
-    let row = [], field = "", q = false;
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i];
-      if (q) {
-        if (c === '"') {
-          if (text[i + 1] === '"') { field += '"'; i++; }
-          else q = false;
-        } else field += c;
-      } else if (c === '"') q = true;
-      else if (c === ",") { row.push(field); field = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (c === "\r" && text[i + 1] === "\n") i++;
-        row.push(field); field = "";
-        if (row.length > 1 || row[0] !== "") rows.push(row);
-        row = [];
-      } else field += c;
-    }
-    row.push(field);
-    if (row.length > 1 || row[0] !== "") rows.push(row);
-    return rows;
-  }
+  const csvParse = SHEETS_CORE.csvParse;   // one reader, in core
   /* Text pasted into the page instead of a file dropped on it. The same
      report reaches the clipboard two ways and only one of them is a CSV:
      opened in Notepad it is the file, commas and all, but opened in Excel
@@ -6143,14 +6180,19 @@ function reviewPane(items) {
     }
     /* Say what is wrong before the engine does, because by then the reason
        is one line deep in a document that was never a document. */
-    if (!SheetsEngine.looksLikePrints(main)) {
+    /* Both shapes the dropped path takes: tab-separated as Word puts it on
+       the clipboard, or comma-separated as a spreadsheet saves it. Pasted
+       and dropped must not disagree about what the prints are. */
+    const readsAsPrints = t => SheetsEngine.looksLikePrints(t) ||
+                               !!SheetsEngine.printsFromCsv(t);
+    if (!readsAsPrints(main)) {
       wSay("That does not read as the diagram prints — no \u201cDiagram:\u201d " +
-           "line with tabs in it. Copy the whole document out of Word, and " +
-           "paste it as it comes.", "err");
+           "line with its columns intact. Copy the whole document out of " +
+           "Word, and paste it as it comes.", "err");
       if (wePasteMain) wePasteMain.focus();
       return;
     }
-    if (re.trim() && !SheetsEngine.looksLikePrints(re)) {
+    if (re.trim() && !readsAsPrints(re)) {
       wSay("The reissue box does not read as diagram prints. Leave it empty " +
            "if there is no reissue.", "err");
       if (wePasteRe) wePasteRe.focus();

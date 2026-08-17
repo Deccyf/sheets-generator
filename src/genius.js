@@ -1077,30 +1077,7 @@ const GENIUS = (() => {
   // headcode), plus activity marker rows (ATTACH/DETACH/STABLD). The
   // adapter translates both into the shapes assemble() already consumes,
   // so either source produces the same books through the same rulebook.
-  function csvParse(text) {
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-    const rows = [];
-    let row = [], field = "", q = false;
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i];
-      if (q) {
-        if (c === '"') {
-          if (text[i + 1] === '"') { field += '"'; i++; }
-          else q = false;
-        } else field += c;
-      } else if (c === '"') q = true;
-      else if (c === ",") { row.push(field); field = ""; }
-      else if (c === "\n" || c === "\r") {
-        if (c === "\r" && text[i + 1] === "\n") i++;
-        row.push(field); field = "";
-        if (row.length > 1 || row[0] !== "") rows.push(row);
-        row = [];
-      } else field += c;
-    }
-    row.push(field);
-    if (row.length > 1 || row[0] !== "") rows.push(row);
-    return rows;
-  }
+  const csvParse = SHEETS_CORE.csvParse;   // one reader, in core
   /* Text pasted into the page instead of a file dropped on it. The same
      report reaches the clipboard two ways and only one of them is a CSV:
      opened in Notepad it is the file, commas and all, but opened in Excel

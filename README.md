@@ -170,6 +170,17 @@ weekday boxes, where an Excel copy *is* converted. Prints whose tabs have been
 flattened are refused with a reason rather than half-read. The same goes for a
 `.txt`: the weekend panel takes one, recognised by content rather than by its
 extension. `readPrints` sniffs the first bytes — a zip is a `.docx`, an OLE
+header is a `.doc`, anything else is decoded as text.
+
+**And the prints saved as a `.csv`.** A spreadsheet writes a comma where the
+`.docx` has a tab, so `Diagram:,AZ,601` is the same line as `Diagram:\tAZ\t601`
+and used to be refused as "not the diagram prints". `printsFromCsv` reads the
+cells back and re-joins them with tabs — dropping the trailing empty ones a
+spreadsheet pads every row out with — and only accepts the result if it turns
+out to *be* the prints, so a Diagram Summary export (also a CSV) keeps being
+refused rather than half-read into an empty book. The paste box uses the same
+test, so pasted and dropped cannot disagree about what the prints are. The one
+CSV reader now lives in `SHEETS_CORE`, since both engines need it. `readPrints` sniffs the first bytes — a zip is a `.docx`, an OLE
 header is a `.doc`, anything else is decoded as text and accepted if
 `looksLikePrints` finds a tabbed `Diagram:` line. So the prints build whatever
 the file is called, `.txt` and `.csv` alike.

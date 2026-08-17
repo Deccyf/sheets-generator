@@ -114,8 +114,37 @@ function amPm(visits, flags) {
   return [am, "", flags];
 }
 
+/* One CSV reader for the whole tool. Both weekday report exports are CSVs,
+   and so are the weekend prints when somebody has saved them out of a
+   spreadsheet, so it cannot live in either engine. Quoted fields, doubled
+   quotes inside them, CRLF or LF, and a leading byte-order mark. */
+function csvParse(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const rows = [];
+  let row = [], field = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else q = false;
+      } else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+
 return { strip, pyStr, pad2, cleanLoc, norm, sheetStation, isSiding,
-         locBinfo, destTlc, fmtTime, amPm,
+         locBinfo, destTlc, fmtTime, amPm, csvParse,
          BERTH_SHEETS, DEST_TLC, NON_BERTH_VISIT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_CORE;
