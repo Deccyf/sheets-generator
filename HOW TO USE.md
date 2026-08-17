@@ -347,11 +347,18 @@ where the service it forms is going. A train that starts in the platform keeps
 its platform time. The Mainline and High Speed books are timed off the platform
 call as always.
 
-**Double lines** rule off the breaks in the day's work. Any break of **three hours
-or more** with work still to come after it gets one, so a page can carry two or
-three — Slade Green is ruled under its 06+36 and again under its 18+04. A page
-that is busy right through gets none, and Grove Park is never ruled. The
-weekend sheets follow the same rule.
+**Double lines** rule off the breaks in the day's work: the **first** break of
+**three hours or more**, and any later one where the work picks up **after
+20:00**. So a page can carry two — Slade Green is ruled under its 06+36 and
+again under its 18+04 — but a lull in the middle of the afternoon draws
+nothing: Tonbridge stands from 11+32 to 14+40 and is left unruled. A page that
+is busy right through gets none, and Grove Park is never ruled. The weekend
+sheets follow the same rule.
+
+**Printing.** The books come out ready to print — A4 portrait, scaled so all
+eight columns land on one page across, with a page break before any section
+that would otherwise be split in half. Open **Page Break Preview** in Excel if
+you want to see where the pages fall before you send it to the printer.
 
 ---
 

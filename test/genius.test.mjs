@@ -341,7 +341,7 @@ test("mixed-format pairs are refused by the sniffers", () => {
   assert.equal(N.GENIUS.sniffIntegrale("some,other,csv"), null);
 });
 
-test("a late evening move only keeps the berth inside its own area", async () => {
+test("a late evening move leaves the berth it stood on in the PM column", async () => {
   const N = built();
   const { LATE_MOVE_SUMMARY, LATE_MOVE_DETAIL } = await import("./helpers/synth.mjs");
   const res = N.GENIUS.buildIntegrale([LATE_MOVE_SUMMARY, LATE_MOVE_DETAIL]);
@@ -350,15 +350,18 @@ test("a late evening move only keeps the berth inside its own area", async () =>
     assert.ok(list && list.length, sec + " built");
     return list;
   };
+  /* Wherever the unit is taken afterwards, the berth it spent the evening
+     on is what these rows mean by PM - only the row for that last journey
+     reads where the journey ends. */
   // shunted out of the shed to Hastings for the night: still a shed unit
   assert.equal(norm(one("WEST MARINA")[0].units[0].pm), "XSE",
     "St Leonards shed keeps its unit");
-  // run off the east sidings to the Folkestone Train Roads: gone home
-  assert.equal(norm(one("ASHFORD")[0].units[0].pm), "FKE",
-    "Ashford east sidings hand theirs to Folkestone");
+  // off the east sidings to the Folkestone Train Roads, but AFE until then
+  assert.equal(norm(one("ASHFORD")[0].units[0].pm), "AFE",
+    "Ashford east sidings keep theirs too");
   // and the same shape across to Grove Park
   const sg = one("SLADE GREEN");
-  assert.equal(norm(sg[0].units[0].pm), "GPD", "Slade Green hands its unit over");
+  assert.equal(norm(sg[0].units[0].pm), "SG", "Slade Green keeps its unit");
   // a train booked into the depot is destined GPD, one into the station GPK
   const dests = norm(sg.map(e => e.dest));
   assert.ok(dests.includes("GPD"), "depot arrival destined GPD: " + dests);
@@ -778,22 +781,20 @@ test("a report with the right name and the wrong columns says which", async () =
   assert.ok(Object.keys(ok.labels).length, "the whole export still builds");
 });
 
-test("a late berth is the PM one when the unit goes back out in service", async () => {
+test("a diagram out a third time reads its last berth until the last journey", async () => {
   const N = built();
 
-  /* A unit that stands somewhere late and then leaves has either been put
-     away there, or is pausing on its way home. The two look identical up to
-     the headcode of what comes next.
+  /* A diagram with three berths has two PM ones, and the column means a
+     different one on each row: every row before the last journey carries
+     the berth the unit is sitting on, and the row for that journey itself
+     carries where it finishes.
 
-     375/3 diagram 301 on 12/08 stands at Ramsgate from 20 34, is shunted,
-     and then works 2U80 out again, finishing at Gillingham depot. Ramsgate
-     is where it spent the night as the sheet means it, so its PM reads RE -
-     and the entry that leaves Ramsgate is the one that reads GI.
-
-     377 diagram 105 is the same shape and the opposite answer: it stands at
-     Ashford east sidings from 20 03, shunted too, then runs 5R96 EMPTY to
-     the Folkestone train roads. All empty, so that is the run home and the
-     PM is FKE throughout.
+     375/3 diagram 301 on 12/08 works out of Grove Park, stands at Ramsgate
+     from 20 34, then works 2U80 out again to Gillingham depot: the Ashford
+     and Grove Park rows read RE, and only the entry leaving Ramsgate reads
+     GI. 377 diagram 103/104 is the same shape with an empty final run -
+     Ashford east sidings, then 5R96 to the Folkestone train roads - and the
+     operator reads it the same way: AFE on the rows before, FKE on the run.
 
      Built through the CSV reader rather than the PDF one because these rows
      can be written out exactly, without disturbing the shared fixture the
@@ -834,21 +835,25 @@ test("a late berth is the PM one when the unit goes back out in service", async 
   assert.equal(N.GENIUS.sniffGeniusCsv(sum), "sum", "the summary rows read");
   assert.equal(N.GENIUS.sniffGeniusCsv(det), "det", "and so do the legs");
   const res = await N.GENIUS.build([sum, det]);
+  // every row that carries the diagram, in time order, as "SECTION=PM"
   const pmOf = diag => {
+    const out = [];
     for (const day of Object.keys(res.labels))
       for (const m of [res.secsByDay[day], res.metroSecs[day], res.hsSecs[day]]) {
         if (!m) continue;
-        for (const [, list] of m)
+        for (const [sec, list] of m)
           for (const e of list)
-            for (const u of e.units) if (u.diag === diag && u.pm) return u.pm;
+            for (const u of e.units)
+              if (u.diag === diag) out.push({ t: e.time, s: sec + "=" + (u.pm || "-") });
       }
-    return null;
+    return out.sort((a, b) => a.t - b.t).map(x => x.s);
   };
   /* If the reader cannot place these the test proves nothing, so it says so
      rather than passing on an empty build. */
-  assert.ok(pmOf("201") || pmOf("202"), "the fixture built something to look at");
-  assert.equal(pmOf("201"), "RE",
-    "back out in service, so the berth it stood on is the PM one");
-  assert.equal(pmOf("202"), "FKE",
-    "empty all the way home, so the sheets follow it there");
+  assert.ok(pmOf("201").length && pmOf("202").length,
+    "the fixture built something to look at");
+  assert.deepEqual(pmOf("201"), ["ASHFORD=RE", "RAMSGATE=GI"],
+    "the berth until the last journey, then where that journey finishes");
+  assert.deepEqual(pmOf("202"), ["ASHFORD=AFE", "ASHFORD=FKE"],
+    "an empty final run reads no differently");
 });

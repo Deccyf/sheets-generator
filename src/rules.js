@@ -287,12 +287,14 @@ const SHEETS_RULES = (() => {
         "The evening starts at " + hhmm(env.pmBreak || 1200) + " for anything " +
         "the sheet calls PM.",
       ] },
-      { p: "Heavy double lines rule off the breaks in the day's work. Any " +
-        "break of " + hours(env.breakGap || 180) + " or more with work still " +
-        "to come after it gets one, so a page can carry two or three — Slade " +
-        "Green is ruled under its 06+36 and again under its 18+04. A page " +
-        "that is busy right through gets none, and Grove Park is never " +
-        "ruled." },
+      { p: "Heavy double lines rule off the breaks in the day's work: the " +
+        "first break of " + hours(env.breakGap || 180) + " or more, and any " +
+        "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
+        ". So a page can carry two — Slade Green is ruled under its 06+36 " +
+        "and again under its 18+04 — but a lull in the middle of the " +
+        "afternoon draws nothing: Tonbridge stands from 11+32 to 14+40 and " +
+        "is left unruled. A page that is busy right through gets none, and " +
+        "Grove Park is never ruled." },
     ];
     push("times", "Times, and the line across the page", t);
 

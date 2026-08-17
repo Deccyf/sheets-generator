@@ -123,7 +123,7 @@ test("all-headcodes toggle puts every headcode in the notes column (weekday)", a
   assert.doesNotMatch(noteFor(mOff, "06+20") || "", /5E01/, "legacy rules off");
 });
 
-test("a double line rules off every break in the day's work", () => {
+test("a double line rules the first break, and the one into the night", () => {
   const N = built();
   const X = N.SHEETS_XLSX;
   const mk = (time, kind, diag) => ({
@@ -140,11 +140,21 @@ test("a double line rules off every break in the day's work", () => {
 
   /* Two breaks, two lines. The real books rule Slade Green twice on 12/08 -
      under 06+36 and again under 18+04 - so a single-line rule is wrong by
-     construction however its one line is chosen. */
+     construction however its one line is chosen. This is Ashford's own shape
+     on 18/08, ruled under 08 28 and again under 16 00. */
   const entries = [mk(8 * 60 + 28, "pax", "001"), mk(14 * 60 + 56, "pax", "002"),
                    mk(16 * 60, "pax", "003"), mk(22 * 60 + 53, "ecs", "004")];
   assert.deepEqual(doubles(lay(entries)), [0, 2],
-    "under 08 28 and under 16 00 - both breaks are hours long");
+    "under 08 28 - the first break - and under 16 00, which leads into 22+53");
+
+  /* But a second break that only leads back into the afternoon draws
+     nothing. Tonbridge on 18/08 works to 06 16, comes back at 11+32 and
+     again at 14+40: the operator rules the first break and leaves the
+     second, 188 minutes though it is, unruled. */
+  const tonbridge = [mk(4 * 60 + 45, "pax", "062"), mk(6 * 60 + 16, "pax", "065"),
+                     mk(11 * 60 + 32, "ecs", "035"), mk(14 * 60 + 40, "ecs", "060")];
+  assert.deepEqual(doubles(lay(tonbridge)), [1],
+    "one line, under 06 16 - nothing between 11+32 and 14+40");
 
   // a section worked steadily draws no line at all
   const dense = [mk(11 * 60, "pax", "001"), mk(11 * 60 + 50, "pax", "002"),
@@ -167,6 +177,76 @@ test("a double line rules off every break in the day's work", () => {
   const r3 = X.layoutSheet(new Map([["GROVE PARK", gp]]), "X", false,
                            ["GROVE PARK"], false);
   assert.deepEqual(doubles(r3), [], "Grove Park never gets a divider");
+});
+
+test("a saved book is set up to print on A4 without cutting a section", async () => {
+  const N = built();
+  const X = N.SHEETS_XLSX;
+
+  /* The books go out to be printed. Before this they carried no scale and no
+     page breaks, so Excel put a break down the middle of the eight columns -
+     every page printed twice, with the notes column stranded on a sheet of
+     its own - and started a new page wherever the paper ran out, mid
+     section. The operator's own TUE 18/08 is A4 portrait at 88% with six
+     manual breaks, each one immediately before a section header. */
+  const res = await geniusRes(N);
+  const bytes = X.writeBooks(res.secsByDay, res.labels, false, {});
+  const files = N.fflate.unzipSync(bytes);
+  const xml = new TextDecoder().decode(files["xl/worksheets/sheet1.xml"]);
+
+  const scale = /<pageSetup[^>]*\bscale="(\d+)"/.exec(xml);
+  assert.ok(scale, "the sheet carries a print scale: " +
+    (/<pageSetup[^>]*>/.exec(xml) || [""])[0]);
+  assert.match(xml, /<pageSetup[^>]*orientation="portrait"/, "A4 portrait");
+  assert.match(xml, /paperSize="9"/, "paperSize 9 is A4");
+
+  // the eight columns have to land on ONE page across at that scale
+  const widths = [...xml.matchAll(/<col [^>]*width="([\d.]+)"/g)].map(m => +m[1]);
+  assert.equal(widths.length, 8, "eight columns");
+  const contentPt = widths.reduce((t, w) => t + Math.round(w * 7) + 5, 0) * 0.75;
+  const pagePt = (8.2677 - 0.7 - 0.7) * 72;
+  assert.ok(contentPt * (+scale[1] / 100) <= pagePt,
+    "columns fit the width at " + scale[1] + "%: " +
+    Math.round(contentPt * +scale[1] / 100) + "pt of " + Math.round(pagePt));
+
+  /* Every break lands immediately before a section header, so no section is
+     cut in half - this is the whole point of setting them by hand. */
+  const heads = new Set([...xml.matchAll(/<mergeCell ref="A(\d+):G(\d+)"\/>/g)]
+    .filter(m => m[1] === m[2]).map(m => +m[1]));
+  assert.ok(heads.size > 1, "the fixture book has several sections");
+  const brks = [...xml.matchAll(/<brk id="(\d+)"/g)].map(m => +m[1]);
+  for (const b of brks)
+    assert.ok(heads.has(b + 1),
+      "break after row " + b + " starts a section (headers at " +
+      [...heads].sort((a, c) => a - c).join(", ") + ")");
+
+  /* The fixture is a few short sections and fits on one page, so drive the
+     packing itself: three sections of 30 rows at 18pt cannot share an A4
+     page, and each break has to land on the row before a header. */
+  const tall = (n, at) => {
+    const merges = [], heights = new Map();
+    let r = 1;
+    for (let i = 0; i < n; i++) {
+      merges.push("A" + r + ":G" + r);
+      for (let k = 0; k < at; k++) heights.set(r + k, 18);
+      r += at + 1;                       // the blank spacer between sections
+    }
+    return X.printPlan(merges, heights, r);
+  };
+  const p = tall(3, 30);
+  assert.deepEqual(Array.from(p.breaks), [31, 62],
+    "one section a page, broken on the row before each header");
+  assert.ok(p.scale > 0 && p.scale <= 100, "and a sane scale: " + p.scale);
+  assert.deepEqual(Array.from(tall(3, 8).breaks), [],
+    "short sections share a page");
+
+  // a one-section book needs no breaks, but still needs the width to fit
+  const ram = new TextDecoder().decode(
+    N.fflate.unzipSync(X.writeBooks(res.secsByDay, res.labels, true, {}))
+      ["xl/worksheets/sheet1.xml"]);
+  const rs = /<pageSetup[^>]*\bscale="(\d+)"/.exec(ram);
+  assert.ok(rs && contentPt * (+rs[1] / 100) <= pagePt,
+    "the Ramsgate book is scaled to fit too");
 });
 
 test("the time column stays 'HH MM DDD' and the route rides in the notes", async () => {

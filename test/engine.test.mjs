@@ -106,7 +106,7 @@ test("the weekend metro book quotes the weekday headcode sections", () => {
     "because the weekday books do not");
 });
 
-test("a weekend page is ruled off at every break in its work", () => {
+test("a weekend page is only ruled off at a real break in its work", () => {
   const N = built();
   const X = N.SHEETS_XLSX;
   const rN = run(N, false);

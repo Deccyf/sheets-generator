@@ -525,30 +525,18 @@ const GENIUS = (() => {
         const lateMove = !!stints.length &&
           core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
           lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
-        /* A late run out of the berthing area is usually the unit going
-           home, and the sheets follow it there. But not when it goes back
-           out IN SERVICE: 375/3 diagram 301 stands at Ramsgate from 20 34,
-           is shunted, and then works 2U80 out again to finish at Gillingham
-           depot - Ramsgate is where it spent the night as the sheet means
-           it, and RE is what belongs in the PM column. Compare 377 diagram
-           105, which stands at Ashford east sidings from 20 03, is shunted
-           too, and then runs 5R96 empty to the Folkestone train roads: all
-           empty, so that IS the run home and the PM is FKE. What separates
-           them is whether any passenger working comes after the stand, and
-           the headcode says so. */
-        const paxAfterLast = (() => {
-          if (!lastStint) return false;
-          // from just after the BERTH, not after the stint - a stint runs
-          // from its berth to wherever the unit next berths, so its end
-          // index is already the last stop of the day
-          for (let i = lastStint[0] + 1; i < stops.length; i++) {
-            const st = stops[i];
-            if (st.hcOut && /^[12]/.test(st.hcOut) && st.dep !== null) return true;
-          }
-          return false;
-        })();
-        const fbLoc = lateMove && (prof.firstDepAll || paxAfterLast ||
-          sameArea(areaOf(lb), areaOf(lastStop))) ? lb : lastStop;
+        /* A diagram that goes out a THIRD time has two PM berths, and the
+           column means a different one on each row. 375/3 diagram 301 works
+           out of Grove Park, stands at Ramsgate from 20 34, then goes out
+           again to finish at Gillingham depot: the Ashford and Grove Park
+           rows read RE, because Ramsgate is where the unit is until that
+           last journey, and only the row for the journey itself reads GI.
+           377 diagram 103/104 is the same shape - AM GP, PM AFE, then away
+           to the Folkestone train roads - and the operator wants it read
+           the same way, in service or empty. So: every row before the last
+           journey carries the last BERTH; the last journey's own row falls
+           through to lastStop below and carries where it finishes. */
+        const fbLoc = lateMove ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";

@@ -200,6 +200,17 @@ comes from the prints' own date (e.g. `SAT_02_AUG`). Weekday workbooks carry
 one worksheet per day (`MON`, `TUE`, …); each weekend workbook is a single
 day's sheet.
 
+**They are set up to print.** Every sheet comes out A4 portrait with the house
+margins, scaled so the eight columns land on **one page across** and so the
+longest single section fits the page **down**, with a manual page break before
+each section that would otherwise be cut in half. Without the scale Excel put
+a break down the middle of the columns and every page printed twice, the notes
+column stranded on a sheet of its own. Against the operator's own hand-set TUE
+18/08 — A4 portrait at 88% with six manual breaks — the tool builds the same
+day at 85% with breaks in the same places, one section to a page boundary.
+A section too long for a page at 74% is left to Excel, rather than shrinking
+the whole book past reading.
+
 **Section order.** The mainline book runs Ashford → Dover Priory → Faversham →
 Folkestone East → Gillingham → Grove Park → Hastings → Orpington → Slade Green
 → Strood → Tonbridge → Victoria → West Marina; Metro and High Speed have their
@@ -452,7 +463,10 @@ ones, all commented at the point of implementation:
   the movement is listed on the following departure and noted for review.
 * **AM / PM (D / E) columns.** Where the unit's next berth is, and where it
   is still sitting in the evening (a berth still occupied at 20:00 is the PM
-  end point, even if the diagram technically ends elsewhere).
+  end point, even if the diagram technically ends elsewhere). A diagram that
+  goes out a third time has two PM berths, and the column means a different
+  one on each row: every row before the last journey carries the berth the
+  unit sits on, and the row for that journey carries where it finishes.
 * **SPLITS / SPLITS PM.** The flag follows where the units of a departure
   part company, read off their whole day rather than off this stint: two
   diagrams worked as one train carry identical rows until they divide, so the
@@ -511,9 +525,17 @@ ones, all commented at the point of implementation:
   of the other kind by hand (`5U04`→`2U04`, `5K92`→`3K92`, `5M83`→`3M84`,
   `5K28`→`2K28`, `5Y82`→`5Y83`, `5K40`→`2K40`).
 * **The PM berth on a late transfer.** A unit whose last stint starts on one
-  berth and ends elsewhere keeps the berth as its PM cell only if both are in
-  the same berthing area — except on the metro profile, where the berth
-  always wins. 15 cells, and both real metro books print the new value.
+  berth and ends elsewhere keeps the berth as its PM cell — wherever it is
+  taken afterwards, and whether that last run is in service or empty. Only
+  the row for the last journey itself reads where the journey ends.
+  `GT301` (Grove Park, then Ramsgate from 20 34, then out again in service to
+  Gillingham) and `GT103`/`GT104` (Grove Park, then Ashford east sidings from
+  20 03, then empty to the Folkestone train roads) are the same shape and the
+  operator reads them the same way: `RE`/`AFE` on the rows before, `GI`/`FKE`
+  on the run. Earlier builds gated this on the berthing area, then on whether
+  a passenger working followed; both gates are gone. Five cells in the real
+  12/08 book disagree, and the operator has confirmed the book is wrong in
+  them.
 * **The AM cell of an overnight berth.** A unit that leaves its overnight
   berth and is back on it before 14:00 gets that berth in its AM cell; the
   blanking rule is for units that only return at night.
@@ -535,10 +557,17 @@ ones, all commented at the point of implementation:
   formation — not from the pre-filter list. Before this, the Rules tab
   offered a Reverse button for `ASHFORD 07 55 — 116, 117` on a row that
   prints one unit, and a correction written there could never show up.
-* **The double lines.** A break of at least `BREAK_GAP` (three hours) with work
-  still to come after it is ruled off, so a page carries as many lines as it
-  has breaks — the 12/08 book rules Slade Green under 06+36 *and* under
-  18+04, which no single-line rule can draw. Three earlier readings were each
+* **The double lines.** The *first* break of at least `BREAK_GAP` (three hours)
+  is ruled off, and so is any later one where the work picks up after
+  `PM_BREAK` (20:00) — so a page carries two where the day has two — the
+  12/08 book rules Slade Green under 06+36 *and* under 18+04, which no
+  single-line rule can draw. A lull in the middle of the afternoon draws
+  nothing. Every double line in the operator's own TUE 18/08 book is one or
+  the other (Ashford 08 28 and 16 00, Dover 07 45, Slade Green 06+31,
+  Tonbridge 06 16, Victoria 06 55 and 17 40, West Marina 07+24 — 8 of 8, and
+  the tool now draws exactly those), and the single break of three hours or
+  more they leave unruled is Tonbridge's 11+32 → 14+40 (188 minutes), neither
+  the first of the day nor the way into the night. Three earlier readings were each
   measured against the real books' border styles and each failed: the biggest
   gap (a long evening lull outbids the real break — Ashford 16 00 → 22+53),
   the gap containing midday (a section working through the middle of the day
@@ -678,7 +707,7 @@ built by the weekend engine, but to the weekday rules.
 |---|---|---|
 | **Fleet profiles** | A second hand-written `PROFILES` table. It had lost `465/0` from the metro fleet list, gained `SLADE GREEN` in the metro headcode sections, and left the High Speed book with none at all. | `PROFILES` is *derived from* `PROFILES_G`. There is one table, so it cannot drift again. |
 | **Unit order** | Always lowest Position first, everywhere. | Unchanged — see below. This one was carried over and then taken back out. |
-| **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: every break of `BREAK_GAP` (three hours) or more with work still after it. Grove Park is never ruled. |
+| **Double lines** | Wherever the section crossed midday and 20:00 — which ruled a page that was busy right through the middle of the day, and left one that stood idle 08:00–19:00 unruled. | The weekday rule: the first break of `BREAK_GAP` (three hours) or more, plus any later one leading into work after `PM_BREAK`. Grove Park is never ruled. |
 | **Headcodes** | Per-profile lists that had drifted. | `HEADCODE_SECTIONS`, the same set the weekday books use. |
 
 **Two weekday rules are deliberately not carried over.**

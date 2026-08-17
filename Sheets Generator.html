@@ -1667,12 +1667,14 @@ const SHEETS_RULES = (() => {
         "The evening starts at " + hhmm(env.pmBreak || 1200) + " for anything " +
         "the sheet calls PM.",
       ] },
-      { p: "Heavy double lines rule off the breaks in the day's work. Any " +
-        "break of " + hours(env.breakGap || 180) + " or more with work still " +
-        "to come after it gets one, so a page can carry two or three — Slade " +
-        "Green is ruled under its 06+36 and again under its 18+04. A page " +
-        "that is busy right through gets none, and Grove Park is never " +
-        "ruled." },
+      { p: "Heavy double lines rule off the breaks in the day's work: the " +
+        "first break of " + hours(env.breakGap || 180) + " or more, and any " +
+        "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
+        ". So a page can carry two — Slade Green is ruled under its 06+36 " +
+        "and again under its 18+04 — but a lull in the middle of the " +
+        "afternoon draws nothing: Tonbridge stands from 11+32 to 14+40 and " +
+        "is left unruled. A page that is busy right through gets none, and " +
+        "Grove Park is never ruled." },
     ];
     push("times", "Times, and the line across the page", t);
 
@@ -2045,9 +2047,10 @@ const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
 /* How long a break in a location's work has to be before a double line is
-   ruled in it. Every break this long gets one, so a page can carry several -
-   see sectionRows. */
+   ruled in it, and the hour after which a second one is drawn - see
+   sectionRows for which breaks qualify. */
 const BREAK_GAP = 180;
+const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
 
 /* ==== generic writer (ex weekend engine) ==== */
 function esc(s){
@@ -2126,6 +2129,68 @@ StyleBook.prototype.xml = function(){
    '</styleSheet>';
 };
 
+/* ---- print setup ----
+   The books are printed, not read on screen, and until now they came out of
+   here with no scale and no page breaks: Excel put a page break down the
+   middle of the eight columns, so every page printed twice with the notes
+   column stranded on its own sheet, and cut sections in half wherever the
+   paper ran out.
+
+   The operator sets this by hand on the books they print - their TUE 18/08
+   is A4 portrait at 88%, house margins, with six manual row breaks, every
+   one of them immediately before a section header. So: A4 portrait, and a
+   scale small enough that the columns fit the width AND the longest single
+   section fits the height, then breaks packed so no section straddles a
+   page. Their 88% and the 87% this arrives at for the same book are the
+   same decision, made the same way. */
+const PAPER = { w: 8.2677, h: 11.6929 };            // A4, paperSize 9
+const MARGIN = { l: 0.7, r: 0.7, t: 0.75, b: 0.75 };
+/* Never shrink past this. A section longer than a page at this scale is
+   split by Excel as before - better than printing the whole book too small
+   to read. 74% is the smallest scale seen on a real book. */
+const MIN_SCALE = 74;
+function printPlan(merges, rowHeights, maxRow){
+  /* A row merged clean across A..G is a section header - the weekday and
+     weekend layouts both write one, and nothing else in either book is
+     merged that way. */
+  const heads = [];
+  for (const m of merges){
+    const mm = /^A(\d+):G\1$/.exec(m);
+    if (mm) heads.push(+mm[1]);
+  }
+  heads.sort(function(a,b){ return a-b; });
+  const rowH = r => rowHeights.get(r) || 15;        // an untouched row is 15pt
+  const secs = heads.map(function(h, i){
+    // up to the row before the next header: the blank spacers ride with the
+    // section they follow, because that is where they take up the paper
+    const end = (i + 1 < heads.length ? heads[i + 1] - 1 : maxRow - 1);
+    let pts = 0;
+    for (let r = h; r <= end; r++) pts += rowH(r);
+    return { start: h, pts };
+  });
+  const pageW = (PAPER.w - MARGIN.l - MARGIN.r) * 72;
+  const pageH = (PAPER.h - MARGIN.t - MARGIN.b) * 72;
+  // Excel's character width -> pixels, and pixels -> points at 96dpi
+  const contentW = HOUSE_WIDTHS.reduce(function(t, w){
+    return t + Math.round(w * 7) + 5;
+  }, 0) * 0.75;
+  /* The width has to fit whatever the book is - a Ramsgate book is one
+     section and needs no breaks, but its eight columns still have to land on
+     one page across, which is the half of this that was going wrong. */
+  const tallest = secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
+  const fit = tallest ? Math.min(pageW / contentW, pageH / tallest)
+                      : pageW / contentW;
+  const scale = Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
+  const budget = pageH * 100 / scale;
+  const breaks = [];
+  let used = 0;
+  for (const s of secs){
+    if (used && used + s.pts > budget){ breaks.push(s.start - 1); used = 0; }
+    used += s.pts;
+  }
+  return { scale, breaks };
+}
+
 function buildSheetXml(cells, merges, rowHeights, maxRow){
   const widths = HOUSE_WIDTHS;
   let cols = '<cols>';
@@ -2163,13 +2228,25 @@ function buildSheetXml(cells, merges, rowHeights, maxRow){
          merges.map(function(m){ return '<mergeCell ref="' + m + '"/>'; }).join("") +
          '</mergeCells>';
   }
+  const plan = printPlan(merges, rowHeights, maxRow);
+  // rowBreaks comes after pageSetup in the schema, and Excel rejects the
+  // part outright if it does not
+  const brk = plan.breaks.length
+    ? '<rowBreaks count="' + plan.breaks.length + '" manualBreakCount="' +
+      plan.breaks.length + '">' +
+      plan.breaks.map(function(r){
+        return '<brk id="' + r + '" max="16383" man="1"/>';
+      }).join("") + '</rowBreaks>'
+    : "";
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
    '<dimension ref="A1:H' + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
    '<sheetFormatPr defaultRowHeight="15"/>' + cols + sd + mg +
-   '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>' +
-   '<pageSetup paperSize="9" orientation="portrait"/></worksheet>';
+   '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
+   MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
+   '<pageSetup paperSize="9" scale="' + plan.scale +
+   '" orientation="portrait"/>' + brk + '</worksheet>';
 }
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
@@ -2350,10 +2427,20 @@ function previewHtml(layout){
       const t = e.time % 1440;
       return t < 180 ? t + 1440 : t;
     };
-    /* A double line rules off a break in the day's work. EVERY break of at
-       least BREAK_GAP that still has work after it gets one, so a location
-       can carry more than one: the 12/08 book rules Slade Green under 06+36
-       and again under 18+04, which no single-line rule can draw.
+    /* A double line rules off a break in the day's work: the FIRST break of
+       at least BREAK_GAP, and any later one whose work resumes after 20 00.
+       So a location can carry two - the 12/08 book rules Slade Green under
+       06+36 and again under 18+04, which no single-line rule can draw - but
+       a mid-afternoon lull draws nothing.
+
+       Every double line in the operator's own TUE 18/08 book is one or the
+       other: Ashford under 08 28 and again under 16 00 (22+53 next), Dover
+       under 07 45, Slade Green under 06+31, Tonbridge under 06 16, Victoria
+       under 06 55 and again under 17 40 (23 40 next), West Marina under
+       07+24 (23+07 next). The one break of 180 minutes or more they leave
+       unruled is Tonbridge's 11+32 to 14+40 - neither the first of the day
+       nor the way into the night - and ruling it was what put a line on that
+       page that does not belong there.
 
        Earlier readings all tried to find THE one break - the biggest gap (a
        long evening lull outbids the real one, Ashford's 16 00 to 22+53), the
@@ -2365,9 +2452,14 @@ function previewHtml(layout){
        Grove Park is never ruled: neither real book rules it, and the
        mainline book's two-table layout already does the job. */
     const gapAt = new Set();
-    if (name !== "GROVE PARK")
-      for (let i = 1; i < entries.length; i++)
-        if (tkey(entries[i]) - tkey(entries[i - 1]) >= BREAK_GAP) gapAt.add(i);
+    if (name !== "GROVE PARK") {
+      let seen = false;
+      for (let i = 1; i < entries.length; i++) {
+        if (tkey(entries[i]) - tkey(entries[i - 1]) < BREAK_GAP) continue;
+        if (!seen || tkey(entries[i]) >= PM_BREAK) gapAt.add(i);
+        seen = true;
+      }
+    }
     const divideAt = new Set();
     const flagSpans = [];
     entries.forEach((e, i) => {
@@ -2521,7 +2613,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
@@ -3347,12 +3439,16 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     else { const c = put(r, 8, banner, 2); c.f = "H1"; }
     rowHeights.set(r, 18); first = false; r++;
     const bodyFirst = r, entryEnds = new Set(), doubleEnds = new Set();
-    let prevTk = null, prevLast = null;
+    let prevTk = null, prevLast = null, seenBreak = false;
     for (const e of sectionsOut[sec]){
       const tk = sortkey(mins(e.time_raw));
-      // Grove Park is never ruled - neither real weekday book rules it
-      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP)
-        doubleEnds.add(prevLast);
+      /* The weekday rule, kept in step: the first break of BREAK_GAP or more
+         is ruled, and any later one that leads into work after PM_BREAK.
+         Grove Park is never ruled - neither real weekday book rules it. */
+      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP) {
+        if (!seenBreak || tk >= PM_BREAK) doubleEnds.add(prevLast);
+        seenBreak = true;
+      }
       const lead = r;
       e.blocks.forEach(function(u, i){
         if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
@@ -4153,30 +4249,18 @@ const GENIUS = (() => {
         const lateMove = !!stints.length &&
           core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
           lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
-        /* A late run out of the berthing area is usually the unit going
-           home, and the sheets follow it there. But not when it goes back
-           out IN SERVICE: 375/3 diagram 301 stands at Ramsgate from 20 34,
-           is shunted, and then works 2U80 out again to finish at Gillingham
-           depot - Ramsgate is where it spent the night as the sheet means
-           it, and RE is what belongs in the PM column. Compare 377 diagram
-           105, which stands at Ashford east sidings from 20 03, is shunted
-           too, and then runs 5R96 empty to the Folkestone train roads: all
-           empty, so that IS the run home and the PM is FKE. What separates
-           them is whether any passenger working comes after the stand, and
-           the headcode says so. */
-        const paxAfterLast = (() => {
-          if (!lastStint) return false;
-          // from just after the BERTH, not after the stint - a stint runs
-          // from its berth to wherever the unit next berths, so its end
-          // index is already the last stop of the day
-          for (let i = lastStint[0] + 1; i < stops.length; i++) {
-            const st = stops[i];
-            if (st.hcOut && /^[12]/.test(st.hcOut) && st.dep !== null) return true;
-          }
-          return false;
-        })();
-        const fbLoc = lateMove && (prof.firstDepAll || paxAfterLast ||
-          sameArea(areaOf(lb), areaOf(lastStop))) ? lb : lastStop;
+        /* A diagram that goes out a THIRD time has two PM berths, and the
+           column means a different one on each row. 375/3 diagram 301 works
+           out of Grove Park, stands at Ramsgate from 20 34, then goes out
+           again to finish at Gillingham depot: the Ashford and Grove Park
+           rows read RE, because Ramsgate is where the unit is until that
+           last journey, and only the row for the journey itself reads GI.
+           377 diagram 103/104 is the same shape - AM GP, PM AFE, then away
+           to the Folkestone train roads - and the operator wants it read
+           the same way, in service or empty. So: every row before the last
+           journey carries the last BERTH; the last journey's own row falls
+           through to lastStop below and carries where it finishes. */
+        const fbLoc = lateMove ? lb : lastStop;
         const finalStop = later.length ? fbLoc : lastStop;
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";

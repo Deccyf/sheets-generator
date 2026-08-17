@@ -818,12 +818,16 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     else { const c = put(r, 8, banner, 2); c.f = "H1"; }
     rowHeights.set(r, 18); first = false; r++;
     const bodyFirst = r, entryEnds = new Set(), doubleEnds = new Set();
-    let prevTk = null, prevLast = null;
+    let prevTk = null, prevLast = null, seenBreak = false;
     for (const e of sectionsOut[sec]){
       const tk = sortkey(mins(e.time_raw));
-      // Grove Park is never ruled - neither real weekday book rules it
-      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP)
-        doubleEnds.add(prevLast);
+      /* The weekday rule, kept in step: the first break of BREAK_GAP or more
+         is ruled, and any later one that leads into work after PM_BREAK.
+         Grove Park is never ruled - neither real weekday book rules it. */
+      if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP) {
+        if (!seenBreak || tk >= PM_BREAK) doubleEnds.add(prevLast);
+        seenBreak = true;
+      }
       const lead = r;
       e.blocks.forEach(function(u, i){
         if (i === 0) put(r, 1, e.time + " " + e.dest, 3);
