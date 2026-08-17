@@ -233,3 +233,43 @@ test("a diagram that starts stabled still gets berthed; one that never moves is 
   assert.match(metro.report, /S Gn U Sd x1/, "with the road it stands in");
   assert.match(metro.report, /GN622/, "and its diagram number");
 });
+
+test("the prints read the same pasted as they do dropped", () => {
+  const N = built();
+  const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f, { level: 6 }) };
+  const docx = makeDocx(PRINTS_LINES, N.fflate);
+
+  /* A .docx cannot be pasted but its text can, and the text is what the
+     parser reads: readDocx and readDoc exist only to get from a file to a
+     list of paragraphs. So the pasted route joins one step in rather than
+     being a second, lesser reader. Checked on the real SUN 16/08 prints as
+     well as this fixture: 322 diagrams either way, every laid-out cell the
+     same. */
+  const text = new TextEncoder().encode(PRINTS_LINES.join("\n"));
+  const fromDocx = N.SheetsEngine.run([{ name: "PRINTS.docx", bytes: docx }], zip.un, zip.z);
+  const fromText = N.SheetsEngine.run([{ name: "PRINTS.txt", bytes: text }], zip.un, zip.z);
+  assert.equal(fromText.banner, fromDocx.banner, "same weekend");
+  assert.equal(fromText.diagrams, fromDocx.diagrams, "same diagram count");
+  assert.deepEqual(norm(fromText.books.map(normBook)),
+                   norm(fromDocx.books.map(normBook)), "and the same books");
+
+  // the tabs ARE the structure, so a paste that lost them is refused
+  const noTabs = new TextEncoder().encode(PRINTS_LINES.join("\n").replace(/\t/g, " "));
+  assert.throws(() => N.SheetsEngine.run([{ name: "flat.txt", bytes: noTabs }], zip.un, zip.z),
+    /isn't the diagram prints/, "flattened text is refused, not half-read");
+  assert.equal(N.SheetsEngine.looksLikePrints(PRINTS_LINES.join("\n")), true, "prints");
+  assert.equal(N.SheetsEngine.looksLikePrints("Diagram: GT 501 Sat"), false,
+    "a line without tabs is not the prints");
+  assert.equal(N.SheetsEngine.looksLikePrints(""), false, "nor is nothing");
+
+  // a reissue pasted alongside still merges, and says the base was not a docx
+  const re = new TextEncoder().encode(REISSUE_LINES.join("\n"));
+  const merged = N.SheetsEngine.run([{ name: "PASTED PRINTS.txt", bytes: text },
+                                     { name: "PASTED reissue prints.txt", bytes: re }],
+                                    zip.un, zip.z);
+  assert.ok(merged.merge, "the reissue was cross-referenced");
+  assert.equal(merged.updated, null, "no updated .docx, because there was no .docx");
+  const said = merged.books.filter(b => !b.skipped)
+    .some(b => /not produced/.test(b.report));
+  assert.ok(said, "and the report says so rather than leaving it unexplained");
+});

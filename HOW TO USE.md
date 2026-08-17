@@ -48,8 +48,10 @@ installed. You can use it on a train with no signal.
 
 1. Double-click **`Sheets Generator.html`**.
 2. Drop the **two weekday reports** on the top panel (or the **weekend prints**
-   on the bottom one). Can't get the files onto the machine? Paste the two
-   CSVs in instead — see [section 5](#5-building-the-weekday-books-mon--fri).
+   on the bottom one). Can't get the files onto the machine? Either panel will
+   take the paperwork pasted in instead — sections
+   [5](#5-building-the-weekday-books-mon--fri) and
+   [6](#6-building-the-weekend-sheets-sat--sun).
 3. The books appear straight away. Click **Look at it** on each and read the
    **Review** tab.
 4. Click **Save book** on each, or **Save all books (.zip)** for the lot.
@@ -174,8 +176,9 @@ books.
 
 Worth knowing:
 
-* **CSV exports only.** A PDF has no text to copy, and neither do the weekend
-  prints. Those still have to be dropped as files.
+* **CSV exports only on this panel.** A PDF has no text in it to copy, so the
+  Genius PDFs still have to be dropped as files. (The weekend prints *can* be
+  pasted — see [section 6](#6-building-the-weekend-sheets-sat--sun).)
 * **Excel is fine.** Copying cells out of Excel puts them on the clipboard
   separated by tabs rather than commas. The page spots that and converts it,
   so you don't have to think about which program you opened the file in.
@@ -203,6 +206,36 @@ Worth knowing:
 
 A reissue dropped on its own won't build — the page needs the full prints with
 it (or first), and says so. A reissue for a different date is refused too.
+
+### If you can't get the prints onto the machine
+
+Same idea as the weekday panel. Under the weekend drop zone there's **"Can't
+get the prints onto this machine? Paste them instead"**:
+
+1. Open the prints in **Word**.
+2. **Ctrl+A**, then **Ctrl+C**.
+3. Paste into the **Diagram prints** box.
+4. If some diagrams have been reissued, paste those into the second box.
+   Otherwise leave it empty.
+5. Click **Build from the pasted prints**.
+
+Worth knowing:
+
+* **Paste it as it comes.** The diagram lines are held together by **tabs** —
+  `Diagram:` then a tab, then the code. Don't tidy the text up or run it
+  through anything that strips them. If the tabs are gone the page says so
+  rather than building something half-read.
+* **It's the same reader.** The Word file is only a wrapper; the text inside is
+  what the page actually reads. Checked on a real Sunday's prints both ways —
+  dropped as the `.docx` and pasted as text — and every line of every sheet
+  came out the same.
+* **A `.txt` works too**, if it's easier to save the prints out as plain text
+  than to copy them. Drop it like any other file.
+* **No updated prints document from a paste.** That one splices the reissued
+  diagrams back into the original Word file, and a paste hasn't got one. The
+  sheets are still built from the merged prints, and the review list says the
+  updated document wasn't produced.
+* **Start over** empties the boxes as well.
 
 ---
 

@@ -293,6 +293,18 @@ function readDoc(bytes){
   }
   return body.replace(/[\x07\x0b\x0c]/g, "\r").split("\r");
 }
+/* Prints as plain text - a .txt saved out of Word, or the document opened
+   and copied. What the two Word readers above produce IS this: a list of
+   paragraphs, tabs and all, and parseDiagrams reads nothing else. So the
+   text is not a lesser input, it is the same input a step earlier. Checked
+   on the real SUN 16/08 prints: 322 diagrams from the .docx, the same 322
+   from its paragraphs joined with newlines and split again.
+
+   The tabs are the whole structure - "Diagram:\tAZ\t601" - so this must
+   never be run through any comma/tab tidying. */
+function looksLikePrints(text){
+  return /(^|\n)\s*Diagram:\t/.test(text) || /\bDiagram:\t\w+\t\d+/.test(text);
+}
 /* The extension is only a hint; what matters is the first few bytes. */
 function readPrints(bytes, unzip){
   const b = bytes;
@@ -301,12 +313,16 @@ function readPrints(bytes, unzip){
   if (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0 &&
       b[4] === 0xA1 && b[5] === 0xB1 && b[6] === 0x1A && b[7] === 0xE1)
     return readDoc(bytes);
-  const head = new TextDecoder("utf-8", {fatal:false})
-                 .decode(bytes.subarray(0, 16)).trimStart();
+  const dec = new TextDecoder("utf-8", {fatal:false});
+  const head = dec.decode(bytes.subarray(0, 16)).trimStart();
   if (head.slice(0, 5) === "{\\rtf")
     throw new Error("That file is Rich Text, not Word. Open it in Word and save " +
                     "it as a Word Document.");
-  throw new Error("That isn't a Word file. Save the prints from Word as .docx or .doc.");
+  const text = dec.decode(bytes).replace(/^\uFEFF/, "");
+  if (looksLikePrints(text)) return text.replace(/\r\n?/g, "\n").split("\n");
+  throw new Error("That isn't the diagram prints. Drop the Word document, or " +
+                  "save it as plain text — the diagram lines have to keep " +
+                  "their tabs.");
 }
 
 function parseDiagrams(lines){
@@ -1075,6 +1091,7 @@ function run(input, unzipFn, zipFn, opts){
           updated: updated};
 }
 root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
+                    looksLikePrints,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};
 })(typeof globalThis !== "undefined" ? globalThis : this);

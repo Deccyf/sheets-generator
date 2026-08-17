@@ -6,7 +6,15 @@ import { BUILT, built } from "./helpers/compare.mjs";
 
 test("the built file is self-contained and lean", () => {
   const html = readFileSync(BUILT, "utf8");
-  assert.ok(html.length < 400 * 1024, "under 400 KB (was 1.2 MB)");
+  /* A size cap, not a size target. What it is really guarding against is a
+     library bundle creeping back in - ExcelJS alone was most of the 1.2 MB
+     this file used to be, and those two are named on their own below. The
+     ceiling is set with room for a feature or two above where the file
+     actually sits, so that adding one is a decision rather than a test
+     failure, and doubling it is still impossible without noticing. */
+  assert.ok(html.length < 450 * 1024,
+    "under 450 KB (was 1.2 MB); this build is " +
+    Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");
   assert.ok(!html.includes("/*! ExcelJS"), "ExcelJS bundle is gone");

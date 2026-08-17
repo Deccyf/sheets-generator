@@ -11,8 +11,8 @@ in and the house drafting conventions applied automatically.
   the same rulebook, but they do not carry the same facts — see
   [Genius and Integrale are not interchangeable](#genius-and-integrale-are-not-interchangeable).
 * **Weekend sheets (Sat & Sun)** are built from the weekend **diagram prints**
-  Word document (`.docx` or legacy `.doc`), with automatic merging of
-  reissued prints.
+  Word document (`.docx` or legacy `.doc`, or the same text saved out or
+  pasted in), with automatic merging of reissued prints.
 
 Everything runs inside the one file, in the browser, on the local machine. No
 report, print or sheet ever leaves the computer, and the page works without an
@@ -97,8 +97,8 @@ the panel to browse for them.
 anywhere the browser can reach. *"Can't get the files onto this machine? Paste
 the data instead"*, under the drop zone, opens two boxes — one for the Diagram
 Summary, one for the Diagram Detail — and builds from what is pasted into
-them. CSV exports only: a PDF has no text to copy, and neither do the weekend
-prints. Open each CSV in Notepad or in Excel, select all, copy, paste. Copying
+them. CSV exports only on this panel: a PDF has no text in it to copy. Open
+each CSV in Notepad or in Excel, select all, copy, paste. Copying
 out of Excel puts it on the clipboard tab-separated rather than
 comma-separated; that is recognised and converted, so either works. Which box
 is which is read off the text, not off the box, so a pair pasted the wrong way
@@ -137,7 +137,31 @@ a note pointing at the weekend panel.
 4. When a reissue has been merged and the base prints are a `.docx`, an
    **updated prints document** (`…_UPDATED.docx`) is offered as well, with the
    reissued diagrams spliced into the original file.
-5. **Start over** clears everything that has been loaded.
+5. **Start over** clears everything that has been loaded, pasted text
+   included.
+
+**Or paste the prints in.** *"Can't get the prints onto this machine? Paste
+them instead"*, under the weekend drop zone, opens two boxes: the prints in the
+first, and a reissue in the second if there is one. Open the document in Word,
+Ctrl+A, Ctrl+C, paste.
+
+A `.docx` cannot be pasted, but its text can — and the text is what the parser
+reads anyway. `readDocx` and `readDoc` exist only to get from a file to a list
+of paragraphs, so a paste joins the pipeline one step in rather than being a
+second, lesser reader. Checked against the real SUN 16/08 prints both ways:
+322 diagrams, 111 entries, the same three books, every laid-out cell identical.
+
+The catch is the **tabs**. `Diagram:\tAZ\t601` is the whole structure, so the
+text is handed over exactly as pasted and never tidied — the opposite of the
+weekday boxes, where an Excel copy *is* converted. Prints whose tabs have been
+flattened are refused with a reason rather than half-read. The same goes for a
+`.txt`: the weekend panel now takes one, recognised by content rather than by
+its extension.
+
+One thing a paste cannot do is produce the **updated prints document**. That
+splices the reissued diagrams into the original `.docx`, and a paste has no
+`.docx` to splice into. The books are still built from the merged data, and the
+review list says the updated document was not produced and why.
 
 ### Before anything goes out
 

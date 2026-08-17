@@ -57,6 +57,55 @@ await page.waitForSelector("#we_roads .road .view table.sheet");
 console.log("weekend preview table rendered ✓");
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
 
+/* ---- the weekend prints pasted in instead of dropped ---- */
+await page.reload();
+const wePut = (sel, text) => page.evaluate(([s, v]) => {
+  const el = document.querySelector(s);
+  el.value = v;
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}, [sel, text]);
+const weSay = () => page.textContent("#we_paste_say");
+
+if (!(await page.locator("#we_pastebox").isHidden()))
+  throw new Error("the weekend paste panel should start shut");
+await page.locator("#we_pastetoggle").click();
+if (await page.locator("#we_pastebox").isHidden())
+  throw new Error("it should open when the link is used");
+
+// text that lost its tabs is refused before the engine ever sees it
+await wePut("#we_paste_main", PRINTS_LINES.join("\n").replace(/\t/g, " "));
+await page.locator("#we_paste_go").click();
+console.log("flattened   :", (await weSay()).trim());
+if (!/does not read as the diagram prints/.test(await weSay()))
+  throw new Error("flattened prints should be refused with a reason");
+
+// the prints as text, which is what a copy out of Word gives
+await wePut("#we_paste_main", PRINTS_LINES.join("\n"));
+await page.locator("#we_paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#we_status").textContent.includes("Berthed"),
+  null, { timeout: 20000 });
+console.log("pasted      :", await page.textContent("#we_status"));
+console.log("paste note  :", (await weSay()).trim());
+const wePasted = await page.locator("#we_roads .road").count();
+console.log("weekend roads:", wePasted);
+if (!wePasted) throw new Error("a pasted prints document built no roads");
+
+// with a reissue in the second box
+await wePut("#we_paste_re", REISSUE_LINES.join("\n"));
+await page.locator("#we_paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#we_status").textContent.includes("Reissue cross-referenced"),
+  null, { timeout: 20000 });
+console.log("with reissue:", await page.textContent("#we_status"));
+// there is no base .docx to splice into, so no updated-prints download
+if (!(await page.locator("#we_dlupd").isHidden()))
+  throw new Error("pasted prints cannot produce an updated .docx");
+
+await page.locator("#we_clearall").click();
+if (await page.$eval("#we_paste_main", e => e.value) !== "")
+  throw new Error("Start over should clear the pasted text too");
+
 await page.screenshot({ path: "tools/smoke-top.png", clip: { x: 0, y: 0, width: 860, height: 900 } });
 await page.locator("#roads").scrollIntoViewIfNeeded();
 await page.screenshot({ path: "tools/smoke-weekday.png" });

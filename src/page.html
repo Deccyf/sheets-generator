@@ -33,7 +33,8 @@
         <li><strong>Get the paperwork as files.</strong> For a weekday: the
           <em>Diagram Summary</em> and <em>Diagram Detail</em> reports for the
           date — from Genius as PDFs, or from Integrale as the two CSV exports.
-          For the weekend: the diagram prints Word document(s).
+          For the weekend: the diagram prints Word document(s), or the same
+          text.
           <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
             In Genius, a <strong>Control Cycle</strong> must be created before the
             Diagram Summary and Diagram Detail reports can be run &mdash; and if
@@ -79,15 +80,15 @@
                 below.</span>
             </span>
           </details></li>
-        <li><strong>Drop them on the matching panel below</strong> — weekday PDFs on
-          the first panel, weekend prints on the second. Or click a panel to
-          browse for the files.
+        <li><strong>Drop them on the matching panel below</strong> — the weekday
+          reports on the first panel, the weekend prints on the second. Or click
+          a panel to browse for the files.
           <span style="display:block;margin-top:6px;font-size:13px;color:#3C464D">
             On a machine that will not let the files be saved anywhere the
-            browser can reach, use <strong>&ldquo;Paste the data instead&rdquo;</strong>
-            under the weekday panel: open each CSV, copy it, and paste the two
-            into their own boxes. Weekday CSVs only &mdash; PDFs and the
-            weekend prints have no text to copy.</span></li>
+            browser can reach, either panel will take the paperwork pasted in
+            instead &mdash; the weekday CSVs into their two boxes, the weekend
+            prints into theirs. The one thing that cannot be pasted is a PDF:
+            there is no text in one to copy.</span></li>
         <li><strong>Look the sheets over on screen, then save.</strong> Every build
           shows a preview and a review list of anything that needs a human eye
           before the books go out.</li>
@@ -224,20 +225,54 @@
     <span class="sign">Weekend · Sat &amp; Sun</span>
     <h2 id="we-h">Saturday &amp; Sunday sheets from the diagram prints</h2>
     <p class="whatfor">Needs the weekend <strong>diagram prints</strong> Word
-      document (.docx or .doc). If reissued prints exist, drop them too —
-      together or in a later drop — and the reissued diagrams replace their
-      originals before anything is built.</p>
+      document (.docx or .doc, or the same thing saved as plain text). If
+      reissued prints exist, drop them too — together or in a later drop —
+      and the reissued diagrams replace their originals before anything is
+      built.</p>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>.docx or .doc · reissues welcome, together or afterwards · or click to choose</span>
+          <span>.docx, .doc or .txt · reissues welcome, together or afterwards · or click to choose</span>
         </span>
       </span>
     </button>
-    <input type="file" id="we_file" accept=".docx,.doc" multiple hidden>
+    <input type="file" id="we_file" accept=".docx,.doc,.txt,.csv,text/plain" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="we_pastetoggle"
+              aria-expanded="false" aria-controls="we_pastebox">Can&rsquo;t get
+        the prints onto this machine? Paste them instead</button>
+    </p>
+
+    <div class="pastebox" id="we_pastebox" hidden>
+      <p class="paste-hint">Open the prints in Word, press <b>Ctrl+A</b> then
+        <b>Ctrl+C</b>, and paste into the first box. The diagram lines have to
+        keep their <b>tabs</b>, so paste as it comes &mdash; do not tidy it up.
+        The second box is only for reissued prints; leave it empty if there
+        are none.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram prints
+            <em>the whole weekend document</em></span>
+          <textarea id="we_paste_main" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the weekend diagram prints here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Reissued prints
+            <em>optional &mdash; only if some diagrams have been reissued</em></span>
+          <textarea id="we_paste_re" rows="6" spellcheck="false" wrap="off"
+            placeholder="Leave empty unless there is a reissue"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="we_paste_go">Build from the pasted prints</button>
+        <button type="button" class="btn ghost" id="we_paste_clear">Clear both</button>
+      </div>
+      <p class="paste-say" id="we_paste_say" role="status" aria-live="polite"></p>
+    </div>
 
     <p class="status" id="we_status" role="status" aria-live="polite"></p>
 
@@ -268,7 +303,9 @@
           the originals, and builds a workbook for each fleet in the house
           format — Mainline, Metro and High Speed. Use <em>Look at it</em> on each book
           to see the finished sheet on screen before saving. When a reissue has
-          been merged, an updated prints document is offered as well.</p>
+          been merged into prints that came in as a Word file, an updated prints
+          document is offered as well &mdash; there is nothing to splice a
+          reissue into if the prints were pasted, and the review list says so.</p>
       </div>
     </details>
 
@@ -279,6 +316,11 @@
           <dt>"That file is damaged or isn't a Word document"</dt>
           <dd>Open the prints in Word and save them again as .docx, then drop
             the new file.</dd>
+          <dt>"That isn't the diagram prints"</dt>
+          <dd>Pasted or plain-text prints whose <strong>tabs</strong> have been
+            lost. The diagram lines are held together by them, so the page
+            refuses rather than half-reading it. Copy the document out of Word
+            again and paste it as it comes, without tidying it up.</dd>
           <dt>A book says "skipped"</dt>
           <dd>No diagrams for that fleet exist in this weekend's prints —
             nothing to build, nothing wrong.</dd>

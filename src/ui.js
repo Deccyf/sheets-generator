@@ -901,6 +901,77 @@ function reviewPane(items) {
   }
 
   wireDrop($("#we_berth"), $("#we_file"), build);
+
+  /* ---- the prints pasted in as text ----
+     A .docx cannot be pasted, but its text can, and the text is what the
+     parser reads anyway: the Word readers exist only to get from the file
+     to a list of paragraphs. So a paste joins the pipeline one step in,
+     as a document like any other, and everything after it is shared.
+     The tabs are the structure - "Diagram:\tAZ\t601" - so the text is
+     handed over exactly as pasted, never tidied. */
+  const wePasteWrap = $("#we_pastebox"), wePasteToggle = $("#we_pastetoggle"),
+        wePasteMain = $("#we_paste_main"), wePasteRe = $("#we_paste_re"),
+        wePasteSay = $("#we_paste_say");
+  const wSay = (msg, cls) => {
+    if (!wePasteSay) return;
+    wePasteSay.textContent = msg || "";
+    wePasteSay.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const weMark = el => { if (el) el.classList.toggle("filled", !!el.value.trim()); };
+  if (wePasteToggle && wePasteWrap) {
+    wePasteToggle.addEventListener("click", () => {
+      const open = wePasteWrap.hidden;
+      wePasteWrap.hidden = !open;
+      wePasteToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open && wePasteMain) wePasteMain.focus();
+    });
+  }
+  for (const el of [wePasteMain, wePasteRe])
+    if (el) el.addEventListener("input", () => { weMark(el); wSay(""); });
+  if ($("#we_paste_clear")) $("#we_paste_clear").addEventListener("click", () => {
+    for (const el of [wePasteMain, wePasteRe])
+      if (el) { el.value = ""; weMark(el); }
+    wSay("Both boxes cleared.");
+    if (wePasteMain) wePasteMain.focus();
+  });
+  const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
+  if ($("#we_paste_go")) $("#we_paste_go").addEventListener("click", () => {
+    const main = (wePasteMain ? wePasteMain.value : "").replace(/^\uFEFF/, "");
+    const re = (wePasteRe ? wePasteRe.value : "").replace(/^\uFEFF/, "");
+    if (!main.trim()) {
+      wSay("Paste the weekend diagram prints into the first box.", "err");
+      if (wePasteMain) wePasteMain.focus();
+      return;
+    }
+    /* Say what is wrong before the engine does, because by then the reason
+       is one line deep in a document that was never a document. */
+    if (!SheetsEngine.looksLikePrints(main)) {
+      wSay("That does not read as the diagram prints — no \u201cDiagram:\u201d " +
+           "line with tabs in it. Copy the whole document out of Word, and " +
+           "paste it as it comes.", "err");
+      if (wePasteMain) wePasteMain.focus();
+      return;
+    }
+    if (re.trim() && !SheetsEngine.looksLikePrints(re)) {
+      wSay("The reissue box does not read as diagram prints. Leave it empty " +
+           "if there is no reissue.", "err");
+      if (wePasteRe) wePasteRe.focus();
+      return;
+    }
+    const docs = [asDoc("PASTED PRINTS.txt", main)];
+    if (re.trim()) docs.push(asDoc("PASTED reissue prints.txt", re));
+    const before = loadedDocs;
+    loadedDocs = docs;
+    try {
+      rebuildFromLoaded();
+      wSay(re.trim() ? "Built from the pasted prints and reissue."
+                     : "Built from the pasted prints.", "go");
+    } catch (err) {
+      loadedDocs = before;
+      wSay(err && err.message ? err.message
+           : "That could not be read as diagram prints.", "err");
+    }
+  });
   for (const road of Object.keys(weHc)) {
     if (!weHc[road]) continue;
     weHc[road].addEventListener("change", () => {
@@ -918,6 +989,10 @@ function reviewPane(items) {
   $("#we_clearall").addEventListener("click", () => {
     loadedDocs = [];
     built = null;
+    // "Start over" means everything, the pasted text included
+    for (const el of [wePasteMain, wePasteRe])
+      if (el) { el.value = ""; weMark(el); }
+    wSay("");
     roadsEl.textContent = "";
     allbar.hidden = true;
     const dlupd = $("#we_dlupd");
