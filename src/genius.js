@@ -1011,7 +1011,14 @@ const GENIUS = (() => {
      The check is not "how many rows" - a short day would fail that. It is
      the two reports against each other: the Detail lists every working, so
      if it shows diagrams working several times over while the Summary gives
-     each of them one line, the Summary is the start-of-day one. */
+     each of them one line, the Summary is the start-of-day one.
+
+     The cause is one tick box, found by the tester after this landed:
+     File > Session Settings > "Show diagram sections on the diagram summary
+     report". A diagram section IS a working, so with it off the report
+     collapses each diagram to a single line and the Position goes with it.
+     The message names the setting, because "run the export again" is not
+     much use to somebody who does not know which of the options it was. */
   function startOfDayOnly(sumRows, byDate) {
     const seen = new Map();
     for (const r of sumRows)
@@ -1033,9 +1040,11 @@ const GENIUS = (() => {
       "gives is where each unit stood at the START of the day. Formations " +
       "that come together later are printed in that morning " +
       "order, which is often not the order they stand in - the afternoon " +
-      "Grove Park departures especially. Run the Summary export again so it " +
-      "lists every working, or put the affected formations right with " +
-      "Reverse on the Unit order tab."];
+      "Grove Park departures especially. In Genius, tick File > Session " +
+      "Settings > \u201cShow diagram sections on the diagram summary " +
+      "report\u201d and run the Summary again - that is the setting that " +
+      "makes it list every working. Until then, put the affected formations " +
+      "right with Reverse on the Unit order tab."];
   }
 
 

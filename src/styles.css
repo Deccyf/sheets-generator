@@ -163,6 +163,18 @@
     position:relative; padding:0 0 8px 40px; counter-increment:step; font-size:14px;
   }
   .steps > li:last-child{padding-bottom:0}
+  /* One setting decides whether the reports carry the unit order at all, so
+     it gets a rule down the side rather than another grey sentence. */
+  .mustdo{
+    display:block; margin:8px 0 0; padding:8px 12px; font-size:13px;
+    line-height:1.5; color:#3C464D; background:#FFF6E8;
+    border-left:3px solid var(--amber);
+  }
+  .mustdo b{color:var(--amber); font-family:var(--mono); font-size:11px;
+    letter-spacing:.08em; text-transform:uppercase; display:block;
+    margin-bottom:3px}
+  .mustdo code{font-family:var(--mono); font-size:12px; background:#fff;
+    border:1px solid #E8CFA6; padding:1px 4px}
   .steps > li::before{
     content:counter(step); position:absolute; left:0; top:1px; width:24px; height:24px;
     background:var(--steel); color:var(--paper); font-family:var(--mono); font-size:12px;
