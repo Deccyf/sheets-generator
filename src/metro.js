@@ -72,9 +72,15 @@ const dated = d => String(d || "").replace(/\//g, ".");
 function layoutSection(name, entries, dateLbl, dateFull) {
   const issued = dated(dateFull);
   const cells = [], merges = [], rowHeights = new Map();
-  const put = (r, c, v, look, sides) =>
+  /* noFit: a cell that must not stretch its column. The title and the
+     sign-off block are long free text that the real workbook simply lets
+     overflow across the empty cells to its right, which is what Excel does
+     anyway - measured in, they pushed TRAIN I.D. from 11 characters wide to
+     the 32-character cap. */
+  const put = (r, c, v, look, sides, noFit) =>
     cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
-                 look, sides: sides || [null, null, null, null] });
+                 look, sides: sides || [null, null, null, null],
+                 noFit: !!noFit });
   let r = 1;
   put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
   put(r, 13, dateLbl, 2);
@@ -122,17 +128,20 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       rowHeights.set(r, 18);
       r++;
     });
-    if (units.length > 1) merges.push("A" + first + ":A" + first);
   }
   /* The block every sheet in the real workbook ends with: a blank row, the
      issue date with room for a name and a signature beside it, and the line
      saying where the finished sheet goes back to. */
   r++;
-  put(r, 1, "DATED " + issued, BODY_LOOK);
-  put(r, 5, "NAME", BODY_LOOK);
-  put(r, 11, "SIGNATURE", BODY_LOOK);
+  /* Each given the room it needs rather than left to spill across its
+     neighbours: Excel lets text out of an empty cell, a table does not. */
+  put(r, 1, "DATED " + issued, BODY_LOOK, null, true);
+  put(r, 5, "NAME", BODY_LOOK, null, true);
+  put(r, 11, "SIGNATURE", BODY_LOOK, null, true);
+  merges.push("A" + r + ":D" + r, "E" + r + ":J" + r, "K" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
-  put(r, 1, EMAIL_LINE, 4);
+  put(r, 1, EMAIL_LINE, 4, null, true);
+  merges.push("A" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
            opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0 } };
@@ -154,7 +163,7 @@ const MAX_WIDTH = 32;
 function fitWidths(cells) {
   const need = WIDTHS.slice();
   for (const c of cells) {
-    if (c.r === 1) continue;
+    if (c.r === 1 || c.noFit) continue;
     const i = c.c - 1;
     if (i < 0 || i >= need.length) continue;
     const w = String(c.v || "").length * (LOOK_WIDE[c.look] || 1.1) + 1.6;

@@ -115,7 +115,10 @@ test("unified preview renders every saved cell", async () => {
   const order = N.SHEETS_XLSX.bookOrder(rN.secsByDay, N.SHEETS_XLSX.MAIN_ORDER, true);
   const html = N.SHEETS_XLSX.dayPreviewHtml(rN.secsByDay[day],
     rN.labels[day], false, order);
-  assert.match(html, /<table class="sheet">/);
+  /* The table carries an explicit width now: table-layout:fixed only takes
+     effect on a table that has one, and without it a long cell stretched its
+     whole column. */
+  assert.match(html, /<table class="sheet" style="width:\d+px">/);
   for (const [, entries] of rN.secsByDay[day]) {
     for (const e of entries) {
       assert.ok(html.includes(e.dest), "preview shows destination " + e.dest);

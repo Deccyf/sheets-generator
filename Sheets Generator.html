@@ -75,6 +75,27 @@
      headcode box and the notes below it, which reads as a broken page */
   .roads:empty{margin:0}
   .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
+  /* The Metro sheet is fourteen columns across, which will not sit inside the
+     page's own column. This one card steps outside it. */
+  .road.wide{
+    width:min(96vw, 1180px);
+    margin-left:calc((100% - min(96vw, 1180px)) / 2);
+  }
+  .pickbar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
+  }
+  .pickbar label{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); display:flex; gap:8px;
+    align-items:center;
+  }
+  .pickbar select{
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    padding:6px 9px; border:1px solid var(--apron-dk); background:#fff;
+    color:var(--steel); text-transform:none;
+  }
+  .pickbar .picknote{font-family:var(--mono); font-size:11px; color:var(--chalk)}
+  .metro-view{overflow:auto}
   .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
   .road-no{
     font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
@@ -2522,7 +2543,12 @@ function previewHtml(layout){
   const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow);
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
-  let h = '<table class="sheet"><colgroup>';
+  /* table-layout:fixed only takes effect on a table with a definite width -
+     without one the browser lays the table out automatically and one long
+     cell stretches its whole column, which is what the Metro sheet's
+     sign-off line was doing to TRAIN I.D. */
+  const totalPx = PX.reduce(function(t, px){ return t + px; }, 0);
+  let h = '<table class="sheet" style="width:' + totalPx + 'px"><colgroup>';
   for (const px of PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
@@ -2894,9 +2920,15 @@ const dated = d => String(d || "").replace(/\//g, ".");
 function layoutSection(name, entries, dateLbl, dateFull) {
   const issued = dated(dateFull);
   const cells = [], merges = [], rowHeights = new Map();
-  const put = (r, c, v, look, sides) =>
+  /* noFit: a cell that must not stretch its column. The title and the
+     sign-off block are long free text that the real workbook simply lets
+     overflow across the empty cells to its right, which is what Excel does
+     anyway - measured in, they pushed TRAIN I.D. from 11 characters wide to
+     the 32-character cap. */
+  const put = (r, c, v, look, sides, noFit) =>
     cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
-                 look, sides: sides || [null, null, null, null] });
+                 look, sides: sides || [null, null, null, null],
+                 noFit: !!noFit });
   let r = 1;
   put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
   put(r, 13, dateLbl, 2);
@@ -2944,17 +2976,20 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       rowHeights.set(r, 18);
       r++;
     });
-    if (units.length > 1) merges.push("A" + first + ":A" + first);
   }
   /* The block every sheet in the real workbook ends with: a blank row, the
      issue date with room for a name and a signature beside it, and the line
      saying where the finished sheet goes back to. */
   r++;
-  put(r, 1, "DATED " + issued, BODY_LOOK);
-  put(r, 5, "NAME", BODY_LOOK);
-  put(r, 11, "SIGNATURE", BODY_LOOK);
+  /* Each given the room it needs rather than left to spill across its
+     neighbours: Excel lets text out of an empty cell, a table does not. */
+  put(r, 1, "DATED " + issued, BODY_LOOK, null, true);
+  put(r, 5, "NAME", BODY_LOOK, null, true);
+  put(r, 11, "SIGNATURE", BODY_LOOK, null, true);
+  merges.push("A" + r + ":D" + r, "E" + r + ":J" + r, "K" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
-  put(r, 1, EMAIL_LINE, 4);
+  put(r, 1, EMAIL_LINE, 4, null, true);
+  merges.push("A" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
            opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0 } };
@@ -2976,7 +3011,7 @@ const MAX_WIDTH = 32;
 function fitWidths(cells) {
   const need = WIDTHS.slice();
   for (const c of cells) {
-    if (c.r === 1) continue;
+    if (c.r === 1 || c.noFit) continue;
     const i = c.c - 1;
     if (i < 0 || i >= need.length) continue;
     const w = String(c.v || "").length * (LOOK_WIDE[c.look] || 1.1) + 1.6;
@@ -6028,9 +6063,42 @@ function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
 }
 
 /* A road card: header + animated unit + review line + actions + panel. */
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
+/* Fourteen locations is too many for a tab strip - they wrapped into three
+   rows and took the card over. One tab, and the location on a picker. */
+function metroPane(sheets) {
+  const wrap = document.createElement("div");
+  const bar = document.createElement("div");
+  bar.className = "pickbar";
+  const lab = document.createElement("label");
+  lab.textContent = "Location";
+  const sel = document.createElement("select");
+  sheets.forEach((sh, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = sh.name;
+    sel.appendChild(o);
+  });
+  lab.appendChild(sel);
+  bar.appendChild(lab);
+  const note = document.createElement("span");
+  note.className = "picknote";
+  note.textContent = sheets.length + " in this book · one worksheet each";
+  bar.appendChild(note);
+  const view = document.createElement("div");
+  view.className = "metro-view";
+  const draw = () => {
+    view.innerHTML = SHEETS_XLSX.previewHtml(sheets[+sel.value].layout);
+  };
+  sel.addEventListener("change", draw);
+  draw();
+  wrap.appendChild(bar);
+  wrap.appendChild(view);
+  return wrap;
+}
+
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide) {
   const art = document.createElement("article");
-  art.className = "road";
+  art.className = "road" + (wide ? " wide" : "");
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
   track.className = "track";
@@ -6203,7 +6271,7 @@ function reviewPane(items) {
           : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
       const panes = b.metro
-        ? metroSheets.map(sh => [sh.name, () => X.previewHtml(sh.layout)])
+        ? [["Sheet", () => metroPane(metroSheets)]]
         : dayKeys.map(d => [X.DAY_SHEET[d], () => {
             const secs = b.secs[d];
             if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
@@ -6225,8 +6293,9 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
+      // the Metro sheet is fourteen columns across and needs the room
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts));
+        b.review.length, panes, acts, !!b.metro));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";

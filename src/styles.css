@@ -68,6 +68,27 @@
      headcode box and the notes below it, which reads as a broken page */
   .roads:empty{margin:0}
   .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
+  /* The Metro sheet is fourteen columns across, which will not sit inside the
+     page's own column. This one card steps outside it. */
+  .road.wide{
+    width:min(96vw, 1180px);
+    margin-left:calc((100% - min(96vw, 1180px)) / 2);
+  }
+  .pickbar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
+  }
+  .pickbar label{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); display:flex; gap:8px;
+    align-items:center;
+  }
+  .pickbar select{
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    padding:6px 9px; border:1px solid var(--apron-dk); background:#fff;
+    color:var(--steel); text-transform:none;
+  }
+  .pickbar .picknote{font-family:var(--mono); font-size:11px; color:var(--chalk)}
+  .metro-view{overflow:auto}
   .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
   .road-no{
     font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;

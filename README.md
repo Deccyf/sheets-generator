@@ -282,11 +282,19 @@ builds it in the depot's own format, taken from their May 2026 workbook:
   wants 18.2 where the workbook's DESTINATION column is 17.9 — that last third
   of a character is why it clipped. `TUNBRIDGE WELLS` wants 20.5. The real
   workbook wraps the long ones over two rows instead; the tool widens.
+* The preview table carries an explicit width, because `table-layout: fixed`
+  only takes effect on a table that has one — without it the browser laid the
+  table out automatically and the sign-off line stretched TRAIN I.D. from
+  eleven characters to the 32-character cap. The title and the sign-off block
+  are kept out of the width fit for the same reason, and merged across their
+  neighbours instead: Excel lets text out of an empty cell, a table does not.
 * Every sheet ends with the block the real ones carry: a blank row, then
   `DATED dd.mm.yy` with `NAME` and `SIGNATURE` beside it, then
   *PLEASE E-MAIL SHEETS TO…*.
-* The book's own tabs follow it: the preview is **per location** rather than
-  per day, there is **no Unit order tab** (that turns a formation round on the
+* The book's own tabs follow it: **one Sheet tab with a location picker** —
+  fourteen locations on a tab strip wrapped into three rows and took the card
+  over — and the card steps outside the page's own column, because fourteen
+  columns will not sit in 700px. There is **no Unit order tab** (that turns a formation round on the
   sheet, and this one reads by Position — a button that changes nothing you
   can see is worse than no button), and the Rules tab describes *this* sheet
   rather than a berthing one, with the sections that are about a berthing

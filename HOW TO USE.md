@@ -323,7 +323,9 @@ builds them that way:
 * Each sheet ends with **DATED**, **NAME** and **SIGNATURE**, and the
   *"please e-mail sheets to…"* line, the same as your own.
 * Columns widen to fit what's in them, so nothing clips.
-* On screen it has **a tab per location** rather than per day, and its
+* On screen it has one **Sheet** tab with a **Location** picker — pick the
+  location you want rather than hunting fourteen tabs — and the card is wider
+  than the rest of the page, because the sheet is. Its
   **Rules** tab describes this sheet rather than a berthing one. There is no
   **Unit order** tab on it — that turns a formation round, and this sheet
   reads by Position — and the **Metro** headcode tick box has gone, because

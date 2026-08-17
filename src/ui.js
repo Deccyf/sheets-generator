@@ -440,9 +440,42 @@ function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
 }
 
 /* A road card: header + animated unit + review line + actions + panel. */
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves) {
+/* Fourteen locations is too many for a tab strip - they wrapped into three
+   rows and took the card over. One tab, and the location on a picker. */
+function metroPane(sheets) {
+  const wrap = document.createElement("div");
+  const bar = document.createElement("div");
+  bar.className = "pickbar";
+  const lab = document.createElement("label");
+  lab.textContent = "Location";
+  const sel = document.createElement("select");
+  sheets.forEach((sh, i) => {
+    const o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = sh.name;
+    sel.appendChild(o);
+  });
+  lab.appendChild(sel);
+  bar.appendChild(lab);
+  const note = document.createElement("span");
+  note.className = "picknote";
+  note.textContent = sheets.length + " in this book · one worksheet each";
+  bar.appendChild(note);
+  const view = document.createElement("div");
+  view.className = "metro-view";
+  const draw = () => {
+    view.innerHTML = SHEETS_XLSX.previewHtml(sheets[+sel.value].layout);
+  };
+  sel.addEventListener("change", draw);
+  draw();
+  wrap.appendChild(bar);
+  wrap.appendChild(view);
+  return wrap;
+}
+
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide) {
   const art = document.createElement("article");
-  art.className = "road";
+  art.className = "road" + (wide ? " wide" : "");
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
   track.className = "track";
@@ -615,7 +648,7 @@ function reviewPane(items) {
           : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
       const panes = b.metro
-        ? metroSheets.map(sh => [sh.name, () => X.previewHtml(sh.layout)])
+        ? [["Sheet", () => metroPane(metroSheets)]]
         : dayKeys.map(d => [X.DAY_SHEET[d], () => {
             const secs = b.secs[d];
             if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
@@ -637,8 +670,9 @@ function reviewPane(items) {
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
+      // the Metro sheet is fourteen columns across and needs the room
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts));
+        b.review.length, panes, acts, !!b.metro));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";

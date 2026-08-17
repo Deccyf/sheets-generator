@@ -318,7 +318,12 @@ function previewHtml(layout){
   const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow);
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
-  let h = '<table class="sheet"><colgroup>';
+  /* table-layout:fixed only takes effect on a table with a definite width -
+     without one the browser lays the table out automatically and one long
+     cell stretches its whole column, which is what the Metro sheet's
+     sign-off line was doing to TRAIN I.D. */
+  const totalPx = PX.reduce(function(t, px){ return t + px; }, 0);
+  let h = '<table class="sheet" style="width:' + totalPx + 'px"><colgroup>';
   for (const px of PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
