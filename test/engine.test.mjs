@@ -303,4 +303,26 @@ test("the prints read the same pasted, dropped, or saved as a CSV", async () => 
   const said = merged.books.filter(b => !b.skipped)
     .some(b => /not produced/.test(b.report));
   assert.ok(said, "and the report says so rather than leaving it unexplained");
+
+  /* A reissue arrives the same ways the base does. What decides whether an
+     updated prints document comes back is the BASE: there is a .docx to
+     splice a reissue into, or there is not. */
+  const reCsv = REISSUE_LINES.map(l => l.split("\t")
+    .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
+    .join(",")).join("\r\n");
+  const csvBoth = N.SheetsEngine.run(
+    [{ name: "PRINTS.csv", bytes: new TextEncoder().encode(asCsv) },
+     { name: "PRINTS reissue.csv", bytes: new TextEncoder().encode(reCsv) }], zip.un, zip.z);
+  assert.deepEqual(norm(csvBoth.merge && csvBoth.merge.replaced),
+                   norm(fromDocx && N.SheetsEngine.run(
+                     [{ name: "P.docx", bytes: docx },
+                      { name: "P reissue.docx", bytes: makeDocx(REISSUE_LINES, N.fflate) }],
+                     zip.un, zip.z).merge.replaced),
+                   "a CSV reissue replaces the same diagrams a .docx one does");
+  assert.equal(csvBoth.updated, null, "and no updated document, with no .docx base");
+  const mixed = N.SheetsEngine.run(
+    [{ name: "P.docx", bytes: docx },
+     { name: "P reissue.csv", bytes: new TextEncoder().encode(reCsv) }], zip.un, zip.z);
+  assert.ok(mixed.merge, "a CSV reissue merges into a .docx base");
+  assert.ok(mixed.updated, "and that one CAN produce the updated prints");
 });
