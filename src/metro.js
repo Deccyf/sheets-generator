@@ -99,8 +99,11 @@ function layoutSection(name, entries, dateLbl, dateFull) {
     const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
     return ka - kb;
   });
+  const blockRows = [];
   for (const e of sorted) {
     const first = r;
+    // one formation is one unbreakable block on the paper
+    blockRows.push(first);
     /* This sheet reads by POSITION, lowest first, which is not the berthing
        books' order - they list the units the way they stand on the ground,
        front one first. The operator's own workbook numbers the POS column
@@ -148,7 +151,8 @@ function layoutSection(name, entries, dateLbl, dateFull) {
   merges.push("A" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
-           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0 } };
+           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0,
+                   blockRows: blockRows } };
 }
 
 /* Column widths sized to what is actually in them, never narrower than the

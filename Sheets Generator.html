@@ -2391,7 +2391,9 @@ function esc(s){
   /* A control character anywhere in a cell makes the WHOLE workbook
      unreadable, not just that cell, so they come out before anything else
      is escaped. Tab, newline and return are legal and are left alone. */
-  return String(s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  /* U+FFFE and U+FFFF are excluded from XML's Char production just as the
+     control characters are, and take the whole part down the same way. */
+  return String(s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/g,"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
                   .replace(/"/g,"&quot;");
 }
 function colName(n){         // 1 -> A
@@ -2509,12 +2511,21 @@ function printPlan(merges, rowHeights, maxRow, opts){
   /* A row merged clean across A..G is a section header - the weekday and
      weekend layouts both write one, and nothing else in either book is
      merged that way. */
-  const heads = [];
-  for (const m of merges){
-    const mm = /^A(\d+):G\1$/.exec(m);
-    if (mm) heads.push(+mm[1]);
+  /* A layout that knows its own unbreakable blocks says so. The Metro sheet
+     writes no A:G merge, so nothing was ever found here and it printed with
+     NO breaks at all - a three-unit formation split across the fold, page
+     two opening on position 3 with no headcode, time or destination beside
+     it. Its blocks are its entries. */
+  const heads = (opts.blockRows && opts.blockRows.length)
+    ? opts.blockRows.slice().sort(function(a,b){ return a-b; })
+    : [];
+  if (!heads.length) {
+    for (const m of merges){
+      const mm = /^A(\d+):G\1$/.exec(m);
+      if (mm) heads.push(+mm[1]);
+    }
+    heads.sort(function(a,b){ return a-b; });
   }
-  heads.sort(function(a,b){ return a-b; });
   const rowH = r => rowHeights.get(r) || 15;        // an untouched row is 15pt
   const secs = heads.map(function(h, i){
     // up to the row before the next header: the blank spacers ride with the
@@ -2545,7 +2556,11 @@ function printPlan(merges, rowHeights, maxRow, opts){
   const scale = Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
   const budget = pageH * 100 / scale;
   const breaks = [];
+  /* The title and column headings above the first block take up paper too,
+     so the first page starts with them already spent - without this the
+     first page was budgeted as if it were empty. */
   let used = 0;
+  if (heads.length) for (let r = 1; r < heads[0]; r++) used += rowH(r);
   for (const s of secs){
     if (used && used + s.pts > budget){ breaks.push(s.start - 1); used = 0; }
     used += s.pts;
@@ -2615,7 +2630,15 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"' +
    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-   (opts.tabColor ? '<sheetPr><tabColor rgb="' + opts.tabColor + '"/></sheetPr>' : '') +
+   /* fitToHeight only means anything when fitToPage is set - without it
+      Excel goes by scale and the attribute is inert. tabColor comes first
+      inside sheetPr; pageSetUpPr after it. */
+   (opts.tabColor || opts.fitToHeight === 0
+     ? '<sheetPr>' +
+       (opts.tabColor ? '<tabColor rgb="' + opts.tabColor + '"/>' : '') +
+       (opts.fitToHeight === 0 ? '<pageSetUpPr fitToPage="1"/>' : '') +
+       '</sheetPr>'
+     : '') +
    '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
    '<sheetFormatPr defaultRowHeight="15"/>' +
@@ -3199,8 +3222,11 @@ function layoutSection(name, entries, dateLbl, dateFull) {
     const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
     return ka - kb;
   });
+  const blockRows = [];
   for (const e of sorted) {
     const first = r;
+    // one formation is one unbreakable block on the paper
+    blockRows.push(first);
     /* This sheet reads by POSITION, lowest first, which is not the berthing
        books' order - they list the units the way they stand on the ground,
        front one first. The operator's own workbook numbers the POS column
@@ -3248,7 +3274,8 @@ function layoutSection(name, entries, dateLbl, dateFull) {
   merges.push("A" + r + ":N" + r);
   rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
-           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0 } };
+           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0,
+                   blockRows: blockRows } };
 }
 
 /* Column widths sized to what is actually in them, never narrower than the
