@@ -50,8 +50,12 @@ const BOOKS = [
      which is the one thing the Metro and High Speed pages are not. */
   { title: "Metro", sub: "465s, 466s and 707s — the depot's own sheet",
     profile: 1, sections: D.METRO_ORDER, kind: "metro" },
+  /* The 395 sheet's own blocks, not HS_ORDER: the two lists differ, and the
+     handout printed one in its section strip and the other in its prose -
+     "ASHFORD · FAVERSHAM · RAMSGATE" directly above a sentence naming
+     Margate as well. What the sheet lays out is what the page should say. */
   { title: "High Speed", sub: "395s — the Class 395 Allocations Sheet",
-    profile: 2, sections: D.HS_ORDER, kind: "hs" },
+    profile: 2, sections: [...ctx.SHEETS_HS.DEPOTS], kind: "hs" },
 ];
 /* …and the sections that are about a berthing sheet come off those two. The
    rulebook decides which, so this handout and the tool's own Rules tab
@@ -84,7 +88,14 @@ function envFor(book) {
 
 /* ---- the page ---- */
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-const stamp = new Date().toISOString().slice(0, 10).split("-").reverse().join("/");
+/* Dated from the build, not the clock: stamping `new Date()` rewrote this
+   file on every build on a new day, so `npm test` dirtied the working tree
+   and trained everyone to check the build outputs back out - the very habit
+   that ships a stale deliverable. Same treatment as the Word guide. */
+const stamp = (process.env.SOURCE_DATE_EPOCH
+  ? new Date(+process.env.SOURCE_DATE_EPOCH * 1000)
+  : new Date(Date.UTC(2026, 7, 18)))
+  .toISOString().slice(0, 10).split("-").reverse().join("/");
 
 const CSS = `
 :root{

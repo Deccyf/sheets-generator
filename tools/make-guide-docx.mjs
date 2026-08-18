@@ -315,6 +315,20 @@ const children = [
 
   h2("4. Getting the paperwork"),
   h3("From Genius — two reports, PDF or CSV"),
+  /* The one warning in this guide that cannot be recovered from, and the
+     printed copy did not carry it at all - not the phrase, not the setting,
+     nothing. It is in the Markdown guide, the README and the page itself. */
+  callout("Check this one setting first",
+    "**File → Session Settings** → make sure **“Show diagram sections on the " +
+    "diagram summary report”** is **ticked**. Without it you only get the AM " +
+    "unit positions; it needs to be ticked to get the PM ones as well. The " +
+    "books still build, but every formation that comes together later in the " +
+    "day prints in its morning order — Grove Park in the afternoon worst of " +
+    "all. **It cannot be put right afterwards**: the Detail report carries no " +
+    "Position column, so once the Summary has been exported without it the " +
+    "order is simply gone. The review list will tell you it happened; it " +
+    "cannot tell you the right answer.", AMBER),
+  gap(60),
   ...steps([
     "Make sure a **Control Cycle** exists for the date. For the Metro and High " +
       "Speed books, Control Cycles must exist for those fleets too — this is " +
@@ -349,10 +363,20 @@ const children = [
   p("The same steps *with screenshots* are inside the page itself: look for " +
     "**Getting the two CSVs out of Integrale** in the quick start at the top."),
   gap(60),
-  callout("Don't mix the two",
-    "Genius and Integrale both work, and both give the same books. What you " +
-    "can't do is pair them up — a Genius Summary with an Integrale Detail won't " +
-    "build, and the page will tell you which is which.", AMBER),
+  /* "both give the same books" was not true, and it steered people towards
+     the weaker source. Integrale carries one Position per DIAGRAM, so
+     afternoon formations come out in their morning order: 13 of 13 right
+     from Genius against the real 12/08 book, 0 of 13 from Integrale. */
+  callout("If you have the choice, use Genius",
+    "Both build, but they are not equal. Integrale gives one position per " +
+    "**diagram**, so any formation that comes together later in the day is " +
+    "printed in its morning order — against the real 12/08 book that is 13 " +
+    "formations right out of 13 from Genius, and 0 out of 13 from Integrale. " +
+    "Integrale's advantage is that it names the allocated units, which Genius " +
+    "often does not. So: **Genius for the order, Integrale for the unit " +
+    "numbers**. What you cannot do is pair them up — a Genius Summary with an " +
+    "Integrale Detail will not build, and the page will tell you which is " +
+    "which.", AMBER),
   gap(60),
   h3("The weekend prints"),
   p("Get the weekend **diagram prints** Word document — .docx, or an older " +
@@ -385,6 +409,25 @@ const children = [
     "reports — nothing to sheet”* — rather than handing you an empty " +
     "workbook; the berthing books say *“nothing to berth”*. For Metro and " +
     "High Speed it also reminds you to check the Control Cycle."),
+  gap(60),
+  /* The route for locked-down machines. It was in the Markdown guide and on
+     the page, and missing from the printed one - which is the copy handed to
+     the person most likely to be sat at such a machine. */
+  h3("If you can't get the files onto the machine"),
+  p("Some machines will not let the reports be saved anywhere the browser can " +
+    "reach. Both panels take the paperwork **pasted in** instead."),
+  ...steps([
+    "Click **paste them instead** under the drop zone.",
+    "Open the CSV, select all (**Ctrl+A**), copy (**Ctrl+C**), and paste into " +
+      "the box (**Ctrl+V**). One box for the Summary, one for the Detail.",
+    "Click **Build from what I have pasted**.",
+  ]),
+  p("It reads what you paste the same way it reads a dropped file, so a pasted " +
+    "pair and a dropped pair cannot build differently. Put them in the wrong " +
+    "boxes and it builds anyway and says so; paste only one and it builds " +
+    "against whichever report is already loaded. **PDFs cannot be pasted** — " +
+    "there is no text in one to copy — so on a machine like that, export the " +
+    "CSVs."),
 
   h2("6. Building the weekend sheets"),
   lead("Saturday and Sunday"),
@@ -480,6 +523,8 @@ const children = [
      ["C", "The three-digit diagram number", "117"],
      ["D", "**AM** — the unit's next berth during the day", "DFU"],
      ["E", "**PM** — where it finishes the day", "SG"],
+     ["F", "Unit number, where the report names one — otherwise ruled and " +
+      "empty for you to write in", "465012"],
      ["G", "Flag", "SPLITS"],
      ["H", "Notes — sidings, attachments, end markers, headcodes", "EAST SIDINGS"]],
     [0, 2]),
@@ -510,13 +555,17 @@ const children = [
     "**05+52**, with the empty move's headcode, still showing where the " +
     "service it forms is going. A train that starts in the platform keeps " +
     "its platform time, because that *is* its first move. Mainline is timed " +
-    "off the platform call as always, and so is the **weekend** High Speed " +
-    "book — that one is a berthing sheet, not the allocations sheet."),
+    "off the booked departure — except at **Grove Park** and **Slade Green**, " +
+    "where it too is the moment the unit first moves off the berth. The " +
+    "**weekend** High Speed book keeps the platform time; that one is a " +
+    "berthing sheet, not the allocations sheet."),
   h3("The double lines"),
-  p("Double lines rule off the breaks in the day's work. Any break of **three " +
-    "hours or more** with work still to come after it gets one, so a page can " +
-    "carry two or three — Slade Green is ruled under its 06+36 and again " +
-    "under its 18+04. A page that is busy right through gets none, and Grove " +
+  p("Double lines rule off the breaks in the day's work: the **first** break " +
+    "of **three hours or more**, and any later one where the work picks up " +
+    "**after 20:00**. So a page can carry two — Slade Green is ruled under " +
+    "its 06+36 and again under its 18+04 — but a lull in the middle of the " +
+    "afternoon draws nothing: Tonbridge stands from 11+32 to 14+40 and is " +
+    "left unruled. A page that is busy right through gets none, and Grove " +
     "Park is never ruled. The weekend sheets follow the same rule."),
 
   h2("9. The review list — always read it"),
@@ -575,6 +624,24 @@ const children = [
   callout("Change your mind any time",
     "Tick or untick after a build and the books are rebuilt on the spot — no " +
     "need to drop the files again. Just save them again afterwards; it reminds you."),
+  gap(60),
+  /* The second box on the weekday panel. It has its own tests and its own
+     tick box, and the printed guide never mentioned it. */
+  h3("Long platform stands"),
+  p("Under the HEADCODES box, on the **weekday** panel, there is a second box: " +
+    "**Platform stands**."),
+  p("A unit that sits in a platform for an hour or more has arguably berthed " +
+    "there. The tool handles it three ways:"),
+  ...bullets([
+    "If the report **shunts the unit on the spot** while it stands, that is the " +
+      "report saying it was put away — it gets a line on the sheet either way.",
+    "Without a shunt it is left off, and **named on the review list** with the " +
+      "location and the time, so you can decide.",
+    "Tick **Count long platform stands as berthings** and every one of them " +
+      "goes on the sheets too. The books rebuild as you tick.",
+  ]),
+  p("Left unticked — how it starts — the sheets match the hand-built books, " +
+    "which do not carry them."),
 
   h2("11. If something looks wrong"),
   grid([4200, W - 4200],

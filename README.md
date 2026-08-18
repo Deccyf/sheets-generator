@@ -474,6 +474,7 @@ The columns are:
 | C | The unit's three-digit diagram number. |
 | D | **AM** — where the unit goes next (its next berth) during the day. |
 | E | **PM** — where the unit ends its day. |
+| F | Unit — the allocated unit where the report names one; otherwise ruled and empty for the depot to write in. |
 | G | Flag — `SPLITS` when the units of this departure part company during the day, `SPLITS PM` when they are put away first and only part on the second half of the diagram (the D/E columns settle who goes where). Merged vertically across the entry's rows. |
 | H | Notes — see below. |
 
@@ -851,8 +852,8 @@ ones, all commented at the point of implementation:
 * **Coupling order.** Which unit leads comes from the Summary's `Position`
   field, and the direction is **per section** (`posAsc` in the fleet
   profiles). In the mainline book these list the *lowest* Position first —
-  Dover Priory, Faversham, Gillingham, Grove Park, Hastings, Ramsgate, Slade
-  Green — and the rest list the highest first.
+  Dover Priory, Faversham, Folkestone East, Gillingham, Grove Park, Hastings,
+  Ramsgate, Slade Green — and the rest list the highest first.
 
   There is no rule in the reports that predicts this. A unit's Position is
   fixed to its diagram for the whole day while the formation turns end for
@@ -1063,15 +1064,17 @@ borders as they are needed, zipped with fflate. It writes the house grid —
 A4 portrait, Arial, the ruled sheets' fixed column widths, a medium box around
 each section, medium verticals after the diagram / D / remarks columns, a
 thin rule under every entry, the flag column merged across each multi-unit
-entry. The weekday layout adds a double rule under the last entry of the
-morning: the line sits in the gap that contains midday, and only when that gap
-is berthing-length (≥ 2 h) — a section worked steadily through midday draws no
-line, and Grove Park's two-table layout is never ruled. It was "the biggest
-gap" until a tester's Monday sheet showed those two readings coming apart: the
-hand books' own borders put every line at the morning break, and a late ECS
-row big enough to open a larger evening gap must not pull the line down to it.
-The weekend layout rules the section off where it crosses midday and 20:00,
-matching how the sheet is read across a shift.
+entry. Both layouts add a double rule at the breaks in the day's work, by the
+one rule in [the house rulebook](#the-house-rulebook): the **first** gap of
+`BREAK_GAP` (3 h) or more, and any later gap whose work resumes after
+`PM_BREAK` (20:00). So a page can carry two — Slade Green is ruled under its
+06+36 and again under its 18+04 — while a lull in the middle of the afternoon
+draws nothing (Tonbridge stands 11+32 to 14+40 and is left unruled), and a
+page busy right through gets none. Grove Park's two-table layout is never
+ruled. Two earlier readings were tried and are recorded in the rulebook
+section: "the biggest gap", which a tester's Monday sheet disproved, and a
+line wherever the section crossed midday and 20:00, which the weekend layout
+used until both were brought onto the one rule.
 
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.

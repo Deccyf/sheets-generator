@@ -151,7 +151,12 @@ can't be read.
 The same steps, with screenshots, are inside the page itself: look for
 *Getting the two CSVs out of Integrale* in the quick start at the top.
 
-> **Genius and Integrale both work, and both give the same books.** What you
+> **If you have the choice, use Genius.** Both build, but they are not equal.
+> Integrale gives one position per **diagram**, so any formation that comes
+> together later in the day prints in its morning order — against the real
+> 12/08 book that is 13 formations right out of 13 from Genius, and 0 out of 13
+> from Integrale. What Integrale has over Genius is that it names the allocated
+> units. So: **Genius for the order, Integrale for the unit numbers.** What you
 > can't do is mix the two systems — a Genius Summary with an Integrale Detail
 > won't build, and the page will say so. Mixing a Genius PDF with a Genius CSV
 > is fine.
@@ -403,6 +408,7 @@ diagram numbers.
 | **C** | The three-digit diagram number | `117` |
 | **D** | **AM** — the unit's next berth during the day | `DFU` |
 | **E** | **PM** — where it stands at the end of its work | `SG` |
+| **F** | Unit number, where the report names one — otherwise ruled and empty for you to write in | `465012` |
 | **G** | Flag — `SPLITS` or `SPLITS PM` | |
 | **H** | Notes — sidings, attachments, end markers, headcodes | `EAST SIDINGS` |
 
@@ -442,9 +448,10 @@ moves**, because both of those sheets are written that way. A unit that runs
 empty out of the sidings at 05+52 to form the 06 00 off the platform is listed
 at **05+52**, with the empty move's headcode, still showing where the service
 it forms is going. A train that starts in the platform keeps its platform time,
-because that *is* its first move. The Mainline book is timed off the platform
-call as always — and so is the **weekend** High Speed book, which is a berthing
-sheet rather than the allocations sheet.
+because that *is* its first move. The Mainline book is timed off the booked departure
+— except at **Grove Park** and **Slade Green**, where it too is the moment the
+unit first moves off the berth. The **weekend** High Speed book keeps the
+platform time; it is a berthing sheet rather than the allocations sheet.
 
 **Double lines** rule off the breaks in the day's work: the **first** break of
 **three hours or more**, and any later one where the work picks up **after
