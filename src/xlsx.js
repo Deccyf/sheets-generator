@@ -36,21 +36,26 @@ function colName(n){         // 1 -> A
 const LOOKS = {1:[1,"center"], 2:[2,"right"], 3:[3,"center"],
                4:[4,"center"], 5:[4,"right"], 6:[5,"center"],
                7:[6,"center",1], 8:[7,"center",1], 9:[6,"center",0,1]};
+/* No theme colours here. These books ship no theme part, and Excel has no
+   way to resolve a theme reference without one - that was the first cause of
+   the dotted haze on the 395 sheet, where the skin was taught to resolve
+   every one to rgb. Font 0 is what cellXfs 0 uses, which is what Excel paints
+   every untouched cell of the grid with, so it is the last place to leave one. */
 const FONTS_XML =
-'<font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>' +
+'<font><sz val="11"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>' +
 '<font><b/><sz val="12"/><name val="Arial"/><family val="2"/></font>' +
 '<font><sz val="14"/><name val="Arial"/><family val="2"/></font>' +
 '<font><b/><sz val="11"/><name val="Arial"/><family val="2"/></font>' +
 '<font><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
 '<font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
-'<font><b/><sz val="9"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>' +
-'<font><b/><sz val="9"/><color rgb="FF00B050"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>';
+'<font><b/><sz val="9"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>' +
+'<font><b/><sz val="9"/><color rgb="FF00B050"/><name val="Calibri"/><family val="2"/></font>';
 const FONT_COUNT = 8;
 /* fill 0 none, 1 gray125 (Excel reserves both), 2 solid white */
 const FILLS_XML =
 '<fill><patternFill patternType="none"/></fill>' +
 '<fill><patternFill patternType="gray125"/></fill>' +
-'<fill><patternFill patternType="solid"><fgColor theme="0"/>' +
+'<fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/>' +
 '<bgColor indexed="64"/></patternFill></fill>';
 const FILL_COUNT = 3;
 

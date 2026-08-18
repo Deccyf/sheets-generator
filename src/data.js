@@ -188,6 +188,12 @@ const SIDING_CLASS_RE = new RegExp(
     DARTFD: "Dartford", PLMSTCS: "Plumstead C.H.S", ORPNGTN: "Orpington",
     ORPNDSG: "Orpington Down Sdgs", BELNGMS: "Bellingham Siding",
     CANONST: "Cannon Street", SIDCUPS: "Sidcup Siding", STROOD: "Strood",
+    /* Without this the export's own truncated spelling stood as the section
+       name, so METRO_ORDER's "CHARING CROSS" matched nothing and the
+       location came out as a LONDON CHARING X tab ranked last, after every
+       named one. The destination side always worked - NAME_CODE carries the
+       truncation - which is why it went unnoticed. */
+    CHRX: "Charing Cross",
     /* Genius spells Ore's siding plural and West Marina's neck without
        the stop; BERTH_SHEETS and NON_BERTH_VISIT are keyed the other
        way, so without these two every Genius build says "Ore Up Sidings
