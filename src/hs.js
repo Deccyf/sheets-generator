@@ -28,7 +28,20 @@ const ENDS_CODE = { AFK: "ASH", RE: "RAM", FKE: "FAV" };
 const endsCode = c => ENDS_CODE[String(c || "").toUpperCase()] ||
                       String(c || "").toUpperCase();
 
-const DEPOTS = ["ASHFORD", "MARGATE", "RAMSGATE"];
+/* The depots that get a block, in the order their workbook lays them out:
+   of its daily tabs, 97 run Ashford > Faversham > Ramsgate, 23 run Ashford >
+   Margate > Ramsgate and 9 carry all four in this order. A depot with
+   nothing to show is skipped, so a tab only ever has the blocks it needs -
+   which is why Faversham being left out of this list was invisible until a
+   day's reports had a Faversham departure in them and it went quietly
+   missing from the sheet. */
+const DEPOTS = ["ASHFORD", "FAVERSHAM", "MARGATE", "RAMSGATE"];
+/* …and what each is called in the sheet's own ENDS columns, so an arrival
+   can be recognised as one. Comparing a berth code against a full location
+   name only ever matched Ashford, through a special case; every other
+   depot's arrivals table stayed empty however many days were loaded. */
+const DEPOT_CODE = { ASHFORD: "ASH", FAVERSHAM: "FAV",
+                     MARGATE: "MAR", RAMSGATE: "RAM" };
 const COL = l => l.charCodeAt(0) - 64;              // "B" -> 2
 const stamp = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
   (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
@@ -48,11 +61,12 @@ const PREVIEW_W = [8.4, 8.6, 8.4, 8.6, 8.1, 8.1, 8.4, 8.6, 8.1, 6.4, 5.6,
 function arrivalsInto(depot, secs) {
   const out = [];
   if (!secs) return out;
+  const want = DEPOT_CODE[depot] || endsCode(depot);
   for (const [, list] of secs)
     for (const e of list)
       for (const u of e.units) {
         const pm = endsCode(u.pm || (u.ends || "").split(" ")[0]);
-        if (pm !== endsCode(depot.slice(0, 3) === "ASH" ? "AFK" : depot)) continue;
+        if (pm !== want) continue;
         out.push({ hc: e.headcode || "", at: stamp(e), unit: u.unit || "",
                    cars: e.units.length > 1 ? "12" : "6" });
       }
@@ -232,7 +246,8 @@ function writeHsBook(hsSecs, labels, dates, zipFn) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, DEPOTS };
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto,
+         DEPOTS, DEPOT_CODE };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_HS = SHEETS_HS;

@@ -207,6 +207,9 @@ function rulesEnv(b, res, secNames) {
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
     breakGap: SHEETS_XLSX.BREAK_GAP,
+    // the allocations sheet's own block list, so the rules page cannot name
+    // a set of depots the sheet does not lay out
+    hsDepots: [...HS.DEPOTS],
     gpSplit: isMain,
     orderFix: res.rules.orderFix,
   };
@@ -216,23 +219,27 @@ function rulesEnv(b, res, secNames) {
    Read-only on purpose - it is the thing a new starter opens, and nothing
    on it can change a book. The order corrections live on the Unit order
    tab instead, next to the buttons that write them. */
-function rulesPane(b, res, secNames, metro) {
+function rulesPane(b, res, secNames, kind) {
   const el = document.createElement("div");
   el.className = "rules";
   const h = [];
+  /* "metro" and "hs" are the depot's own documents; anything else is a
+     berthing book. Each gets the rulebook written for the sheet it is. */
+  const notBerth = kind === "metro" || kind === "hs";
   h.push('<p class="sa-src">Everything the tool followed to build this very ' +
     'book, written out in plain English. It is what actually ran, not a ' +
     'description of it — change a setting and rebuild, and this changes ' +
-    'with it.' + (metro ? '' : ' To put a formation right, use the Unit ' +
+    'with it.' + (notBerth ? '' : ' To put a formation right, use the Unit ' +
     'order tab.') + '</p>');
   const env = rulesEnv(b, res, secNames);
-  env.metro = !!metro;
-  /* The Metro sheet is not a berthing sheet, so the parts of the rulebook
-     that are about one do not belong on its tab: which unit prints first and
-     the corrected formations are both about an order it does not use. */
-  h.push(SHEETS_RULES.explainHtml(env,
-    { skip: metro ? ["corrections", "order", "ends", "routes", "words"]
-                  : ["corrections"] }));
+  env.metro = kind === "metro";
+  env.hs = kind === "hs";
+  /* Neither is a berthing sheet, so the parts of the rulebook that are about
+     one do not belong on their tabs: which unit prints first and the
+     corrected formations are both about an order they do not use. The
+     rulebook decides that, so this tab and the printed handout cannot come
+     to different answers. */
+  h.push(SHEETS_RULES.explainHtml(env, SHEETS_RULES.pickFor(kind, false)));
   el.innerHTML = h.join("");
   return el;
 }
@@ -541,10 +548,12 @@ function reviewPane(items) {
   let lastInputs = null;
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
-  /* No Metro toggle on this panel any more: the Metro sheet carries every
-     headcode already, so a tick box for it would change nothing. */
+  /* No Metro or High Speed toggle on this panel: both of those sheets carry
+     every headcode already and neither is built through the berthing writer
+     that the option reaches, so a tick box for either changed nothing at
+     all. Only the berthing books can answer it. */
   const hcToggles = {
-    main: $("#hc_main"), hs: $("#hc_hs"),
+    main: $("#hc_main"),
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
   const platStand = $("#platstand");
@@ -672,7 +681,8 @@ function reviewPane(items) {
       if (!b.metro && !b.hsSheet)
         panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
                     () => orderPane(b, res, rebuildForRules, secNames)]);
-      panes.push(["Rules", () => rulesPane(b, res, secNames, !!(b.metro || b.hsSheet))]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames,
+        b.metro ? "metro" : (b.hsSheet ? "hs" : null))]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];

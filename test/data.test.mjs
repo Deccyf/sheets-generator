@@ -205,3 +205,62 @@ test("the weekend books do not take the weekday reading order", () => {
   assert.equal(code.indexOf("road_pos_asc"), -1, "and consult no direction table");
   assert.equal(code.indexOf("pos_asc"), -1, "of either kind");
 });
+
+test("each book's rules describe the document that book actually is", () => {
+  /* Two of the four are not berthing sheets, and both had been told they
+     were. The High Speed book shared the Metro sheet's description, so its
+     own Rules tab was explaining SIDINGS and POS columns it does not have;
+     and the printed handout never passed the flag at all, so it called all
+     four berthing sheets. Each is pinned here by a phrase only the right
+     document can produce. */
+  const N = built();
+  const R = N.SHEETS_RULES;
+  /* Every location and the real tables, so a berthing book renders every
+     section it can - end markers and routes are filtered to the book that
+     has them, and a one-page Ashford book has neither. */
+  const base = { sections: [], hsDepots: [...N.SHEETS_HS.DEPOTS],
+                 endStyle: N.SHEETS_DATA.END_STYLE,
+                 routeByHc: N.SHEETS_DATA.ROUTE_BY_HC,
+                 orderFix: N.SHEETS_DATA.ORDER_FIX };
+  // exactly as the Rules tab asks for them
+  const page = (kind, env) =>
+    R.explainHtml({ ...base, ...env }, R.pickFor(kind, false));
+  const hs = page("hs", { hs: true });
+  const metro = page("metro", { metro: true });
+  const berth = page(null, {});
+
+  assert.match(hs, /Class 395 Allocations Sheet/, "the allocations sheet");
+  assert.match(hs, /Ashford, Faversham, Margate and Ramsgate/,
+    "naming the blocks the writer really lays out");
+  assert.match(hs, /Ebbsfleet and Gravesend/, "and where the high-level note " +
+    "comes from, since it is worked out rather than looked up");
+  assert.doesNotMatch(hs, /SIDINGS|This is the Metro sheet/,
+    "and nothing from the Metro sheet's columns");
+
+  assert.match(metro, /This is the Metro sheet/, "the Metro sheet");
+  assert.doesNotMatch(metro, /Class 395|Allocations Sheet/,
+    "and nothing from the allocations sheet");
+
+  assert.match(berth, /One page per location/, "a berthing book stays itself");
+  assert.doesNotMatch(berth, /This is the Metro sheet|Class 395/,
+    "and is told about neither");
+
+  /* The sections that are only about a berthing sheet come off both of the
+     others - and the tool's tab and the printed handout have to agree about
+     which, which is why one call decides it for both. */
+  const ids = html => (html.match(/id="r-([a-z]+)"/g) || [])
+    .map(s => s.replace(/.*r-|"/g, ""));
+  for (const [what, html] of [["High Speed", hs], ["Metro", metro]])
+    for (const gone of ["order", "ends", "routes", "words", "corrections"])
+      assert.ok(ids(html).indexOf(gone) < 0,
+        what + " is not told the berthing rule '" + gone + "'");
+  for (const kept of ["order", "ends", "words"])
+    assert.ok(ids(berth).indexOf(kept) >= 0, "a berthing book keeps " + kept);
+  /* The one difference between the two readers: the handout prints the
+     corrections inline, the tool keeps them on the Unit order tab beside the
+     buttons that write them. */
+  assert.ok(R.pickFor(null, true).skip.indexOf("corrections") < 0,
+    "the handout takes the corrections");
+  assert.ok(R.pickFor(null, false).skip.indexOf("corrections") >= 0,
+    "the Rules tab leaves them to the Unit order tab");
+});

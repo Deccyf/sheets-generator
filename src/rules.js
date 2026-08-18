@@ -120,6 +120,9 @@ const SHEETS_RULES = (() => {
   const hours = m => m % 60 === 0
     ? (m / 60) + (m === 60 ? " hour" : " hours")
     : m + " minutes";
+  // ASHFORD -> Ashford, for the places a location reads as a word
+  const titleCase = s => String(s).charAt(0).toUpperCase() +
+                         String(s).slice(1).toLowerCase();
 
   /* One row of the order table, in words rather than in its key. */
   function orderRow(key, order) {
@@ -140,11 +143,78 @@ const SHEETS_RULES = (() => {
     const secs = env.sections || [];
     const inBook = n => !secs.length || secs.indexOf(n) >= 0;
     const push = (id, title, blocks) => S.push({ id, title, blocks });
+    /* Two of the four books are not berthing sheets at all - the Metro
+       sheet and the Class 395 Allocations Sheet are the depot's own
+       documents - so everything below that is about a berthing sheet has to
+       ask which kind of book it is writing for. */
+    const notBerth = !!(env.metro || env.hs);
 
     /* ---- 1. the page itself ----
-       The Metro book is a different document, so it gets a different
-       description rather than the berthing sheet's with caveats bolted on. */
-    if (env.metro) {
+       Each of the three documents gets its own description rather than the
+       berthing sheet's with caveats bolted on. */
+    if (env.hs) {
+      push("sheet", "What you are looking at", [
+        /* The depots come from the writer's own list rather than being
+           typed out here, so this page cannot name a different set of
+           blocks from the one the sheet actually lays out. */
+        { p: "This is the Class 395 Allocations Sheet, not a berthing " +
+             "sheet. One worksheet per day, named the way the depot's own " +
+             "workbook names them — Tue 18 08 — with a block down it for " +
+             "each depot: " + (list((env.hsDepots || []).map(titleCase)) ||
+             "Ashford, Faversham, Margate and Ramsgate") + ". A depot with " +
+             "nothing to show that day is left off, the same as the " +
+             "hand-kept workbook does." },
+        { p: "Each block is two tables side by side. On the left, what came " +
+             "in last night, read off the day before's own entries — so it " +
+             "fills whenever the reports cover more than one day, and a " +
+             "single day's reports say “no previous day loaded” in the " +
+             "heading rather than leaving a blank you have to guess at. On " +
+             "the right, today's allocations, in the order they leave." },
+        { p: "Reading an allocation from left to right:" },
+        { table: { head: ["Column", "What it holds"], rows: [
+          ["TRAIN ID", "The headcode and where it goes."],
+          ["DIAGRAM", "The day's work the unit is booked to, with its " +
+           "code — AZ601."],
+          ["N/M M/O", "Left ruled and empty, to write in."],
+          ["MG", "The miles this WORKING runs, not the diagram's total for " +
+           "the day. A diagram that comes out twice has a figure for each " +
+           "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
+           "182 on its 16+26 one. It is written as a number, so the sheet's " +
+           "own colouring works on it — green under 500 miles, red at 500 " +
+           "and over, the same key that is printed at the top. A report " +
+           "saved as a PDF carries no mileage and the column stays empty."],
+          ["TIME", "When it leaves. A space in the time (08 42) means it " +
+           "leaves in service; a plus (08+42) means it leaves empty."],
+          ["FP/RP", "Left ruled and empty, to write in."],
+          ["UNIT NO", "The unit where the report names one. Where it does " +
+           "not, the cell is left ruled and empty to write in."],
+          ["ENDS AM, ENDS PM", "Where the diagram stands next and where it " +
+           "finishes, in the depot's own berth codes — ASH, RAM, FAV — not " +
+           "the berthing books'."],
+          ["TRAIN ID, ARRIVES, WORKS", "The third table on the right hand " +
+           "side. Left ruled and empty, to write in."],
+        ] } },
+        { p: "And last night's arrivals, on the left: TRAIN ID and ARRIVAL " +
+             "TIME are what the unit came in on, UNIT NUMBER where the " +
+             "report names one, 6 OR 12 CAR off the formation it arrived " +
+             "in, and CET DUE is left empty to write in." },
+        { p: "The drop-downs are on the cells that had them: the fleet list " +
+             "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
+             "a cell and the arrow is there." },
+        { note: "The DIAGRAM cells carry the standing route notes as " +
+          "comments, the way the hand-kept workbook does — hover over one " +
+          "to read it. “Not over high level” is worked out from the " +
+          "diagram itself: a working that runs between Ebbsfleet and " +
+          "Gravesend, either way round, goes over the high level, and one " +
+          "that does not gets the note. It is per working, not per " +
+          "diagram — a diagram can position out over the high level first " +
+          "thing and spend the rest of the day off it, and the real sheet " +
+          "marks those later workings. “Avoids North Kent” is not " +
+          "something the reports can show, so it comes from a standing " +
+          "list of the workings that carry it. A report saved as a PDF has " +
+          "no route to read and falls back to that list for both." },
+      ]);
+    } else if (env.metro) {
       push("sheet", "What you are looking at", [
         { p: "This is the Metro sheet, not a berthing sheet. One worksheet " +
              "per location, landscape, listing every service that starts " +
@@ -357,9 +427,9 @@ const SHEETS_RULES = (() => {
       ] },
       /* The two examples are the real books' own, and each is only worth
          printing in a book that has that page - the Ramsgate book is one
-         page and was explaining Slade Green and Tonbridge on it. The Metro
-         sheet has no rules across it at all. */
-      env.metro ? null :
+         page and was explaining Slade Green and Tonbridge on it. Neither
+         the Metro sheet nor the allocations sheet is ruled at all. */
+      notBerth ? null :
       { p: "Heavy double lines rule off the breaks in the day's work: the " +
         "first break of " + hours(env.breakGap || 180) + " or more, and any " +
         "later one where the work picks up after " + hhmm(env.pmBreak || 1200) +
@@ -373,7 +443,7 @@ const SHEETS_RULES = (() => {
         " A page that is busy right through gets none" +
         (inBook("GROVE PARK") ? ", and Grove Park is never ruled." : ".") },
     ];
-    push("times", env.metro ? "Times" : "Times, and the line across the page", t);
+    push("times", notBerth ? "Times" : "Times, and the line across the page", t);
 
     /* ---- 5. end markers ---- */
     const es = env.endStyle || {};
@@ -428,9 +498,10 @@ const SHEETS_RULES = (() => {
 
     /* ---- 7. headcodes ---- */
     const hcs = (env.headcodeSections || []).filter(inBook).sort();
-    push("headcodes", "Headcodes", env.metro ? [
-      { p: "Every line of this sheet carries its headcode, in the TRAIN I.D. " +
-           "column, written once against the top line of the formation. The " +
+    push("headcodes", "Headcodes", notBerth ? [
+      { p: "Every line of this sheet carries its headcode, in the " +
+           (env.hs ? "TRAIN ID column" : "TRAIN I.D. column, written once " +
+            "against the top line of the formation") + ". The " +
            "“Show every headcode” tick box is for the berthing books and " +
            "makes no difference here." },
     ] : [
@@ -517,7 +588,7 @@ const SHEETS_RULES = (() => {
       { ul: [
         "It does not know which way a train physically faces. Everything " +
         "about formation order comes from the position numbers" +
-        (env.metro ? "." : " and the corrections list above."),
+        (notBerth ? "." : " and the corrections list above."),
         "It does not read the Sectional Appendix, and it makes no claim " +
         "about gauge clearance, route availability or what may run where. " +
         "Those questions go to the Appendix and the Weekly Operating Notice.",
@@ -548,6 +619,25 @@ const SHEETS_RULES = (() => {
      The tool splits them across two tabs - the order corrections sit with
      the Reverse buttons that write them, and everything else is reference -
      while the printed handout takes the lot. Same call either way. */
+  /* Which sections belong on which document, in one place. Both readers ask
+     for it: the tool's own Rules tab and the printed handout. They used to
+     each keep their own list, and the handout's was simply never written -
+     so it described the Metro sheet and the allocations sheet as berthing
+     sheets for as long as they had existed.
+
+     kind: "metro" or "hs" for the depot's own documents, anything else for a
+     berthing book. withCorrections is for the handout, which prints the
+     corrections inline; the tool leaves them to the Unit order tab, next to
+     the buttons that write them. */
+  const BERTH_ONLY = ["order", "ends", "routes", "words"];
+  function pickFor(kind, withCorrections) {
+    const notBerth = kind === "metro" || kind === "hs";
+    // an order the sheet does not use cannot have corrections either
+    const skip = notBerth ? BERTH_ONLY.concat("corrections")
+                          : (withCorrections ? [] : ["corrections"]);
+    return { skip };
+  }
+
   function explainHtml(env, pick) {
     const only = pick && pick.only, skip = (pick && pick.skip) || [];
     const out = [];
@@ -580,7 +670,7 @@ const SHEETS_RULES = (() => {
 
   return { VERSION, parseKey, validEdit, mergeOrderFix, keyForms, chooseKey,
            parse, serialize,
-           explain, explainHtml, orderRow };
+           explain, explainHtml, pickFor, orderRow };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_RULES;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_RULES = SHEETS_RULES;

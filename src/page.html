@@ -187,13 +187,12 @@
     <fieldset class="opts" id="opts" hidden>
       <legend>Headcodes</legend>
       <p class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
-        headcode as standard. Tick a book to put one on every line of it —
-        empty moves and platform starters alike. The books rebuild as you
-        tick, so save them again afterwards. The <b>Metro</b> sheet is not
-        affected: every line of it carries its headcode already, in the
-        TRAIN I.D. column.</p>
+        headcode as standard. Tick it to put one on every line of the
+        <b>Mainline</b> and <b>Ramsgate</b> books — empty moves and platform
+        starters alike. They rebuild as you tick, so save them again
+        afterwards. The <b>Metro</b> and <b>High Speed</b> sheets are not on
+        this list because every line of both carries its headcode already.</p>
       <label><input type="checkbox" id="hc_main"> Mainline</label>
-      <label><input type="checkbox" id="hc_hs"> High Speed</label>
     </fieldset>
 
     <fieldset class="opts" id="opts2" hidden>
@@ -219,10 +218,13 @@
           where each unit berths, and writes the entries the way the
           hand-built books do — times, diagram numbers, AM and PM columns,
           flags, siding notes and end markers, all filled in.</p>
-        <p>The <b>Metro</b> book is the exception: that one is not a berthing
-          sheet at all but the depot's own Metro document, and it is built to
-          match — a worksheet per location, landscape, and its own columns.
-          Same reports, same rules underneath.</p>
+        <p>The <b>Metro</b> and <b>High Speed</b> books are the exceptions:
+          neither is a berthing sheet at all. One is the depot's own Metro
+          document — a worksheet per location, landscape, its own columns —
+          and the other is the Class 395 Allocations Sheet, a worksheet per
+          day with a block for each depot and last night's arrivals beside
+          today's allocations. Both are built to match. Same reports, same
+          rules underneath.</p>
         <p>It also leaves things off on purpose: an empty move onto a berth
           with no passenger work after it is not a line, the same as the
           hand-built sheets. Every one is named on the review list, so
@@ -396,8 +398,12 @@
         document, a worksheet per location rather than per day, landscape,
         with the POS, ENDS and MILES columns and six more left ruled and
         empty to fill in by hand.</li>
-      <li><b>HS_SHEETS</b> — the High Speed book (395 units), built whenever the
-        reports contain High Speed diagrams.</li>
+      <li><b>HS_SHEETS</b> — the High Speed book (395 units), built whenever
+        the reports contain High Speed diagrams. This one is <b>not a
+        berthing sheet</b> either: it is the depot's own Class 395
+        Allocations Sheet, a worksheet per day with a block for each depot,
+        last night's arrivals on the left and the day's allocations on the
+        right, in the sheet's own berth codes.</li>
       <li><b>Weekend</b> — Mainline, Metro and High Speed workbooks, one per
         fleet, plus the updated prints when a reissue was merged.</li>
     </ul>

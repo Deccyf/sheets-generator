@@ -44,16 +44,27 @@ const BOOKS = [
     profile: 0, sections: D.MAIN_ORDER.filter(s => s !== "RAMSGATE") },
   { title: "Ramsgate", sub: "375s and 377s — Ramsgate's own book",
     profile: 0, sections: ["RAMSGATE"] },
-  { title: "Metro", sub: "465s, 466s and 707s",
-    profile: 1, sections: D.METRO_ORDER },
-  { title: "High Speed", sub: "395s",
-    profile: 2, sections: D.HS_ORDER },
+  /* Two of the four are not berthing sheets - they are the depot's own
+     documents - and the rulebook writes each of them its own description.
+     Without these flags the handout described all four as berthing sheets,
+     which is the one thing the Metro and High Speed pages are not. */
+  { title: "Metro", sub: "465s, 466s and 707s — the depot's own sheet",
+    profile: 1, sections: D.METRO_ORDER, kind: "metro" },
+  { title: "High Speed", sub: "395s — the Class 395 Allocations Sheet",
+    profile: 2, sections: D.HS_ORDER, kind: "hs" },
 ];
+/* …and the sections that are about a berthing sheet come off those two. The
+   rulebook decides which, so this handout and the tool's own Rules tab
+   cannot drift apart again; the handout takes the corrections inline, where
+   the tool keeps them on the Unit order tab. */
+const pickFor = book => RULES.pickFor(book.kind, true);
 
 function envFor(book) {
   const prof = D.PROFILES_G[book.profile];
   return {
     sections: book.sections,
+    metro: book.kind === "metro",
+    hs: book.kind === "hs",
     fleets: prof.fleets,
     posAsc: [...prof.posAsc],
     roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
@@ -65,6 +76,7 @@ function envFor(book) {
     routeByHc: D.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
     breakGap: X.BREAK_GAP,
+    hsDepots: [...ctx.SHEETS_HS.DEPOTS],
     gpSplit: book.profile === 0,
     orderFix: D.ORDER_FIX,
   };
@@ -149,9 +161,13 @@ for (const b of BOOKS)
     esc(b.title) + "</a> — " + esc(b.sub) + "</li>");
 parts.push("</ol>");
 parts.push('<p style="margin:12px 0 0; font-size:13px; color:#3C464D">' +
-  "Most rules are the same in all four. Where a book differs — which " +
-  "locations read which way round, which times are used, which places keep " +
-  "their empty moves — its own section says so.</p>");
+  "The first two are berthing books, and most rules are the same in both. " +
+  "Where one differs — which locations read which way round, which times " +
+  "are used, which places keep their empty moves — its own section says so. " +
+  "<b>Metro and High Speed are not berthing sheets at all</b>: they are the " +
+  "depot's own Metro sheet and Class 395 Allocations Sheet, so their " +
+  "sections describe those documents and leave off the rules that only " +
+  "belong to a berthing one.</p>");
 /* The Saturday and Sunday sheets are built from the weekend diagram prints
    by the other half of the tool. Nearly every rule below is shared, but the
    which-way-round list is NOT, so the difference is named here as well as in
@@ -169,7 +185,7 @@ for (const b of BOOKS) {
   parts.push('<p class="sub">Book</p><h2>' + esc(b.title) + "</h2>");
   parts.push('<p class="sub" style="margin-top:8px">' + esc(b.sub) + " · " +
     esc(b.sections.join(" · ")) + "</p>");
-  parts.push(RULES.explainHtml(envFor(b)));
+  parts.push(RULES.explainHtml(envFor(b), pickFor(b)));
   parts.push("</div>");
 }
 

@@ -395,9 +395,40 @@ const children = [
       "West Marina, with Ramsgate cut out"],
      ["RAM SHEETS", "RAM_SHEETS_….xlsx",
       "Ramsgate's own book, cut from the same day's work"],
-     ["METRO SHEETS", "METRO_SHEETS_….xlsx", "The metro book — 465s, 466s, 707s"],
-     ["HS SHEETS", "HS_SHEETS_….xlsx", "The High Speed book — 395s"]],
+     ["METRO SHEETS", "METRO_SHEETS_….xlsx",
+      "The metro book — 465s, 466s, 707s. Not a berthing sheet — see below"],
+     ["HS SHEETS", "HS_SHEETS_….xlsx",
+      "The High Speed book — 395s. Not a berthing sheet — see below"]],
     [0, 1]),
+  gap(160),
+  h3("Two of them are not berthing sheets"),
+  p("The **Metro** and **High Speed** books are your own documents rather " +
+    "than berthing sheets, and the tool builds them that way. The Metro book " +
+    "is a tab per location, landscape, fourteen columns, read by **Position** " +
+    "— lowest first, straight down each formation — with the timing point, " +
+    "the road, comments, S, R/T and L/S ruled and left for you to write in."),
+  p("The High Speed book is the **Class 395 Allocations Sheet**: a tab per " +
+    "day named the way yours are, a block for each depot down it (Ashford, " +
+    "Faversham, Margate, Ramsgate), last night's arrivals on the left and " +
+    "today's allocations on the right. It uses your berth codes — `ASH`, " +
+    "`RAM`, `FAV` — and your drop-downs are on the cells that had them."),
+  ...bullets([
+    "`MG` is the miles **that working** runs, not the diagram's total for " +
+    "the day, so a diagram that comes out twice has a figure for each time. " +
+    "It is a number, so your colouring works on it: **green under 500 " +
+    "miles, red at 500 and over**.",
+    "The **DIAGRAM cells carry the route notes** as comments, same as " +
+    "yours. *Not over high level* is worked out from the diagram itself — a " +
+    "working that runs **between Ebbsfleet and Gravesend**, either way " +
+    "round, goes over the high level, and one that does not gets the note. " +
+    "It is per working, so a diagram can position out over the high level " +
+    "first thing and still be marked on its later workings.",
+    "*Avoids North Kent* is not something the reports can show, so it comes " +
+    "from a standing list of the workings that carry it.",
+  ]),
+  p("Neither has a **Unit order** tab — there is no formation order on them " +
+    "to turn round — and each one's **Rules** tab describes that sheet " +
+    "rather than a berthing one."),
   gap(160),
   h3("Weekends — three books"),
   p("One workbook per fleet for the day — **Mainline**, **Metro**, **High " +
@@ -455,13 +486,15 @@ const children = [
     "line belongs to the depot it is going to. Every one of them is named on " +
     "the review list, so nothing disappears quietly."),
   gap(60),
-  h3("The Metro book's timings"),
-  p("The Metro book is timed off the **first time the unit moves**. A unit that " +
-    "runs empty out of the sidings at `05+52` to form the 06 00 off the " +
-    "platform is listed at **05+52**, with the empty move's headcode, still " +
-    "showing where the service it forms is going. A train that starts in the " +
-    "platform keeps its platform time. Mainline and High Speed are timed off " +
-    "the platform call, as always."),
+  h3("The Metro and High Speed timings"),
+  p("Both are timed off the **first time the unit moves**, because both of " +
+    "those sheets are written that way. A unit that runs empty out of the " +
+    "sidings at `05+52` to form the 06 00 off the platform is listed at " +
+    "**05+52**, with the empty move's headcode, still showing where the " +
+    "service it forms is going. A train that starts in the platform keeps " +
+    "its platform time, because that *is* its first move. Mainline is timed " +
+    "off the platform call as always, and so is the **weekend** High Speed " +
+    "book — that one is a berthing sheet, not the allocations sheet."),
   h3("The double lines"),
   p("Double lines rule off the breaks in the day's work. Any break of **three " +
     "hours or more** with work still to come after it gets one, so a page can " +
@@ -504,18 +537,23 @@ const children = [
   gap(60),
   h2("10. The headcode switches"),
   p("Once a panel has built something, a box marked **HEADCODES** appears " +
-    "with it, holding three tick-boxes: **Mainline**, **Metro**, **High " +
-    "Speed**. It only shows up alongside books, because ticking one " +
+    "with it. It only shows up alongside books, because ticking one " +
     "rebuilds them."),
   ...bullets([
+    "On the **weekday** panel there is one tick-box, **Mainline**, which " +
+      "covers the mainline and Ramsgate books. Metro and High Speed are not " +
+      "on it: every line of both carries its headcode already, so a tick-box " +
+      "for either would change nothing.",
+    "On the **weekend** panel there are three — **Mainline**, **Metro** and " +
+      "**High Speed** — because all three of those are berthing sheets.",
     "**Left off** — how they start — each book follows the house rules, and " +
       "headcodes appear only in the sections that have always quoted them: " +
       "Gillingham, Victoria and Grove Park.",
     "**Ticked**, that book puts *every* headcode in the notes column — empty " +
       "moves and platform starters alike.",
   ]),
-  p("They work per book, so you can have all the headcodes on the Metro sheets " +
-    "and the usual rules on the Mainline."),
+  p("On the weekend panel they work per book, so you can have all the " +
+    "headcodes on the Metro sheets and the usual rules on the Mainline."),
   gap(60),
   callout("Change your mind any time",
     "Tick or untick after a build and the books are rebuilt on the spot — no " +

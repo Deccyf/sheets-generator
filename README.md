@@ -299,8 +299,12 @@ builds it in the depot's own format, taken from their May 2026 workbook:
   can see is worse than no button), and the Rules tab describes *this* sheet
   rather than a berthing one, with the sections that are about a berthing
   sheet — which unit prints first, the corrections, end markers, routes, the
-  notes column — left off. The weekday **Metro headcode tick box is gone**:
-  every line of this sheet carries its headcode already.
+  notes column — left off. The weekday **Metro and High Speed headcode tick
+  boxes are gone**: every line of both sheets carries its headcode already,
+  and neither is built through the berthing writer the option reaches, so
+  ticking either changed nothing whatsoever. Only Mainline is left on that
+  panel. (The *weekend* High Speed tick box stays — that book is a berthing
+  sheet.)
 * `ENDS` is the berth the diagram finishes on plus which half of the day it
   finishes in — `GP PM`, `SG AM`. The codes are the berthing books' own; the
   real workbook's vocabulary differs in places (it writes `GP` where the tool
@@ -315,13 +319,24 @@ Allocations Sheet for 18/08/2026:
 
 * **One worksheet per day**, named the way their workbook names them —
   `Tue 18 08` — landscape.
-* A **block per depot** down it (Ashford, Margate, Ramsgate), each two tables
-  side by side: `<DEPOT> PM ARRIVALS <yesterday>` on the left, and
-  `<DEPOT> UNIT ALLOCATIONS <today>` on the right.
+* A **block per depot** down it — **Ashford, Faversham, Margate, Ramsgate**,
+  the order their own workbook lays them out (97 of its daily tabs run
+  Ashford > Faversham > Ramsgate, 23 run Ashford > Margate > Ramsgate, 9 carry
+  all four) — each two tables side by side: `<DEPOT> PM ARRIVALS <yesterday>`
+  on the left, and `<DEPOT> UNIT ALLOCATIONS <today>` on the right. A depot
+  with nothing to show is skipped, which is exactly why **Faversham missing
+  from that list went unnoticed**: the 18/08 reports have one Faversham
+  departure and it was quietly dropped off the sheet rather than leaving a
+  visible hole. It is pinned by a test now.
 * The arrivals table is filled from **the day before's own entries**, so it
   works whenever the reports cover more than one day — a Monday-to-Friday pair
   fills every day but the Monday, and a single day's reports say
   *"no previous day loaded"* in the heading rather than showing a quiet blank.
+  Which depot an arrival belongs to is read off the sheet's **own** berth
+  codes (`ASH`, `FAV`, `MAR`, `RAM`). It used to compare a berth code against
+  a full location name and only matched Ashford, through a special case for
+  it — so every other depot's arrivals table stayed empty however many days
+  were loaded, and no single-day test could see it.
 * `N/M M/O`, `FP/RP`, `CET DUE`, `ARRIVES`, the next working and the notes are
   ruled and left empty; the rest comes off the reports.
 * **Timed off the first move**, because their sheet is: `AZ601` is `04+19` on
@@ -332,17 +347,30 @@ Allocations Sheet for 18/08/2026:
 * **Their dress, verbatim.** Approximating the look through the house
   writer's own styles was tried first and never looked right. Instead
   `tools/make-hs-skin.py` lifts the workbook's actual style records off the
-  18/08 tab — 103 cell formats, 22 fonts, 10 fills, 40 border records,
+  18/08 tab — 104 cell formats, 22 fonts, 11 fills, 40 border records,
   renumbered into a minimal styleSheet — plus the yellow tab, the exact
   column widths and row heights, the clean-marks legend (green `INT CLEAN`,
   blue `EXT CLEAN`), the mileage key, the standing house notes, and the
-  conditional formatting that colours `MG` amber under 500 miles and red
+  conditional formatting that colours `MG` green under 500 miles and red
   over. It all lands in `src/hs-skin.js`, and the writer grew a raw mode
   that ships that styleSheet as-is with each cell naming its exact record.
   The extractor needs the operator's workbook beside it (not in the
   repository) and grep-checks its own output for leaks before writing —
   which caught the COMMENTS box carrying three unit numbers and a date; the
   ruled shape of the footer is kept, its operational text is not.
+* **The dotted haze, twice.** Excel drew the whole background of the first
+  generated books as a grey dotted wash. The first cause was theme colours:
+  the workbook paints its greys as `theme="0" tint="-0.15"` and a generated
+  book carries no theme part to resolve them against, so the extractor now
+  resolves every one against their own theme's palette and ships pure rgb
+  (`D9D9D9` for the between-tables grey, `A9D18E` for the mileage chip). The
+  second was **Excel's reserved style slots**. Excel paints every *untouched*
+  cell of the grid with `cellXfs` 0, and expects fill 0 to be `patternType
+  none` and fill 1 `gray125`. Renumbering the workbook's records from zero
+  put its solid-white `applyFill` record in slot 0, so the entire empty grid
+  rendered as that haze. The extractor seeds the conventional slots first and
+  shifts everything after them — and asserts it, because nothing about the
+  output *looks* wrong until Excel opens it.
 * **Their berth vocabulary, not the berthing books'** — `ASH` for `AFK`, `RAM`
   for `RE`, `FAV` for `FKE`. `ASH` appears 2019 times in the real sheet's ENDS
   columns against `AFK`'s 6.
@@ -353,7 +381,12 @@ Allocations Sheet for 18/08/2026:
   stop keeps the figure it had reached (`ml`) and a stint's `MG` is the
   delta between its two ends. The Metro book's `MILES` stays the day total,
   which is what that sheet prints. The colour coding rides on their own
-  conditional formatting: green under 500 miles, red at 500 and over.
+  conditional formatting: green under 500 miles, red at 500 and over — and
+  the cells are written as **real numbers**, not inline text. That is the
+  whole of it: `cellIs` rules compare numbers, a mileage shipped as a string
+  is invisible to them, and every `MG` cell sat on the red base fill whatever
+  the figure said. Their own `K` cells are plain `<v>` number cells, so these
+  are too, which also means the colours re-fire if somebody edits a figure.
 * **The drop-downs.** Their four list validations are carried: the fleet
   roster on both UNIT columns — stored as first+count (contiguous
   395001-395029) and built at runtime, so no unit numbers ride in the skin —
@@ -365,7 +398,29 @@ Allocations Sheet for 18/08/2026:
   headcode-keyed lookup (5 sightings or more; one-off chatter is left
   behind) and the sheet writes them as classic notes, the way `ROUTE_BY_HC`
   carries routes. The writer grew the classic-comments plumbing for it: a
-  comments part, its VML twin, the sheet rels and content types.
+  comments part, its VML twin, the sheet rels and content types. A comments
+  part is paired to its worksheet **through the sheet's rels, not by part
+  number** — `sheet131`'s notes live in `threadedComment35.xml` — and
+  reading them by number had been attributing notes to the wrong tabs.
+* **"Not over high level" is derived, per working.** A stint with a leg
+  between **Ebbsfleet and Gravesend**, either way round, goes over the high
+  level; one without does not, and gets the note. Held against their own
+  18/08 tab it reads back exactly: all six rows they marked derive
+  (`AZ622` 16+39, `AZ623` 09+54 and 16+26, `AZ625` 10+05 and 15+35). The
+  per-working part is the whole trick — `AZ623`'s diagram *does* cross at
+  its positioning start, so a per-diagram test marks none of its rows, while
+  their sheet marks the two workings that do not. The six diagrams that
+  never cross all day (`AZ601`, `603`, `607`, `610`, `615`, `621`) carry
+  *"Avoids North Kent"* on their sheet instead, which the reports cannot
+  show, so that one stays on the standing lookup. A PDF-fed build has no
+  legs to read and falls back to the lookup for both.
+* **On screen** it gets one **Allocations** tab with a **Day** picker, no
+  Unit order tab (same reasoning as Metro — this sheet has no formation order
+  to turn round), and a **Rules** tab that describes *the allocations sheet*:
+  its columns, what `MG` means and how it is coloured, the drop-downs, and
+  where the two standing notes come from. It shared the Metro sheet's
+  description until then, so the High Speed book's own Rules tab was telling
+  a colleague about `SIDINGS` and `POS` columns it does not have.
 
 Against their 18/08 sheet, every departure time matches to the minute once the
 timing moved (`04+19`, `04+33`, `04+53`, `05+08`, `05+24`, `05+38`, `05+56`,
@@ -529,15 +584,15 @@ test suite drives them.
 | `Sheets Generator.html` | **The built deliverable** — committed so it can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. |
 | `HOW TO USE.md` | The guide for the people who run the sheets — no build steps, no code. This README is the technical account; that one is the working one. |
 | `HOW TO USE.docx` | The same guide as a Word document, for circulating. **`node build.mjs` rebuilds it** along with the rules page — it sat a day behind the tool for exactly as long as it took nobody to run it by hand. Needs `npm i docx`; without that the build says it skipped it and carries on. Edit the Markdown and `tools/make-guide-docx.mjs` together, never the `.docx`. That script's header has the recipe for rendering it to check — it needs `libreoffice-writer`, not just `libreoffice-core`. |
-| `BERTHING SHEET RULES.html` | The rules the tool goes by, written for colleagues who will never open it. Rebuilt by `node build.mjs` via `tools/make-rules-doc.mjs`, from the built file's own tables — **nothing on it is typed out separately**, so it cannot drift from what the books do. One self-contained page; open it or print it to PDF. |
+| `BERTHING SHEET RULES.html` | The rules the tool goes by, written for colleagues who will never open it. Rebuilt by `node build.mjs` via `tools/make-rules-doc.mjs`, from the built file's own tables — **nothing on it is typed out separately**, so it cannot drift from what the books do. One self-contained page; open it or print it to PDF. Each book is written for the document it actually is: the two berthing books get the berthing rules, and Metro and High Speed get their own sheets described with the berthing-only sections (which unit prints first, end markers, routes, the notes column, the corrections list) left off. Passing that flag was missed when the Metro sheet arrived, so the handout described all four as berthing sheets until it was caught here. |
 | `src/page.html` | The page shell: markup for both panels, the quick start, the ES5 capability probe, and the `{{CSS}}`/`{{SCRIPTS}}` placeholders. Scripts sit at the *end* of `<body>` (see [the 2.0 overhaul](#the-20-overhaul)). |
 | `src/styles.css` | All page styling, including the fleet-sprite styles. |
 | `src/data.js` | **`SHEETS_DATA`** — every reference table for every engine in one module: berths, destination codes, section orders, fleet profiles, the station table, end-marker rules. Corrections belong here. |
 | `src/core.js` | **`SHEETS_CORE`** — shared helpers: name normalisation, destination codes, time formatting, and the berth AM/PM rule (`amPm`). |
 | `src/rulebook.js` | **`SHEETS_RULEBOOK`** — the day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`) and the stop-collapsing walk both engines share. |
-| `src/rules.js` | **`SHEETS_RULES`** — the pure part of local unit-order corrections (key grammar, merge, storage round-trip) *and* `explain()`/`explainHtml()`, which turn a build's rules into plain English. `explainHtml(env, pick)` takes `{only:[ids]}` or `{skip:[ids]}`, which is how the tool splits the same call across two tabs — **Unit order** carries the corrections next to the Reverse buttons that write them, **Rules** carries everything else as read-only reference, and `BERTHING SHEET RULES.html` takes the lot. No DOM, no tables of its own: it takes a plain object describing the build. |
+| `src/rules.js` | **`SHEETS_RULES`** — the pure part of local unit-order corrections (key grammar, merge, storage round-trip) *and* `explain()`/`explainHtml()`, which turn a build's rules into plain English. `explainHtml(env, pick)` takes `{only:[ids]}` or `{skip:[ids]}`, which is how the tool splits the same call across two tabs — **Unit order** carries the corrections next to the Reverse buttons that write them, **Rules** carries everything else as read-only reference, and `BERTHING SHEET RULES.html` takes the lot bar what a book cannot use. **`pickFor(kind, withCorrections)`** decides that one question for both readers: `env.metro`/`env.hs` pick which document is being described, and the berthing-only sections come off the two that are not berthing sheets. Each reader used to keep its own list, and the handout's was never written — which is exactly how it came to call all four books berthing sheets. No DOM, no tables of its own: it takes a plain object describing the build. |
 | `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. Widths and page setup come from the layout, so one workbook can be portrait eight-column and another landscape fourteen. |
-| `src/hs.js` | **`SHEETS_HS`** — the High Speed book as the depot's Class 395 Allocations Sheet: a worksheet per day, a block per depot, last night's arrivals beside today's allocations. |
+| `src/hs.js` | **`SHEETS_HS`** — the High Speed book as the depot's Class 395 Allocations Sheet: a worksheet per day, a block per depot, last night's arrivals beside today's allocations. Not a berthing sheet — see [The High Speed sheet](#the-high-speed-sheet). |
 | `src/metro.js` | **`SHEETS_METRO`** — the Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns, read by Position. Not a berthing sheet — see [The Metro sheets](#the-metro-sheets). |
 | `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
 | `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |

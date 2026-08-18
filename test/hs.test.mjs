@@ -144,6 +144,42 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   assert.ok(wb2[0].cells.length > 5, "and that workbook still loads");
 });
 
+test("every depot the workbook lays out gets its block and its arrivals", () => {
+  /* Two silent losses, both invisible with a single day of reports. The
+     block list left Faversham out, so a day with a Faversham departure had
+     it quietly missing from the sheet - their own workbook carries a
+     Faversham block on 97 of its daily tabs. And the arrivals side compared
+     a berth code against a full location name, which only ever matched
+     Ashford through a special case: every other depot's table stayed empty
+     however many days were loaded. */
+  const N = built();
+  const H = N.SHEETS_HS;
+  // spread: the tool runs in its own realm, so its arrays are not this
+  // realm's Array and a strict deep compare fails on the prototype alone
+  assert.deepEqual([...H.DEPOTS], ["ASHFORD", "FAVERSHAM", "MARGATE", "RAMSGATE"],
+    "all four depots their workbook uses, in its own order");
+  // an arrival is recognised into each of them, off the day before's entries
+  for (const [depot, berth] of [["ASHFORD", "AFK"], ["FAVERSHAM", "FKE"],
+                                ["MARGATE", "MAR"], ["RAMSGATE", "RE"]]) {
+    const yday = new Map([["ANY", [{ time: 1200, time_kind: "ecs", dest: "X",
+      headcode: "5X01", units: [{ diag: "601", code: "AZ", am: "", pm: berth,
+      ends: berth + " PM", unit: "395001", miles: 500 }] }]]]);
+    const got = H.arrivalsInto(depot, yday);
+    assert.equal(got.length, 1, depot + " sees a unit that berthed there");
+    assert.equal(got[0].hc, "5X01", "with what it came in on");
+  }
+  // and a day carrying one of each writes a block for every one of them
+  const day = (secs) => H.layoutDay("T", { M: "MON 03/08", T: "TUE 04/08" },
+    { M: "03/08/26", T: "04/08/26" }, secs, "M");
+  const entry = dest => [{ time: 500, time_kind: "ecs", dest,
+    headcode: "5X02", units: [{ diag: "602", code: "AZ", am: "", pm: "AFK",
+    ends: "AFK PM", miles: 400 }] }];
+  const lay = day({ M: new Map(), T: new Map(H.DEPOTS.map(d => [d, entry(d)])) });
+  const titles = lay.cells.filter(c => /UNIT ALLOCATIONS/.test(c.v))
+                          .map(c => c.v.replace(/ UNIT ALLOCATIONS.*/, ""));
+  assert.deepEqual([...titles], [...H.DEPOTS], "a block each, in their order");
+});
+
 test("MG is a real number cell, so the mileage colours can fire", () => {
   /* The cellIs rules compare numbers; a mileage written as inline TEXT is
      invisible to them, and the depot saw every MG cell sit on the red base

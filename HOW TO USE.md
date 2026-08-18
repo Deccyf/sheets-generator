@@ -337,8 +337,9 @@ Same idea as Metro — the 395 book is your own **Class 395 Allocations Sheet**,
 not a berthing sheet:
 
 * **A tab per day**, named the way yours are — `Tue 18 08` — landscape.
-* A **block per depot** down it (Ashford, Margate, Ramsgate), with **last
-  night's arrivals on the left** and **today's allocations on the right**.
+* A **block per depot** down it (Ashford, Faversham, Margate, Ramsgate), with
+  **last night's arrivals on the left** and **today's allocations on the
+  right**. A depot with nothing that day is left off, the same as yours.
 * The arrivals side fills from the day before, so drop a **Monday-to-Friday**
   pair and every day but the Monday has it. Drop one day on its own and the
   heading says *"no previous day loaded"* rather than leaving you guessing.
@@ -346,6 +347,24 @@ not a berthing sheet:
   `ASH`, `RAM`, `FAV`.
 * `N/M M/O`, `FP/RP`, `CET DUE`, `ARRIVES` and the notes are ruled and empty
   for you to fill in.
+* `MG` is the miles **that working** runs, not the diagram's total for the
+  day — so a diagram that comes out twice has a figure for each time. It is
+  written as a number, so your own colouring works on it: **green under 500
+  miles, red at 500 and over**, and it re-colours if you type a different
+  figure in.
+* The **drop-downs** are there on the cells that had them — the fleet list on
+  both unit columns, 6 or 12, the CET mark, and FP/RP.
+* The **DIAGRAM cells carry the route notes** as comments, same as yours —
+  hover to read one. *"Not over high level"* is worked out from the diagram
+  itself: a working that runs **between Ebbsfleet and Gravesend**, either way
+  round, goes over the high level, and one that does not gets the note. It is
+  per working, so a diagram can position out over the high level first thing
+  and still be marked on its later workings, which is how your own sheet has
+  it. *"Avoids North Kent"* is not something the reports can show, so it
+  comes from a standing list of the workings that carry it.
+* On screen it has one **Allocations** tab with a **Day** picker, no **Unit
+  order** tab, and its **Rules** tab describes this sheet rather than a
+  berthing one.
 
 One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
 plus the updated prints document when a reissue has been merged.
@@ -417,12 +436,14 @@ empty to a depot without ever being shunted where it stood: that is a wait on
 the way home, and the line belongs to the depot it is going to. Any that are
 left off are **named on the review list**, so nothing disappears quietly.
 
-**Metro timings.** The Metro book is timed off the **first time the unit moves**.
-A unit that runs empty out of the sidings at 05+52 to form the 06 00 off the
-platform is listed at **05+52**, with the empty move's headcode, still showing
-where the service it forms is going. A train that starts in the platform keeps
-its platform time. The Mainline and High Speed books are timed off the platform
-call as always.
+**Metro and High Speed timings.** Both are timed off the **first time the unit
+moves**, because both of those sheets are written that way. A unit that runs
+empty out of the sidings at 05+52 to form the 06 00 off the platform is listed
+at **05+52**, with the empty move's headcode, still showing where the service
+it forms is going. A train that starts in the platform keeps its platform time,
+because that *is* its first move. The Mainline book is timed off the platform
+call as always — and so is the **weekend** High Speed book, which is a berthing
+sheet rather than the allocations sheet.
 
 **Double lines** rule off the breaks in the day's work: the **first** break of
 **three hours or more**, and any later one where the work picks up **after
@@ -476,9 +497,15 @@ fault — it's the tool showing its working.
 
 ## 10. The headcode switches
 
-Once a panel has built something, a box marked **HEADCODES** appears with it,
-holding three tick-boxes: **Mainline**, **Metro**, **High Speed**. It only
-shows up alongside books, because ticking one rebuilds them.
+Once a panel has built something, a box marked **HEADCODES** appears with it.
+It only shows up alongside books, because ticking one rebuilds them.
+
+* On the **weekday** panel there is one tick-box, **Mainline**, which covers
+  the mainline and Ramsgate books. The Metro and High Speed sheets are not on
+  it: every line of both carries its headcode already, so a tick-box for
+  either would change nothing.
+* On the **weekend** panel there are three — **Mainline**, **Metro** and
+  **High Speed** — because all three of those are berthing sheets.
 
 * **Left off** (how they start) each book follows the house rules — headcodes
   appear only in the sections that have always quoted them: Gillingham, Victoria
@@ -486,8 +513,8 @@ shows up alongside books, because ticking one rebuilds them.
 * **Ticked**, that book puts **every** headcode in the notes column — empty moves
   and platform starters alike.
 
-They're per book, so you can have all the headcodes on the Metro sheets and the
-usual rules on the Mainline.
+On the weekend panel they're per book, so you can have all the headcodes on
+the Metro sheets and the usual rules on the Mainline.
 
 **You can change your mind after building.** Tick or untick and the books are
 rebuilt on the spot — you don't have to drop the files again. Just remember to
