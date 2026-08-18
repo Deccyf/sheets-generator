@@ -1,36 +1,57 @@
-/* One-off: build the Metro book from the real Integrale exports and
-   screenshot the Dartford / Gillingham tables showing the first-move times. */
+/* The Metro sheet's first-move timing, on screen: a unit that runs empty out
+   of the sidings before picking up its platform working is listed at the
+   time it FIRST MOVES, with the empty move's headcode.
+
+     node build.mjs && node tools/shot-metro-first-move.mjs
+
+   Built from the synthetic first-move fixture, which exists for exactly this
+   pair - GN611 out of the Dartford up sidings, GN612 starting in the
+   platform. It used to load two real Integrale exports by absolute path from
+   one machine's upload folder, which meant it ran nowhere else, pointed a
+   committed script at real planning data, and had gone stale anyway: the
+   Metro book became one tab with a location picker, so the DARTFORD table it
+   waited for was never on the page. */
+import { writeFileSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { BUILT_URL, launch } from "./browser.mjs";
 
-const U = "/root/.claude/uploads/a92fd59d-eda0-5a2d-858d-3481c8939b31/";
+const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
+const { METRO_MOVE_SUMMARY, METRO_MOVE_DETAIL } =
+  await import(join(ROOT, "test/helpers/synth.mjs"));
+
+const dir = mkdtempSync(join(tmpdir(), "metro-move-"));
+const put = (name, bytes) => {
+  const p = join(dir, name);
+  writeFileSync(p, bytes);
+  return p;
+};
 
 const browser = await launch();
-const page = await browser.newPage({ viewport: { width: 900, height: 1200 } });
-page.on("pageerror", e => { console.error("PAGE ERROR:", e.message); process.exitCode = 1; });
+const page = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+page.on("pageerror", e => {
+  console.error("PAGE ERROR:", e.message);
+  process.exitCode = 1;
+});
 await page.goto(BUILT_URL);
-await page.setInputFiles("#file", [U + "7c8a4698-Diagram_Summary_100826.csv",
-                                   U + "96235384-Diagrams_100826.csv"]);
+// the fixture is the pair of Integrale CSV exports
+await page.setInputFiles("#file", [
+  put("Stock Diagrams.csv", METRO_MOVE_SUMMARY),
+  put("Stock Diagram Detail.csv", METRO_MOVE_DETAIL),
+]);
 await page.waitForFunction(() =>
-  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 60000 });
-console.log("status:", await page.textContent("#status"));
-const metro = page.locator("#roads .road").nth(2);
-console.log("book:", (await metro.locator(".road-name").first().textContent()).trim());
+  document.querySelector("#status").textContent.includes("Books built"),
+  null, { timeout: 60000 });
+
+const metro = page.locator("#roads .road").filter({ hasText: "METRO SHEETS" }).first();
 await metro.locator(".btn", { hasText: "Look at it" }).click();
+await metro.scrollIntoViewIfNeeded();
 await page.waitForSelector("#roads .road .view table.sheet");
-const rows = await metro.locator("table.sheet tr").allTextContents();
-const want = ["DARTFORD", "GILLINGHAM"];
-let show = [], keep = false;
-for (const r of rows) {
-  const t = r.replace(/\s+/g, " ").trim();
-  if (want.some(w => t.startsWith(w))) keep = true;
-  else if (/^[A-Z][A-Z .]{3,}/.test(t) && !/^\d/.test(t)) keep = false;
-  if (keep && t) show.push(t);
+for (const row of await metro.locator("table.sheet tr").allTextContents()) {
+  const t = row.replace(/\s+/g, " ").trim();
+  if (t) console.log("  " + t);
 }
-console.log(show.slice(0, 24).join("\n"));
-const tbl = metro.locator("table.sheet").filter({ hasText: "DARTFORD" }).first();
-await tbl.scrollIntoViewIfNeeded();
-const box = await tbl.boundingBox();
-await page.screenshot({ path: "tools/shot-13-metro-first-move.png",
-  clip: { x: box.x, y: box.y, width: Math.min(box.width, 900), height: Math.min(box.height, 900) } });
+await metro.screenshot({ path: "tools/shot-13-metro-first-move.png" });
 await browser.close();
 console.log("SHOT OK");

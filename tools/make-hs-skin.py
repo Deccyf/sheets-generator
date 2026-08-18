@@ -4,10 +4,22 @@
 # behind, and the output is grepped for leaks before it is written.
 import re, json, sys, zipfile
 
-# the operator's workbook is NOT in the repository - point this at a copy
-Z = zipfile.ZipFile(sys.argv[1] if len(sys.argv) > 1 else
-    "/root/.claude/uploads/a92fd59d-eda0-5a2d-858d-3481c8939b31/"
-    "2bda6967-Provisional_Version_1_Class_395_Allocations_Sheet_18082026.xlsx")
+# The operator's workbook is NOT in the repository and never will be. Point
+# this at a copy:
+#
+#     python3 tools/make-hs-skin.py "395 Allocations Sheet.xlsx"
+#
+# The default below is only where it sat on the machine this was written on;
+# it is not expected to exist anywhere else, and the error says so.
+DEFAULT = ("/root/.claude/uploads/a92fd59d-eda0-5a2d-858d-3481c8939b31/"
+           "2bda6967-Provisional_Version_1_Class_395_Allocations_Sheet_18082026.xlsx")
+src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
+try:
+    Z = zipfile.ZipFile(src)
+except (FileNotFoundError, IsADirectoryError):
+    raise SystemExit(
+        "Cannot open %r.\nPass the operator's Class 395 Allocations Sheet as "
+        "the first argument - it is not in this repository." % src)
 
 def unesc(t):
     # the sheet stores text XML-escaped; the writer escapes what it is given,
@@ -17,7 +29,26 @@ def unesc(t):
         t = t.replace(a, b)
     return t
 st = Z.read('xl/styles.xml').decode()
-sheet = Z.read('xl/worksheets/sheet131.xml').decode()   # Tue 18 08
+# Which worksheet part is the Tue 18 08 tab. The part number does NOT track
+# tab order - this workbook has 114 tabs and this one is the 111th - so the
+# name is checked rather than trusted. Pointed at the wrong part the whole
+# thing still runs and produces a complete, well-formed, leak-clean skin of
+# somebody else's day, with every other assertion passing.
+SHEET_PART = 'xl/worksheets/sheet131.xml'
+wb = Z.read('xl/workbook.xml').decode()
+wb_rels = Z.read('xl/_rels/workbook.xml.rels').decode()
+rid_target = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', wb_rels))
+tab_name = None
+for m in re.finditer(r'<sheet name="([^"]+)"[^>]*r:id="([^"]+)"', wb):
+    tgt = rid_target.get(m.group(2), "")
+    if tgt.lstrip("/").replace("worksheets/", "") == SHEET_PART.split("/")[-1]:
+        tab_name = m.group(1)
+        break
+assert tab_name is not None, SHEET_PART + " is not referenced by the workbook"
+assert re.match(r'^[A-Z][a-z]{2} \d\d \d\d$', tab_name), (
+    "expected a daily tab like 'Tue 18 08', got %r - the part number does not "
+    "track tab order, so check SHEET_PART against this workbook" % tab_name)
+sheet = Z.read(SHEET_PART).decode()
 ss = [unesc("".join(re.findall(r'<t[^>]*>(.*?)</t>', x, re.S)))
       for x in re.findall(r'<si>(.*?)</si>', Z.read('xl/sharedStrings.xml').decode(), re.S)]
 
@@ -86,6 +117,19 @@ grey   = {c: x for c, (x, v) in cells(19).items() if "H" <= c <= "T" and len(c) 
 gaprow = {c: x for c, (x, v) in cells(27).items() if len(c) == 1 and c <= "T"}
 for m in (title, data, grey, gaprow): used.update(m.values())
 used.update(x for _, x, _ in header)
+# Every archetype has to have actually been found. A blank row 7 would leave
+# `title` empty, and hs.js would then write no title row while still pushing
+# its merges and advancing the cursor - a quietly wrong sheet from a run that
+# reported success.
+for nm, got in [("title", title), ("data", data), ("greyRight", grey),
+                ("gapRow", gaprow), ("header", header), ("legend", legend),
+                ("footer", footer)]:
+    assert len(got) > 0, "archetype %r came back empty - wrong tab or wrong row?" % nm
+assert len(used) > 50, "only %d style records used; that is not a full tab" % len(used)
+HEAD_WANT = {"TRAIN ID", "DIAGRAM", "MG", "TIME", "ENDS AM", "ENDS PM"}
+head_txt = {v for _, _, v in header if v}
+missing = HEAD_WANT - head_txt
+assert not missing, "row 8 is not the column headings - missing %s" % sorted(missing)
 
 # renumber into a minimal styleSheet - around Excel's reserved slots.
 # fill 0 must be patternType none and fill 1 gray125, and cellXfs 0 must be
@@ -118,6 +162,19 @@ for old in order:
     y = re.sub(r'borderId="\d+"', 'borderId="%d"' % bi, y)
     y = re.sub(r'\s?xfId="\d+"', '', y)
     out_xfs.append(y)
+
+# ---- which two dxfs are the mileage pair ----
+# They were picked by literal index. The file has 211 of them and any edit to
+# the workbook renumbers them, with nothing to notice: the book would come out
+# plausible and the wrong colour. Read them off the rule that uses them.
+mg_rule = re.search(r'<conditionalFormatting sqref="K[^"]*">(.*?)</conditionalFormatting>',
+                    sheet, re.S)
+assert mg_rule, "no conditional formatting on the MG column"
+UNDER_500 = int(re.search(r'dxfId="(\d+)"[^>]*>\s*<formula>500</formula>'
+                          .replace("[^>]*>", '[^>]*operator="lessThan"[^>]*>'),
+                          mg_rule.group(1)).group(1))
+OVER_500 = int(re.search(r'dxfId="(\d+)"[^>]*operator="greaterThan"',
+                         mg_rule.group(1)).group(1))
 
 # ---- theme colours -> plain rgb ----
 # The workbook leans on its Office theme: the grey between the tables is
@@ -166,7 +223,7 @@ styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
   + '<cellXfs count="%d">' % len(out_xfs) + "".join(out_xfs) + '</cellXfs>'
   + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
-  + '<dxfs count="2">' + dxfs[207] + dxfs[206] + '</dxfs>'   # 0 = under 500, 1 = over
+  + '<dxfs count="2">' + dxfs[UNDER_500] + dxfs[OVER_500] + '</dxfs>'
   + '</styleSheet>')
 
 # ---- the drop-downs ----
