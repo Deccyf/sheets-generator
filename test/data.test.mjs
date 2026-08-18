@@ -57,8 +57,15 @@ test("reference tables match the legacy build", () => {
       p.road + " quotes the weekday headcode sections");
     assert.equal(p.pos_asc, D.PROFILES_G[i].posAsc,
       p.road + " reads the weekday way round");
-    assert.equal(p.first_dep_all, !!D.PROFILES_G[i].firstDepAll,
+    /* One deliberate exception to "the weekend profiles ARE the weekday
+       ones": the weekday High Speed book is timed off the first move now,
+       because the operator's own allocation sheet is, and nobody has held a
+       weekend High Speed book against a copy timed that way. */
+    const hs = D.PROFILES_G[i].bucket === "hs";
+    assert.equal(p.first_dep_all, hs ? false : !!D.PROFILES_G[i].firstDepAll,
       p.road + " first_dep_all");
+    if (hs) assert.equal(D.PROFILES_G[i].firstDepAll, true,
+      "…and the reports side of the High Speed book IS timed off the first move");
   });
   // and the drift the shared tables closed, named so it cannot come back
   assert.ok(!("465/0" in L.SheetsEngine.PROFILES[1].fleets),

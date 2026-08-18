@@ -29,16 +29,30 @@ function colName(n){         // 1 -> A
     n = (n - r - 1) / 26; }
   return s;
 }
-/* Looks: [fontId, horizontal alignment]. Fonts are indexed into FONTS below. */
+/* Looks: [fontId, horizontal alignment, wrap?, fillId]. Fonts are indexed
+   into FONTS below. Looks 7-9 are the allocation sheets' own dress - bold
+   Calibri 9, the block titles in the operator's green, headers wrapped, and
+   a white fill where their sheet fills a cell rather than leaving it clear. */
 const LOOKS = {1:[1,"center"], 2:[2,"right"], 3:[3,"center"],
-               4:[4,"center"], 5:[4,"right"], 6:[5,"center"]};
+               4:[4,"center"], 5:[4,"right"], 6:[5,"center"],
+               7:[6,"center",1], 8:[7,"center",1], 9:[6,"center",0,1]};
 const FONTS_XML =
 '<font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font>' +
 '<font><b/><sz val="12"/><name val="Arial"/><family val="2"/></font>' +
 '<font><sz val="14"/><name val="Arial"/><family val="2"/></font>' +
 '<font><b/><sz val="11"/><name val="Arial"/><family val="2"/></font>' +
 '<font><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
-'<font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>';
+'<font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
+'<font><b/><sz val="9"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>' +
+'<font><b/><sz val="9"/><color rgb="FF00B050"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>';
+const FONT_COUNT = 8;
+/* fill 0 none, 1 gray125 (Excel reserves both), 2 solid white */
+const FILLS_XML =
+'<fill><patternFill patternType="none"/></fill>' +
+'<fill><patternFill patternType="gray125"/></fill>' +
+'<fill><patternFill patternType="solid"><fgColor theme="0"/>' +
+'<bgColor indexed="64"/></patternFill></fill>';
+const FILL_COUNT = 3;
 
 /* Styles are registered as they are needed, so any mix of look and border
    gets its own entry rather than being hard-coded up front. */
@@ -77,17 +91,19 @@ StyleBook.prototype.xml = function(){
   let x = '<cellXfs count="' + this.xfs.length + '">';
   for (const f of this.xfs){
     const L = LOOKS[f.look];
-    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="0" borderId="' +
-         f.border + '" xfId="0" applyFont="1" applyBorder="1"' +
+    const fill = (L && L[3]) ? 2 : 0;
+    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="' + fill +
+         '" borderId="' + f.border + '" xfId="0" applyFont="1" applyBorder="1"' +
+         (fill ? ' applyFill="1"' : "") +
          (L ? ' applyAlignment="1">' + '<alignment horizontal="' + L[1] +
-              '" vertical="center"/></xf>' : "/>");
+              '" vertical="center"' + (L[2] ? ' wrapText="1"' : "") +
+              '/></xf>' : "/>");
   }
   x += "</cellXfs>";
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-   '<fonts count="6">' + FONTS_XML + '</fonts>' +
-   '<fills count="2"><fill><patternFill patternType="none"/></fill>' +
-   '<fill><patternFill patternType="gray125"/></fill></fills>' + b +
+   '<fonts count="' + FONT_COUNT + '">' + FONTS_XML + '</fonts>' +
+   '<fills count="' + FILL_COUNT + '">' + FILLS_XML + '</fills>' + b +
    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
    x + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
    '</styleSheet>';
