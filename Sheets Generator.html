@@ -90,18 +90,12 @@
   .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
   /* The Metro sheet is fourteen columns across, which will not sit inside the
      page's own column. This one card steps outside it. */
-  .road.wide{
-    width:min(96vw, 1180px);
-    margin-left:calc((100% - min(96vw, 1180px)) / 2);
-  }
-  /* The berthing sheet is 681px across and the page column gives it 614, so
-     the NOTES column - the one the guide tells operators to check - sat off
-     the right edge on every screen until you scrolled. A smaller break-out
-     than the Metro cards need, and it never exceeds the viewport. */
-  .road.sheetwide{
-    width:min(94vw, 840px);
-    margin-left:calc((100% - min(94vw, 840px)) / 2);
-  }
+  /* Every road card is the same width as every other, and as the rest of the
+     page. The Metro and 395 cards used to step outside the column to fit
+     their wider sheets, and a populated one then sat half again as wide as
+     the card above it - an empty road never took the break-out at all, so
+     the same page could show both. A sheet wider than the card scrolls
+     inside its own preview instead, which is where the scrollbar belongs. */
   .pickbar{
     display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
   }
@@ -405,8 +399,7 @@
   .rules h3{font-size:11px; letter-spacing:.09em; text-transform:uppercase;
     color:var(--steel); margin:14px 0 6px}
   .rules h3:first-of-type{margin-top:4px}
-  /* the two wide cards run the rules pane to 1134px, about 180 characters
-     a line - the rest of the page reads at 60ch */
+  /* keep the rules pane to a readable measure whatever the card is doing */
   .rules p{font-size:12.5px; line-height:1.55; margin:0 0 8px; max-width:74ch}
   .rules code{font-family:var(--mono); font-size:11.5px}
   .rules-t{border-collapse:collapse; width:100%; margin:0 0 10px;
@@ -8273,11 +8266,9 @@ function metroPane(sheets, what) {
   return wrap;
 }
 
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide, restore) {
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, restore) {
   const art = document.createElement("article");
-  // wide: "wide" for the depot's own documents, "sheetwide" for a berthing
-  // book, or nothing at all
-  art.className = "road" + (wide ? " " + (wide === true ? "wide" : wide) : "");
+  art.className = "road";
   art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
@@ -8526,12 +8517,8 @@ function reviewPane(items) {
         say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
       }]];
       // the Metro sheet is fourteen columns across and needs the room
-      /* The two depot documents need the full break-out; the berthing books
-         need a smaller one, or the NOTES column sits off the right edge. */
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts,
-        (b.metro || b.hsSheet) ? "wide" : "sheetwide",
-        wasOpen.get(b.road)));
+        b.review.length, panes, acts, wasOpen.get(b.road)));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
@@ -8880,7 +8867,7 @@ function reviewPane(items) {
           download(b.name, b.xlsx, XLSX_MIME);
           wSay("Saved " + b.name + " — look in this computer's Downloads folder.", "go");
         }]],
-        false, wasOpen.get(b.road)));
+        wasOpen.get(b.road)));
     });
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;

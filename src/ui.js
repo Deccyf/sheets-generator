@@ -483,11 +483,9 @@ function metroPane(sheets, what) {
   return wrap;
 }
 
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide, restore) {
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, restore) {
   const art = document.createElement("article");
-  // wide: "wide" for the depot's own documents, "sheetwide" for a berthing
-  // book, or nothing at all
-  art.className = "road" + (wide ? " " + (wide === true ? "wide" : wide) : "");
+  art.className = "road";
   art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
@@ -736,12 +734,8 @@ function reviewPane(items) {
         say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
       }]];
       // the Metro sheet is fourteen columns across and needs the room
-      /* The two depot documents need the full break-out; the berthing books
-         need a smaller one, or the NOTES column sits off the right edge. */
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts,
-        (b.metro || b.hsSheet) ? "wide" : "sheetwide",
-        wasOpen.get(b.road)));
+        b.review.length, panes, acts, wasOpen.get(b.road)));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
@@ -1090,7 +1084,7 @@ function reviewPane(items) {
           download(b.name, b.xlsx, XLSX_MIME);
           wSay("Saved " + b.name + " — look in this computer's Downloads folder.", "go");
         }]],
-        false, wasOpen.get(b.road)));
+        wasOpen.get(b.road)));
     });
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;

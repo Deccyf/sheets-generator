@@ -330,8 +330,9 @@ builds them that way:
   *"please e-mail sheets to…"* line, the same as your own.
 * Columns widen to fit what's in them, so nothing clips.
 * On screen it has one **Sheet** tab with a **Location** picker — pick the
-  location you want rather than hunting fourteen tabs — and the card is wider
-  than the rest of the page, because the sheet is. Its
+  location you want rather than hunting fourteen tabs. The card is the same
+  size as the others; the sheet is wider than the card, so it scrolls inside
+  its own box. Its
   **Rules** tab describes this sheet rather than a berthing one. There is no
   **Unit order** tab on it — that turns a formation round, and this sheet
   reads by Position — and the **Metro** headcode tick box has gone, because

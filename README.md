@@ -295,8 +295,12 @@ builds it in the depot's own format, taken from their May 2026 workbook:
   *PLEASE E-MAIL SHEETS TO…*.
 * The book's own tabs follow it: **one Sheet tab with a location picker** —
   fourteen locations on a tab strip wrapped into three rows and took the card
-  over — and the card steps outside the page's own column, because fourteen
-  columns will not sit in 700px. There is **no Unit order tab** (that turns a formation round on the
+  over. The card itself is the same size as every other road: the two depot
+  documents used to break out of the page column to fit their wider sheets,
+  which left a populated Metro card half again as wide as the one above it
+  (and an empty road never took the break-out at all, so one page could show
+  both). A sheet wider than the card scrolls inside its own preview, which is
+  where a scrollbar belongs. There is **no Unit order tab** (that turns a formation round on the
   sheet, and this one reads by Position — a button that changes nothing you
   can see is worse than no button), and the Rules tab describes *this* sheet
   rather than a berthing one, with the sections that are about a berthing
