@@ -1,5 +1,22 @@
 node_modules/
 tools/*.png
 
-# the mark-up sheet is built from live plan data
-UNIT ORDER CHECK.csv
+# ---- real planning data must never be committed ----
+# Everything the tool reads or writes is ignored by extension, because the
+# rule cannot be undone once it is broken: a Genius report, a built book or
+# a set of prints carries unit numbers, headcodes, staff names and real
+# dates. It had been one `git add .` away - only `UNIT ORDER CHECK.csv` was
+# named, while summary.pdf, out.csv, a books .zip and an allocations .xlsx
+# were all trackable. `tools/order-check.mjs` even documents writing a file
+# full of real formations into the working directory.
+*.pdf
+*.csv
+*.xlsx
+*.docx
+*.doc
+*.zip
+# …and the one document of that kind the repository does own
+!HOW TO USE.docx
+
+# Put anything real you need to keep beside the tool in here.
+local/
