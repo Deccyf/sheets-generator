@@ -7,17 +7,61 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      # tools/browser.mjs looks both of these up; point them at what this
+      # runner installs rather than the sandbox defaults
+      PLAYWRIGHT_NODE_MODULES: ${{ github.workspace }}/node_modules/playwright/
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # `docx` builds the Word guide; without it the build quietly skips that
+      # document and the freshness check below could never see it drift.
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build the single-file deliverable
         run: node build.mjs
+
+      # The deliverable and both documents are COMMITTED - they are what gets
+      # opened and handed out. The build above regenerates them, so if the
+      # working tree moved, whoever pushed edited src/ without rebuilding and
+      # the committed tool is stale. This has to come before the tests: they
+      # load the file the build just wrote, so they can never see it.
+      - name: The committed build is in step with src/
+        run: |
+          git diff --exit-code -- \
+            "Sheets Generator.html" \
+            "BERTHING SHEET RULES.html" \
+            "HOW TO USE.docx" \
+          || {
+            echo "::error::A generated file is out of date. Run 'node build.mjs' and commit the result."
+            exit 1
+          }
+
       - name: Golden tests against the frozen legacy build
         # `node --test test/` resolves test/ as a module and dies before it
         # runs anything - use the same glob the npm script does.
         run: node --test "test/**/*.test.mjs"
+
+      # The tests run the tool in a vm with a stubbed DOM, so ui.js only has
+      # to PARSE to pass them - renaming one selector it depends on leaves the
+      # page completely dead and every test still green. Only a real browser
+      # catches that, so the smokes are part of CI rather than a thing to
+      # remember to run.
+      - name: Install Chromium for the browser smokes
+        run: |
+          npm i --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke — weekend prints and pasted reports
+        run: node tools/smoke.mjs
+
+      - name: Browser smoke — Genius and Integrale CSVs
+        run: node tools/smoke-gcsv.mjs
+
       - name: Upload built artifact
         uses: actions/upload-artifact@v4
         with:
