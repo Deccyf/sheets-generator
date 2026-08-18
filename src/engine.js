@@ -1003,8 +1003,16 @@ function diagSpansX(xml){
   for (let i = 0; i < paras.length; i++){
     const t = paraTextX(xml.slice(paras[i][0], paras[i][1])).trim();
     if (t.indexOf("Diagram:") === 0){
-      const dm = /Diagram:\s*([A-Za-z0-9]+)/.exec(t);
-      starts.push([i, dm ? dm[1] : t]);
+      /* The same key the merge itself uses: code and number, nothing else.
+         paraTextX drops the tabs, so "Diagram:\tAZ\t601\tSu" arrives as
+         "Diagram:AZ601Su" and taking one alphanumeric run swept the DAY into
+         the key. Any difference in that trailing cell - Sat against Sa -
+         made the base and the reissue disagree, so the reissued diagram was
+         appended to the end of the document instead of replacing the
+         superseded one, while the review still reported it replaced. The
+         books were right; the document handed to the depot was not. */
+      const dm = /Diagram:\s*([A-Za-z]+)\s*(\d+)/.exec(t);
+      starts.push([i, dm ? dm[1] + "|" + parseInt(dm[2], 10) : t]);
     }
   }
   const diags = [];
@@ -1022,6 +1030,7 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   try{ files = unzipFn(base.bytes); } catch (e){ return null; }
   if (!files["word/document.xml"]) return null;
   let xml = dec.decode(files["word/document.xml"]);
+  const appended = [];
   for (const r of reissues){
     if (!isDocxBytes(r.bytes)) continue;
     let rf;
@@ -1042,8 +1051,12 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
       else out.push(xml.slice(a, b));
       pos = b;
     }
+    /* A reissued diagram the base does not carry is appended rather than
+       dropped, but it is worth knowing about: with the keys agreeing it
+       should be a genuinely new diagram, not a failure to match. */
     let extra = "";
-    for (const [k, v] of rmap) if (!consumed.has(k)) extra += v;
+    for (const [k, v] of rmap)
+      if (!consumed.has(k)){ extra += v; appended.push(k.replace("|", " ")); }
     out.push(extra);
     out.push(xml.slice(pos));
     xml = out.join("");
@@ -1052,7 +1065,7 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   let zipped;
   try{ zipped = zipFn(files); } catch (e){ return null; }
   const nm = base.name.replace(/\.docx$/i, "").replace(/\.doc$/i, "") + "_UPDATED.docx";
-  return {name: nm, bytes: zipped};
+  return {name: nm, bytes: zipped, appended: appended};
 }
 
 function run(input, unzipFn, zipFn, opts){

@@ -803,7 +803,14 @@ const GENIUS = (() => {
         // the Train Roads point one way: the Ashford end always leads
         e.blocks[0].end = mk.fke;
         e.blocks[e.blocks.length - 1].end = mk.cbe;
-      } else if (mk && blocks.length > 1) {
+        /* e.blocks, not blocks: the attaching-unit filter above can drop a
+           unit from what prints, and the markers name the physical ends of
+           the formation that IS printed. Written against the unfiltered list
+           they could land on a row that never appears - leaving the printed
+           row with the other end, or a marker on a single unit, which the
+           rules say means nothing. The Folkestone East branch above always
+           had this right. */
+      } else if (mk && e.blocks.length > 1) {
         const dest = destCode(locName(e.destStop), warn, e.sec);
         let lead = null, rear = null;
         // A destination reached two ways settles it on the route first: the
@@ -816,7 +823,10 @@ const GENIUS = (() => {
           lead = mk.cbe; rear = mk.fke;
         } else warn.push({ sec: e.sec, msg: e.sec + " " + e.tmin + " to " + dest +
                          " - no rule for which end leads" });
-        if (lead) { blocks[0].end = lead; blocks[blocks.length - 1].end = rear; }
+        if (lead) {
+          e.blocks[0].end = lead;
+          e.blocks[e.blocks.length - 1].end = rear;
+        }
       }
       e.dest = destCode(locName(e.destStop), warn, e.sec + " " + e.tmin);
       /* Two routes to one place: say which. Only set when a rule matches, so

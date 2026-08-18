@@ -326,3 +326,36 @@ test("the prints read the same pasted, dropped, or saved as a CSV", async () => 
   assert.ok(mixed.merge, "a CSV reissue merges into a .docx base");
   assert.ok(mixed.updated, "and that one CAN produce the updated prints");
 });
+
+test("a reissue replaces its diagram however the day cell is spelled", () => {
+  /* The merge that decides what to replace keys a diagram on its code and
+     number. The splice that writes the _UPDATED document keyed it on one run
+     of alphanumerics off text with the tabs stripped, which swept the DAY
+     cell in too — "AZ601Su". So a reissue whose day cell read even slightly
+     differently matched nothing: the review reported the diagram replaced
+     while the document handed to the depot carried BOTH the superseded
+     working and the new one. The books were right and the document was not,
+     which is the worst way round. */
+  const N = built();
+  const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f) };
+  const dec = new TextDecoder();
+  const heads = doc => (dec.decode(zip.un(doc.bytes)["word/document.xml"])
+    .match(/Diagram:/g) || []).length;
+  const base = { name: "WEEKEND PRINTS.docx",
+                 bytes: makeDocx(PRINTS_LINES, N.fflate) };
+  const baseHeads = heads(base);
+
+  // the same reissue, with its day cell spelled a different way
+  const spelt = REISSUE_LINES.map(l => l.replace("\tSat", "\tSa"));
+  const res = N.SheetsEngine.run([base,
+    { name: "WEEKEND PRINTS reissue.docx", bytes: makeDocx(spelt, N.fflate) }],
+    zip.un, zip.z);
+  assert.ok(res.updated, "an updated document is produced");
+  assert.equal(heads(res.updated), baseHeads,
+    "the diagram is replaced in place, not appended alongside itself");
+  const xml = dec.decode(zip.un(res.updated.bytes)["word/document.xml"]);
+  assert.ok(xml.includes("1B06"), "the reissued working is in the document");
+  assert.ok(!xml.includes("1B02"), "and the superseded one is gone");
+  assert.deepEqual([...(res.updated.appended || [])], [],
+    "nothing had to be appended for want of a match");
+});
