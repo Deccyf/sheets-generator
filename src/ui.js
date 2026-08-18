@@ -485,7 +485,9 @@ function metroPane(sheets, what) {
 
 function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide, restore) {
   const art = document.createElement("article");
-  art.className = "road" + (wide ? " wide" : "");
+  // wide: "wide" for the depot's own documents, "sheetwide" for a berthing
+  // book, or nothing at all
+  art.className = "road" + (wide ? " " + (wide === true ? "wide" : wide) : "");
   art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
@@ -734,8 +736,11 @@ function reviewPane(items) {
         say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
       }]];
       // the Metro sheet is fourteen columns across and needs the room
+      /* The two depot documents need the full break-out; the berthing books
+         need a smaller one, or the NOTES column sits off the right edge. */
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts, !!(b.metro || b.hsSheet),
+        b.review.length, panes, acts,
+        (b.metro || b.hsSheet) ? "wide" : "sheetwide",
         wasOpen.get(b.road)));
     });
     built = books;

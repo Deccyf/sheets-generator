@@ -87,6 +87,14 @@
     width:min(96vw, 1180px);
     margin-left:calc((100% - min(96vw, 1180px)) / 2);
   }
+  /* The berthing sheet is 681px across and the page column gives it 614, so
+     the NOTES column - the one the guide tells operators to check - sat off
+     the right edge on every screen until you scrolled. A smaller break-out
+     than the Metro cards need, and it never exceeds the viewport. */
+  .road.sheetwide{
+    width:min(94vw, 840px);
+    margin-left:calc((100% - min(94vw, 840px)) / 2);
+  }
   .pickbar{
     display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
   }
@@ -151,10 +159,16 @@
     border-collapse:collapse; table-layout:fixed;
     font-family:Arial, Helvetica, sans-serif; color:#000;
   }
+  /* Excel lets a long value spill across the empty cells beside it, and the
+     395 sheet's headings depend on that - clipped to their own column they
+     read TRAI…, ARRI…, CET…, so the check on screen was less legible than
+     the workbook it previews. A filled cell paints over its neighbour, the
+     way the spreadsheet does; an empty one stays out of the way. */
   table.sheet td{
     padding:1px 3px; height:23px; vertical-align:middle;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; overflow:visible;
   }
+  table.sheet td:not(:empty){position:relative; z-index:1; background:#fff}
   /* where the paper falls when the book is printed */
   table.sheet tr.pbrk td{
     border-top:2px dashed #7A8A94; height:18px; padding:2px 3px 0;

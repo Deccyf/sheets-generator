@@ -380,8 +380,12 @@ function writeWorkbook(sheets, zipFn){
 const PREVIEW_PX = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6].map(function(w){
   return Math.round(w * 7 + 5);
 });
-const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt"};
-const LOOK_BOLD = {1:true, 3:true, 6:true};
+/* Looks 7-9 are the allocation sheets' own dress and had no entry here, so
+   the 395 preview emitted "font-size:undefined" and the browser dropped the
+   declaration. Bold Calibri 9, as the workbook has them. */
+const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt",
+                   7:"9pt", 8:"9pt", 9:"9pt"};
+const LOOK_BOLD = {1:true, 3:true, 6:true, 7:true, 8:true, 9:true};
 function colNum(s){
   let n = 0;
   for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
@@ -414,7 +418,11 @@ function previewHtml(layout){
   /* The preview is meant to be what gets saved, so the page breaks show on
      it too - otherwise the only way to see where the paper falls is to save
      the book and open Page Break Preview in Excel. */
-  const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow);
+  /* the layout's own opts, so a landscape fourteen-column sheet is measured
+     as one - the preview was sizing every book against the portrait house
+     widths, which undercuts "what you look at is what you get" */
+  const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow,
+                         layout.opts);
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
   /* table-layout:fixed only takes effect on a table with a definite width -

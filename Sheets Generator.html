@@ -94,6 +94,14 @@
     width:min(96vw, 1180px);
     margin-left:calc((100% - min(96vw, 1180px)) / 2);
   }
+  /* The berthing sheet is 681px across and the page column gives it 614, so
+     the NOTES column - the one the guide tells operators to check - sat off
+     the right edge on every screen until you scrolled. A smaller break-out
+     than the Metro cards need, and it never exceeds the viewport. */
+  .road.sheetwide{
+    width:min(94vw, 840px);
+    margin-left:calc((100% - min(94vw, 840px)) / 2);
+  }
   .pickbar{
     display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
   }
@@ -158,10 +166,16 @@
     border-collapse:collapse; table-layout:fixed;
     font-family:Arial, Helvetica, sans-serif; color:#000;
   }
+  /* Excel lets a long value spill across the empty cells beside it, and the
+     395 sheet's headings depend on that - clipped to their own column they
+     read TRAI…, ARRI…, CET…, so the check on screen was less legible than
+     the workbook it previews. A filled cell paints over its neighbour, the
+     way the spreadsheet does; an empty one stays out of the way. */
   table.sheet td{
     padding:1px 3px; height:23px; vertical-align:middle;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; overflow:visible;
   }
+  table.sheet td:not(:empty){position:relative; z-index:1; background:#fff}
   /* where the paper falls when the book is printed */
   table.sheet tr.pbrk td{
     border-top:2px dashed #7A8A94; height:18px; padding:2px 3px 0;
@@ -2736,8 +2750,12 @@ function writeWorkbook(sheets, zipFn){
 const PREVIEW_PX = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6].map(function(w){
   return Math.round(w * 7 + 5);
 });
-const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt"};
-const LOOK_BOLD = {1:true, 3:true, 6:true};
+/* Looks 7-9 are the allocation sheets' own dress and had no entry here, so
+   the 395 preview emitted "font-size:undefined" and the browser dropped the
+   declaration. Bold Calibri 9, as the workbook has them. */
+const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt",
+                   7:"9pt", 8:"9pt", 9:"9pt"};
+const LOOK_BOLD = {1:true, 3:true, 6:true, 7:true, 8:true, 9:true};
 function colNum(s){
   let n = 0;
   for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
@@ -2770,7 +2788,11 @@ function previewHtml(layout){
   /* The preview is meant to be what gets saved, so the page breaks show on
      it too - otherwise the only way to see where the paper falls is to save
      the book and open Page Break Preview in Excel. */
-  const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow);
+  /* the layout's own opts, so a landscape fourteen-column sheet is measured
+     as one - the preview was sizing every book against the portrait house
+     widths, which undercuts "what you look at is what you get" */
+  const plan = printPlan(layout.merges, layout.rowHeights, layout.maxRow,
+                         layout.opts);
   const pageAt = new Map();
   plan.breaks.forEach(function(b, i){ pageAt.set(b + 1, i + 2); });
   /* table-layout:fixed only takes effect on a table with a definite width -
@@ -8087,7 +8109,9 @@ function metroPane(sheets, what) {
 
 function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide, restore) {
   const art = document.createElement("article");
-  art.className = "road" + (wide ? " wide" : "");
+  // wide: "wide" for the depot's own documents, "sheetwide" for a berthing
+  // book, or nothing at all
+  art.className = "road" + (wide ? " " + (wide === true ? "wide" : wide) : "");
   art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
@@ -8336,8 +8360,11 @@ function reviewPane(items) {
         say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
       }]];
       // the Metro sheet is fourteen columns across and needs the room
+      /* The two depot documents need the full break-out; the berthing books
+         need a smaller one, or the NOTES column sits off the right edge. */
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts, !!(b.metro || b.hsSheet),
+        b.review.length, panes, acts,
+        (b.metro || b.hsSheet) ? "wide" : "sheetwide",
         wasOpen.get(b.road)));
     });
     built = books;
