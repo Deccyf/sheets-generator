@@ -3,7 +3,7 @@
    arrivals on the left and today's allocations on the right. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { built } from "./helpers/compare.mjs";
+import { built, legacy, normalizeWorkbook } from "./helpers/compare.mjs";
 import { makePdf, SUMMARY_LINES, DETAIL_LINES } from "./helpers/synth.mjs";
 
 const res = ctx => ctx.GENIUS.build(
@@ -64,6 +64,19 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   assert.ok(xml.includes('<tabColor rgb="FFFFFF00"/>'), "yellow tab saved");
   assert.ok(xml.includes("<conditionalFormatting"), "mileage colours saved");
   assert.ok(!xml.includes("<pageSetup"), "and no pageSetup, like theirs");
+
+  /* And the whole workbook survives a REAL parser. String checks above
+     cannot see malformed XML: the first cut of the skin extractor swallowed
+     the <borders count="..."> section header into border record 0, the
+     styleSheet nested a second unclosed <borders>, and Excel repaired the
+     file by throwing the styles part away. ExcelJS would have refused it
+     the same way Excel did. */
+  const wb = await normalizeWorkbook(legacy(), bytes);
+  assert.ok(wb.length >= 1, "the workbook loads in a real parser");
+  assert.ok(wb[0].cells.length > 20, "with its cells intact: " + wb[0].cells.length);
+  const vals = wb[0].cells.map(([, , rec]) => rec.v);
+  assert.ok(vals.includes("INT CLEAN") && vals.includes("Mileage Guide"),
+    "and the legend text survives the round trip");
 });
 
 test("each depot block is arrivals on the left, allocations on the right", async () => {

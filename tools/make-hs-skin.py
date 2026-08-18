@@ -24,7 +24,10 @@ ss = [unesc("".join(re.findall(r'<t[^>]*>(.*?)</t>', x, re.S)))
 numFmts = dict(re.findall(r'<numFmt numFmtId="(\d+)" formatCode="([^"]*)"/>', st))
 fonts   = re.findall(r'<font>.*?</font>|<font/>', st, re.S)
 fills   = re.findall(r'<fill>.*?</fill>|<fill/>', st, re.S)
-borders = re.findall(r'<border[^>]*>.*?</border>|<border/>', st, re.S)
+# NOT <border[^>]*> - that also matches the <borders count="..."> section
+# header, which then rides into border record 0 and nests an unclosed
+# <borders> inside the emitted one. Excel refused the whole styles part.
+borders = re.findall(r'<border(?: [^>]*)?>.*?</border>|<border/>', st, re.S)
 xfs     = re.findall(r'<xf [^>]*/>|<xf [^>]*>.*?</xf>',
                      re.search(r'<cellXfs.*?</cellXfs>', st, re.S).group(0), re.S)
 dxfs    = re.findall(r'<dxf>.*?</dxf>',
@@ -152,6 +155,10 @@ for pat, what in [(r'395\d{3}', "unit number"), (r'\b[125][A-Z]\d\d\b', "headcod
         leaks.append(what + ": " + m.group(0))
 if leaks:
     raise SystemExit("LEAKS:\n" + "\n".join(sorted(set(leaks))))
+# the styleSheet must be well-formed XML before it is allowed anywhere
+# near a workbook - Excel drops the whole part over one bad tag
+import xml.dom.minidom
+xml.dom.minidom.parseString(styles)
 open("/home/user/sheets-generator/src/hs-skin.js", "w").write(js)
 print("wrote src/hs-skin.js", len(js), "bytes,", len(out_xfs), "styles,",
       len(f_used), "fonts,", len(l_used), "fills,", len(b_used), "borders")
