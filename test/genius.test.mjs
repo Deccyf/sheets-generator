@@ -995,3 +995,30 @@ test("a Summary row is read whether or not the UNITS column is filled", () => {
       what + ": every field read off the right column");
   }
 });
+
+test("a fleet no book knows is named, not dropped three times in silence", async () => {
+  /* Each book skips a diagram whose fleet its own table does not carry, with
+     a bare `continue`. Three books, three silent skips, and a fleet none of
+     them knows leaves every book at once with nothing anywhere to say so —
+     the same shape as the depot that was missing from a list. The three
+     tables together are the whole vocabulary, so anything outside them is
+     said once, by name. */
+  const N = built();
+  const stray = SUMMARY_LINES.map(l =>
+    l.startsWith("GT103") ? l.replace("375/9", "465/2") : l);
+  const res = await N.GENIUS.build(
+    [makePdf(stray, N.fflate), makePdf(DETAIL_LINES, N.fflate)]);
+  const said = res.review.filter(m => /is in no book/.test(m));
+  assert.equal(said.length, 1, "one note, not one per book: " + said.length);
+  assert.match(said[0], /465\/2/, "naming the fleet code that was not known");
+  assert.match(said[0], /GT103/, "and the diagram it cost");
+  // …and the diagram really is absent, which is what the note is for
+  const inBooks = JSON.stringify([res.secsByDay, res.metroSecs, res.hsSecs]);
+  assert.ok(!inBooks.includes("103"), "the diagram is genuinely left out");
+
+  // an ordinary build says nothing of the kind
+  const clean = await N.GENIUS.build(
+    [makePdf(SUMMARY_LINES, N.fflate), makePdf(DETAIL_LINES, N.fflate)]);
+  assert.equal(clean.review.filter(m => /is in no book/.test(m)).length, 0,
+    "and a build whose fleets are all known stays quiet");
+});

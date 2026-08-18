@@ -7089,6 +7089,25 @@ const GENIUS = (() => {
         if (!haveSum.has(diag))
           noteAll(date + " " + diag + ": a detail itinerary with no summary" +
             " row - the diagram is left out, check the Summary export");
+      /* A fleet none of the three books knows is dropped by all three, and
+         each drop is a bare `continue` - so the diagram left every book at
+         once without a word, which is the same silent shape as a depot
+         missing from a list. The three tables together are the whole
+         vocabulary, so anything outside them is said here, once. */
+      {
+        const known = new Set();
+        for (const p of PROFILES_G) for (const f of Object.keys(p.fleets)) known.add(f);
+        const strays = new Map();
+        for (const r of rows) {
+          if (!r.fleet || known.has(r.fleet)) continue;
+          if (!strays.has(r.fleet)) strays.set(r.fleet, new Set());
+          strays.get(r.fleet).add(r.diag);
+        }
+        for (const [fleet, diags] of strays)
+          noteAll(date + " " + [...diags].sort().join(", ") + ": fleet " +
+            fleet + " is in no book - the diagram is left out of all of " +
+            "them. Check the fleet code in the Summary export");
+      }
       const warnMain = [], warnMetro = [], warnHs = [];
       secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx);
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
