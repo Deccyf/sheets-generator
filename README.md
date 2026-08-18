@@ -241,7 +241,7 @@ at. Check the finished books against the reports, the prints and the ACWNs.
 | **SHEETS** | `SHEETS_<tag>.xlsx` | The mainline book (classes 375 / 375-9 / 376 / 377), every section from Ashford to West Marina. Ramsgate is cut out into its own book. |
 | **RAM_SHEETS** | `RAM_SHEETS_<tag>.xlsx` | Ramsgate's own book, cut from the same day's workings. |
 | **METRO_SHEETS** | `METRO_SHEETS_<tag>.xlsx` | The metro book (classes 465 / 466 / 707) — **not a berthing sheet**: the depot's own document, one worksheet per location, landscape, fourteen columns. See [The Metro sheets](#the-metro-sheets). |
-| **HS_SHEETS** | `HS_SHEETS_<tag>.xlsx` | The High Speed book (class 395) — built whenever the reports contain High Speed diagrams. |
+| **HS_SHEETS** | `HS_SHEETS_<tag>.xlsx` | The High Speed book (class 395) — built whenever the reports contain High Speed diagrams. **Not a berthing sheet** either: the depot's own Class 395 Allocations Sheet. See [The Metro and High Speed sheets](#the-metro-sheets). |
 | **Weekend** | `SHEETS_<stamp>.xlsx`, `SHEETS_465_466_707_<stamp>.xlsx`, `SHEETS_395_<stamp>.xlsx` | One workbook per fleet for the weekend day, plus `<prints>_UPDATED.docx` when a reissue was merged. |
 
 `<tag>` comes from the report dates (e.g. `MON-03-08`); the weekend `<stamp>`
@@ -307,6 +307,46 @@ builds it in the depot's own format, taken from their May 2026 workbook:
   distinguishes `GPD` from `GPU`, and `PLUS` for `PLU`) and no mapping is
   claimed, because a May sheet against August reports cannot tell a different
   vocabulary from a diagram that now ends somewhere else.
+
+### The High Speed sheet
+
+The same again for the 395s, taken from the operator's own Class 395
+Allocations Sheet for 18/08/2026:
+
+* **One worksheet per day**, named the way their workbook names them —
+  `Tue 18 08` — landscape.
+* A **block per depot** down it (Ashford, Margate, Ramsgate), each two tables
+  side by side: `<DEPOT> PM ARRIVALS <yesterday>` on the left, and
+  `<DEPOT> UNIT ALLOCATIONS <today>` on the right.
+* The arrivals table is filled from **the day before's own entries**, so it
+  works whenever the reports cover more than one day — a Monday-to-Friday pair
+  fills every day but the Monday, and a single day's reports say
+  *"no previous day loaded"* in the heading rather than showing a quiet blank.
+* `N/M M/O`, `FP/RP`, `CET DUE`, `ARRIVES`, the next working and the notes are
+  ruled and left empty; the rest comes off the reports.
+* **Timed off the first move**, because their sheet is: `AZ601` is `04+19` on
+  it where the platform departure is `05+03`. That is `firstDepAll` on the
+  weekday High Speed profile — and *only* the weekday one. The weekend High
+  Speed book is still a berthing book and nobody has held one against a copy
+  timed that way, so it keeps the platform departure.
+* **Their dress, not the berthing books'.** Lifted off the 18/08 tab: bold
+  Calibri 9 throughout, the block titles in their green (`FF00B050`), the
+  header row wrapped, the arrivals columns filled white. The writer gained
+  those two fonts, a solid white fill and a `wrapText` alignment for it — it
+  had six Arial fonts and no fills at all. What a generated copy does **not**
+  carry is what the workbook holds because people have been using it: 38 files
+  of threaded comments with the drawings that anchor them, and the conditional
+  formatting. Those are house-keeping on their copy, not the shape of the
+  document.
+* **Their berth vocabulary, not the berthing books'** — `ASH` for `AFK`, `RAM`
+  for `RE`, `FAV` for `FKE`. `ASH` appears 2019 times in the real sheet's ENDS
+  columns against `AFK`'s 6.
+
+Against their 18/08 sheet, every departure time matches to the minute once the
+timing moved (`04+19`, `04+33`, `04+53`, `05+08`, `05+24`, `05+38`, `05+56`,
+`05+58`, `09+54`, `10+05`, `15+35`, `15+38`, `16+26`), and the `MG` column
+agrees on `AZ601` (951), `AZ602` (828), `AZ603` (1012), `AZ607` (799) and
+`AZ610` (906).
 
 **They are set up to print.** Every sheet comes out A4 portrait with the house
 margins, scaled so the eight columns land on **one page across** and so the
@@ -471,6 +511,7 @@ test suite drives them.
 | `src/rulebook.js` | **`SHEETS_RULEBOOK`** — the day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`) and the stop-collapsing walk both engines share. |
 | `src/rules.js` | **`SHEETS_RULES`** — the pure part of local unit-order corrections (key grammar, merge, storage round-trip) *and* `explain()`/`explainHtml()`, which turn a build's rules into plain English. `explainHtml(env, pick)` takes `{only:[ids]}` or `{skip:[ids]}`, which is how the tool splits the same call across two tabs — **Unit order** carries the corrections next to the Reverse buttons that write them, **Rules** carries everything else as read-only reference, and `BERTHING SHEET RULES.html` takes the lot. No DOM, no tables of its own: it takes a plain object describing the build. |
 | `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. Widths and page setup come from the layout, so one workbook can be portrait eight-column and another landscape fourteen. |
+| `src/hs.js` | **`SHEETS_HS`** — the High Speed book as the depot's Class 395 Allocations Sheet: a worksheet per day, a block per depot, last night's arrivals beside today's allocations. |
 | `src/metro.js` | **`SHEETS_METRO`** — the Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns, read by Position. Not a berthing sheet — see [The Metro sheets](#the-metro-sheets). |
 | `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
 | `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
