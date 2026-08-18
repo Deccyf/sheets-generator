@@ -77,10 +77,13 @@ function layoutSection(name, entries, dateLbl, dateFull) {
      overflow across the empty cells to its right, which is what Excel does
      anyway - measured in, they pushed TRAIN I.D. from 11 characters wide to
      the 32-character cap. */
-  const put = (r, c, v, look, sides, noFit) =>
+  /* A figure written as text carries Excel's "number stored as text" mark
+     and cannot be sorted or summed; the depot's own workbook holds POS and
+     MILES as numbers, so these do too. Same flag the 395 sheet's MG uses. */
+  const put = (r, c, v, look, sides, noFit, num) =>
     cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
                  look, sides: sides || [null, null, null, null],
-                 noFit: !!noFit });
+                 noFit: !!noFit, num: !!num });
   let r = 1;
   put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
   put(r, 13, dateLbl, 2);
@@ -109,22 +112,23 @@ function layoutSection(name, entries, dateLbl, dateFull) {
     units.forEach((u, i) => {
       const lastOfEntry = i === units.length - 1;
       const bot = lastOfEntry ? "thin" : null;
-      const col = (c, v, look) =>
+      const col = (c, v, look, num) =>
         put(r, c, v, look === undefined ? BODY_LOOK : look,
-            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot]);
+            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot],
+            false, num);
       // written once, against the top row of the formation
       col(1, i === 0 ? (e.headcode || "") : "");
       col(2, i === 0 ? hhmm(e) : "");
       col(3, "");                                   // STATION / SIGNAL: by hand
       col(4, i === 0 ? destName(e.dest) : "");
-      col(5, u.pos == null ? "" : u.pos);
+      col(5, u.pos == null ? "" : u.pos, undefined, u.pos != null);
       col(6, (u.code || "") + u.diag);
       col(7, u.unit || "");                         // the allocated unit
       col(8, "");                                   // ROAD / PLATFORM: by hand
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
       col(13, u.ends || "");
-      col(14, u.miles == null ? "" : Math.round(u.miles), 5);
+      col(14, u.miles == null ? "" : Math.round(u.miles), 5, u.miles != null);
       rowHeights.set(r, 18);
       r++;
     });

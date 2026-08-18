@@ -57,11 +57,15 @@ def take(r, keep_values, clear=()):
         got.append([r, col, x, "" if (not keep_values or col in clear) else v])
     return got
 
-# rows 1-6: the legend. Date/Time Sent values and the version are cleared -
-# they belong to the day the sheet was sent, not to the template.
+# rows 1-6: the legend. The right-hand value column carries what belongs to
+# the day the sheet was SENT - the date, the time, and the workbook version -
+# so rows 3, 5 and 6 have their S/T values dropped. Row 6 was missed: the
+# version sits there, not on 3 or 5, so every generated sheet was stamped
+# with the operator's own "VERSION 1". The allow-list at the bottom is what
+# stops the next one of these going unnoticed.
 legend = []
 for r in range(1, 7):
-    legend += take(r, True, clear=("S", "T") if r in (3, 5) else ())
+    legend += take(r, True, clear=("S", "T") if r in (3, 5, 6) else ())
 # rows 60-66: the notes footer. The RULED SHAPE is template; much of the
 # text is operational (the COMMENTS box named three units and a date, which
 # is what the leak check below caught). Keep only the standing house notes.
@@ -249,6 +253,34 @@ js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n
       "const SHEETS_HS_SKIN = " + json.dumps(skin, indent=1) + ";\n"
       'if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS_SKIN;\n'
       'if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKIN;\n')
+
+# ---- every word this skin ships has to be house text ----
+# The pattern-based leak check below cannot catch a string nobody thought of:
+# it caught unit numbers and a date serial, and sailed past "VERSION 1". So
+# the text is allow-listed instead - anything new in the workbook's template
+# rows fails the build by name and has to be looked at.
+HOUSE_TEXT = {
+    # the legend, rows 1-6
+    # "\xa0" is the non-breaking spacer in the mileage key: [ ] = < 500
+    "INT CLEAN", "EXT CLEAN", "Mileage Guide", "=", " ", "\xa0",
+    "< 500 Miles", "> 500 Miles", "Date Sent", "Time Sent",
+    # the column headings, row 8
+    "TRAIN ID", "ARRIVAL TIME", "UNIT NUMBER", "6 OR 12 CAR", "CET DUE",
+    "DIAGRAM", "N/M\r\nM/O", "MG", "TIME", "FP/RP", "UNIT NO",
+    "ENDS AM", "ENDS PM", "ARRIVES", "WORKS",
+    # the standing notes, rows 60-66
+    "NOTE", "COMMENTS", "FP AT ASHFORD IS STOPS END",
+    "FP AT RAMSGATE IS MARGATE END",
+    "Ramsgate arrivals. Units to be shown on the same line as their "
+    "allocated diagram.",
+    "CET LEGEND", "5 DAYS +", "4 DAYS", "3 DAYS",
+}
+shipped = ({v for _, _, _, v in legend if v} | {v for _, _, _, v in footer if v}
+           | {v for _, _, v in header if v})
+strangers = sorted(shipped - HOUSE_TEXT)
+if strangers:
+    raise SystemExit("NOT KNOWN HOUSE TEXT (add to HOUSE_TEXT if it really is "
+                     "template, or clear it):\n  " + "\n  ".join(map(repr, strangers)))
 
 # leak check before anything is written
 leaks = []

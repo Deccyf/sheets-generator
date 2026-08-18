@@ -108,10 +108,12 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
 
   let r = 7;
   let pri = 1;
+  let blocks = 0;
   for (const depot of DEPOTS) {
     const list = (secs && secs.get(depot)) || [];
     const arr = prev ? arrivalsInto(depot, prev) : [];
     if (!list.length && !arr.length) continue;
+    blocks++;
 
     // title row, merged across each of its two tables
     for (const [c, xf] of Object.entries(SKIN.title)) {
@@ -153,7 +155,9 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         const val = c === "B" ? (a ? a.hc : "") : c === "C" ? (a ? a.at : "")
                   : c === "D" ? (a ? a.unit : "") : c === "E" ? (a ? a.cars : "")
                   : "";
-        put(r, COL(c), xf, val);
+        // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
+        put(r, COL(c), xf, val, undefined,
+            (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
       for (const [c, xf] of Object.entries(right)) {
         if (COL(c) < 7) continue;
@@ -162,7 +166,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "L" ? v.time : c === "N" ? v.unit
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
         put(r, COL(c), xf, val, undefined,
-            c === "K" && val !== "" && isFinite(val));
+            (c === "K" || c === "N") && val !== "" && /^\d+$/.test(String(val)));
       }
       /* The route notes their sheet keeps as comments on the DIAGRAM
          cells. "Not over high level" is DERIVED, per working: a stint
@@ -221,7 +225,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";
-  return { cells, merges, rowHeights, maxRow: r, comments,
+  return { cells, merges, rowHeights, maxRow: r, comments, blocks,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
                    lastCol: "T", noPageSetup: true, widths: PREVIEW_W } };
@@ -239,7 +243,12 @@ function sheetsFor(hsSecs, labels, dates) {
       : lbl || "SHEET";
     return { name: name.slice(0, 31),
              layout: layoutDay(d, labels, dates, hsSecs, i > 0 ? days[i - 1] : null) };
-  }).filter(s => s.layout.cells.some(c => c.r > 6 && c.r < 55 && c.v));
+    /* A day with no 395 work gets no tab. Testing for "any filled cell in
+       the block rows" looked equivalent and was not: with no blocks to
+       anchor it the standing footer is re-anchored right up into that range,
+       so an empty day satisfied the test and shipped a tab carrying the
+       legend and the house notes and nothing else. Count the blocks. */
+  }).filter(s => s.layout.blocks > 0);
 }
 function writeHsBook(hsSecs, labels, dates, zipFn) {
   const sheets = sheetsFor(hsSecs, labels, dates);

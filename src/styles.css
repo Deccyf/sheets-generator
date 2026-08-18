@@ -1,6 +1,11 @@
   :root{
     --apron:#D5D7D0; --apron-dk:#C4C7BF; --steel:#262E33; --paper:#FAF9F5;
-    --signal:#0E7C42; --amber:#9C5C10; --chalk:#79818A; --rail:#5A6169;
+    --signal:#0E7C42; --amber:#9C5C10; --chalk:#525A62; --rail:#5A6169;
+    /* --rule was used by the Rules tables and never declared, so their
+       header borders and the note rail simply did not draw */
+    --rule:#C4C7BF;
+    /* the warning colour: --amber only reaches 3.67:1 on the apron */
+    --warn:#7A470C;
     --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
     --sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   }
@@ -61,6 +66,10 @@
   }
   .status.err{color:#9B2226}
   .status.go{color:var(--signal)}
+  /* The build asked for this and it did not exist, so the one message that
+     says something needs a human eye fell back to the faintest grey on the
+     page while "nothing needed a human eye" got the green. */
+  .status.warn{color:var(--warn)}
 
   /* ---------- roads ---------- */
   .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}

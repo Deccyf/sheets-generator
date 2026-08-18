@@ -722,8 +722,19 @@ function reviewPane(items) {
       ? (n === 1 ? " 1 item for a human eye is on its book's Review tab."
                  : " " + n + " items for a human eye are on the books' Review tabs.")
       : " Nothing needed a human eye.";
-    say("Books built — look them over below, then save." + rv,
-        res.review.length ? "warn" : "go");
+    /* A correction made with Reverse is kept on this computer and re-applied
+       to every build on it, for good - so it has to be said out loud on
+       every build, not left to a tab label that reads like the review count
+       beside it. On a shared machine one person's reversal quietly reshapes
+       everybody else's books. */
+    const ed = editCount();
+    const mine = ed
+      ? " " + ed + (ed === 1 ? " order correction" : " order corrections") +
+        " made on this computer " + (ed === 1 ? "is" : "are") +
+        " in force — see the Unit order tab."
+      : "";
+    say("Books built — look them over below, then save." + rv + mine,
+        (res.review.length || ed) ? "warn" : "go");
   }
 
   async function accept(file) {

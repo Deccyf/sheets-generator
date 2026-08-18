@@ -7,7 +7,12 @@
 <style>
   :root{
     --apron:#D5D7D0; --apron-dk:#C4C7BF; --steel:#262E33; --paper:#FAF9F5;
-    --signal:#0E7C42; --amber:#9C5C10; --chalk:#79818A; --rail:#5A6169;
+    --signal:#0E7C42; --amber:#9C5C10; --chalk:#525A62; --rail:#5A6169;
+    /* --rule was used by the Rules tables and never declared, so their
+       header borders and the note rail simply did not draw */
+    --rule:#C4C7BF;
+    /* the warning colour: --amber only reaches 3.67:1 on the apron */
+    --warn:#7A470C;
     --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
     --sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   }
@@ -68,6 +73,10 @@
   }
   .status.err{color:#9B2226}
   .status.go{color:var(--signal)}
+  /* The build asked for this and it did not exist, so the one message that
+     says something needs a human eye fell back to the faintest grey on the
+     page while "nothing needed a human eye" got the green. */
+  .status.warn{color:var(--warn)}
 
   /* ---------- roads ---------- */
   .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}
@@ -3129,10 +3138,13 @@ function layoutSection(name, entries, dateLbl, dateFull) {
      overflow across the empty cells to its right, which is what Excel does
      anyway - measured in, they pushed TRAIN I.D. from 11 characters wide to
      the 32-character cap. */
-  const put = (r, c, v, look, sides, noFit) =>
+  /* A figure written as text carries Excel's "number stored as text" mark
+     and cannot be sorted or summed; the depot's own workbook holds POS and
+     MILES as numbers, so these do too. Same flag the 395 sheet's MG uses. */
+  const put = (r, c, v, look, sides, noFit, num) =>
     cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
                  look, sides: sides || [null, null, null, null],
-                 noFit: !!noFit });
+                 noFit: !!noFit, num: !!num });
   let r = 1;
   put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
   put(r, 13, dateLbl, 2);
@@ -3161,22 +3173,23 @@ function layoutSection(name, entries, dateLbl, dateFull) {
     units.forEach((u, i) => {
       const lastOfEntry = i === units.length - 1;
       const bot = lastOfEntry ? "thin" : null;
-      const col = (c, v, look) =>
+      const col = (c, v, look, num) =>
         put(r, c, v, look === undefined ? BODY_LOOK : look,
-            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot]);
+            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot],
+            false, num);
       // written once, against the top row of the formation
       col(1, i === 0 ? (e.headcode || "") : "");
       col(2, i === 0 ? hhmm(e) : "");
       col(3, "");                                   // STATION / SIGNAL: by hand
       col(4, i === 0 ? destName(e.dest) : "");
-      col(5, u.pos == null ? "" : u.pos);
+      col(5, u.pos == null ? "" : u.pos, undefined, u.pos != null);
       col(6, (u.code || "") + u.diag);
       col(7, u.unit || "");                         // the allocated unit
       col(8, "");                                   // ROAD / PLATFORM: by hand
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
       col(13, u.ends || "");
-      col(14, u.miles == null ? "" : Math.round(u.miles), 5);
+      col(14, u.miles == null ? "" : Math.round(u.miles), 5, u.miles != null);
       rowHeights.set(r, 18);
       r++;
     });
@@ -3637,7 +3650,7 @@ const SHEETS_HS_SKIN = {
    6,
    "S",
    84,
-   "VERSION 1"
+   ""
   ],
   [
    6,
@@ -4744,10 +4757,12 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
 
   let r = 7;
   let pri = 1;
+  let blocks = 0;
   for (const depot of DEPOTS) {
     const list = (secs && secs.get(depot)) || [];
     const arr = prev ? arrivalsInto(depot, prev) : [];
     if (!list.length && !arr.length) continue;
+    blocks++;
 
     // title row, merged across each of its two tables
     for (const [c, xf] of Object.entries(SKIN.title)) {
@@ -4789,7 +4804,9 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         const val = c === "B" ? (a ? a.hc : "") : c === "C" ? (a ? a.at : "")
                   : c === "D" ? (a ? a.unit : "") : c === "E" ? (a ? a.cars : "")
                   : "";
-        put(r, COL(c), xf, val);
+        // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
+        put(r, COL(c), xf, val, undefined,
+            (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
       for (const [c, xf] of Object.entries(right)) {
         if (COL(c) < 7) continue;
@@ -4798,7 +4815,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "L" ? v.time : c === "N" ? v.unit
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
         put(r, COL(c), xf, val, undefined,
-            c === "K" && val !== "" && isFinite(val));
+            (c === "K" || c === "N") && val !== "" && /^\d+$/.test(String(val)));
       }
       /* The route notes their sheet keeps as comments on the DIAGRAM
          cells. "Not over high level" is DERIVED, per working: a stint
@@ -4857,7 +4874,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";
-  return { cells, merges, rowHeights, maxRow: r, comments,
+  return { cells, merges, rowHeights, maxRow: r, comments, blocks,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
                    lastCol: "T", noPageSetup: true, widths: PREVIEW_W } };
@@ -4875,7 +4892,12 @@ function sheetsFor(hsSecs, labels, dates) {
       : lbl || "SHEET";
     return { name: name.slice(0, 31),
              layout: layoutDay(d, labels, dates, hsSecs, i > 0 ? days[i - 1] : null) };
-  }).filter(s => s.layout.cells.some(c => c.r > 6 && c.r < 55 && c.v));
+    /* A day with no 395 work gets no tab. Testing for "any filled cell in
+       the block rows" looked equivalent and was not: with no blocks to
+       anchor it the standing footer is re-anchored right up into that range,
+       so an empty day satisfied the test and shipped a tab carrying the
+       legend and the house notes and nothing else. Count the blocks. */
+  }).filter(s => s.layout.blocks > 0);
 }
 function writeHsBook(hsSecs, labels, dates, zipFn) {
   const sheets = sheetsFor(hsSecs, labels, dates);
@@ -8226,8 +8248,19 @@ function reviewPane(items) {
       ? (n === 1 ? " 1 item for a human eye is on its book's Review tab."
                  : " " + n + " items for a human eye are on the books' Review tabs.")
       : " Nothing needed a human eye.";
-    say("Books built — look them over below, then save." + rv,
-        res.review.length ? "warn" : "go");
+    /* A correction made with Reverse is kept on this computer and re-applied
+       to every build on it, for good - so it has to be said out loud on
+       every build, not left to a tab label that reads like the review count
+       beside it. On a shared machine one person's reversal quietly reshapes
+       everybody else's books. */
+    const ed = editCount();
+    const mine = ed
+      ? " " + ed + (ed === 1 ? " order correction" : " order corrections") +
+        " made on this computer " + (ed === 1 ? "is" : "are") +
+        " in force — see the Unit order tab."
+      : "";
+    say("Books built — look them over below, then save." + rv + mine,
+        (res.review.length || ed) ? "warn" : "go");
   }
 
   async function accept(file) {

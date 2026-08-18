@@ -371,7 +371,7 @@ const SHEETS_HS_SKIN = {
    6,
    "S",
    84,
-   "VERSION 1"
+   ""
   ],
   [
    6,
