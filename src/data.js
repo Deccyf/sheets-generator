@@ -370,6 +370,11 @@ const SIDING_CLASS_RE = new RegExp(
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },
+      /* The High Speed allocation sheet is timed off the first time the unit
+         moves, the way the Metro one is: their own 18/08 sheet has AZ601 at
+         04+19 where the platform departure is 05+03. This is the reports
+         side only - see the weekend derivation below. */
+      firstDepAll: true,
       posAsc: new Set(), roadPosAsc: new Map(),
       firstDep: new Set(), ecsOnlyOk: new Set() },
   ];
@@ -591,7 +596,12 @@ const PROFILES = [
     fleets: g.fleets,
     headcode_sections: HEADCODE_SECTIONS,
     pos_asc: g.posAsc, road_pos_asc: g.roadPosAsc,
-    first_dep: g.firstDep, first_dep_all: !!g.firstDepAll,
+    /* The weekend High Speed book is still a berthing book and nobody has
+       held one against a marked-up copy timed off the first move, so it
+       keeps the platform departure. The weekday side moved because the
+       operator's own allocation sheet is timed that way. */
+    first_dep: g.firstDep,
+    first_dep_all: g.bucket === "hs" ? false : !!g.firstDepAll,
     ecs_only_ok: g.ecsOnlyOk,
   };
 });
