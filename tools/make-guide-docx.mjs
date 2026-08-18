@@ -21,9 +21,22 @@
    be there. Carlito has Calibri's metrics, which is what the guide is set
    in, so the line breaks land where Word puts them. */
 import { createRequire } from "node:module";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
+/* The tool's own zip, used to repack the result deterministically (below).
+   It is a UMD bundle and this package is "type": "module", so requiring it
+   by path hands it to the ESM loader and its module/exports branch is never
+   taken. Run it as the CommonJS it is and take what it exports. */
+const fflate = (() => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)),
+                                "..", "src", "vendor", "fflate.js"), "utf8");
+  const mod = { exports: {} };
+  new Function("module", "exports", src)(mod, mod.exports);
+  return mod.exports;
+})();
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle,
   Table, TableRow, TableCell, WidthType, ShadingType, LevelFormat, Footer,
@@ -40,6 +53,10 @@ const INK = "262E33", INK2 = "3C464D", CHALK = "79818A",
       SIGNAL = "0E7C42", AMBER = "8A5210", RULE = "C4C7BF",
       PAPER = "F5F4EF", SHEET_RULE = "8C8C8C";
 const BODY = "Calibri", MONO = "Consolas", HEAD = "Segoe UI";
+
+/* The document properties' date. Deliberately a constant and not "now" -
+   see the Document below. Bump it only if it ever matters what it says. */
+const BUILD_STAMP = new Date("2026-01-01T00:00:00Z");
 
 const PAGE_W = 11906, MARGIN = 1418;          // A4, 2.5 cm margins
 const W = PAGE_W - MARGIN * 2;                // usable width, DXA
@@ -619,6 +636,12 @@ const doc = new Document({
   creator: "Sheets Generator",
   title: "How to use the Sheets Generator",
   description: "A plain-English guide to building the unit berthing books.",
+  /* A fixed stamp, so the same words always produce the same file. Left to
+     itself the library writes the moment of the build into docProps, and
+     since the .docx is committed, every `node build.mjs` - anyone's, for any
+     reason - left the repository dirty with a document whose only change was
+     the time it was generated. */
+  createdAt: BUILD_STAMP, modifiedAt: BUILD_STAMP,
   numbering: {
     config: [
       { reference: "steps", levels: [{
@@ -661,7 +684,33 @@ const doc = new Document({
   }],
 });
 
+/* ---- deterministic output ----
+   The library stamps the moment of the build into docProps/core.xml and into
+   every zip entry's date, so two builds of the identical guide produced two
+   different files. The .docx is committed, so that left the repository dirty
+   after any `node build.mjs` - the guide "changed" when nothing about it had.
+   Repacking with one fixed date makes the file a function of its words
+   alone: it only changes when the guide does. fflate is the copy the tool
+   itself ships, so this costs no new dependency. */
+function deterministic(buf) {
+  const files = fflate.unzipSync(new Uint8Array(buf));
+  const stamp = BUILD_STAMP.toISOString();
+  const core = "docProps/core.xml";
+  if (files[core]) {
+    const xml = new TextDecoder().decode(files[core]).replace(
+      /<dcterms:(created|modified)([^>]*)>[^<]*<\/dcterms:\1>/g,
+      (_, tag, attrs) => "<dcterms:" + tag + attrs + ">" + stamp +
+                         "</dcterms:" + tag + ">");
+    files[core] = new TextEncoder().encode(xml);
+  }
+  // one mtime for every entry, in the order the library wrote them
+  const opts = { level: 6, mtime: BUILD_STAMP };
+  const stamped = {};
+  for (const name of Object.keys(files)) stamped[name] = [files[name], opts];
+  return Buffer.from(fflate.zipSync(stamped, opts));
+}
+
 const out = process.argv[2] || "HOW TO USE.docx";
-const buf = await Packer.toBuffer(doc);
+const buf = deterministic(await Packer.toBuffer(doc));
 writeFileSync(out, buf);
 console.log("wrote " + out + " — " + Math.round(buf.length / 1024) + " KB");
