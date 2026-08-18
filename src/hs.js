@@ -1,7 +1,7 @@
 /* SHEETS_HS — the Class 395 Allocations Sheet, in the depot's own dress.
 
    Not a berthing sheet. The layout is the operator's own workbook: one
-   worksheet per day, a block per depot (Ashford, Margate, Ramsgate), each
+   worksheet per day, a block per depot (see DEPOTS below), each
    block two tables side by side - last night's arrivals on the left, the
    day's allocations on the right - with the clean-marks and mileage key
    above and the standing house notes below.

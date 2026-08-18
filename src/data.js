@@ -342,12 +342,15 @@ const SIDING_CLASS_RE = new RegExp(
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      // Ramsgate is NOT here. Its own book prints every coupled formation
-      // highest Position first - all five in the 12/08 book, and a tester
-      // flagged the same five off a later day. It was on this list until the
-      // Ramsgate book was compared against its real counterpart, which had
-      // never been done: every accuracy figure before that was the mainline
-      // book with Ramsgate cut out.
+      /* Ramsgate IS on the posAsc list below, and has to stay there. Six of
+         its coupled formations read lowest Position first and five read
+         highest first, so turning the whole section round swapped which five
+         came out wrong rather than fixing anything - that was tried and
+         measured against the real 12/08 Ramsgate book. The five are named in
+         ORDER_FIX instead, where the same tester's mark-up put them.
+         This note used to say the opposite, and it was wrong: anyone who
+         "corrected" the code to match it would quietly reverse the six
+         formations that are already right. */
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),

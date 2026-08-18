@@ -546,6 +546,21 @@ function reviewPane(items) {
   /* the dropped pair itself, kept so a rule edit can rebuild in place: the
      order lookup happens inside the build, so re-rendering is not enough */
   let lastInputs = null;
+  /* Take the books off the screen, and everything that acts on them. Books
+     on screen are one click from a Save button and only their file name says
+     which day they are, so they must not outlive the pair that built them -
+     not a failed build, and not a new report arriving on top of them.
+     Returns whether anything was actually showing. */
+  function clearBooks() {
+    const had = !!(built && built.length);
+    roadsEl.textContent = "";
+    allbar.hidden = true;
+    optsEl.hidden = true;
+    opts2El.hidden = true;
+    allnote.textContent = "";
+    built = null; lastRes = null; lastInputs = null;
+    return had;
+  }
   const have = {};           // sum / det, whichever has arrived
   let queue = Promise.resolve();
   /* No Metro or High Speed toggle on this panel: both of those sheets carry
@@ -785,12 +800,7 @@ function reviewPane(items) {
         say("Build failed: " + err.message, "err");
         /* Books from an earlier drop must not survive a failed one: they are
            one click from a zip named for the day that failed. */
-        roadsEl.textContent = "";
-        allbar.hidden = true;
-        optsEl.hidden = true;
-        opts2El.hidden = true;
-        allnote.textContent = "";
-        built = null; lastRes = null; lastInputs = null;
+        clearBooks();
       }
       delete have.sum; delete have.det;
       zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
@@ -800,7 +810,15 @@ function reviewPane(items) {
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
       const what = family(fmt) === "integrale" ? "CSV" : "report";
-      say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want + " " + what + ".");
+      /* …and they must not sit under a HALF-loaded new one either. A report
+         arriving on top of a finished build makes those books the previous
+         day's: the Save buttons still worked, and only the file name said
+         so. Somebody interrupted between the two drops saved the wrong day. */
+      const had = clearBooks();
+      say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want +
+          " " + what + "." + (had
+            ? " The books on screen were the previous build, so they have been cleared."
+            : ""));
       zone("Diagram " + got + " loaded ✓ (" + srcName(fmt) + ")",
            "now drop the " + want + " " + what + " · or click to choose it");
     }
@@ -809,6 +827,17 @@ function reviewPane(items) {
   dlall.addEventListener("click", () => {
     if (!built || !built.length) return;
     downloadZip(zipName, built.map(b => [b.name, b.bytes]));
+  });
+  /* The weekend panel has always had this. The weekday one did not, so the
+     only way to be sure of what was on screen was to reload the page. */
+  $("#clearall").addEventListener("click", () => {
+    clearBooks();
+    delete have.sum; delete have.det;
+    // "Start over" means everything, the pasted text included
+    for (const el of [pasteSum, pasteDet])
+      if (el) { el.value = ""; markFilled(el); }
+    zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
+    say("Cleared — drop this day's two reports to start again.");
   });
   for (const k of Object.keys(hcToggles)) {
     if (!hcToggles[k]) continue;
