@@ -219,7 +219,8 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
          merges.map(function(m){ return '<mergeCell ref="' + m + '"/>'; }).join("") +
          '</mergeCells>';
   }
-  const plan = printPlan(merges, rowHeights, maxRow, opts);
+  const plan = opts.noPageSetup ? { scale: 100, breaks: [] }
+                                : printPlan(merges, rowHeights, maxRow, opts);
   // rowBreaks comes after pageSetup in the schema, and Excel rejects the
   // part outright if it does not
   const brk = plan.breaks.length
@@ -229,17 +230,21 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
         return '<brk id="' + r + '" max="16383" man="1"/>';
       }).join("") + '</rowBreaks>'
     : "";
-  const lastCol = colName(widths.length);
+  const lastCol = opts.lastCol || colName(widths.length);
+  const cf = (opts.condFmt || []).join("");
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+   (opts.tabColor ? '<sheetPr><tabColor rgb="' + opts.tabColor + '"/></sheetPr>' : '') +
    '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
-   '<sheetFormatPr defaultRowHeight="15"/>' + cols + sd + mg +
+   '<sheetFormatPr defaultRowHeight="15"/>' +
+   (opts.colsXml || cols) + sd + mg + cf +
    '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
    MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
-   '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
-   (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
-   ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>' +
+   (opts.noPageSetup ? '' :
+    '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
+    (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
+    ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>') +
    brk + '</worksheet>';
 }
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
@@ -247,9 +252,16 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
    look + sides; the StyleBook indexes them across every sheet so the books
    stay small. */
 function writeWorkbook(sheets, zipFn){
-  const sb = new StyleBook();
+  /* Two dressings. The house books register styles as they need them, via
+     the StyleBook. A book built to LOOK LIKE somebody else's document - the
+     395 allocations sheet - instead carries that document's own styleSheet,
+     lifted verbatim, and its cells name their exact style records (c.xf). */
+  const raw = sheets.length && sheets[0].layout.opts &&
+              sheets[0].layout.opts.stylesXml;
+  const sb = raw ? null : new StyleBook();
   const parts = sheets.map(function(s){
-    for (const c of s.layout.cells) c.s = sb.style(c.look, sb.border(c.sides));
+    for (const c of s.layout.cells)
+      c.s = raw ? (c.xf || 0) : sb.style(c.look, sb.border(c.sides));
     return buildSheetXml(s.layout.cells, s.layout.merges,
                          s.layout.rowHeights, s.layout.maxRow, s.layout.opts);
   });
@@ -288,7 +300,7 @@ function writeWorkbook(sheets, zipFn){
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     relTags + '</Relationships>');
-  files["xl/styles.xml"] = enc.encode(sb.xml());
+  files["xl/styles.xml"] = enc.encode(raw || sb.xml());
   return zipFn(files);
 }
 

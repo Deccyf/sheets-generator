@@ -1,27 +1,25 @@
-/* SHEETS_HS — the High Speed book in the depot's own format.
+/* SHEETS_HS — the Class 395 Allocations Sheet, in the depot's own dress.
 
-   Like the Metro sheets, this is not a berthing sheet. Taken from the
-   operator's own Class 395 Allocations Sheet for 18/08/2026:
+   Not a berthing sheet. The layout is the operator's own workbook: one
+   worksheet per day, a block per depot (Ashford, Margate, Ramsgate), each
+   block two tables side by side - last night's arrivals on the left, the
+   day's allocations on the right - with the clean-marks and mileage key
+   above and the standing house notes below.
 
-     * one worksheet for the day, with a block per depot down it - Ashford,
-       Margate, Ramsgate - and each block two tables side by side;
-     * on the LEFT, "<DEPOT> PM ARRIVALS <yesterday>": what came in last
-       night. Filled whenever the reports cover the day before as well, which
-       a Monday-to-Friday pair does for every day but the Monday;
-     * on the RIGHT, "<DEPOT> UNIT ALLOCATIONS <today>": what goes out, with
-       the diagram, its mileage, where it ends AM and PM, and what it forms
-       after that;
-     * the columns the reports cannot fill - N/M M/O, FP/RP, CET DUE, the
-       cleaning and works marks and the notes - are ruled and left empty, the
-       way they are hand-kept in the real sheet.
+   Everything about how it LOOKS comes from SHEETS_HS_SKIN, which is the
+   workbook's own style records lifted verbatim (see scratchpad/mkskin.py):
+   the exact borders, fills, fonts, row heights, column widths, yellow tab
+   and the conditional formatting that colours the MG column amber under
+   500 miles and red over it. This file only decides what goes in which
+   cell.
 
-   The mileage is the strongest check there is that this reads the reports
-   the way the depot does: on 18/08 the sheet's MG column and the Detail
-   export agree to the mile on AZ601 (951), AZ602 (828) and AZ603 (1012). */
+   The mileage is the strongest check that the reports are read the way the
+   depot reads them: on 18/08 the sheet's MG column and the Detail export
+   agree to the mile on AZ601 (951), AZ602 (828) and AZ603 (1012). */
 "use strict";
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
-const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
+const SKIN = SHEETS_HS_SKIN;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
    from the columns of the real sheet: ASH 2019 times against AFK 6, and RAM
@@ -30,17 +28,8 @@ const ENDS_CODE = { AFK: "ASH", RE: "RAM", FKE: "FAV" };
 const endsCode = c => ENDS_CODE[String(c || "").toUpperCase()] ||
                       String(c || "").toUpperCase();
 
-const HEADS = ["TRAIN ID", "ARRIVAL TIME", "UNIT NUMBER", "6 OR 12 CAR",
-               "CET DUE", "", "TRAIN ID", "DIAGRAM", "N/M M/O", "MG", "TIME",
-               "FP/RP", "UNIT NO", "ENDS AM", "ARRIVES", "ENDS PM",
-               "TRAIN ID", "TIME", "NOTES"];
-// B..T on the real sheet, so column 1 is left as its margin
-const WIDTHS = [3.5, 9.6, 11.4, 11.4, 10.4, 8.6, 3.5, 11.4, 9.6, 8.6, 6.4,
-                8.6, 8.1, 9.6, 9.6, 9.6, 9.6, 9.6, 8.6, 16];
 const DEPOTS = ["ASHFORD", "MARGATE", "RAMSGATE"];
-
-const hhmm = t => String(Math.floor(t / 60) % 24).padStart(2, "0") +
-  ":" + String(t % 60).padStart(2, "0");
+const COL = l => l.charCodeAt(0) - 64;              // "B" -> 2
 const stamp = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
   (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
 const DAY_NAME = { M: "Monday", T: "Tuesday", W: "Wednesday", TH: "Thursday",
@@ -48,6 +37,11 @@ const DAY_NAME = { M: "Monday", T: "Tuesday", W: "Wednesday", TH: "Thursday",
 const DAY_ORDER = ["M", "T", "W", "TH", "F", "SA", "SU"];
 const longDate = (dayKey, date) =>
   (DAY_NAME[dayKey] || "") + " " + String(date || "");
+
+/* Rough per-column widths for the on-screen preview only - the saved file
+   carries the workbook's own <cols> verbatim from the skin. */
+const PREVIEW_W = [8.4, 8.6, 8.4, 8.6, 8.1, 8.1, 8.4, 8.6, 8.1, 6.4, 5.6,
+                   7.1, 6.3, 7.3, 8.3, 7.7, 7.9, 7.7, 8.4, 8.4];
 
 /* Yesterday's arrivals into this depot, read off the day before's own
    entries: every unit whose PM berth is here, with what it came in on. */
@@ -57,50 +51,51 @@ function arrivalsInto(depot, secs) {
   for (const [, list] of secs)
     for (const e of list)
       for (const u of e.units) {
-        const pm = endsCode(u.pm || u.ends.split(" ")[0]);
+        const pm = endsCode(u.pm || (u.ends || "").split(" ")[0]);
         if (pm !== endsCode(depot.slice(0, 3) === "ASH" ? "AFK" : depot)) continue;
         out.push({ hc: e.headcode || "", at: stamp(e), unit: u.unit || "",
-                   cars: "" });
+                   cars: e.units.length > 1 ? "12" : "6" });
       }
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }
 
-/* Their own dress, lifted off the 18/08 tab: bold Calibri 9 throughout, the
-   block titles in their green (FF00B050), the header row wrapped, and the
-   arrivals columns filled white where the sheet fills them. Looks 7-9 in the
-   writer are these. */
-const TITLE_LOOK = 8, HEAD_LOOK = 7, BODY_LOOK = 7, FILLED_LOOK = 9;
 function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
-  const cells = [], merges = [], rowHeights = new Map();
-  const put = (r, c, v, look, sides, noFit) =>
-    cells.push({ r, c, v: v === undefined || v === null ? "" : String(v),
-                 look, sides: sides || [null, null, null, null], noFit: !!noFit });
+  const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
+  /* Every cell names the skin's exact style record (xf) for the saved file,
+     and a coarse house look for the on-screen preview. */
+  const put = (r, c, xf, v, look) =>
+    cells.push({ r, c, xf, v: v === undefined || v === null ? "" : String(v),
+                 look: look || 3, sides: [null, null, null, null] });
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
   const today = longDate(dayKey, dates[dayKey]);
   const yday = prevKey ? longDate(prevKey, dates[prevKey]) : "";
-  let r = 1;
-  put(r, 19, "Date Sent", BODY_LOOK, null, true);
-  put(r, 20, dates[dayKey] || "", BODY_LOOK, null, true);
-  rowHeights.set(r, 18); r += 2;
 
+  // the legend block, rows 1-6, exactly as the workbook has it
+  for (const [lr, c, xf, v] of SKIN.legend) put(lr, COL(c), xf, v);
+  for (const [lr, h] of Object.entries(SKIN.legendHts)) rowHeights.set(+lr, +h);
+  merges.push("B2:E3", "H2:J3", "M2:O2", "M3:O3",
+              "S2:T2", "S3:T3", "S4:T4", "S5:T5", "S6:T6");
+
+  let r = 7;
+  let pri = 1;
   for (const depot of DEPOTS) {
     const list = (secs && secs.get(depot)) || [];
     const arr = prev ? arrivalsInto(depot, prev) : [];
     if (!list.length && !arr.length) continue;
-    put(r, 2, depot + " PM ARRIVALS " + (yday || "— no previous day loaded"),
-        TITLE_LOOK, null, true);
-    put(r, 8, depot + " UNIT ALLOCATIONS " + today, TITLE_LOOK, null, true);
-    /* Merged across their own tables: the headings are long text that their
-       sheet lets overflow the empty cells beside it, and a table clips
-       instead - "RAMSGATE PM ARRIVALS Monday…" came out as "RAMSG…". */
+
+    // title row, merged across each of its two tables
+    for (const [c, xf] of Object.entries(SKIN.title)) {
+      const v = c === "B" ? depot + " PM ARRIVALS " +
+                  (yday || "— no previous day loaded")
+              : c === "H" ? depot + " UNIT ALLOCATIONS " + today : "";
+      put(r, COL(c), xf, v, c === "B" || c === "H" ? 8 : 3);
+    }
     merges.push("B" + r + ":F" + r, "H" + r + ":T" + r);
-    rowHeights.set(r, 18); r++;
-    HEADS.forEach((h, i) => {
-      if (!h) return;
-      put(r, i + 2, h, HEAD_LOOK, [null, null, "medium", "medium"]);
-    });
-    rowHeights.set(r, 18); r++;
+    r++;
+    for (const [c, xf, v] of SKIN.header) put(r, COL(c), xf, v, 7);
+    rowHeights.set(r, +SKIN.headerHt);
+    r++;
 
     // the allocations, one row per unit, in the order they leave
     const rows = [];
@@ -114,47 +109,54 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           endsAm: endsCode(u.am), endsPm: endsCode(u.pm),
         });
     const n = Math.max(rows.length, arr.length);
+    const d0 = r;
     for (let i = 0; i < n; i++) {
       const a = arr[i], v = rows[i];
-      const last = i === n - 1;
-      const box = c => [c === 2 || c === 8 ? "medium" : "thin",
-                        c === 6 || c === 20 ? "medium" : "thin",
-                        null, last ? "medium" : "thin"];
-      // the arrivals side is filled white on their sheet; the rest is clear
-      const cell = (c, val) =>
-        put(r, c, val, c >= 2 && c <= 4 ? FILLED_LOOK : BODY_LOOK, box(c));
-      cell(2, a ? a.hc : ""); cell(3, a ? a.at : ""); cell(4, a ? a.unit : "");
-      cell(5, a ? a.cars : ""); cell(6, "");            // 6 OR 12 CAR, CET DUE
-      cell(8, v ? v.id : ""); cell(9, v ? v.diag : "");
-      cell(10, "");                                      // N/M M/O: by hand
-      cell(11, v ? v.mg : ""); cell(12, v ? v.time : "");
-      cell(13, "");                                      // FP/RP: by hand
-      cell(14, v ? v.unit : "");
-      cell(15, v ? v.endsAm : ""); cell(16, "");         // ARRIVES: by hand
-      cell(17, v ? v.endsPm : "");
-      cell(18, ""); cell(19, ""); cell(20, "");          // next working, notes
-      rowHeights.set(r, 18); r++;
+      /* An arrivals side that runs on after the allocations have finished
+         is greyed out on the real sheet, so it is here too. */
+      const right = v ? SKIN.data : SKIN.greyRight;
+      for (const [c, xf] of Object.entries(SKIN.data)) {
+        if (COL(c) >= 7) continue;
+        const val = c === "B" ? (a ? a.hc : "") : c === "C" ? (a ? a.at : "")
+                  : c === "D" ? (a ? a.unit : "") : c === "E" ? (a ? a.cars : "")
+                  : "";
+        put(r, COL(c), xf, val);
+      }
+      for (const [c, xf] of Object.entries(right)) {
+        if (COL(c) < 7) continue;
+        const val = !v ? ""
+          : c === "H" ? v.id : c === "I" ? v.diag : c === "K" ? v.mg
+          : c === "L" ? v.time : c === "N" ? v.unit
+          : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
+        put(r, COL(c), xf, val);
+      }
+      r++;
     }
+    /* Their sheet colours the MG column by the mileage key above: amber
+       under 500 miles, red at 500 and over - dxf 0 and 1 in the skin. */
+    if (rows.length)
+      condFmt.push('<conditionalFormatting sqref="K' + d0 + ':K' + (r - 1) +
+        '"><cfRule type="cellIs" dxfId="0" priority="' + pri++ +
+        '" operator="lessThan"><formula>500</formula></cfRule>' +
+        '<cfRule type="cellIs" dxfId="1" priority="' + pri++ +
+        '" operator="greaterThan"><formula>499</formula></cfRule>' +
+        '</conditionalFormatting>');
+    // the ruled strip that closes a block, then a clear row
+    for (const [c, xf] of Object.entries(SKIN.gapRow)) put(r, COL(c), xf, "");
     r += 2;
   }
-  return { cells, merges, rowHeights, maxRow: r,
-           opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0,
-                   fitToWidth: 0 } };
-}
 
-/* As the Metro sheet does: measured widths, floored at the real sheet's, and
-   the long free text kept out of the measurement. */
-const LOOK_WIDE = { 1: 1.53, 2: 1.60, 3: 1.40, 4: 1.15, 5: 1.15, 6: 1.27 };
-function fitWidths(cells) {
-  const need = WIDTHS.slice();
-  for (const c of cells) {
-    if (c.noFit) continue;
-    const i = c.c - 1;
-    if (i < 0 || i >= need.length) continue;
-    const w = String(c.v || "").length * (LOOK_WIDE[c.look] || 1.1) + 1.6;
-    if (w > need[i]) need[i] = w;
-  }
-  return need.map(w => Math.round(Math.min(w, 26) * 10) / 10);
+  // the standing house notes, re-anchored under the last block
+  const base = r + 1 - 60;
+  for (const [fr, c, xf, v] of SKIN.footer) put(fr + base, COL(c), xf, v);
+  for (const m of SKIN.footerMerges)
+    merges.push(m.replace(/(\d+)/g, d => String(+d + base)));
+  r = base + 67;
+
+  return { cells, merges, rowHeights, maxRow: r,
+           opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
+                   tabColor: SKIN.tabColor, condFmt, lastCol: "T",
+                   noPageSetup: true, widths: PREVIEW_W } };
 }
 
 /* One worksheet per day the reports carry, named the way the real workbook
@@ -169,15 +171,14 @@ function sheetsFor(hsSecs, labels, dates) {
       : lbl || "SHEET";
     return { name: name.slice(0, 31),
              layout: layoutDay(d, labels, dates, hsSecs, i > 0 ? days[i - 1] : null) };
-  }).filter(s => s.layout.maxRow > 3);
+  }).filter(s => s.layout.cells.some(c => c.r > 6 && c.r < 55 && c.v));
 }
 function writeHsBook(hsSecs, labels, dates, zipFn) {
   const sheets = sheetsFor(hsSecs, labels, dates);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, fitWidths, endsCode,
-         HEADS, WIDTHS, DEPOTS };
+return { writeHsBook, sheetsFor, layoutDay, endsCode, DEPOTS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_HS = SHEETS_HS;

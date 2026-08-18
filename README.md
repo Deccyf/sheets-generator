@@ -329,15 +329,20 @@ Allocations Sheet for 18/08/2026:
   weekday High Speed profile — and *only* the weekday one. The weekend High
   Speed book is still a berthing book and nobody has held one against a copy
   timed that way, so it keeps the platform departure.
-* **Their dress, not the berthing books'.** Lifted off the 18/08 tab: bold
-  Calibri 9 throughout, the block titles in their green (`FF00B050`), the
-  header row wrapped, the arrivals columns filled white. The writer gained
-  those two fonts, a solid white fill and a `wrapText` alignment for it — it
-  had six Arial fonts and no fills at all. What a generated copy does **not**
-  carry is what the workbook holds because people have been using it: 38 files
-  of threaded comments with the drawings that anchor them, and the conditional
-  formatting. Those are house-keeping on their copy, not the shape of the
-  document.
+* **Their dress, verbatim.** Approximating the look through the house
+  writer's own styles was tried first and never looked right. Instead
+  `tools/make-hs-skin.py` lifts the workbook's actual style records off the
+  18/08 tab — 103 cell formats, 22 fonts, 10 fills, 40 border records,
+  renumbered into a minimal styleSheet — plus the yellow tab, the exact
+  column widths and row heights, the clean-marks legend (green `INT CLEAN`,
+  blue `EXT CLEAN`), the mileage key, the standing house notes, and the
+  conditional formatting that colours `MG` amber under 500 miles and red
+  over. It all lands in `src/hs-skin.js`, and the writer grew a raw mode
+  that ships that styleSheet as-is with each cell naming its exact record.
+  The extractor needs the operator's workbook beside it (not in the
+  repository) and grep-checks its own output for leaks before writing —
+  which caught the COMMENTS box carrying three unit numbers and a date; the
+  ruled shape of the footer is kept, its operational text is not.
 * **Their berth vocabulary, not the berthing books'** — `ASH` for `AFK`, `RAM`
   for `RE`, `FAV` for `FKE`. `ASH` appears 2019 times in the real sheet's ENDS
   columns against `AFK`'s 6.
