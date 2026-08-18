@@ -110,6 +110,42 @@ for old in order:
     y = re.sub(r'\s?xfId="\d+"', '', y)
     out_xfs.append(y)
 
+# ---- theme colours -> plain rgb ----
+# The workbook leans on its Office theme: the grey between the tables is
+# <fgColor theme="0" tint="-0.15"/> ("white, darker 15%"), the amber mileage
+# chip is accent6 lightened. A generated book carries no theme part, and
+# Excel renders an unresolvable solid fill as a dotted haze - so every theme
+# reference is resolved here, against THEIR theme's own palette, and the
+# skin ships pure rgb. The tint is applied to HSL luminance, which is how
+# Excel applies it (ECMA-376 18.3.1.15).
+import colorsys
+theme_xml = Z.read('xl/theme/theme1.xml').decode()
+clr = re.search(r'<a:clrScheme.*?</a:clrScheme>', theme_xml, re.S).group(0)
+def theme_rgb(name):
+    b = re.search(r'<a:%s>(.*?)</a:%s>' % (name, name), clr, re.S).group(1)
+    v = re.search(r'(?:srgbClr val="([0-9A-Fa-f]{6})"|sysClr[^>]*lastClr="([0-9A-Fa-f]{6})")', b)
+    return (v.group(1) or v.group(2)).upper()
+# the theme attribute's index order swaps dk1/lt1 and dk2/lt2
+THEME = [theme_rgb(n) for n in ["lt1", "dk1", "lt2", "dk2", "accent1",
+         "accent2", "accent3", "accent4", "accent5", "accent6",
+         "hlink", "folHlink"]]
+def tinted(hex6, tint):
+    r, g, b = (int(hex6[i:i+2], 16) / 255 for i in (0, 2, 4))
+    h, l, sa = colorsys.rgb_to_hls(r, g, b)
+    l = l * (1 + tint) if tint < 0 else l * (1 - tint) + tint
+    r, g, b = colorsys.hls_to_rgb(h, min(max(l, 0), 1), sa)
+    return "FF%02X%02X%02X" % (round(r * 255), round(g * 255), round(b * 255))
+def untheme(xml):
+    def repl(m):
+        rgb = tinted(THEME[int(m.group(2))], float(m.group(3) or 0))
+        return "<" + m.group(1) + ' rgb="' + rgb + '"/>'
+    return re.sub(r'<(fgColor|bgColor|color)\s+theme="(\d+)"(?:\s+tint="([-0-9.Ee]+)")?\s*/>',
+                  repl, xml)
+f_used = [untheme(x) for x in f_used]
+l_used = [untheme(x) for x in l_used]
+b_used = [untheme(x) for x in b_used]
+dxfs = [untheme(x) for x in dxfs]
+
 styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
   + ('<numFmts count="%d">' % len(n_used) +
@@ -159,6 +195,7 @@ if leaks:
 # near a workbook - Excel drops the whole part over one bad tag
 import xml.dom.minidom
 xml.dom.minidom.parseString(styles)
+assert 'theme="' not in styles, "unresolved theme colour left in the skin"
 open("/home/user/sheets-generator/src/hs-skin.js", "w").write(js)
 print("wrote src/hs-skin.js", len(js), "bytes,", len(out_xfs), "styles,",
       len(f_used), "fonts,", len(l_used), "fills,", len(b_used), "borders")

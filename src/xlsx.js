@@ -233,19 +233,64 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
   const lastCol = opts.lastCol || colName(widths.length);
   const cf = (opts.condFmt || []).join("");
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+   '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"' +
+   ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
    (opts.tabColor ? '<sheetPr><tabColor rgb="' + opts.tabColor + '"/></sheetPr>' : '') +
    '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
    '<sheetFormatPr defaultRowHeight="15"/>' +
-   (opts.colsXml || cols) + sd + mg + cf +
+   (opts.colsXml || cols) + sd + mg + cf + (opts.dataValidations || "") +
    '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
    MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
    (opts.noPageSetup ? '' :
     '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
     (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
     ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>') +
-   brk + '</worksheet>';
+   brk + (opts.hasComments ? '<legacyDrawing r:id="rId1"/>' : '') +
+   '</worksheet>';
+}
+
+/* ---- classic cell notes ----
+   The 395 allocation sheet carries standing route knowledge as comments on
+   its DIAGRAM cells. Classic notes (a comments part plus a VML drawing) are
+   what every Excel shows on hover, and they need no persons part. */
+function commentsXml(comments){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<comments xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<authors><author>Sheets Generator</author></authors><commentList>' +
+    comments.map(function(c){
+      return '<comment ref="' + c.ref + '" authorId="0"><text><r>' +
+        '<rPr><sz val="9"/><color indexed="81"/><rFont val="Tahoma"/>' +
+        '<family val="2"/></rPr><t xml:space="preserve">' + esc(c.text) +
+        '</t></r></text></comment>';
+    }).join("") + '</commentList></comments>';
+}
+function vmlXml(comments){
+  const shapes = comments.map(function(c, i){
+    const m = /^([A-Z]+)(\d+)$/.exec(c.ref);
+    let col = 0;
+    for (const ch of m[1]) col = col * 26 + ch.charCodeAt(0) - 64;
+    const r0 = +m[2] - 1, c0 = col - 1;
+    return '<v:shape id="_x0000_s' + (1025 + i) + '" type="#_x0000_t202" ' +
+      "style='position:absolute;margin-left:80pt;margin-top:2pt;width:160pt;" +
+      "height:48pt;z-index:" + (i + 1) + ";visibility:hidden' fillcolor=\"#ffffe1\" " +
+      'o:insetmode="auto"><v:fill color2="#ffffe1"/>' +
+      '<v:shadow on="t" color="black" obscured="t"/>' +
+      "<v:path o:connecttype=\"none\"/><v:textbox style='mso-direction-alt:auto'>" +
+      '</v:textbox><x:ClientData ObjectType="Note"><x:MoveWithCells/>' +
+      '<x:SizeWithCells/><x:Anchor>' + (c0 + 1) + ', 15, ' + Math.max(0, r0 - 1) +
+      ', 10, ' + (c0 + 4) + ', 15, ' + (r0 + 3) + ', 4</x:Anchor>' +
+      '<x:AutoFill>False</x:AutoFill><x:Row>' + r0 + '</x:Row><x:Column>' +
+      c0 + '</x:Column></x:ClientData></v:shape>';
+  }).join("");
+  return '<xml xmlns:v="urn:schemas-microsoft-com:vml" ' +
+    'xmlns:o="urn:schemas-microsoft-com:office:office" ' +
+    'xmlns:x="urn:schemas-microsoft-com:office:excel">' +
+    '<o:shapelayout v:ext="edit"><o:idmap v:ext="edit" data="1"/></o:shapelayout>' +
+    '<v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" ' +
+    'path="m,l,21600r21600,l21600,xe"><v:stroke joinstyle="miter"/>' +
+    '<v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>' +
+    shapes + '</xml>';
 }
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
@@ -262,8 +307,10 @@ function writeWorkbook(sheets, zipFn){
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells)
       c.s = raw ? (c.xf || 0) : sb.style(c.look, sb.border(c.sides));
+    const o = s.layout.opts || {};
+    if (s.layout.comments && s.layout.comments.length) o.hasComments = true;
     return buildSheetXml(s.layout.cells, s.layout.merges,
-                         s.layout.rowHeights, s.layout.maxRow, s.layout.opts);
+                         s.layout.rowHeights, s.layout.maxRow, o);
   });
   const enc = new TextEncoder();
   let types =
@@ -282,6 +329,20 @@ function writeWorkbook(sheets, zipFn){
     sheetTags += '<sheet name="' + esc(sheets[i].name) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
     relTags += '<Relationship Id="rId' + n + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
     files["xl/worksheets/sheet" + n + ".xml"] = enc.encode(xml);
+    const cm = sheets[i].layout.comments;
+    if (cm && cm.length){
+      files["xl/comments" + n + ".xml"] = enc.encode(commentsXml(cm));
+      files["xl/drawings/vmlDrawing" + n + ".vml"] = enc.encode(vmlXml(cm));
+      files["xl/worksheets/_rels/sheet" + n + ".xml.rels"] = enc.encode(
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/vmlDrawing' + n + '.vml"/>' +
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments' + n + '.xml"/>' +
+        '</Relationships>');
+      types += '<Override PartName="/xl/comments' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>';
+      if (types.indexOf('Extension="vml"') < 0)
+        types += '<Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/>';
+    }
   });
   types += '</Types>';
   files["[Content_Types].xml"] = enc.encode(types);

@@ -60,6 +60,14 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   const styles = new TextDecoder().decode(files["xl/styles.xml"]);
   assert.ok(styles.includes("FF00B050") && styles.includes("<dxfs count=\"2\">"),
     "their styles and the two mileage dxfs are in the saved file");
+  /* No theme colours. The workbook painted its greys as theme-0-with-tint,
+     and a generated book has no theme part to resolve them against - Excel
+     drew every such fill as a dotted haze. The skin ships pure rgb, resolved
+     against their own theme's palette: the between-tables grey is D9D9D9
+     ("white, darker 15%"), the under-500-miles chip is A9D18E. */
+  assert.ok(!styles.includes('theme="'), "no unresolvable theme colours");
+  assert.ok(styles.includes("FFD9D9D9"), "the grey resolved to its rgb");
+  assert.ok(styles.includes("FFA9D18E"), "and the mileage chip to its green");
   const xml = new TextDecoder().decode(files["xl/worksheets/sheet1.xml"]);
   assert.ok(xml.includes('<tabColor rgb="FFFFFF00"/>'), "yellow tab saved");
   assert.ok(xml.includes("<conditionalFormatting"), "mileage colours saved");
@@ -77,6 +85,52 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   const vals = wb[0].cells.map(([, , rec]) => rec.v);
   assert.ok(vals.includes("INT CLEAN") && vals.includes("Mileage Guide"),
     "and the legend text survives the round trip");
+
+  /* The drop-downs their sheet keeps: the fleet roster on both UNIT columns
+     (built at runtime from first+count, so no unit numbers ride in the
+     skin), 6/12, the CET mark, and FP/RP. */
+  const dv = /<dataValidations count="4">([\s\S]*?)<\/dataValidations>/.exec(xml);
+  assert.ok(dv, "four drop-down lists saved");
+  for (const list of ['"6,12"', '"YES,N"', '"FP,RP"'])
+    assert.ok(dv[1].includes("<formula1>" + list + "</formula1>"), list);
+  assert.match(dv[1], /<formula1>"395001,(?:39500\d,)+/, "the fleet roster");
+  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+/, "on both UNIT columns");
+
+  /* And the standing route notes, as classic comments on the DIAGRAM
+     cells - the same knowledge their workbook keeps there, carried by
+     headcode like ROUTE_BY_HC. The synthetic fixture's headcodes are not in
+     the lookup, so one of the lookup's own is driven through: a note needs
+     its comments part, its VML twin, the rels binding both, the sheet
+     pointing at them and the content types declaring them, or Excel shows
+     nothing at all. */
+  const notes = N.SHEETS_HS_SKIN.hcNotes;
+  assert.ok(Object.keys(notes).length >= 5,
+    "the skin carries the standing notes: " + Object.keys(notes).length);
+  const hc = Object.keys(notes)[0];
+  const one = { M: new Map([["ASHFORD", [{ time: 300, time_kind: "ecs",
+    dest: "STP", headcode: hc,
+    units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+              mg: 250, miles: 500 }] }]]]) };
+  const lay = H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, one, null);
+  assert.equal(lay.comments.length, 1, "the note is raised for " + hc);
+  assert.match(lay.comments[0].ref, /^I\d+$/, "on the DIAGRAM cell");
+  assert.equal(lay.comments[0].text, notes[hc].join("\n"), "with its own words");
+  const bytes2 = N.SHEETS_XLSX.writeWorkbook([{ name: "T", layout: lay }],
+    f => N.fflate.zipSync(f, { level: 6 }));
+  const f2 = N.fflate.unzipSync(bytes2);
+  assert.ok(f2["xl/comments1.xml"], "a comments part is written");
+  assert.ok(f2["xl/drawings/vmlDrawing1.vml"], "with its VML twin");
+  assert.ok(f2["xl/worksheets/_rels/sheet1.xml.rels"], "and the sheet rels");
+  const sx = new TextDecoder().decode(f2["xl/worksheets/sheet1.xml"]);
+  assert.match(sx, /<legacyDrawing r:id="rId1"\/>/, "the sheet points at them");
+  const cmt = new TextDecoder().decode(f2["xl/comments1.xml"]);
+  assert.match(cmt, /Not over high level|Avoids North Kent/,
+    "the standing note made it in");
+  const types = new TextDecoder().decode(f2["[Content_Types].xml"]);
+  assert.ok(types.includes('Extension="vml"') && types.includes("/xl/comments1.xml"),
+    "and the content types declare both parts");
+  const wb2 = await normalizeWorkbook(legacy(), bytes2);
+  assert.ok(wb2[0].cells.length > 5, "and that workbook still loads");
 });
 
 test("each depot block is arrivals on the left, allocations on the right", async () => {

@@ -15,7 +15,7 @@ function pdfs(ctx) {
    builds and neither is about those fields: the frozen build has none of
    them, and MILES comes off the CSV export's own column, which the PDF
    report does not have at all. Dropped here, pinned in the Metro tests. */
-const METRO_ONLY = ["code", "pos", "ends", "miles"];
+const METRO_ONLY = ["code", "pos", "ends", "miles", "mg"];
 function sansMetro(v) {
   if (v === null || typeof v !== "object") return v;
   if (Array.isArray(v)) return v.map(sansMetro);

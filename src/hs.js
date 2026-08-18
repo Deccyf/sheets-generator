@@ -59,8 +59,19 @@ function arrivalsInto(depot, secs) {
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }
 
+/* The fleet roster for the UNIT drop-downs, built at runtime from
+   first+count so no unit numbers ride in the skin. */
+function rosterList() {
+  const out = [];
+  for (let i = 0; i < SKIN.dv.unitCount; i++) out.push(SKIN.dv.unitFirst + i);
+  return out.join(",");
+}
+
 function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
+  const comments = [];
+  /* the drop-downs: per-kind cell ranges, filled in block by block */
+  const dvRanges = { cet: [], fprp: [], cars: [], unit: [] };
   /* Every cell names the skin's exact style record (xf) for the saved file,
      and a coarse house look for the on-screen preview. */
   const put = (r, c, xf, v, look) =>
@@ -104,7 +115,10 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         rows.push({
           id: (e.headcode || "") + (e.dest ? " " + e.dest : ""),
           diag: (u.code || "") + u.diag,
-          mg: u.miles == null ? "" : Math.round(u.miles),
+          // per WORKING, as their sheet keeps it - the day total only
+          // where the stint figure is missing (a PDF-fed build)
+          mg: u.mg != null ? u.mg
+            : (u.miles == null ? "" : Math.round(u.miles)),
           time: stamp(e), unit: u.unit || "",
           endsAm: endsCode(u.am), endsPm: endsCode(u.pm),
         });
@@ -130,6 +144,13 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
         put(r, COL(c), xf, val);
       }
+      /* The standing route notes their sheet keeps as comments on the
+         DIAGRAM cells - "Not over high level", "Avoids North Kent" -
+         carried by headcode, the way ROUTE_BY_HC carries routes. */
+      if (v) {
+        const note = SKIN.hcNotes[v.id.split(" ")[0]];
+        if (note) comments.push({ ref: "I" + r, text: note.join("\n") });
+      }
       r++;
     }
     /* Their sheet colours the MG column by the mileage key above: amber
@@ -141,6 +162,15 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
         '<cfRule type="cellIs" dxfId="1" priority="' + pri++ +
         '" operator="greaterThan"><formula>499</formula></cfRule>' +
         '</conditionalFormatting>');
+    /* the drop-downs their sheet keeps on these columns: the fleet on
+       both UNIT columns, 6/12, the CET mark, and FP/RP */
+    if (r > d0) {
+      const span = (col) => col + d0 + ":" + col + (r - 1);
+      dvRanges.unit.push(span("D"), span("N"));
+      dvRanges.cars.push(span("E"));
+      dvRanges.cet.push(span("F"));
+      dvRanges.fprp.push(span("M"));
+    }
     // the ruled strip that closes a block, then a clear row
     for (const [c, xf] of Object.entries(SKIN.gapRow)) put(r, COL(c), xf, "");
     r += 2;
@@ -153,10 +183,21 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
     merges.push(m.replace(/(\d+)/g, d => String(+d + base)));
   r = base + 67;
 
-  return { cells, merges, rowHeights, maxRow: r,
+  const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
+                  ["fprp", SKIN.dv.fprp], ["unit", rosterList()]]
+    .filter(([k]) => dvRanges[k].length);
+  const dataValidations = dvDefs.length
+    ? '<dataValidations count="' + dvDefs.length + '">' +
+      dvDefs.map(([k, list]) =>
+        '<dataValidation type="list" allowBlank="1" showInputMessage="1"' +
+        ' showErrorMessage="1" sqref="' + dvRanges[k].join(" ") + '">' +
+        '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
+      '</dataValidations>'
+    : "";
+  return { cells, merges, rowHeights, maxRow: r, comments,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
-                   tabColor: SKIN.tabColor, condFmt, lastCol: "T",
-                   noPageSetup: true, widths: PREVIEW_W } };
+                   tabColor: SKIN.tabColor, condFmt, dataValidations,
+                   lastCol: "T", noPageSetup: true, widths: PREVIEW_W } };
 }
 
 /* One worksheet per day the reports carry, named the way the real workbook

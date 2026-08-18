@@ -347,11 +347,32 @@ Allocations Sheet for 18/08/2026:
   for `RE`, `FAV` for `FKE`. `ASH` appears 2019 times in the real sheet's ENDS
   columns against `AFK`'s 6.
 
+* **`MG` is per working, not per day.** Their sheet gives `AZ623` 143 miles
+  on its 09+54 row and 182 on its 16+26 one — the mileage of *that stint*.
+  The Detail export's Miles column is a running figure, so each collapsed
+  stop keeps the figure it had reached (`ml`) and a stint's `MG` is the
+  delta between its two ends. The Metro book's `MILES` stays the day total,
+  which is what that sheet prints. The colour coding rides on their own
+  conditional formatting: green under 500 miles, red at 500 and over.
+* **The drop-downs.** Their four list validations are carried: the fleet
+  roster on both UNIT columns — stored as first+count (contiguous
+  395001-395029) and built at runtime, so no unit numbers ride in the skin —
+  plus `6,12`, `YES,N` and `FP,RP`, re-anchored to each depot block's rows.
+* **The standing comments.** Their workbook keeps route knowledge as
+  threaded comments on the DIAGRAM cells — *"Not over high level"* 216
+  times across the daily tabs, *"Avoids North Kent"* 123 — against the same
+  workings tab after tab. The extractor distils those into a
+  headcode-keyed lookup (5 sightings or more; one-off chatter is left
+  behind) and the sheet writes them as classic notes, the way `ROUTE_BY_HC`
+  carries routes. The writer grew the classic-comments plumbing for it: a
+  comments part, its VML twin, the sheet rels and content types.
+
 Against their 18/08 sheet, every departure time matches to the minute once the
 timing moved (`04+19`, `04+33`, `04+53`, `05+08`, `05+24`, `05+38`, `05+56`,
-`05+58`, `09+54`, `10+05`, `15+35`, `15+38`, `16+26`), and the `MG` column
-agrees on `AZ601` (951), `AZ602` (828), `AZ603` (1012), `AZ607` (799) and
-`AZ610` (906).
+`05+58`, `09+54`, `10+05`, `15+35`, `15+38`, `16+26`); the per-working `MG`
+agrees on `AZ601` (951), `AZ602` (828), `AZ603` (1012), `AZ623` (143),
+`AZ625` (115 and 449) and `AZ606` (209), with the odd one a mile out on leg
+rounding.
 
 **They are set up to print.** Every sheet comes out A4 portrait with the house
 margins, scaled so the eight columns land on **one page across** and so the

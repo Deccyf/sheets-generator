@@ -12,8 +12,8 @@ test("the built file is self-contained and lean", () => {
      ceiling is set with room for a feature or two above where the file
      actually sits, so that adding one is a decision rather than a test
      failure, and doubling it is still impossible without noticing. */
-  assert.ok(html.length < 500 * 1024,
-    "under 500 KB (was 1.2 MB); this build is " +
+  assert.ok(html.length < 560 * 1024,
+    "under 560 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

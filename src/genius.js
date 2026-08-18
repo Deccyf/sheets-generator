@@ -216,8 +216,17 @@ const GENIUS = (() => {
       for (const x of grp) if (x.arr !== null) { arr = x.arr; break; }
       let dep = null;
       for (let k = grp.length - 1; k >= 0; k--) if (grp[k].dep !== null) { dep = grp[k].dep; break; }
-      out.push({ code: grp[0].code, name: grp[0].name, arr, dep, hcIn: lastHc,
-                 hcOut, act: grp.some(x => x.act === "#") ? "#" : null });
+      // ml: the running mileage on ARRIVAL here - a stint's own mileage is
+      // the delta between its two ends' figures. Only set where the source
+      // carries it (the CSV does, the PDF does not), so the collapsed stops
+      // keep the exact shape the golden tests pin on the PDF path.
+      let ml;
+      for (const x of grp) if (x.ml !== undefined) { ml = x.ml; break; }
+      const stop = { code: grp[0].code, name: grp[0].name, arr, dep,
+                     hcIn: lastHc, hcOut,
+                     act: grp.some(x => x.act === "#") ? "#" : null };
+      if (ml !== undefined) stop.ml = ml;
+      out.push(stop);
       if (hcOut) lastHc = hcOut;
     }
     return out;
@@ -606,8 +615,14 @@ const GENIUS = (() => {
         const dayEnd = endCode
           ? endCode + (endT !== null && sortkey(endT) < AM_CUTOFF ? " AM" : " PM")
           : "";
+        /* The allocation sheet's MG is per WORKING, not per day: AZ623 is
+           143 miles on its 09+54 row and 182 on its 16+26 one. The stint's
+           span in running miles gives exactly that. */
+        const [sa2, sb2] = stints[u.si];
+        const mg = stops[sa2].ml !== undefined && stops[sb2].ml !== undefined
+          ? Math.round(stops[sb2].ml - stops[sa2].ml) : undefined;
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
-                      dayEnd, miles,
+                      dayEnd, miles, mg,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -907,6 +922,7 @@ const GENIUS = (() => {
                          The berthing books use none of them. */
                       code: x.diag.slice(0, 2), pos: x.pos,
                       ends: x.dayEnd || "", miles: x.miles };
+          if (x.mg != null) u.mg = x.mg;
           // only where the export named the allocated unit, so every other
           // entry keeps the exact shape the golden test pins
           if (x.unit) u.unit = x.unit;
@@ -1358,7 +1374,7 @@ const GENIUS = (() => {
       const f = r.slice(fi).map(x => (x || "").trim());
       // from, name, arr, dep, activity, headcode, miles, fuel, to, name, arr
       const key = date + "\u0000" + diag;
-      if (!state.has(key)) state.set(key, { out: [], prev: -1 });
+      if (!state.has(key)) state.set(key, { out: [], prev: -1, ml: 0 });
       const st = state.get(key);
       const roll = v => {
         while (v < st.prev - 60) v += 1440;
@@ -1372,21 +1388,25 @@ const GENIUS = (() => {
       /* The activity column is almost always blank; "#" is Genius marking a
          shunt on the spot. Kept because a stand with one is the unit being
          put away, and a stand without one can be a pause on the way home. */
+      /* The export's Miles column is already RUNNING - 0.10, 6.72, 10.31
+         down the diagram, with the leg's own mileage in the next column -
+         so the day's total is the last figure, not the sum (summing gave
+         SG712 5,445 miles for a day). Each row also keeps the running
+         figure it had REACHED, because the 395 allocation sheet's MG
+         column is per WORKING: the delta between a stint's two ends.
+         The PDF report has no such column and leaves it all undefined,
+         which the sheets print as blank. */
       st.out.push({ code: f[0], name: f[1], arr, dep,
                     hc: f[5] ? f[5].slice(0, 4) : null,
-                    act: f[4] === "#" ? "#" : null });
-      /* The Metro sheet has a MILES column and the export carries the figure
-         already RUNNING - 0.10, 6.72, 10.31 down the diagram, with the leg's
-         own mileage in the next column - so the diagram's total is the last
-         one, not the sum of them. Summing them gave SG712 5,445 miles for a
-         day's work. It rides on the array because that is what reaches the
-         derivation; the PDF reader has no such column and leaves it
-         undefined, which the sheet prints as blank. */
+                    act: f[4] === "#" ? "#" : null, ml: st.ml });
       const ml = parseFloat(f[6]);
-      if (!isNaN(ml)) st.out.miles = Math.max(st.out.miles || 0, ml);
+      if (!isNaN(ml)) {
+        st.ml = ml;
+        st.out.miles = Math.max(st.out.miles || 0, ml);
+      }
       if (TM.test(f[10]))
         st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
-                      dep: null, hc: null });
+                      dep: null, hc: null, ml: st.ml });
       if (!byDate.has(date)) byDate.set(date, new Map());
       byDate.get(date).set(diag, st.out);
     }
