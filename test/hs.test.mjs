@@ -297,3 +297,38 @@ test("the columns the reports cannot fill are ruled and empty", async () => {
   assert.match(at.get(firstData + ",9"), /^[A-Z]{2}\d{3}$/, "DIAGRAM");
   assert.match(at.get(firstData + ",12"), /^\d\d[ +]\d\d$/, "TIME");
 });
+
+test("the 395 preview is drawn in the workbook's own dress", () => {
+  /* The saved book names an exact style record per cell, and the preview had
+     only the coarse house look to go on — so what you checked on screen was
+     bare text while what you saved was the operator's ruled, filled,
+     coloured sheet. That is the one thing a preview must not do. The skin
+     carries the same records as CSS, built from the very font/fill/border
+     records that go into the styleSheet, so the two cannot drift. */
+  const N = built();
+  const H = N.SHEETS_HS;
+  const SKIN = N.SHEETS_HS_SKIN;
+  assert.equal(SKIN.xfCss.length,
+    (SKIN.stylesXml.match(/<cellXfs count="(\d+)"/) || [])[1] * 1,
+    "one CSS record per style record");
+  const day = mg => ({ M: new Map([["ASHFORD", [{ time: 300, time_kind: "ecs",
+    dest: "STP", headcode: "5X01",
+    units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+              mg, miles: 500 }] }]]]) });
+  const html = mg => N.SHEETS_XLSX.previewHtml(
+    H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, day(mg), null));
+
+  const under = html(143);
+  assert.match(under, /class="sheet calibri"/, "set in the sheet's own face");
+  assert.match(under, /border-left:2px solid/, "and ruled, not bare text");
+  assert.ok(under.includes("#00B050"), "the depot's green on the block titles");
+  /* Excel paints the mileage rules over the cell when the book opens, so the
+     preview paints them too — otherwise MG shows its base fill on screen and
+     a different colour in the workbook. */
+  assert.ok(under.includes(SKIN.dxfCss[0].match(/background:(#\w+)/)[1]),
+    "under 500 miles is green, the way the key above it says");
+  assert.ok(html(951).includes(SKIN.dxfCss[1].match(/background:(#\w+)/)[1]),
+    "and 500 or over is red");
+  assert.ok(!under.includes("font-size:undefined"),
+    "no look without a size behind it");
+});

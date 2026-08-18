@@ -159,6 +159,9 @@
     border-collapse:collapse; table-layout:fixed;
     font-family:Arial, Helvetica, sans-serif; color:#000;
   }
+  /* the 395 sheet is set in Calibri throughout, so it is said once here
+     rather than on every one of its hundred-odd style records */
+  table.sheet.calibri{font-family:Calibri, Carlito, Arial, sans-serif}
   /* Excel lets a long value spill across the empty cells beside it, and the
      395 sheet's headings depend on that - clipped to their own column they
      read TRAI…, ARRI…, CET…, so the check on screen was less legible than

@@ -453,7 +453,9 @@ function previewHtml(layout){
      cell stretches its whole column, which is what the Metro sheet's
      sign-off line was doing to TRAIN I.D. */
   const totalPx = PX.reduce(function(t, px){ return t + px; }, 0);
-  let h = '<table class="sheet" style="width:' + totalPx + 'px"><colgroup>';
+  const face = (layout.opts && layout.opts.previewFont) || "";
+  let h = '<table class="sheet' + (face ? " " + face : "") +
+          '" style="width:' + totalPx + 'px"><colgroup>';
   for (const px of PX) h += '<col style="width:' + px + 'px">';
   h += "</colgroup><tbody>";
   for (let r = 1; r < layout.maxRow; r++){
@@ -467,11 +469,25 @@ function previewHtml(layout){
       const sp = spans.get(r + "," + c);
       const look = cell ? cell.look : 0;
       const s = cell ? cell.sides : [null, null, null, null];
-      let css = edge("top", s[2]) + edge("right", s[1]) +
-                edge("bottom", s[3]) + edge("left", s[0]);
-      if (look && LOOKS[look]){
-        css += "text-align:" + LOOKS[look][1] + ";font-size:" + LOOK_SIZE[look] + ";";
-        if (LOOK_BOLD[look]) css += "font-weight:700;";
+      /* A book dressed in somebody else's style records draws itself with
+         them here too. The 395 sheet names an exact xf per cell and the
+         preview had only the coarse house look to go on, so what you checked
+         on screen was bare text and what you saved was the operator's own
+         ruled, filled, coloured sheet - the one thing this preview exists
+         not to do. The skin carries one CSS declaration per record. */
+      let css;
+      const xfCss = layout.opts && layout.opts.xfCss;
+      if (xfCss && cell && cell.xf !== undefined && xfCss[cell.xf]) {
+        // …and anything the workbook's own conditional formatting paints
+        // over it when Excel opens the file
+        css = xfCss[cell.xf] + ";" + (cell.cfCss ? cell.cfCss + ";" : "");
+      } else {
+        css = edge("top", s[2]) + edge("right", s[1]) +
+              edge("bottom", s[3]) + edge("left", s[0]);
+        if (look && LOOKS[look]){
+          css += "text-align:" + LOOKS[look][1] + ";font-size:" + LOOK_SIZE[look] + ";";
+          if (LOOK_BOLD[look]) css += "font-weight:700;";
+        }
       }
       h += "<td" + (sp ? ' colspan="' + sp[0] + '" rowspan="' + sp[1] + '"' : "") +
            ' style="' + css + '">' + esc(cell && cell.v ? cell.v : "") + "</td>";

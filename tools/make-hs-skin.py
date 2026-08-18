@@ -230,10 +230,89 @@ for (hc, _), (note, n) in best.items():
     hcNotes.setdefault(hc, []).append(note)
 for hc in hcNotes: hcNotes[hc].sort()
 
+# ---- the same dress, as CSS, for the on-screen preview ----
+# The saved book names these style records directly, so the preview had only
+# the coarse house "look" to draw with and came out as bare text - nothing
+# like the sheet it previews. One CSS declaration per style record, built
+# from the very font/fill/border records that go into the styleSheet above,
+# so the two cannot drift.
+BORDER_CSS = {
+    "hair": "1px solid", "thin": "1px solid", "dotted": "1px dotted",
+    "dashed": "1px dashed", "medium": "2px solid", "mediumDashed": "2px dashed",
+    "thick": "3px solid", "double": "3px double",
+}
+def rgb_of(frag, default=None):
+    m = re.search(r'rgb="([0-9A-Fa-f]{8})"', frag or "")
+    if m: return "#" + m.group(1)[2:].upper()
+    m = re.search(r'rgb="([0-9A-Fa-f]{6})"', frag or "")
+    if m: return "#" + m.group(1).upper()
+    return default
+
+def css_for(xf):
+    out = []
+    def idx(attr):
+        m = re.search(attr + r'="(\d+)"', xf)
+        return int(m.group(1)) if m else 0
+    fo = f_used[idx("fontId")]
+    if "<b/>" in fo: out.append("font-weight:700")
+    if "<i/>" in fo: out.append("font-style:italic")
+    m = re.search(r'<sz val="([\d.]+)"', fo)
+    if m: out.append("font-size:%spt" % m.group(1))
+    # black is the default and Calibri is what the whole sheet is set in;
+    # written out per record they cost 2 KB of the built file for nothing
+    col = rgb_of(re.search(r'<color[^/]*/>', fo).group(0)
+                 if re.search(r'<color[^/]*/>', fo) else "", "#000000")
+    if col != "#000000": out.append("color:" + col)
+    nm = re.search(r'<name val="([^"]+)"', fo)
+    if nm and nm.group(1) != "Calibri":
+        out.append("font-family:%s,sans-serif" % nm.group(1))
+    fl = l_used[idx("fillId")]
+    if 'patternType="solid"' in fl:
+        bg = rgb_of(re.search(r'<fgColor[^/]*/>', fl).group(0)
+                    if re.search(r'<fgColor[^/]*/>', fl) else "", None)
+        if bg: out.append("background:" + bg)
+    bd = b_used[idx("borderId")]
+    for side in ("left", "right", "top", "bottom"):
+        m = re.search(r"<%s([^>]*)>(.*?)</%s>|<%s([^>]*)/>" % (side, side, side),
+                      bd, re.S)
+        if not m: continue
+        attrs = m.group(1) or m.group(3) or ""
+        st = re.search(r'style="([^"]+)"', attrs)
+        if not st: continue
+        rule = BORDER_CSS.get(st.group(1), "1px solid")
+        out.append("border-%s:%s %s" % (side, rule,
+                   rgb_of(m.group(2) or "", "#000000")))
+    al = re.search(r'<alignment([^/]*)/>', xf)
+    if al:
+        h = re.search(r'horizontal="([^"]+)"', al.group(1))
+        if h: out.append("text-align:" + h.group(1))
+        if 'wrapText="1"' in al.group(1):
+            out.append("white-space:normal")
+    return ";".join(out)
+
+xf_css = [css_for(x) for x in out_xfs]
+
+# The two mileage rules as CSS as well, in the same order the styleSheet
+# writes them: 0 is under 500, 1 is over. Excel paints these over the cell's
+# own fill when the book is opened; the preview has to do it itself or MG
+# shows its base colour and the sheet on screen disagrees with the sheet in
+# the workbook - which is the whole point of a preview.
+def dxf_css(d):
+    out = []
+    if "<b/>" in d: out.append("font-weight:700")
+    c = re.search(r'<font>.*?(<color[^/]*/>)', d, re.S)
+    col = rgb_of(c.group(1) if c else "", None)
+    if col: out.append("color:" + col)
+    bg = rgb_of(re.search(r'<bgColor[^/]*/>', d).group(0)
+                if re.search(r'<bgColor[^/]*/>', d) else "", None)
+    if bg: out.append("background:" + bg)
+    return ";".join(out)
+dxf_css_pair = [dxf_css(dxfs[207]), dxf_css(dxfs[206])]
+
 remap = lambda m: {c: newid[x] for c, x in m.items()}
 skin = {
   "dv": dv, "hcNotes": hcNotes,
-  "stylesXml": styles,
+  "stylesXml": styles, "xfCss": xf_css, "dxfCss": dxf_css_pair,
   "colsXml": re.search(r'<cols>.*?</cols>', sheet, re.S).group(0),
   "tabColor": "FFFFFF00",
   "legend": [[r, c, newid[x], v] for r, c, x, v in legend],

@@ -165,8 +165,16 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "H" ? v.id : c === "I" ? v.diag : c === "K" ? v.mg
           : c === "L" ? v.time : c === "N" ? v.unit
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
-        put(r, COL(c), xf, val, undefined,
-            (c === "K" || c === "N") && val !== "" && /^\d+$/.test(String(val)));
+        const num = (c === "K" || c === "N") && val !== "" &&
+                    /^\d+$/.test(String(val));
+        put(r, COL(c), xf, val, undefined, num);
+        /* Excel paints the mileage rules over the cell when the book opens.
+           The preview has to do it itself, or MG shows its base fill and the
+           sheet on screen disagrees with the one in the workbook. Same two
+           dxf records the conditional formatting below names. */
+        if (c === "K" && num)
+          cells[cells.length - 1].cfCss =
+            SKIN.dxfCss[Number(val) < 500 ? 0 : 1];
       }
       /* The route notes their sheet keeps as comments on the DIAGRAM
          cells. "Not over high level" is DERIVED, per working: a stint
@@ -227,6 +235,8 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
     : "";
   return { cells, merges, rowHeights, maxRow: r, comments, blocks,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
+                   // the same records again, as CSS, for the preview
+                   xfCss: SKIN.xfCss, previewFont: "calibri",
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
                    lastCol: "T", noPageSetup: true, widths: PREVIEW_W } };
 }
