@@ -7375,6 +7375,13 @@ const GENIUS = (() => {
       "End Tiploc", "End Location Name", "End Time"]);
     if (!c || c.missing) throw new Error(
       "That CSV doesn't look like the Integrale Diagrams export." + missingCols(c));
+    /* Cumulative Miles is what the Metro sheet's MILES column and the 395
+       sheet's MG are made of. Genius carries the same figure and Integrale
+       was simply never read for it, so every Integrale build came out with
+       both columns blank and nothing saying why. Looked up outside the
+       required set, so an export without the column still builds. */
+    const hdr = (rows[0] || []).map(x => String(x || "").trim().toLowerCase());
+    const cmi = hdr.indexOf("cumulative miles");
     const diags = new Map();     // code -> {date, legs, stabledOnly}
     let mangled = 0, badTime = 0;
     for (let i = 1; i < rows.length; i++) {
@@ -7396,6 +7403,8 @@ const GENIUS = (() => {
         eN: (r[c["End Location Name"]] || "").trim(),
         eTime: r[c["End Time"]] || "",
         hc: hc ? hc.slice(0, 4) : null,
+        // the running total REACHED BY THE END of this leg
+        cum: cmi >= 0 ? parseFloat(r[cmi]) : NaN,
       });
     }
     // legs -> the itinerary rows assemble()/buildDate expect, with the
@@ -7407,17 +7416,25 @@ const GENIUS = (() => {
       let prev = -1;
       const roll = v => { while (v < prev - 60) v += 1440; prev = Math.max(prev, v); return v; };
       const out = [];
+      /* Each stop keeps the running total as it stood WHEN IT WAS THERE -
+         the leg's start carries what had been run before it, its end what
+         has been run after. A stint's MG is then the difference between its
+         two ends, exactly as the Genius path works it out. */
+      let ml = 0, top = 0, anyMl = false;
       for (const leg of d.legs) {
         /* An unreadable time is dropped rather than carried: Math.max with
            NaN is NaN, so one bad cell kills the past-midnight rolling for
            the rest of the diagram and prints a NaN+NaN row in the book. */
         const sv = tmin(leg.sTime), ev = tmin(leg.eTime);
         if (sv === null || ev === null) { badTime++; continue; }
+        const before = ml;
+        if (isFinite(leg.cum)) { ml = leg.cum; top = Math.max(top, ml); anyMl = true; }
         out.push({ code: leg.sT, name: leg.sN, arr: null,
-                   dep: roll(sv), hc: leg.hc });
+                   dep: roll(sv), hc: leg.hc, ml: before });
         out.push({ code: leg.eT, name: leg.eN, arr: roll(ev),
-                   dep: null, hc: null });
+                   dep: null, hc: null, ml });
       }
+      if (anyMl) out.miles = top;
       if (!out.length) { stabled.push(code); continue; }
       if (!byDate.has(d.date)) byDate.set(d.date, new Map());
       byDate.get(d.date).set(code, out);
