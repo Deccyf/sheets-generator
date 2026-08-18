@@ -618,7 +618,8 @@ function reviewPane(items) {
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
         metro: true,
         opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
-      { road: "HIGH SPEED SHEETS", fleet: "High Speed", label: "High Speed 395",
+      { road: "HIGH SPEED ALLOCATION SHEETS", fleet: "High Speed",
+        label: "High Speed 395",
         spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
         secs: res.hsSecs, ram: false, hsSheet: true,
         order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
@@ -638,7 +639,9 @@ function reviewPane(items) {
       }
       if (!entries) {
         roadsEl.appendChild(emptyRoadCard(i, b.road, b.label, b.spriteCls,
-          "No " + b.fleet + " diagrams in these reports — nothing to berth." +
+          "No " + b.fleet + " diagrams in these reports — nothing to " +
+          // neither of the depot's own documents berths anything
+          (b.metro || b.hsSheet ? "sheet." : "berth.") +
           (b.cycle ? " (A " + b.fleet + " Control Cycle must exist in Genius" +
                      " for its diagrams to appear.)" : "")));
         return;

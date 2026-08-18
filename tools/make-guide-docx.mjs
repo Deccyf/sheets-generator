@@ -365,9 +365,9 @@ const children = [
     "note pointing you at the weekend panel."),
   gap(60),
   p("A book with nothing in it says so — *“No Metro diagrams in these " +
-    "reports — nothing to berth”* — rather than handing you an empty " +
-    "workbook. For Metro and High Speed it also reminds you to check the " +
-    "Control Cycle."),
+    "reports — nothing to sheet”* — rather than handing you an empty " +
+    "workbook; the berthing books say *“nothing to berth”*. For Metro and " +
+    "High Speed it also reminds you to check the Control Cycle."),
 
   h2("6. Building the weekend sheets"),
   lead("Saturday and Sunday"),
@@ -397,7 +397,7 @@ const children = [
       "Ramsgate's own book, cut from the same day's work"],
      ["METRO SHEETS", "METRO_SHEETS_….xlsx",
       "The metro book — 465s, 466s, 707s. Not a berthing sheet — see below"],
-     ["HS SHEETS", "HS_SHEETS_….xlsx",
+     ["HIGH SPEED ALLOCATION SHEETS", "HS_SHEETS_….xlsx",
       "The High Speed book — 395s. Not a berthing sheet — see below"]],
     [0, 1]),
   gap(160),
@@ -573,7 +573,7 @@ const children = [
      ["“…doesn't look like an Integrale export”",
       "Check you exported the Stock Diagrams list and the Stock Diagram Detail " +
       "Report, both as .csv."],
-     ["A road says “nothing to berth”",
+     ["A road says “nothing to berth” or “nothing to sheet”",
       "No diagrams for that fleet are in the paperwork. Nothing wrong — but in " +
       "Genius, check a Control Cycle exists for that fleet."],
      ["A location has its own heading",

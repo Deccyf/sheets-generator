@@ -152,8 +152,10 @@ Unit order and Rules tabs), then save each book, or all of them at once as a
 single zip.
 
 Four roads are always shown — **SHEETS**, **RAM SHEETS**, **METRO SHEETS** and
-**HS SHEETS**. A road whose fleet has no diagrams in the reports says so
-(*"nothing to berth"*) instead of offering an empty workbook to save; for
+**HIGH SPEED ALLOCATION SHEETS**, each named for the document it builds rather
+than for the fleet. A road whose fleet has no diagrams in the reports says so
+(*"nothing to berth"*, or *"nothing to sheet"* on the two that are not
+berthing sheets) instead of offering an empty workbook to save; for
 Metro and High Speed it also reminds you that Genius needs a Control Cycle
 for that fleet. The *Save all* zip holds only the books that were built.
 
@@ -561,7 +563,7 @@ entries:
 | A location comes up under its own heading | A unit berthed somewhere the section list doesn't know. It gets its own section in alphabetical order and a review note — check it, and if it should live under an existing section, add it to the tables (see [Reference data](#reference-data--where-the-knowledge-lives)). |
 | A train is missing | Check the review list first: empty moves to a berth are left off deliberately and each one is named there. If it isn't listed, trace the diagram number. |
 | *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
-| A road says *nothing to berth* | No diagrams for that fleet are in the reports or prints — nothing to build, nothing wrong. In Genius, check a Control Cycle exists for that fleet. |
+| A road says *nothing to berth* (or *nothing to sheet*) | No diagrams for that fleet are in the reports or prints — nothing to build, nothing wrong. In Genius, check a Control Cycle exists for that fleet. |
 | *"That looks like a reissue on its own"* | A reissue was dropped without the full weekly prints — drop the full prints with it (or first). |
 | Reissue rejected for its date | The reissue is dated differently from the base prints — it belongs to a different day. |
 | A day's books are missing after a drop | Two dates that fall on the same weekday cannot both be built — a book has one column per weekday. The review list names the one that was left out. Build one week at a time. |

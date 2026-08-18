@@ -191,8 +191,9 @@ per date inside each workbook — MON to FRI. Dates that fall on a weekend are
 skipped, with a note telling you to use the weekend panel.
 
 **A book with nothing in it** says so — *"No Metro diagrams in these reports —
-nothing to berth"* — instead of giving you an empty workbook. For Metro and High
-Speed it reminds you to check the Control Cycle.
+nothing to sheet"* — instead of giving you an empty workbook. (The berthing
+books say *"nothing to berth"*.) For Metro and High Speed it reminds you to
+check the Control Cycle.
 
 ### If you can't get the files onto the machine
 
@@ -296,7 +297,7 @@ Worth knowing:
 | **SHEETS** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
 | **RAM SHEETS** | `RAM_SHEETS_…xlsx` | Ramsgate's own book, cut from the same day's work |
 | **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s. **Not a berthing sheet** — see below |
-| **HS SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s. **Not a berthing sheet** — see below |
+| **HIGH SPEED ALLOCATION SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s. **Not a berthing sheet** — see below |
 
 ### Weekends — three books
 
@@ -551,7 +552,7 @@ St Pancras or Swanley is not a berthing question.
 | *"The Summary is from Genius but the Detail is from Integrale"* | The pair have to come from the same system. Two PDFs, or two CSVs. |
 | *"…doesn't look like a Genius report"* | The PDF's text couldn't be read — make sure it was saved from Genius, not scanned or photographed. |
 | *"…doesn't look like an Integrale export"* | The CSV isn't one of the two Integrale exports. Check you exported the Stock Diagrams list and the Stock Diagram Detail Report. |
-| A road says *"nothing to berth"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
+| A road says *"nothing to berth"* or *"nothing to sheet"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
 | A location has its own heading | A unit berthed somewhere the section list has never heard of. It's on the review list; check where it should live. |
 | A train seems to be missing | Read the review list first — empty moves into a berth are left off deliberately and each one is named. If it isn't there, note the diagram number and report it. |
 | Two units are the wrong way round | Check the review list for *"AM unit positions only"* first — if it's there, the Summary was exported without **File → Session Settings → "Show diagram sections on the diagram summary report"**, and every afternoon formation is in its morning order. Re-export with it ticked. Otherwise: if the review list flagged that entry, the reports couldn't settle it; if it didn't, the order came from the tables and is wrong there — report the section, time and diagram numbers and it can be pinned. |
