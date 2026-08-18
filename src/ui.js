@@ -132,7 +132,9 @@ function tabbed(panes) {
     tabs.appendChild(tb);
     return { tb, htmlFn };
   });
+  let sel = 0;
   function select(ix) {
+    sel = ix;
     if (cache[ix] === undefined) cache[ix] = btns[ix].htmlFn();
     const pane = cache[ix];
     if (pane && pane.nodeType) { view.textContent = ""; view.appendChild(pane); }
@@ -154,7 +156,7 @@ function tabbed(panes) {
     btns[next].tb.focus(); select(next);
     e.preventDefault();
   });
-  return { tabs, view, select };
+  return { tabs, view, select, current: () => sel };
 }
 
 /* ---------------- local rule edits ----------------
@@ -481,9 +483,10 @@ function metroPane(sheets, what) {
   return wrap;
 }
 
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide) {
+function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, wide, restore) {
   const art = document.createElement("article");
   art.className = "road" + (wide ? " wide" : "");
+  art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
   track.className = "track";
@@ -511,7 +514,7 @@ function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, 
   }
   const panel = document.createElement("div");
   panel.className = "panel"; panel.hidden = true;
-  const { tabs, view, select } = tabbed(panes);
+  const { tabs, view, select, current } = tabbed(panes);
   panel.append(tabs, view);
   let opened = false;
   bp.addEventListener("click", () => {
@@ -519,6 +522,20 @@ function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, 
     bp.textContent = panel.hidden ? "Look at it" : "Close";
     if (!panel.hidden && !opened) { opened = true; select(0); }
   });
+  /* Ticking a headcode box or pressing Reverse rebuilds every book, which
+     used to wipe the cards and shut the preview you were reading - after
+     telling you, on the button itself, that it rebuilds "so you can see it".
+     What was open is reopened, on the same tab, at the same scroll. */
+  if (restore) {
+    opened = true;
+    panel.hidden = false;
+    bp.textContent = "Close";
+    select(Math.min(restore.tab || 0, panes.length - 1));
+    view.scrollTop = restore.top || 0;
+    view.scrollLeft = restore.left || 0;
+  }
+  art.openState = () => panel.hidden
+    ? null : { tab: current(), top: view.scrollTop, left: view.scrollLeft };
   art.append(head, track, rline, acts, panel);
   return art;
 }
@@ -640,6 +657,11 @@ function reviewPane(items) {
         order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
         opts: { baseOrder: [], splitRamsgate: false } },
     ];
+    /* What was open stays open across a rebuild - keyed by road, because a
+       rebuild can change which roads have anything in them. */
+    const wasOpen = new Map();
+    for (const el of roadsEl.children)
+      if (el.openState) { const st = el.openState(); if (st) wasOpen.set(el.dataset.road, st); }
     roadsEl.textContent = "";
     const books = [];
     plan.forEach((b, i) => {
@@ -701,12 +723,20 @@ function reviewPane(items) {
                     () => orderPane(b, res, rebuildForRules, secNames)]);
       panes.push(["Rules", () => rulesPane(b, res, secNames,
         b.metro ? "metro" : (b.hsSheet ? "hs" : null))]);
-      const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
+      const unitHtml = "<b>" + entries + "</b> " +
+        (entries === 1 ? "entry" : "entries") + " · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
-      const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
+      /* Saving said nothing at all — on a machine where the browser drops
+   files into a folder without asking, or where a policy blocks it, the
+   only thing to do was click again. */
+      const acts = [["Save book", () => {
+        download(book.name, book.bytes, XLSX_MIME);
+        say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
+      }]];
       // the Metro sheet is fourteen columns across and needs the room
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts, !!(b.metro || b.hsSheet)));
+        b.review.length, panes, acts, !!(b.metro || b.hsSheet),
+        wasOpen.get(b.road)));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
@@ -838,6 +868,9 @@ function reviewPane(items) {
   dlall.addEventListener("click", () => {
     if (!built || !built.length) return;
     downloadZip(zipName, built.map(b => [b.name, b.bytes]));
+    say("Saved " + zipName + " — " + built.length + " book" +
+        (built.length === 1 ? "" : "s") +
+        " in it, in this computer's Downloads folder.", "go");
   });
   /* The weekend panel has always had this. The weekday one did not, so the
      only way to be sure of what was on screen was to reload the page. */
@@ -933,7 +966,9 @@ function reviewPane(items) {
         "through a line — select from the very top of the file, first line " +
         "and all, and copy again."
       : "The " + label + " box does not read as one of the reports (" +
-        Math.round(raw.length / 1000) + "k characters in it). Copy the whole " +
+        (raw.length < 1000 ? raw.length + " characters"
+                           : Math.round(raw.length / 1000) + "k characters") +
+        " in it). Copy the whole " +
         "file, first line and all — and paste a CSV export, not a PDF.", el };
   }
 
@@ -1021,6 +1056,10 @@ function reviewPane(items) {
   const SPRITE_FOR = { Mainline: "375", Metro: "465", "High Speed": "395" };
 
   function render(res) {
+    // same as the weekday panel: a headcode tick rebuilds these too
+    const wasOpen = new Map();
+    for (const el of roadsEl.children)
+      if (el.openState) { const st = el.openState(); if (st) wasOpen.set(el.dataset.road, st); }
     roadsEl.textContent = "";
     res.books.forEach((b, i) => {
       if (b.skipped) {
@@ -1037,10 +1076,16 @@ function reviewPane(items) {
         ["Review list" + (items.length ? " (" + items.length + ")" : ""),
          () => reviewPane(items)],
       ];
-      const unitHtml = "<b>" + b.entries + "</b> entries · " + b.sections + " sections";
+      const unitHtml = "<b>" + b.entries + "</b> " +
+        (b.entries === 1 ? "entry" : "entries") + " · " + b.sections +
+        " section" + (b.sections === 1 ? "" : "s");
       roadsEl.appendChild(roadCard(i, b.road, b.label,
         SPRITE_FOR[b.road] || "375", unitHtml, items.length, panes,
-        [["Save sheet", () => download(b.name, b.xlsx, XLSX_MIME)]]));
+        [["Save sheet", () => {
+          download(b.name, b.xlsx, XLSX_MIME);
+          wSay("Saved " + b.name + " — look in this computer's Downloads folder.", "go");
+        }]],
+        false, wasOpen.get(b.road)));
     });
     const live = res.books.filter(b => !b.skipped);
     allbar.hidden = live.length === 0;
@@ -1088,6 +1133,24 @@ function reviewPane(items) {
       fr.onload = () => res({ name: f.name, bytes: new Uint8Array(fr.result) });
       fr.readAsArrayBuffer(f);
     }))).then(newDocs => {
+      /* One of the weekday reports dropped down here is named rather than
+         reported as unreadable prints - the mirror case, a .docx on the
+         weekday panel, has always been sent down here by name. Only text
+         files are worth sniffing; a .docx is a zip. */
+      for (const d of newDocs) {
+        const nm = d.name.toLowerCase();
+        if (/\.(csv|txt)$/.test(nm)) {
+          let txt = "";
+          try { txt = new TextDecoder().decode(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
+          if (txt && !SheetsEngine.looksLikePrints(txt) &&
+              !SheetsEngine.printsFromCsv(txt) &&
+              (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
+            say(d.name + " is one of the weekday Diagram reports — it builds " +
+                "the Monday-to-Friday books, on the panel above.", "err");
+            return;
+          }
+        }
+      }
       for (const d of newDocs) {
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
@@ -1161,9 +1224,17 @@ function reviewPane(items) {
     const readsAsPrints = t => SheetsEngine.looksLikePrints(t) ||
                                !!SheetsEngine.printsFromCsv(t);
     if (!readsAsPrints(main)) {
-      wSay("That does not read as the diagram prints — no \u201cDiagram:\u201d " +
-           "line with its columns intact. Copy the whole document out of " +
-           "Word, and paste it as it comes.", "err");
+      /* Name it when it is one of the WEEKDAY reports. The mirror case is
+         handled - a .docx on the weekday panel is sent down here by name -
+         but this one told somebody who had just pasted a CSV to go and save
+         it as a CSV. */
+      const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);
+      wSay(weekday
+        ? "That is one of the weekday Diagram reports — it builds the " +
+          "Monday-to-Friday books, on the panel above."
+        : "That does not read as the diagram prints — no \u201cDiagram:\u201d " +
+          "line with its columns intact. Copy the whole document out of " +
+          "Word, and paste it as it comes.", "err");
       if (wePasteMain) wePasteMain.focus();
       return;
     }
@@ -1198,8 +1269,10 @@ function reviewPane(items) {
     });
   }
   $("#we_dlupd").addEventListener("click", () => {
-    if (built && built.updated)
-      download(built.updated.name, built.updated.bytes, DOCX_MIME);
+    if (!built || !built.updated) return;
+    download(built.updated.name, built.updated.bytes, DOCX_MIME);
+    wSay("Saved " + built.updated.name + " — the prints with the reissue\u2019s" +
+         " diagrams spliced in.", "go");
   });
   $("#we_clearall").addEventListener("click", () => {
     loadedDocs = [];
@@ -1216,8 +1289,11 @@ function reviewPane(items) {
   });
   $("#we_dlall").addEventListener("click", () => {
     if (!built) return;
-    downloadZip("SHEETS_" + built.stamp + ".zip",
-      built.books.filter(b => !b.skipped).map(b => [b.name, b.xlsx]));
+    const live = built.books.filter(b => !b.skipped);
+    downloadZip("SHEETS_" + built.stamp + ".zip", live.map(b => [b.name, b.xlsx]));
+    wSay("Saved SHEETS_" + built.stamp + ".zip — " + live.length + " sheet" +
+         (live.length === 1 ? "" : "s") +
+         " in it, in this computer's Downloads folder.", "go");
   });
 })();
 }
