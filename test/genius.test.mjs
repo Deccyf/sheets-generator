@@ -105,25 +105,7 @@ test("GENIUS.build output is identical to the legacy build", async () => {
   assert.deepEqual(sansMetro(norm(resN.secsByDay)), mirrorAscSections(norm(resL.secsByDay)),
     "mainline sections (lowest-Position-first sections mirrored, rest identical)");
   assert.deepEqual(sansMetro(norm(resN.metroSecs)), norm(resL.metroSecs), "metro sections");
-  /* Deliberate divergence: the High Speed book is timed off the first move
-     now, the way the operator's own allocation sheet is (their 18/08 has
-     AZ601 at 04+19 where the platform departure is 05+03), so its entry
-     times have moved on from the frozen build. Everything else about the
-     book still has to match, so the time is left out of the comparison - and
-     the headcode with it, because an entry timed off the empty move out of
-     the sidings quotes that move's headcode (5D01) where one timed off the
-     platform quotes the working (1D01). The timing itself is pinned in
-     hs.test.mjs. */
-  const sansTime = v => {
-    if (v === null || typeof v !== "object") return v;
-    if (Array.isArray(v)) return v.map(sansTime);
-    const o = {};
-    for (const k of Object.keys(v))
-      if (k !== "time" && k !== "time_kind" && k !== "headcode") o[k] = sansTime(v[k]);
-    return o;
-  };
-  assert.deepEqual(sansTime(sansMetro(norm(resN.hsSecs))), sansTime(norm(resL.hsSecs)),
-    "high speed sections, apart from the times");
+  assert.deepEqual(sansMetro(norm(resN.hsSecs)), norm(resL.hsSecs), "high speed sections");
   assert.deepEqual(norm(resN.labels), norm(resL.labels), "labels");
   /* The legacy build is frozen, so it cannot grow review items the new one
      learned to raise. Compare only the kinds both builds know about; the

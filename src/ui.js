@@ -14,7 +14,6 @@ if (document.readyState === "loading") {
 function init() {
 const $ = s => document.querySelector(s);
 const METRO = SHEETS_METRO;
-const HS = SHEETS_HS;
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const DOCX_MIME =
@@ -609,9 +608,9 @@ function reviewPane(items) {
         secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
         metro: true,
         opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
-      { road: "HS SHEETS", fleet: "High Speed", label: "High Speed 395",
+      { road: "HIGH SPEED SHEETS", fleet: "High Speed", label: "High Speed 395",
         spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
-        secs: res.hsSecs, ram: false, hsSheet: true,
+        secs: res.hsSecs, ram: false,
         order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
         opts: { baseOrder: [], splitRamsgate: false } },
     ];
@@ -641,19 +640,15 @@ function reviewPane(items) {
          a worksheet per location rather than per day, so its preview is per
          location too. */
       const metroSheets = b.metro
-        ? METRO.sheetsFor(b.secs, res.labels, b.order, res.dates)
-        : (b.hsSheet ? HS.sheetsFor(b.secs, res.labels, res.dates) : null);
+        ? METRO.sheetsFor(b.secs, res.labels, b.order, res.dates) : null;
       const book = { road: b.road, name: b.file + res.tag + ".xlsx",
         bytes: b.metro
           ? METRO.writeMetroBook(b.secs, res.labels, b.order,
                                  f => fflate.zipSync(f, { level: 6 }), res.dates)
-          : (b.hsSheet
-             ? HS.writeHsBook(b.secs, res.labels, res.dates,
-                              f => fflate.zipSync(f, { level: 6 }))
-             : X.writeBooks(b.secs, res.labels, b.ram, opts)) };
+          : X.writeBooks(b.secs, res.labels, b.ram, opts) };
       books.push(book);
-      const panes = (b.metro || b.hsSheet)
-        ? [[b.metro ? "Sheet" : "Allocations", () => metroPane(metroSheets)]]
+      const panes = b.metro
+        ? [["Sheet", () => metroPane(metroSheets)]]
         : dayKeys.map(d => [X.DAY_SHEET[d], () => {
             const secs = b.secs[d];
             if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
@@ -668,16 +663,16 @@ function reviewPane(items) {
          convention and not something a correction should silently fight.
          Offering a button that changes nothing you can see is worse than
          not offering it. */
-      if (!b.metro && !b.hsSheet)
+      if (!b.metro)
         panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
                     () => orderPane(b, res, rebuildForRules, secNames)]);
-      panes.push(["Rules", () => rulesPane(b, res, secNames, !!(b.metro || b.hsSheet))]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames, !!b.metro)]);
       const unitHtml = "<b>" + entries + "</b> entries · " + secNames.size +
         " section" + (secNames.size === 1 ? "" : "s");
       const acts = [["Save book", () => download(book.name, book.bytes, XLSX_MIME)]];
       // the Metro sheet is fourteen columns across and needs the room
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts, !!(b.metro || b.hsSheet)));
+        b.review.length, panes, acts, !!b.metro));
     });
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";

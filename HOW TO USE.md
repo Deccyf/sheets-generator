@@ -296,7 +296,7 @@ Worth knowing:
 | **SHEETS** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
 | **RAM SHEETS** | `RAM_SHEETS_…xlsx` | Ramsgate's own book, cut from the same day's work |
 | **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s. **Not a berthing sheet** — see below |
-| **HS SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s. **Not a berthing sheet** — see below |
+| **HS SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s |
 
 ### Weekends — three books
 
@@ -330,22 +330,6 @@ builds them that way:
   **Unit order** tab on it — that turns a formation round, and this sheet
   reads by Position — and the **Metro** headcode tick box has gone, because
   every line of it carries its headcode already.
-
-### The High Speed book is the allocations sheet
-
-Same idea as Metro — the 395 book is your own **Class 395 Allocations Sheet**,
-not a berthing sheet:
-
-* **A tab per day**, named the way yours are — `Tue 18 08` — landscape.
-* A **block per depot** down it (Ashford, Margate, Ramsgate), with **last
-  night's arrivals on the left** and **today's allocations on the right**.
-* The arrivals side fills from the day before, so drop a **Monday-to-Friday**
-  pair and every day but the Monday has it. Drop one day on its own and the
-  heading says *"no previous day loaded"* rather than leaving you guessing.
-* Timed off the **first move**, as yours is, and using **your** berth codes —
-  `ASH`, `RAM`, `FAV`.
-* `N/M M/O`, `FP/RP`, `CET DUE`, `ARRIVES` and the notes are ruled and empty
-  for you to fill in.
 
 One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
 plus the updated prints document when a reissue has been merged.
