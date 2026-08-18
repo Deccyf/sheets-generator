@@ -207,6 +207,11 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
       if (c.f) sd += '<c r="' + ref + '" s="' + c.s + '"><f>' + esc(c.f) + '</f></c>';
       else if (c.v === undefined || c.v === null || c.v === "")
         sd += '<c r="' + ref + '" s="' + c.s + '"/>';
+      /* A number written as inline text is invisible to cellIs rules - the
+         allocation sheet's MG colours never fired on "143". A cell marked
+         num ships as a real number, the way the operator's own K cells do. */
+      else if (c.num) sd += '<c r="' + ref + '" s="' + c.s + '"><v>' +
+                            esc(c.v) + '</v></c>';
       else sd += '<c r="' + ref + '" s="' + c.s + '" t="inlineStr"><is>' +
                  '<t xml:space="preserve">' + esc(c.v) + '</t></is></c>';
     }

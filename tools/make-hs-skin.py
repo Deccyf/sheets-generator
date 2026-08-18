@@ -83,12 +83,17 @@ gaprow = {c: x for c, (x, v) in cells(27).items() if len(c) == 1 and c <= "T"}
 for m in (title, data, grey, gaprow): used.update(m.values())
 used.update(x for _, x, _ in header)
 
-# renumber into a minimal styleSheet
+# renumber into a minimal styleSheet - around Excel's reserved slots.
+# fill 0 must be patternType none and fill 1 gray125, and cellXfs 0 must be
+# a plain default: Excel paints every UNTOUCHED cell of the grid with xf 0,
+# so if the lowest used record lands there (a solid-white applyFill did),
+# the whole background renders as the dotted haze the depot saw. Seed the
+# output with the workbook's own slot-0 records and put the rest after.
 order = sorted(used)
-newid = {old: i for i, old in enumerate(order)}
-f_used, l_used, b_used, n_used = [], [], [], []
-fmap, lmap, bmap = {}, {}, {}
-out_xfs = []
+newid = {old: i + 1 for i, old in enumerate(order)}   # xf 0 = the plain default
+f_used, l_used, b_used, n_used = [fonts[0]], [fills[0], fills[1]], [borders[0]], []
+fmap, lmap, bmap = {0: 0}, {0: 0, 1: 1}, {0: 0}
+out_xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>']
 for old in order:
     x = xfs[old]
     def sub(attr, arr, usedl, mp):
@@ -160,8 +165,70 @@ styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<dxfs count="2">' + dxfs[207] + dxfs[206] + '</dxfs>'   # 0 = under 500, 1 = over
   + '</styleSheet>')
 
+# ---- the drop-downs ----
+# Four list validations on the real tab: CET DUE, FP/RP, 6 OR 12 CAR, and
+# the 395 fleet roster on both UNIT columns. The roster is contiguous
+# (395001-395029), so it ships as first+count and is built at runtime -
+# no unit numbers ride in the skin.
+dvs = re.search(r'<dataValidations.*?</dataValidations>', sheet, re.S).group(0)
+un = re.search(r'<formula1>"(395[\d,]+)"</formula1>', dvs)
+roster = sorted(int(u) for u in un.group(1).split(","))
+assert roster == list(range(roster[0], roster[-1] + 1)), "fleet roster has gaps"
+dv = { "cet": "YES,N", "fprp": "FP,RP", "cars": "6,12",
+       "unitFirst": roster[0], "unitCount": len(roster) }
+for k, pat in [("cet", r'sqref="F[^"]*"[^>]*>\s*<formula1>"([^"]+)"'),
+               ("fprp", r'sqref="M[^"]*"[^>]*>\s*<formula1>"([^"]+)"')]:
+    m = re.search(r'<dataValidation type="list"[^>]*' + pat, dvs, re.S)
+    if m: dv[k] = m.group(1)
+
+# ---- the standing comments ----
+# Their comments are threaded notes on the DIAGRAM cells, and across every
+# daily tab they are overwhelmingly two pieces of standing route knowledge -
+# "not over high level" (216 tabs-x-rows) and "Avoids North Kent" (123) -
+# repeated against the same workings. Those are carried as a lookup keyed by
+# headcode, like the tool's own ROUTE_BY_HC; one-off chatter is not.
+import collections
+STANDING = { "not over high level": "Not over high level",
+             "avoids north kent": "Avoids North Kent",
+             "avoids north kent am only": "Avoids North Kent AM ONLY",
+             "not over high speed": "Not over high level" }
+# a comments part is paired with its worksheet by the sheet's rels, NOT by
+# number - sheet131's notes live in threadedComment35.xml
+counts = collections.Counter()
+for part in Z.namelist():
+    m = re.match(r'xl/worksheets/_rels/(sheet\d+)\.xml\.rels$', part)
+    if not m: continue
+    tcr = re.search(r'Target="\.\./threadedComments/(threadedComment\d+\.xml)"',
+                    Z.read(part).decode())
+    if not tcr: continue
+    sx = Z.read('xl/worksheets/%s.xml' % m.group(1)).decode()
+    srows = dict(re.findall(r'<row [^>]*r="(\d+)"[^>]*>(.*?)</row>', sx, re.S))
+    def sval(rr, col):
+        c = re.search(r'<c r="%s%s"([^>]*)>(?:<v>(.*?)</v>)?' % (col, rr), srows.get(rr, ""))
+        if not c or c.group(2) is None: return ""
+        return ss[int(c.group(2))] if 't="s"' in c.group(1) else c.group(2)
+    tcx = Z.read('xl/threadedComments/' + tcr.group(1)).decode()
+    for cm in re.finditer(r'<threadedComment ref="[A-Z]+(\d+)"[^>]*>(.*?)</threadedComment>', tcx, re.S):
+        t = re.search(r'<text>(.*?)</text>', cm.group(2), re.S)
+        key = re.sub(r'\s+', ' ', (t.group(1) if t else "")).strip().lower()
+        if key not in STANDING: continue
+        hc = (sval(cm.group(1), "H") or "").split(" ")[0]
+        if re.match(r'^[125][A-Z]\d\d$', hc):
+            counts[(hc, STANDING[key])] += 1
+# one note per family: where a working's note changed over the period
+# ("Avoids North Kent" vs "... AM ONLY"), the most-sighted wording wins
+hcNotes, best = {}, {}
+for (hc, note), n in counts.items():
+    if n < 5: continue
+    k = (hc, "NK" if "North Kent" in note else "HL")
+    if k not in best or n > best[k][1]: best[k] = (note, n)
+for (hc, _), (note, n) in best.items():
+    hcNotes.setdefault(hc, []).append(note)
+for hc in hcNotes: hcNotes[hc].sort()
+
 remap = lambda m: {c: newid[x] for c, x in m.items()}
 skin = {
+  "dv": dv, "hcNotes": hcNotes,
   "stylesXml": styles,
   "colsXml": re.search(r'<cols>.*?</cols>', sheet, re.S).group(0),
   "tabColor": "FFFFFF00",
@@ -175,7 +242,7 @@ skin = {
   "data": remap(data), "greyRight": remap(grey), "gapRow": remap(gaprow),
 }
 js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n"
-      "   from the operator's workbook by scratchpad/mkskin.py and renumbered\n"
+      "   from the operator's workbook by tools/make-hs-skin.py and renumbered\n"
       "   into a minimal styleSheet. Layout and static house text only: no\n"
       "   unit numbers, headcodes, dates or comments come with it. */\n"
       '"use strict";\n'
@@ -185,9 +252,13 @@ js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n
 
 # leak check before anything is written
 leaks = []
+allowed = set(hcNotes) | { str(roster[0]) }
 for pat, what in [(r'395\d{3}', "unit number"), (r'\b[125][A-Z]\d\d\b', "headcode"),
                   (r'DECLAN|DFINCH|JOHN', "name"), (r'(?<![\d.])46\d{3}(?![\d.])', "date serial")]:
     for m in re.finditer(pat, js):
+        # the standing-notes lookup is keyed by headcode on purpose, and the
+        # roster's first number is the fleet's, not a day's allocation
+        if m.group(0) in allowed: continue
         leaks.append(what + ": " + m.group(0))
 if leaks:
     raise SystemExit("LEAKS:\n" + "\n".join(sorted(set(leaks))))
@@ -196,6 +267,13 @@ if leaks:
 import xml.dom.minidom
 xml.dom.minidom.parseString(styles)
 assert 'theme="' not in styles, "unresolved theme colour left in the skin"
+# the haze guard: Excel renders every untouched grid cell with fill 0 and
+# xf 0, so those must be the conventional blanks, whatever the sheet uses
+assert ('<fill><patternFill patternType="none"/></fill>'
+        '<fill><patternFill patternType="gray125"/></fill>') in styles, \
+    "fills 0/1 are not the reserved none/gray125 pair"
+assert ('<cellXfs count="%d"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'
+        % len(out_xfs)) in styles, "cellXfs 0 is not a plain default"
 open("/home/user/sheets-generator/src/hs-skin.js", "w").write(js)
 print("wrote src/hs-skin.js", len(js), "bytes,", len(out_xfs), "styles,",
       len(f_used), "fonts,", len(l_used), "fills,", len(b_used), "borders")

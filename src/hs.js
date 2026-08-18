@@ -7,9 +7,9 @@
    above and the standing house notes below.
 
    Everything about how it LOOKS comes from SHEETS_HS_SKIN, which is the
-   workbook's own style records lifted verbatim (see scratchpad/mkskin.py):
+   workbook's own style records lifted verbatim (tools/make-hs-skin.py):
    the exact borders, fills, fonts, row heights, column widths, yellow tab
-   and the conditional formatting that colours the MG column amber under
+   and the conditional formatting that colours the MG column green under
    500 miles and red over it. This file only decides what goes in which
    cell.
 
@@ -74,9 +74,13 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
   const dvRanges = { cet: [], fprp: [], cars: [], unit: [] };
   /* Every cell names the skin's exact style record (xf) for the saved file,
      and a coarse house look for the on-screen preview. */
-  const put = (r, c, xf, v, look) =>
-    cells.push({ r, c, xf, v: v === undefined || v === null ? "" : String(v),
-                 look: look || 3, sides: [null, null, null, null] });
+  const put = (r, c, xf, v, look, num) => {
+    const cell = { r, c, xf, v: v === undefined || v === null ? "" : String(v),
+                   look: look || 3, sides: [null, null, null, null] };
+    // a real number cell, so the MG colour rules can compare it
+    if (num) cell.num = true;
+    cells.push(cell);
+  };
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
   const today = longDate(dayKey, dates[dayKey]);
@@ -119,6 +123,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           // where the stint figure is missing (a PDF-fed build)
           mg: u.mg != null ? u.mg
             : (u.miles == null ? "" : Math.round(u.miles)),
+          hl: u.hl,
           time: stamp(e), unit: u.unit || "",
           endsAm: endsCode(u.am), endsPm: endsCode(u.pm),
         });
@@ -142,18 +147,26 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "H" ? v.id : c === "I" ? v.diag : c === "K" ? v.mg
           : c === "L" ? v.time : c === "N" ? v.unit
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
-        put(r, COL(c), xf, val);
+        put(r, COL(c), xf, val, undefined,
+            c === "K" && val !== "" && isFinite(val));
       }
-      /* The standing route notes their sheet keeps as comments on the
-         DIAGRAM cells - "Not over high level", "Avoids North Kent" -
-         carried by headcode, the way ROUTE_BY_HC carries routes. */
+      /* The route notes their sheet keeps as comments on the DIAGRAM
+         cells. "Not over high level" is DERIVED, per working: a stint
+         with a leg between Ebbsfleet and Gravesend goes over the high
+         level, one without does not - which is where their own tab puts
+         the note. The North Kent notes still come from the standing
+         lookup by headcode; a PDF-fed build, with no legs to read, falls
+         back to the lookup for the high-level note too. */
       if (v) {
-        const note = SKIN.hcNotes[v.id.split(" ")[0]];
-        if (note) comments.push({ ref: "I" + r, text: note.join("\n") });
+        const std = SKIN.hcNotes[v.id.split(" ")[0]] || [];
+        const notes = v.hl === undefined ? std
+          : std.filter(t => !/high level/i.test(t))
+               .concat(v.hl ? [] : ["Not over high level"]);
+        if (notes.length) comments.push({ ref: "I" + r, text: notes.join("\n") });
       }
       r++;
     }
-    /* Their sheet colours the MG column by the mileage key above: amber
+    /* Their sheet colours the MG column by the mileage key above: green
        under 500 miles, red at 500 and over - dxf 0 and 1 in the skin. */
     if (rows.length)
       condFmt.push('<conditionalFormatting sqref="K' + d0 + ':K' + (r - 1) +

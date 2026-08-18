@@ -51,7 +51,7 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     assert.match(o.colsXml, /^<cols>/, "their column widths, verbatim");
     assert.equal(o.noPageSetup, true, "no pageSetup, like their tab");
     assert.ok(o.condFmt.length, "the MG mileage colours ride along");
-    assert.match(o.condFmt[0], /dxfId="0".*lessThan.*500/s, "amber under 500");
+    assert.match(o.condFmt[0], /dxfId="0".*lessThan.*500/s, "green under 500");
   }
   /* …and the saved workbook really carries all of it. */
   const bytes = H.writeHsBook(r.hsSecs, r.labels, r.dates,
@@ -68,6 +68,17 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   assert.ok(!styles.includes('theme="'), "no unresolvable theme colours");
   assert.ok(styles.includes("FFD9D9D9"), "the grey resolved to its rgb");
   assert.ok(styles.includes("FFA9D18E"), "and the mileage chip to its green");
+  /* Excel's reserved slots - the second cause of the haze. Excel paints
+     every UNTOUCHED cell of the grid with cellXfs 0 and expects fill 0 to
+     be patternType none and fill 1 gray125; the renumbered skin once put
+     the workbook's solid-white applyFill record at 0 and the whole
+     background rendered dotted. The slots must stay conventional. */
+  assert.ok(styles.includes('<fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>'),
+    "fills 0 and 1 are the reserved none/gray125 pair");
+  assert.match(styles,
+    /<cellXfs count="\d+"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"\/>/,
+    "cellXfs 0 is a plain default");
   const xml = new TextDecoder().decode(files["xl/worksheets/sheet1.xml"]);
   assert.ok(xml.includes('<tabColor rgb="FFFFFF00"/>'), "yellow tab saved");
   assert.ok(xml.includes("<conditionalFormatting"), "mileage colours saved");
@@ -131,6 +142,61 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     "and the content types declare both parts");
   const wb2 = await normalizeWorkbook(legacy(), bytes2);
   assert.ok(wb2[0].cells.length > 5, "and that workbook still loads");
+});
+
+test("MG is a real number cell, so the mileage colours can fire", () => {
+  /* The cellIs rules compare numbers; a mileage written as inline TEXT is
+     invisible to them, and the depot saw every MG cell sit on the red base
+     fill whatever the figure said. The operator's own K cells are plain
+     <v> number cells, so the generated ones are too - the headers stay
+     text. */
+  const N = built();
+  const H = N.SHEETS_HS;
+  const one = { M: new Map([["ASHFORD", [{ time: 300, time_kind: "ecs",
+    dest: "STP", headcode: "5Z99",
+    units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+              mg: 143, miles: 500 }] }]]]) };
+  const lay = H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, one, null);
+  const bytes = N.SHEETS_XLSX.writeWorkbook([{ name: "T", layout: lay }],
+    f => N.fflate.zipSync(f, { level: 6 }));
+  const xml = new TextDecoder().decode(
+    N.fflate.unzipSync(bytes)["xl/worksheets/sheet1.xml"]);
+  assert.match(xml, /<c r="K\d+" s="\d+"><v>143<\/v><\/c>/,
+    "the working's 143 miles is a number cell");
+  assert.ok(!/<c r="K\d+"[^>]*t="inlineStr"><is><t[^>]*>\d/.test(xml),
+    "and no K cell holds a mileage as text");
+});
+
+test("the high-level note reads the working itself, not the headcode", () => {
+  /* "Not over high level" is derived: a stint with a leg between Ebbsfleet
+     and Gravesend goes over the high level, one without does not. The
+     lookup's own copy of the note must stand aside when the legs have been
+     read - their 18/08 tab puts the note on AZ623's morning and evening
+     rows while the same diagram's positioning start makes the transit. */
+  const N = built();
+  const H = N.SHEETS_HS;
+  const notes = N.SHEETS_HS_SKIN.hcNotes;
+  const hc = Object.keys(notes).find(k =>
+    notes[k].some(t => /North Kent/.test(t)) &&
+    notes[k].some(t => /high level/i.test(t)));
+  assert.ok(hc, "the lookup carries a headcode with both standing notes");
+  const mk = hl => ({ M: new Map([["ASHFORD", [{ time: 300, time_kind: "ecs",
+    dest: "STP", headcode: hc,
+    units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+              mg: 250, miles: 500, hl }] }]]]) });
+  const day = s => H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, s, null);
+  const over = day(mk(true)).comments;
+  assert.equal(over.length, 1, "the North Kent note still rides for " + hc);
+  assert.ok(!/high level/i.test(over[0].text),
+    "but a working that makes the transit does not say 'not over'");
+  const not = day(mk(false)).comments;
+  assert.match(not[0].text, /Not over high level$/,
+    "a working with no such leg says so");
+  assert.ok(/North Kent/.test(not[0].text),
+    "alongside the standing note, not instead of it");
+  const blind = day(mk(undefined)).comments;
+  assert.equal(blind[0].text, notes[hc].join("\n"),
+    "with no legs to read - a PDF-fed build - the lookup stands as-is");
 });
 
 test("each depot block is arrivals on the left, allocations on the right", async () => {

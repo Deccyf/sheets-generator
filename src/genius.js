@@ -621,8 +621,20 @@ const GENIUS = (() => {
         const [sa2, sb2] = stints[u.si];
         const mg = stops[sa2].ml !== undefined && stops[sb2].ml !== undefined
           ? Math.round(stops[sb2].ml - stops[sa2].ml) : undefined;
+        /* Whether this WORKING runs over the high level: a leg between
+           Ebbsfleet and Gravesend, either way round, is over it; a stint
+           with no such leg is not. Per stint, not per diagram - their own
+           tab bears that out on 18/08, where "not over high level" sits on
+           AZ623's morning and evening rows while the diagram's positioning
+           start does make the transit. */
+        let hl = false;
+        for (let k = sa2; k < sb2; k++) {
+          const p = stops[k].code, q = stops[k + 1].code;
+          if ((p === "EBSFLTI" && q === "GRVSEND") ||
+              (p === "GRVSEND" && q === "EBSFLTI")) { hl = true; break; }
+        }
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
-                      dayEnd, miles, mg,
+                      dayEnd, miles, mg, hl,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -923,6 +935,7 @@ const GENIUS = (() => {
                       code: x.diag.slice(0, 2), pos: x.pos,
                       ends: x.dayEnd || "", miles: x.miles };
           if (x.mg != null) u.mg = x.mg;
+          if (x.hl != null) u.hl = x.hl;
           // only where the export named the allocated unit, so every other
           // entry keeps the exact shape the golden test pins
           if (x.unit) u.unit = x.unit;
