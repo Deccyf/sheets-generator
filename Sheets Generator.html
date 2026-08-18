@@ -6119,9 +6119,28 @@ const GENIUS = (() => {
       if (dm) { date = shortDate(dm[1]); continue; }
       const t = l.split(/\s{2,}/);
       if (!/^[A-Z]{2}\d{3}$/.test(t[0] || "")) continue;
-      if (t.length < 8 || !TM.test(t[4]) || !TM.test(t[7])) continue;
-      rows.push({ date, diag: t[0], fleet: t[1], pos: parseInt(t[3], 10),
-                  start: mins(t[4]), from: t[5], to: t[6], end: mins(t[7]) });
+      /* The columns are DIAGRAM, UNITS, FLEET, OFF, START FUEL, POS, AT,
+         FROM, TO, AT, WORKS … - and an empty cell leaves no token behind, so
+         counting positions only holds while the same cells happen to be
+         blank. UNITS is blank on a report printed before the units are
+         allocated and filled on a day-of one: the moment it appears every
+         field shifts right, POS is read as the start time, and the row is
+         dropped without a word - 155 of 322 diagrams on the 17/08 export.
+         Anchor on the two clock fields the way parseDetail does, and read
+         the neighbours off them; then it does not matter which of the
+         optional columns the report carries. */
+      const at = [];
+      for (let i = 1; i < t.length && at.length < 2; i++)
+        if (TM.test(t[i])) at.push(i);
+      if (at.length < 2) continue;
+      const [i1, i2] = at;
+      // POS sits immediately before the start time, FROM immediately after
+      // it, and TO immediately before the end time
+      if (i1 < 2 || i2 - i1 < 2) continue;
+      const fleet = t.slice(1, i1).find(v => /^\d{3}\/\d$/.test(v)) || null;
+      rows.push({ date, diag: t[0], fleet, pos: parseInt(t[i1 - 1], 10),
+                  start: mins(t[i1]), from: t[i1 + 1], to: t[i2 - 1],
+                  end: mins(t[i2]) });
     }
     return rows;
   }

@@ -969,3 +969,29 @@ test("a diagram out a third time reads its last berth until the last journey", a
   assert.deepEqual(pmOf("202"), ["ASHFORD=AFE", "ASHFORD=FKE"],
     "an empty final run reads no differently");
 });
+
+test("a Summary row is read whether or not the UNITS column is filled", () => {
+  /* The report's columns are DIAGRAM, UNITS, FLEET, OFF, START FUEL, POS,
+     AT, FROM, TO, AT … and an empty cell leaves no token behind, so counting
+     positions only holds while the same cells happen to be blank. Genius
+     leaves UNITS empty on a report printed before the units are allocated
+     and fills it on a day-of one. Counting read POS as the start time the
+     moment it appeared and dropped the row with no error — 155 of the 322
+     diagrams on one real export, absent from every book. The two clock
+     fields are the anchor now, so which optional columns the report carries
+     stops mattering. */
+  const G = built().GENIUS;
+  const head = "Diagram Summary for: 03/08/26";
+  const blank =
+    "ZY101  375/6   0.00   2  05:14  AAAADEP  BBBBSDG  23:41  -12.30   402.10";
+  const filled =
+    "ZY101  375999  375/6   0.00   2  05:14  AAAADEP  BBBBSDG  23:41  -12.30   402.10";
+  const want = { date: "03/08/26", diag: "ZY101", fleet: "375/6", pos: 2,
+                 start: 314, from: "AAAADEP", to: "BBBBSDG", end: 1421 };
+  for (const [what, line] of [["UNITS empty", blank], ["UNITS filled", filled]]) {
+    const got = G.parseSummary(head + "\n" + line);
+    assert.equal(got.length, 1, what + ": the row is read at all");
+    assert.deepEqual({ ...got[0] }, want,
+      what + ": every field read off the right column");
+  }
+});
