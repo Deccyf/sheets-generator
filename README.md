@@ -873,6 +873,38 @@ ones, all commented at the point of implementation:
   proves: all ten coupled departures off its Down Sidings list the highest
   Position first, and all three off its Up Sidings list the lowest first.
 
+  **A formation that turns round in the platform prints the other way up**,
+  whatever the section's usual direction. This is `PLATFORM_TURN`, and only
+  Ramsgate is in it. The Position column gives the order a formation left its
+  *berth* in; where it then backs into the platform and pulls out the end it
+  came in, it is standing the other way round by the time it leaves, and the
+  sheet wants the order it leaves in — which is what the depot means by
+  *"the position from the platform is the right one"*.
+
+  The table names the platform code and gives each surrounding road a side of
+  the station: Margate, the Down Reversible, the New Sidings and 4985 are
+  **W**, Minster and Dover Priory are **E**. A working turns if the road it
+  arrives from and the place it leaves towards are on the **same** side, and
+  runs straight through if they are on opposite sides. A formation that never
+  enters the platform on that working — it starts there, or the entry is a
+  berth-to-berth move — is left exactly as the numbers give it.
+
+  This was found from the 21/08 book, where RM044, RM911, RM913 and RM916 each
+  printed second and should have printed first. All four back in off the Down
+  Reversible or the New Sidings and leave towards Margate. RM054/RM055/RM056
+  at 06 38 come off the same roads but carry on towards Minster, so they do
+  not turn — and that one printed correctly, which is what tells the two
+  cases apart. Applied to the 18/08 book it reproduces every Ramsgate order
+  the pins used to hold, so the four `ORDER_FIX` lines that used to name them
+  have been deleted: one rule with a reason behind it beats four pins keyed
+  on exact diagram numbers, which stop matching the moment the formation
+  changes.
+
+  Every unit in the formation has to agree that it turned. They are one train
+  by then so they always do, and a formation calling at the platform off a
+  road the table has no side for is **named on the review list** and left in
+  the order the numbers gave it, rather than guessed at.
+
   **Formations the reports cannot place** go in `ORDER_FIX`, keyed by section
   and diagram numbers, and their order is taken verbatim. Grove Park 05+19
   (`SG809`/`SG810`) and 05+48 (`SG813`/`SG814`) are identical in every field

@@ -201,6 +201,9 @@ function rulesEnv(b, res, secNames) {
     fleets: prof.fleets,
     posAsc: [...prof.posAsc],
     roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
+    // section-keyed, not profile-keyed: Ramsgate is a page in the High Speed
+    // book too, and the rule fires there the same way. inBook does the rest.
+    platformTurn: Object.keys(SHEETS_DATA.PLATFORM_TURN),
     firstDep: [...(prof.firstDep || [])].sort(),
     firstDepAll: !!prof.firstDepAll,
     ecsOnlyOk: [...(prof.ecsOnlyOk || [])].sort(),

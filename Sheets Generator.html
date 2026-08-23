@@ -1130,6 +1130,38 @@ const SIDING_CLASS_RE = new RegExp(
      everywhere it appears, which is what an orientation correction looks
      like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
      ones, so the shared section names are safe. */
+  /* ---- turning round in the platform ----
+     A unit that comes off its berth, runs into the platform and then leaves
+     is standing the other way up by the time it goes: it backed in one end
+     and pulls out the other. The Summary's Position is the order it left the
+     BERTH in, so for those workings the sheet has to print the formation
+     reversed - which is what the depot means by "the position from the
+     platform is the right one".
+
+     Whether it turns depends on which side of the station it arrives from
+     and which side it leaves towards. Same side, it reversed; opposite
+     sides, it ran straight through and the order stands.
+
+     The sides below are read off the workings themselves rather than a track
+     plan, and they account for every Ramsgate formation anybody has checked:
+     the five that were pinned by hand off the 12/08 book, the four reported
+     wrong off the 21/08 book, and 054/055/056, which comes out of the same
+     New Sidings as 052/053 but leaves towards Minster instead of Margate and
+     is right the way it already prints. A location that is not named here
+     leaves the order alone and puts a line on the review list, because
+     guessing which way a train faces is the one thing this must not do. */
+  const PLATFORM_TURN = {
+    RAMSGATE: {
+      platform: "RAMSGTE",
+      side: {
+        // towards Margate
+        MARGATE: "W", RAMSDRW: "W", RAM4985: "W", RAMSNEW: "W", RAMSUSW: "W",
+        // towards Minster, and everything beyond it
+        MINSTER: "E", DOVERP: "E", RAM5143: "E",
+      },
+    },
+  };
+
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
@@ -1156,14 +1188,14 @@ const SIDING_CLASS_RE = new RegExp(
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
     "HASTINGS|029,030": ["030", "029"],
-    /* Ramsgate reads six formations lowest-Position-first and these five
-       highest-first, so the section keeps the ascending rule and the five are
-       named. Confirmed twice over: they are the five the 12/08 Ramsgate book
-       prints backwards from the tool, and the same five a tester marked up
-       off a later day. */
-    "RAMSGATE|043,044,910": ["910", "044", "043"],
-    "RAMSGATE|045,911,912": ["045", "912", "911"],
-    "RAMSGATE|052,053": ["053", "052"],
+    /* Ramsgate's five backwards formations used to be pinned here, one key
+       per formation. They are gone: PLATFORM_TURN above derives all five,
+       because every one of them is a working that backs into the platform
+       and pulls out the same end it came in. Pinning them by formation was
+       always brittle - the key names an exact set of diagrams, so when
+       043/044 ran as a pair on 21/08 instead of the trio 043/044/910 the pin
+       stopped matching and the sheet went back to printing it the wrong way
+       round. That is the fault this rule replaces. */
     /* No section: this formation reads the same way wherever it turns up.
        RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
        and again in the mainline book off Grove Park at 16+13 - the same three
@@ -1174,7 +1206,6 @@ const SIDING_CLASS_RE = new RegExp(
        everywhere: RM043/RM044 read one way at Grove Park and the other at
        West Marina, and would be wrong pinned. */
     "046,047,913": ["913", "047", "046"],
-    "RAMSGATE|907,908,909": ["909", "908", "907"],
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book
     "BELLINGHAM SIDING|461,462": ["461", "462"],
@@ -1489,6 +1520,7 @@ return {
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
@@ -1880,6 +1912,20 @@ const SHEETS_RULES = (() => {
         "of their location: " + roads.map(([road, up]) =>
           road + " reads " + (up ? "lowest" : "highest") + " number first")
           .join("; ") + "." });
+    /* Position is the order it left the BERTH in. Where it backs into the
+       platform and pulls out the same end, that order is stale by the time
+       it leaves, and the sheet wants the order it leaves in. */
+    const turns = (env.platformTurn || []).filter(inBook).slice().sort();
+    if (has(turns))
+      ord.push({ p: "At " + list(turns) + " a formation that backs into the " +
+        "platform and leaves the way it came in is standing the other way " +
+        "round by the time it goes, so it is printed the other way up. The " +
+        "position numbers give the order it left the sidings in; the sheet " +
+        "wants the order it leaves the platform in. One that runs straight " +
+        "through the platform, in one end and out the other, keeps the " +
+        "order the numbers give. Anything calling at the platform off a " +
+        "road we have not been told the direction of is left alone and put " +
+        "on the review list." });
     ord.push({ p: "Where a formation still comes out the wrong way round, we " +
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +
@@ -6257,7 +6303,7 @@ root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
+          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX, PLATFORM_TURN,
           routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
@@ -6904,8 +6950,37 @@ const GENIUS = (() => {
           if ((p === "EBSFLTI" && q === "GRVSEND") ||
               (p === "GRVSEND" && q === "EBSFLTI")) { hl = true; break; }
         }
+        /* Does this working turn round in its section's platform? It backs
+           in off the berth and pulls out the other end only if it arrives
+           from the same side as it leaves towards - and then the formation
+           stands the other way up from the order the Position column gives,
+           which is the order it left the BERTH in. false = it did not turn
+           (or never called), null = it called but a side is not in the
+           table, and then nothing is assumed and the review list says so. */
+        let turn = false;
+        const pt = PLATFORM_TURN[e.sec];
+        if (pt) {
+          /* The platform call on this working. It is usually the stop the
+             entry is timed off - these sections print the platform
+             departure - so look across the whole stint rather than after
+             the exit. */
+          let k = -1;
+          for (let i = sa2; i <= sb2 && i < stops.length; i++)
+            if (stops[i].code === pt.platform) { k = i; break; }
+          /* It has only turned round if it came INTO the platform from
+             somewhere else on this same working. One that starts in the
+             platform never backed in, so it stands as the numbers give it. */
+          if (k > sa2) {
+            const from = stops[k - 1].code;
+            let to = null;
+            for (let a = k + 1; a < stops.length; a++)
+              if (stops[a].code !== pt.platform) { to = stops[a].code; break; }
+            const sf = pt.side[from], st = pt.side[to];
+            turn = (sf && st) ? sf === st : null;
+          }
+        }
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
-                      dayEnd, miles, mg, hl,
+                      dayEnd, miles, mg, hl, turn,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -6923,10 +6998,27 @@ const GENIUS = (() => {
       const road = e.origins.size === 1 ? [...e.origins][0] : null;
       const byRoad = road === null ? undefined
         : (prof.roadPosAsc || new Map()).get(road);
-      if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
+      /* A formation that turned round in the platform prints the other way
+         up, whatever the section's usual direction: the Position column gave
+         the order it left the berth in, and the sheet wants the order it
+         stands in as it leaves. Every unit has to agree it turned - they are
+         one train by then, so they always do, and a mixed answer means
+         something is odd enough to leave alone. */
+      const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
+      if (turned)
+        blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      else if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      /* Called at the platform but a side is not in the table: the order is
+         left exactly as it was, and said out loud rather than guessed. */
+      if (blocks.length > 1 && blocks.some(x => x.turn === null))
+        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + ": " +
+          blocks.map(x => x.diag.slice(2)).join(", ") + " runs through the " +
+          "platform from a road this book does not have a side for, so the " +
+          "order is printed as the Position column gives it - check which " +
+          "way round it stands" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
       // (the manual's 07 55 row: GT117 listed, GT116 attaching from the
@@ -7984,6 +8076,9 @@ function rulesEnv(b, res, secNames) {
     fleets: prof.fleets,
     posAsc: [...prof.posAsc],
     roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
+    // section-keyed, not profile-keyed: Ramsgate is a page in the High Speed
+    // book too, and the rule fires there the same way. inBook does the rest.
+    platformTurn: Object.keys(SHEETS_DATA.PLATFORM_TURN),
     firstDep: [...(prof.firstDep || [])].sort(),
     firstDepAll: !!prof.firstDepAll,
     ecsOnlyOk: [...(prof.ecsOnlyOk || [])].sort(),

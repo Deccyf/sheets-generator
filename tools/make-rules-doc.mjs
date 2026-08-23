@@ -72,6 +72,7 @@ function envFor(book) {
     fleets: prof.fleets,
     posAsc: [...prof.posAsc],
     roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
+    platformTurn: Object.keys(D.PLATFORM_TURN),
     firstDep: [...(prof.firstDep || [])].sort(),
     firstDepAll: !!prof.firstDepAll,
     ecsOnlyOk: [...(prof.ecsOnlyOk || [])].sort(),

@@ -379,6 +379,20 @@ const SHEETS_RULES = (() => {
         "of their location: " + roads.map(([road, up]) =>
           road + " reads " + (up ? "lowest" : "highest") + " number first")
           .join("; ") + "." });
+    /* Position is the order it left the BERTH in. Where it backs into the
+       platform and pulls out the same end, that order is stale by the time
+       it leaves, and the sheet wants the order it leaves in. */
+    const turns = (env.platformTurn || []).filter(inBook).slice().sort();
+    if (has(turns))
+      ord.push({ p: "At " + list(turns) + " a formation that backs into the " +
+        "platform and leaves the way it came in is standing the other way " +
+        "round by the time it goes, so it is printed the other way up. The " +
+        "position numbers give the order it left the sidings in; the sheet " +
+        "wants the order it leaves the platform in. One that runs straight " +
+        "through the platform, in one end and out the other, keeps the " +
+        "order the numbers give. Anything calling at the platform off a " +
+        "road we have not been told the direction of is left alone and put " +
+        "on the review list." });
     ord.push({ p: "Where a formation still comes out the wrong way round, we " +
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +

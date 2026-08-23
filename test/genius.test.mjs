@@ -1022,3 +1022,83 @@ test("a fleet no book knows is named, not dropped three times in silence", async
   assert.equal(clean.review.filter(m => /is in no book/.test(m)).length, 0,
     "and a build whose fleets are all known stays quiet");
 });
+
+/* A Ramsgate day of its own, so this stays clear of the shared fixture the
+   golden tests compare against. Two formations, both coming off a berth and
+   into the platform: one leaves the way it came in, one carries straight on
+   through. */
+function ramsgateDay() {
+  const H = '"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,' +
+    '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+    '"Controller:","NA","Signon:","TEST","Name:","TEST","Time:","00:00",' +
+    '"Diagram Summary for:"," 03/08/26","DIAGRAM","UNITS","FLEET","OFF",' +
+    '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",' +
+    '"TOT. FUEL  MILES","NOTES","NOTES",';
+  const sum = [
+    // backs out of the depot, into the platform, away towards Margate
+    ["RM801", 1, "05:34", "RAMSGTD", "MARGATE", "20:00"],
+    ["RM802", 2, "05:34", "RAMSGTD", "MARGATE", "20:00"],
+    // out of the new sidings, into the platform, straight on to Minster
+    ["RM803", 1, "06:11", "RAMSNEW", "MINSTER", "20:30"],
+    ["RM804", 2, "06:11", "RAMSNEW", "MINSTER", "20:30"],
+  ].map(([d, pos, st, from, to, en]) => H +
+    ['"' + d + '"', "", '"375/6"', "0.00", pos, '"' + st + '"',
+     '"' + from + '"', '"' + to + '"', '"' + en + '"', "-0.60", "100.00",
+     "100.00", "", ""].join(",")).join("\r\n");
+
+  const GD = '"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,' +
+    '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+    '"Diagram Details for:"," 03/08/26",';
+  const leg = (code, stops) => {
+    const head = GD + '"Diagram","' + code + '","On","03/08/26","Notes",,' +
+      '"Miles","Fuel Miles",';
+    const out = [];
+    for (let i = 0; i + 1 < stops.length; i++) {
+      const a = stops[i], b = stops[i + 1];
+      out.push(head + ['"' + a[0] + '"', '"' + a[0] + '"',
+        a[1] ? '"' + a[1] + '"' : "", a[2] ? '"' + a[2] + '"' : "", "",
+        '"' + (a[3] || "") + '"', "1.00", "1.00",
+        '"' + b[0] + '"', '"' + b[0] + '"', '"' + (b[1] || b[2]) + '"',
+        '"Off Diagram"', '"  000"', '"Works"', '"  000"'].join(","));
+    }
+    return out;
+  };
+  //          code        arr      dep      headcode
+  const turns = [["RAMSGTD", "", "05:34", "5G67"], ["RAMSDRW", "05:45", "05:54", "5G67"],
+                 ["RAMSGTE", "05:58", "06:02", "1G67"], ["MARGATE", "06:13", "06:15", "1G67"],
+                 ["FAVRSHM", "06:47", "", "1G67"]];
+  const through = [["RAMSNEW", "", "06:11", "5W16"], ["RAM4985", "06:15", "06:24", "5W16"],
+                   ["RAMSGTE", "06:26", "06:38", "2W16"], ["MINSTER", "06:45", "06:46", "2W16"],
+                   ["CNTBW", "07:01", "", "2W16"]];
+  const det = [...leg("RM801", turns), ...leg("RM802", turns),
+               ...leg("RM803", through), ...leg("RM804", through)].join("\r\n");
+  return [sum, det];
+}
+
+test("a formation that turns round in the platform prints the other way up", async () => {
+  /* Reported off the 21/08 book: RM044, RM911, RM913 and RM916 each printed
+     second where they should have printed first. The Position column gives
+     the order a working left its BERTH in, and these all back into the
+     platform and pull out the end they came in — by the time they leave they
+     are standing the other way up. Which is what the depot means by "the
+     position from the platform is the right one".
+
+     It turns only if it arrives from the same side of the station as it
+     leaves towards. RM803/RM804 come off the New Sidings the same way but
+     carry straight on through towards Minster, so they do not turn and their
+     order stands — that one was confirmed correct as it printed. */
+  const N = built();
+  const res = await N.GENIUS.build(ramsgateDay());
+  const day = Object.keys(res.secsByDay)[0];
+  const ram = res.secsByDay[day].get("RAMSGATE");
+  assert.ok(ram && ram.length >= 2, "both formations reached the sheet");
+  const order = d => {
+    const e = ram.find(x => (x.units || []).length > 1 &&
+      x.units.some(u => u.diag === d));
+    return e ? e.units.map(u => u.diag).join(",") : "(not found)";
+  };
+  assert.equal(order("801"), "802,801",
+    "backs into the platform and leaves the same side — reversed");
+  assert.equal(order("803"), "803,804",
+    "runs straight through the platform — the order stands");
+});

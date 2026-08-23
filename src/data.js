@@ -262,6 +262,38 @@ const SIDING_CLASS_RE = new RegExp(
      everywhere it appears, which is what an orientation correction looks
      like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
      ones, so the shared section names are safe. */
+  /* ---- turning round in the platform ----
+     A unit that comes off its berth, runs into the platform and then leaves
+     is standing the other way up by the time it goes: it backed in one end
+     and pulls out the other. The Summary's Position is the order it left the
+     BERTH in, so for those workings the sheet has to print the formation
+     reversed - which is what the depot means by "the position from the
+     platform is the right one".
+
+     Whether it turns depends on which side of the station it arrives from
+     and which side it leaves towards. Same side, it reversed; opposite
+     sides, it ran straight through and the order stands.
+
+     The sides below are read off the workings themselves rather than a track
+     plan, and they account for every Ramsgate formation anybody has checked:
+     the five that were pinned by hand off the 12/08 book, the four reported
+     wrong off the 21/08 book, and 054/055/056, which comes out of the same
+     New Sidings as 052/053 but leaves towards Minster instead of Margate and
+     is right the way it already prints. A location that is not named here
+     leaves the order alone and puts a line on the review list, because
+     guessing which way a train faces is the one thing this must not do. */
+  const PLATFORM_TURN = {
+    RAMSGATE: {
+      platform: "RAMSGTE",
+      side: {
+        // towards Margate
+        MARGATE: "W", RAMSDRW: "W", RAM4985: "W", RAMSNEW: "W", RAMSUSW: "W",
+        // towards Minster, and everything beyond it
+        MINSTER: "E", DOVERP: "E", RAM5143: "E",
+      },
+    },
+  };
+
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
@@ -288,14 +320,14 @@ const SIDING_CLASS_RE = new RegExp(
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
     "HASTINGS|029,030": ["030", "029"],
-    /* Ramsgate reads six formations lowest-Position-first and these five
-       highest-first, so the section keeps the ascending rule and the five are
-       named. Confirmed twice over: they are the five the 12/08 Ramsgate book
-       prints backwards from the tool, and the same five a tester marked up
-       off a later day. */
-    "RAMSGATE|043,044,910": ["910", "044", "043"],
-    "RAMSGATE|045,911,912": ["045", "912", "911"],
-    "RAMSGATE|052,053": ["053", "052"],
+    /* Ramsgate's five backwards formations used to be pinned here, one key
+       per formation. They are gone: PLATFORM_TURN above derives all five,
+       because every one of them is a working that backs into the platform
+       and pulls out the same end it came in. Pinning them by formation was
+       always brittle - the key names an exact set of diagrams, so when
+       043/044 ran as a pair on 21/08 instead of the trio 043/044/910 the pin
+       stopped matching and the sheet went back to printing it the wrong way
+       round. That is the fault this rule replaces. */
     /* No section: this formation reads the same way wherever it turns up.
        RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
        and again in the mainline book off Grove Park at 16+13 - the same three
@@ -306,7 +338,6 @@ const SIDING_CLASS_RE = new RegExp(
        everywhere: RM043/RM044 read one way at Grove Park and the other at
        West Marina, and would be wrong pinned. */
     "046,047,913": ["913", "047", "046"],
-    "RAMSGATE|907,908,909": ["909", "908", "907"],
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book
     "BELLINGHAM SIDING|461,462": ["461", "462"],
@@ -621,6 +652,7 @@ return {
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,

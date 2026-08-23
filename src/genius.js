@@ -5,7 +5,7 @@
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
   const { CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX,
+          MINOR_SPUR, BERTH_AREAS, PROFILES_G, ORDER_FIX, PLATFORM_TURN,
           routeRule } = SHEETS_DATA;
   const END_MARKERS = SHEETS_DATA.END_MARKERS_GENIUS;
   /* sorted diagram list -> the places an order was written down for it.
@@ -652,8 +652,37 @@ const GENIUS = (() => {
           if ((p === "EBSFLTI" && q === "GRVSEND") ||
               (p === "GRVSEND" && q === "EBSFLTI")) { hl = true; break; }
         }
+        /* Does this working turn round in its section's platform? It backs
+           in off the berth and pulls out the other end only if it arrives
+           from the same side as it leaves towards - and then the formation
+           stands the other way up from the order the Position column gives,
+           which is the order it left the BERTH in. false = it did not turn
+           (or never called), null = it called but a side is not in the
+           table, and then nothing is assumed and the review list says so. */
+        let turn = false;
+        const pt = PLATFORM_TURN[e.sec];
+        if (pt) {
+          /* The platform call on this working. It is usually the stop the
+             entry is timed off - these sections print the platform
+             departure - so look across the whole stint rather than after
+             the exit. */
+          let k = -1;
+          for (let i = sa2; i <= sb2 && i < stops.length; i++)
+            if (stops[i].code === pt.platform) { k = i; break; }
+          /* It has only turned round if it came INTO the platform from
+             somewhere else on this same working. One that starts in the
+             platform never backed in, so it stands as the numbers give it. */
+          if (k > sa2) {
+            const from = stops[k - 1].code;
+            let to = null;
+            for (let a = k + 1; a < stops.length; a++)
+              if (stops[a].code !== pt.platform) { to = stops[a].code; break; }
+            const sf = pt.side[from], st = pt.side[to];
+            turn = (sf && st) ? sf === st : null;
+          }
+        }
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
-                      dayEnd, miles, mg, hl,
+                      dayEnd, miles, mg, hl, turn,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
                       later: later.length > 0 };
@@ -671,10 +700,27 @@ const GENIUS = (() => {
       const road = e.origins.size === 1 ? [...e.origins][0] : null;
       const byRoad = road === null ? undefined
         : (prof.roadPosAsc || new Map()).get(road);
-      if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
+      /* A formation that turned round in the platform prints the other way
+         up, whatever the section's usual direction: the Position column gave
+         the order it left the berth in, and the sheet wants the order it
+         stands in as it leaves. Every unit has to agree it turned - they are
+         one train by then, so they always do, and a mixed answer means
+         something is odd enough to leave alone. */
+      const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
+      if (turned)
+        blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      else if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+      /* Called at the platform but a side is not in the table: the order is
+         left exactly as it was, and said out loud rather than guessed. */
+      if (blocks.length > 1 && blocks.some(x => x.turn === null))
+        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + ": " +
+          blocks.map(x => x.diag.slice(2)).join(", ") + " runs through the " +
+          "platform from a road this book does not have a side for, so the " +
+          "order is printed as the Position column gives it - check which " +
+          "way round it stands" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
       // (the manual's 07 55 row: GT117 listed, GT116 attaching from the
