@@ -924,6 +924,18 @@ ones, all commented at the point of implementation:
   RM043/RM044 read one way at Grove Park and the other at West Marina, and
   would be wrong pinned.
 
+  That particular line is **kept for Grove Park only**, and is worth
+  understanding before anyone tidies it away. Its Ramsgate half is now derived
+  by `PLATFORM_TURN`: on 12/08, removing the pin leaves Ramsgate printing 913
+  first, and removing `PLATFORM_TURN` as well flips it to 046 first. Grove
+  Park is the reverse — the turn rule does not reach it, and on 12/08 the
+  Position numbers give the right order unaided — so the pin is dormant on
+  every day currently to hand, and earns its place only on the later day a
+  tester found Grove Park the other way round with the Position field moved
+  under it. Do **not** narrow it to a `GROVE PARK` key to record that: the
+  never-fired check would then put a false review note on every Ramsgate
+  appearance of the trio, about an order the tool now gets right by itself.
+
   The timed form is looked up first. Use it only where the same
   formation reads one way earlier in the day and the other way later, since
   the plain key keeps working when the timetable moves a departure by a

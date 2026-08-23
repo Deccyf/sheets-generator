@@ -1199,12 +1199,25 @@ const SIDING_CLASS_RE = new RegExp(
     /* No section: this formation reads the same way wherever it turns up.
        RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
        and again in the mainline book off Grove Park at 16+13 - the same three
-       units, the same way round, hours apart. A tester found Grove Park the
-       other way on a later day, when the Position field had moved under it,
-       so the order is pinned to the formation rather than re-derived per
-       section. Only use a bare key where the order really is the same
-       everywhere: RM043/RM044 read one way at Grove Park and the other at
-       West Marina, and would be wrong pinned. */
+       units, the same way round, hours apart.
+
+       This line is kept for GROVE PARK only. The Ramsgate half is now derived
+       by PLATFORM_TURN, so the pin is dormant there: with the pin removed
+       12/08 Ramsgate still prints 913 first, and with PLATFORM_TURN removed
+       as well it flips to 046 first. Grove Park is the opposite - the rule
+       does not reach it, and on 12/08 the Position numbers give the right
+       order unaided, so the pin is dormant there too. It earns its place on
+       the later day a tester found Grove Park the other way round, when the
+       Position field had moved under it.
+
+       Do not narrow this to a GROVE PARK key to say so. The lookup warns when
+       a formation has an order recorded somewhere and no key fires here, so a
+       section key would put a false review note on every Ramsgate appearance
+       of the trio - about an order the tool now gets right by itself.
+
+       Only use a bare key where the order really is the same everywhere:
+       RM043/RM044 read one way at Grove Park and the other at West Marina,
+       and would be wrong pinned. */
     "046,047,913": ["913", "047", "046"],
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book
