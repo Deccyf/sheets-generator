@@ -957,10 +957,23 @@ ones, all commented at the point of implementation:
   thing to feed back.
 
   Diagram number breaks a tie, and mirrors with the rest of the ordering; it
-  carries no meaning of its own. Two units on the **same** Position started
-  the day in different formations, so the reports genuinely cannot say which
-  way round they go — those entries are named on the review list rather than
-  quietly guessed at.
+  carries no meaning of its own.
+
+  **A formation of *n* units carries Positions 1..*n*.** Anything else and the
+  numbers came from different formations, so comparing them orders the entry
+  off nothing — those entries are named on the review list rather than quietly
+  guessed at. Two units on the **same** Position started the day apart; a set
+  with a **gap** — 2 and 3 for a pair — is two morning formations' numbers
+  standing side by side, which is what a Summary exported without the
+  per-working sections leaves behind. Dover Priory 15 18 on the real 24/08
+  book is the case that prompted the check: 055 at Position 2, 056 at
+  Position 3, printed 055-first and wrong, and the older tie-only check said
+  nothing.
+
+  Measured across three real days, it marks an export's damage rather than
+  inventing work: the correctly sectioned 18/08 export trips it **once in 180**
+  coupled entries — and that one is a tie the old check already caught — while
+  the AM-only 24/08 export trips it **11 times in 179**.
 
   The **end markers** name the physical ends of the train and are written
   against the first and last row of an entry, so they stay in their rows when

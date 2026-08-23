@@ -411,6 +411,31 @@ export const TIED_POSITION_DETAIL = [
   ]),
 ].join("\r\n");
 
+/* A pair at Positions 2 and 3. Not a tie, so the old check said nothing, but
+   a formation of two is 1 and 2 - these are two different morning
+   formations' numbers standing side by side, which is what an export
+   carrying only the AM positions leaves behind. Taken from DOVER PRIORY
+   15 18 on the real 24/08 book, where 055 sat at 2 and 056 at 3 and the
+   sheet printed them the wrong way round with nothing said. */
+export const GAPPED_POSITION_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM920,Covered,375/6,,0,10/08/2026 06:00,2,5A31,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM920,,",
+  "RM921,Covered,375/6,,0,10/08/2026 06:00,3,5A31,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM921,,",
+].join("\r\n");
+
+export const GAPPED_POSITION_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["RM920", "RM921"].flatMap(d => [
+    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "06:00:00", "5A31", "DOVERP", "Dover Priory", "06:10:00"),
+    orderLeg(d, 30, "DOVERP", "Dover Priory", "06:20:00", "2A31", "ASHFKY", "Ashford", "07:20:00"),
+  ]),
+].join("\r\n");
+
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
 export const INTEGRALE_QUIRKS_SUMMARY =

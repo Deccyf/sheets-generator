@@ -446,6 +446,27 @@ test("units the reports cannot order are named on the review list", async () => 
     "and says it without the report's own field names");
 });
 
+test("a formation numbered 2 and 3 is named too, not just a tie", async () => {
+  /* DOVER PRIORY 15 18 off the real 24/08 book: 055 at Position 2, 056 at
+     Position 3, printed 055-first and wrong. Two numbers from two different
+     morning formations, which a Summary carrying only the AM positions
+     cannot help leaving behind. The old check only caught ties, so this
+     printed a confident order with nothing said. */
+  const N = built();
+  const { GAPPED_POSITION_SUMMARY, GAPPED_POSITION_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([GAPPED_POSITION_SUMMARY,
+                                       GAPPED_POSITION_DETAIL]);
+  const hit = res.reviews.main.find(x => /\b920\b/.test(x.msg) &&
+                                         /\b921\b/.test(x.msg));
+  assert.ok(hit, "the entry is named on the review list");
+  assert.match(hit.msg, /2 and 3/, "it says what the reports gave");
+  assert.match(hit.msg, /a formation of 2 is 1 and 2/,
+    "and why that cannot be a formation of two");
+  assert.ok(!/the same place in the formation/.test(hit.msg),
+    "it is not described as a tie, because it is not one");
+});
+
 test("mixed-format pairs are refused by the sniffers", () => {
   const N = built();
   assert.equal(N.GENIUS.sniffIntegrale("Code,Cov,Type,x,x,x,Position,First Train,y"), "sum");

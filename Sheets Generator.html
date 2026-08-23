@@ -7083,14 +7083,35 @@ const GENIUS = (() => {
                             lookupDiags: diags, keysTried: [kTimed, kSec, diags],
                             applied, units: e.blocks.map(x => x.diag.slice(2)) });
       }
-      // Two units on the same Position started the day in different
-      // formations, so the reports cannot say which way round they go.
-      if (e.blocks.length > 1 &&
-          new Set(e.blocks.map(x => x.pos)).size !== e.blocks.length)
-        warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
-          e.blocks.map(x => x.diag.slice(2)).join("+") + "): the reports give " +
-          "these units the same place in the formation, so they cannot say " +
-          "which way round they go — check the order against the real book" });
+      /* A real formation of n units carries Positions 1..n. Anything else and
+         the numbers came from different formations, so comparing them orders
+         the entry off nothing: two units on the same Position started the day
+         apart, and a set with a gap - 2 and 3 for a pair - is two morning
+         formations' numbers side by side. Both print a confident order that
+         is really a guess, so both are named instead.
+
+         This used to catch ties only, which is why DOVER PRIORY 15 18 (055 at
+         2, 056 at 3) printed the wrong way round on 24/08 with nothing said.
+         Measured across three real days: the sectioned 18/08 export trips it
+         once in 180 coupled entries - itself a tie - while the AM-only 24/08
+         export trips it 11 times in 179. It marks an export's damage rather
+         than inventing work. */
+      if (e.blocks.length > 1) {
+        const ps = e.blocks.map(x => x.pos);
+        const seq = ps.every(p => p != null) &&
+          ps.slice().sort((a, b) => a - b).every((p, i) => p === i + 1);
+        if (!seq) {
+          const tie = new Set(ps).size !== ps.length;
+          warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+            e.blocks.map(x => x.diag.slice(2)).join("+") + "): " + (tie
+              ? "the reports give these units the same place in the formation"
+              : "the reports place these units at " + ps.join(" and ") +
+                ", and a formation of " + ps.length + " is " +
+                ps.map((_, i) => i + 1).join(" and ")) +
+            ", so they cannot say which way round they go — check the order " +
+            "against the real book" });
+        }
+      }
       // SPLITS is about the units parting company, and the books take that
       // from the whole day rather than from where this stint happens to end:
       // GT107/GT108 run as one train from Ashford at 06 40 to the same berth
