@@ -6,6 +6,11 @@
     --rule:#C4C7BF;
     /* the warning colour: --amber only reaches 3.67:1 on the apron */
     --warn:#7A470C;
+    /* the double-check notice is the one thing on the page that is about a
+       sheet going out wrong, so it is signal red rather than amber. Measured
+       6.96:1 on --paper and 5.05:1 on the apron, so it clears AA for the
+       small uppercase label as well as the body text. */
+    --danger:#A81E17;
     --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
     --sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   }
@@ -291,12 +296,13 @@
     font-size:13.5px}
   .books b{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em}
   .checknote{
-    margin:14px 0 0; padding:11px 14px; background:var(--paper);
-    border-left:4px solid var(--amber); font-size:13.5px; color:#3C464D;
-    max-width:60ch;
+    margin:14px 0 0; padding:13px 16px; background:var(--paper);
+    border-left:5px solid var(--danger); font-size:14px; line-height:1.55;
+    color:#333B41; font-weight:500; max-width:60ch;
   }
-  .checknote b{font-family:var(--mono); font-size:11px; letter-spacing:.14em;
-    text-transform:uppercase; color:var(--amber); display:block; margin-bottom:4px}
+  .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--danger); font-weight:700;
+    display:block; margin-bottom:5px}
   .smallprint{margin:46px 0 0; padding-top:16px; border-top:1px solid var(--apron-dk);
     font-size:12.5px; color:var(--chalk); max-width:60ch}
   /* the build stamp sits under the small print, tighter to it than to the
@@ -420,3 +426,60 @@
   .rules .rule-note{border-left:2px solid var(--rule); padding-left:10px;
     color:var(--steel)}
   .editline{color:var(--amber); font-size:12px; margin:0 0 8px}
+
+  /* ---------- wide screens ----------
+     The page was laid out as one 700px column, which is right on a laptop
+     lid and looks stranded on a depot monitor: the previews and road cards
+     are wide tables squeezed into half the glass while the prose hugs the
+     left edge. Everything below only applies from 1000px up, so the narrow
+     layout is untouched wherever the window really is narrow.
+
+     The width goes to the things that can use it - the drop panels, the road
+     cards, the previews, and the lists that become grids. Running text keeps
+     a readable measure whatever the window does: a 1100px line of prose is
+     harder to read than a 700px one, not easier. */
+  @media (min-width: 1000px){
+    .wrap{max-width:1120px; padding-left:32px; padding-right:32px}
+    /* the masthead reads as one band: what this is on the left, the fleets
+       it covers on the right, instead of the sprites sitting in a gap */
+    header{display:grid; grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:"eyebrow lineup" "title lineup" "lede lineup"
+                          "quick quick"; column-gap:48px; align-items:start}
+    header .eyebrow{grid-area:eyebrow}
+    header h1{grid-area:title}
+    header .lede{grid-area:lede; max-width:58ch}
+    header .lineup{grid-area:lineup; margin:6px 0 0; align-self:center;
+      flex-direction:column; align-items:flex-start; gap:14px}
+    header .quick{grid-area:quick}
+    /* Two columns, not three. Step 1 carries the export-setting box and runs
+       about as long as steps 2 and 3 together, so across three columns it
+       left two of them half empty. Spanning it down the left instead puts
+       the three roughly level and still reads 1, 2, 3. */
+    .steps{display:grid; grid-template-columns:repeat(2, minmax(0,1fr));
+      grid-template-rows:auto auto 1fr;
+      column-gap:40px; row-gap:20px; align-items:start}
+    .steps > li{padding-bottom:0}
+    /* Steps 2 and 3 size rows 1 and 2; the empty third row takes whatever
+       step 1 is taller by. Spanning step 1 across only the two filled rows
+       inflated both of them and left a hole between 2 and 3. Placed by
+       number because there are three steps and they are a fixed sequence -
+       a fourth would need a line here. */
+    .steps > li:nth-child(1){grid-area:1 / 1 / 4 / 2}
+    .steps > li:nth-child(2){grid-area:1 / 2 / 2 / 3}
+    .steps > li:nth-child(3){grid-area:2 / 2 / 3 / 3}
+    .books{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px}
+    /* the last book spans so a row of two never leaves one card stranded */
+    .books li:last-child:nth-child(odd){grid-column:1 / -1}
+    /* the closing note reads as a pair: what to check, and the warning.
+       The base rule caps the footer at 56ch, which is right in one column and
+       here would squeeze both halves into the left third of the page. */
+    footer{max-width:none;
+      display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+      column-gap:48px; align-items:start}
+    footer h2{grid-column:1 / -1}
+    footer > p:first-of-type{margin-top:0}
+    footer .checknote{margin-top:0; max-width:none; align-self:stretch}
+    footer .smallprint{grid-column:1 / -1}
+    footer .buildstamp{grid-column:1 / -1}
+    .smallprint{max-width:78ch}
+  }
