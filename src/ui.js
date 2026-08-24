@@ -553,7 +553,8 @@ function reviewPane(items) {
 (function weekday() {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2");
+        dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2"),
+        opts3El = $("#opts3");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -577,6 +578,7 @@ function reviewPane(items) {
     allbar.hidden = true;
     optsEl.hidden = true;
     opts2El.hidden = true;
+    if (opts3El) opts3El.hidden = true;
     allnote.textContent = "";
     built = null; lastRes = null; lastInputs = null;
     return had;
@@ -592,6 +594,8 @@ function reviewPane(items) {
   };
   const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
   const platStand = $("#platstand");
+  const milesCol = $("#milescol");
+  const milesOn = () => !!(milesCol && milesCol.checked);
 
   /* A rule edit changes what the build does, so it re-runs the build - the
      order lookup is inside it. Serialised on the same queue the headcode
@@ -687,7 +691,11 @@ function reviewPane(items) {
         return;
       }
       const allHc = hcOn(b.hc);
-      const opts = { allHeadcodes: allHc };
+      /* Mileage is a berthing-book column: the mainline book and Ramsgate's
+         own, which is cut from the same day. The Metro book already has a
+         MILES column of its own and the 395 sheet its MG one. */
+      const wantMiles = milesOn() && b.hc === "main" && !b.metro && !b.hsSheet;
+      const opts = { allHeadcodes: allHc, miles: wantMiles };
       for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
       /* The Metro book is the depot's own document, not a berthing book:
          a worksheet per location rather than per day, so its preview is per
@@ -711,7 +719,7 @@ function reviewPane(items) {
             const secs = b.secs[d];
             if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
             return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
-                                    b.hc === "main");
+                                    b.hc === "main", wantMiles);
           }]);
       panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
                   () => reviewPane(b.review)]);
@@ -748,6 +756,7 @@ function reviewPane(items) {
        user saw, before they had dropped anything. */
     optsEl.hidden = books.length === 0;
     opts2El.hidden = books.length === 0;
+    if (opts3El) opts3El.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -895,6 +904,19 @@ function reviewPane(items) {
       });
     });
   }
+  /* Mileage only changes how the books are WRITTEN OUT - the figure is
+     already on every unit, because the 395 sheet's MG column uses it - so
+     this re-renders rather than re-running the build. */
+  if (milesCol) milesCol.addEventListener("change", () => {
+    if (!lastRes) return;
+    queue = queue.then(async () => {
+      await renderBooks(lastRes);
+      say(milesCol.checked
+        ? "Books rebuilt with the mileage column — save them again if needed."
+        : "Books rebuilt without the mileage column — save them again if needed.",
+        "go");
+    });
+  });
   /* Platform stands change what the BUILD produces, not just how it is
      written out, so this one re-runs the build rather than re-rendering. */
   if (platStand) platStand.addEventListener("change", () => {

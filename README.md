@@ -481,6 +481,18 @@ The columns are:
 | F | Unit — the allocated unit where the report names one; otherwise ruled and empty for the depot to write in. |
 | G | Flag — `SPLITS` when the units of this departure part company during the day, `SPLITS PM` when they are put away first and only part on the second half of the diagram (the D/E columns settle who goes where). Merged vertically across the entry's rows. |
 | H | Notes — see below. |
+| I | **MILES** — only when *Show mileage to the next berthing* is ticked. The miles the unit runs from this departure until it next berths: the stint's span, which is the same figure the 395 sheet's `MG` column carries. Not the diagram's total for the day — `RM102` reads 199 on its 05 05 row and 197 on its 14+44 one. Written as a real number so the column can be summed. |
+
+The mileage option is a **rendering** choice, not a build one: the figure is
+already on every unit, so ticking it re-writes the books in place rather than
+re-reading the reports. It applies to the mainline book and Ramsgate's own,
+which is cut from the same day; the Metro book already has a `MILES` column
+and the High Speed sheet its `MG` one. The figure comes from the reports'
+running mileage column, which the **PDF** reports do not carry at all — a
+build made from PDFs prints the column blank rather than guessing. Adding it
+takes the sheet from 679 to 727px wide, which still lands inside the A4
+portrait page: the print scale is set by the tallest section, not the width,
+and stays at the same 81%.
 
 **Notes column (H)** carries the house annotations:
 

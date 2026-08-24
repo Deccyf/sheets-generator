@@ -325,3 +325,38 @@ test("the time column stays 'HH MM DDD' and the route rides in the notes", async
   assert.equal(wide.length, 0,
     "time cells wider than the books ever go: " + Array.from(wide).join(", "));
 });
+
+test("the mileage column is opt-in, and holds the stint's miles as numbers", () => {
+  /* Asked for as "mileage to the next berthing", which is what the stint's
+     span already is - the 395 sheet's MG column reads the same figure. The
+     option only changes how the book is WRITTEN, so with it off the sheet
+     must be exactly the eight-column one it has always been. */
+  const N = built();
+  const X = N.SHEETS_XLSX;
+  const rows = [
+    { kind: "hdr", name: "ASHFORD", date: "TUE 18/08" },
+    { kind: "data", vals: { 1: "05 05 VIC", 2: "4 377", 3: "102", 4: "AFK",
+                            5: "AFK", 6: "", 7: "", 8: "", 9: 199 },
+      top: "medium", bot: "thin", flag: false, flagSpan: 0 },
+  ];
+  const off = X.rowsToLayout(rows);
+  const on = X.rowsToLayout(rows, true);
+  const cols = l => new Set(l.cells.map(c => c.c));
+  assert.deepEqual([...cols(off)].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8],
+    "off: the sheet is the eight-column one, untouched");
+  assert.ok(cols(on).has(9), "on: a ninth column appears");
+  assert.equal(off.opts, undefined, "off: no width override, so the house widths stand");
+  assert.equal(on.opts.widths.length, 9, "on: nine widths for nine columns");
+
+  const cell = (l, c) => l.cells.find(x => x.c === c && x.r === 2);
+  assert.equal(cell(on, 9).v, 199, "the stint's miles land in it");
+  assert.equal(cell(on, 9).num, true,
+    "written as a number, so the column can be summed in Excel");
+  /* The date is nine characters and the mileage column is sized for three
+     digits, so moving the date there simply clipped it. */
+  const dateCell = l => l.cells.find(x => x.r === 1 && x.v === "TUE 18/08");
+  assert.equal(dateCell(on).c, 8, "the date stays in the notes column");
+  assert.ok(on.merges.includes("H1:I1"), "and spreads across the mileage one");
+  assert.ok(off.merges.includes("A1:G1") && on.merges.includes("A1:G1"),
+    "the section name spans the same columns either way");
+});

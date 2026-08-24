@@ -299,10 +299,18 @@ const SHEETS_RULES = (() => {
         ["Notes", "Anything else about that one unit: the headcode, the " +
                   "siding it came off, ATTACHMENT, and which end of the " +
                   "train it is."],
+        ["Miles", "Only if the mileage box was ticked when the book was " +
+                  "built. It is the miles that unit runs from this departure " +
+                  "until it next berths — not what the diagram does all day, " +
+                  "so the same diagram reads a different figure on each of " +
+                  "its rows. It comes out of the reports' own running " +
+                  "mileage, and a report saved as a PDF carries none, so the " +
+                  "column stays empty on a build made from PDFs."],
       ] } },
       { p: "The workbook comes out set up to print: A4 portrait, sized so " +
-           "all eight columns land on one page across, and broken so that no " +
-           "location is cut in half between two pages. Print it as it comes." },
+           "every column lands on one page across — the mileage one too, " +
+           "where it was asked for — and broken so that no location is cut " +
+           "in half between two pages. Print it as it comes." },
     ]);
 
     /* ---- 2. which movements get printed ---- */

@@ -204,6 +204,16 @@
       <label><input type="checkbox" id="platstand"> Count long platform stands</label>
     </fieldset>
 
+    <fieldset class="opts" id="opts3" hidden>
+      <legend>Mileage</legend>
+      <p class="opts-hint">Adds a MILES column to the mainline and Ramsgate
+        books: the miles each unit runs from that departure until it next
+        berths, not its total for the day. Taken from the reports' own
+        running mileage, so it is blank on a build made from the PDF
+        reports, which carry no mileage at all.</p>
+      <label><input type="checkbox" id="milescol"> Show mileage to the next berthing</label>
+    </fieldset>
+
     <div class="roads" id="roads"></div>
 
     <div class="allbar" id="allbar" hidden>

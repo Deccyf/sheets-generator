@@ -10,6 +10,12 @@ const { fmtTime, norm, sheetStation } = CORE;
 const { MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
         SIDING_NOTES, END_STYLE, DAY_SHEET } = SHEETS_DATA;
 const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
+/* The same sheet with MILES on the end, when the mainline option is ticked.
+   The notes column keeps its width - the sheet gets wider rather than the
+   notes getting shorter, because "EAST SIDINGS ATTACHMENT" already fills it
+   and the print scale is computed from these widths, so the page still
+   fits. */
+const MILES_WIDTHS = HOUSE_WIDTHS.concat([6.2]);
 /* How long a break in a location's work has to be before a double line is
    ruled in it, and the hour after which a second one is drawn - see
    sectionRows for which breaks qualify. */
@@ -548,13 +554,23 @@ function previewHtml(layout){
       }
       yield { a, cls: u.cls.replace(/\//g, "-"), am: u.am || "", diag: u.diag || "",
               pm: u.pm || "", unit: u.unit || "", flag: i === 0 ? e.flag : "",
-              note: notes.join(" ").trim(), last: i === n - 1 };
+              note: notes.join(" ").trim(), last: i === n - 1,
+              /* miles from this departure to wherever the unit next berths -
+                 the stint's span, which the 395 sheet's MG column already
+                 uses. Undefined on a PDF-sourced build, which has no mileage
+                 column at all, and printed blank there. */
+              mg: u.mg };
     }
   }
 
   const V_EDGES = { 1: ["medium", null], 2: ["thin", null], 3: ["thin", "medium"],
                     4: [null, null], 5: ["thin", "medium"], 6: [null, null],
                     7: [null, null], 8: [null, "medium"] };
+  /* With MILES on the end the notes column is no longer the last one, so the
+     sheet's right-hand rule moves out to column 9 and the notes give it a
+     thin one instead. */
+  const V_EDGES_M = Object.assign({}, V_EDGES,
+    { 8: [null, null], 9: ["thin", "medium"] });
 
   function orderEntries(entries) {
     return entries.slice().sort((a, b) => {
@@ -622,8 +638,11 @@ function previewHtml(layout){
       rows.push({ kind: "data",
         /* 6 is the unit column: the allocated unit where the export names
            it, and otherwise an empty ruled cell for the depot to write in. */
+        /* 9 is only read when the mainline mileage option is on - the layout
+           is told how many columns to walk, so it costs nothing when off. */
         vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 6: v.unit,
-                7: v.flag, 8: v.note },
+                7: v.flag, 8: v.note,
+                9: v.mg == null ? "" : v.mg },
         top: first ? "medium" : null,
         bot,
         flag: !!v.flag,
@@ -685,24 +704,35 @@ function previewHtml(layout){
 /* Weekday layout rows -> the writer's cell layout. Mirrors what the old
    ExcelJS path put on each worksheet: looks per column, V_EDGES verticals,
    the entry rules, and the flag column merged per entry. */
-const V_LOOK = { 1: 3, 2: 3, 3: 3, 4: 4, 5: 4, 6: 3, 7: 6, 8: 5 };
-function rowsToLayout(rowsIn) {
+/* 9 reads like the AM/PM pair beside it rather than like the notes: a short
+   figure, centred, at the same size. */
+const V_LOOK = { 1: 3, 2: 3, 3: 3, 4: 4, 5: 4, 6: 3, 7: 6, 8: 5, 9: 4 };
+function rowsToLayout(rowsIn, miles) {
   const cells = [], merges = [], rowHeights = new Map();
   const rowEdge = new Map();
   const pendingMerges = [];
+  const ncol = miles ? 9 : 8;
+  const edges = miles ? V_EDGES_M : V_EDGES;
   let r = 1;
   for (const row of rowsIn) {
     if (row.kind === "hdr") {
+      /* The date stays in the notes column and spreads over the mileage one
+         where there is one: "TUE 25/08" does not fit in a column sized for
+         three digits, and moving it there simply clipped it. */
       merges.push("A" + r + ":G" + r);
+      if (miles) merges.push("H" + r + ":I" + r);
       cells.push({ r, c: 1, v: row.name, look: 1, sides: [null, null, null, null] });
       cells.push({ r, c: 8, v: row.date, look: 2, sides: [null, null, null, null] });
       rowHeights.set(r, 18);
       r += 1;
     } else if (row.kind === "data") {
-      for (let c = 1; c <= 8; c++) {
-        const [l, rr] = V_EDGES[c];
+      for (let c = 1; c <= ncol; c++) {
+        const [l, rr] = edges[c];
         const val = row.vals[c] !== undefined ? row.vals[c] : "";
-        cells.push({ r, c, v: val, look: V_LOOK[c],
+        /* a real number, so the column can be summed in Excel - the Metro
+           book's MILES and the 395 sheet's MG both ship theirs that way */
+        const num = c === 9 && typeof val === "number";
+        cells.push({ r, c, v: val, look: V_LOOK[c], num,
                      sides: [l, rr, row.top || null, row.bot || null] });
       }
       rowEdge.set(r, [row.top || null, row.bot || null]);
@@ -724,7 +754,8 @@ function rowsToLayout(rowsIn) {
     }
     merges.push("G" + r0 + ":G" + r1);
   }
-  return { cells, merges, rowHeights, maxRow: r };
+  return { cells, merges, rowHeights, maxRow: r,
+           opts: miles ? { widths: MILES_WIDTHS } : undefined };
 }
 
 function bookOrder(secsByDay, base, splitRamsgate) {
@@ -750,13 +781,16 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   const allHc = !!opts.allHeadcodes;
   const sheets = dayKeys.map(day => ({
     name: DAY_SHEET[day],
-    layout: rowsToLayout(layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc, gpSplit)),
+    layout: rowsToLayout(
+      layoutSheet(secsByDay[day], dateLabels[day], ram, fullOrder, allHc, gpSplit),
+      !!opts.miles),
   }));
   return writeWorkbook(sheets, opts.zipFn || (f => fflate.zipSync(f, { level: 6 })));
 }
 
-function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit) {
-  return previewHtml(rowsToLayout(layoutSheet(secs, label, ram, order, allHc, gpSplit)));
+function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
+  return previewHtml(rowsToLayout(
+    layoutSheet(secs, label, ram, order, allHc, gpSplit), !!miles));
 }
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
