@@ -709,11 +709,42 @@ ones, all commented at the point of implementation:
   (≤ 60 min) with nothing worked in between is a run-round, not a departure —
   the movement is listed on the following departure and noted for review.
 * **AM / PM (D / E) columns.** Where the unit's next berth is, and where it
-  is still sitting in the evening (a berth still occupied at 20:00 is the PM
-  end point, even if the diagram technically ends elsewhere). A diagram that
-  goes out a third time has two PM berths, and the column means a different
-  one on each row: every row before the last journey carries the berth the
-  unit sits on, and the row for that journey carries where it finishes.
+  is still sitting in the evening. A berth still occupied at 20:00 can be the
+  PM end point even when the diagram finishes elsewhere — but only when the
+  unit **goes out to work again** from it, when the onward move **stays in the
+  same berthing area**, or when it finishes somewhere **it cannot stable**
+  (a terminal platform). An empty run out of the area to a siding or depot is
+  the unit taking itself home for the night, and the sheets follow it there.
+
+  A diagram that goes out a third time then has two PM berths, and the column
+  means a different one on each row: every row before the last journey carries
+  the berth the unit sits on, and the row for that journey carries where it
+  finishes.
+
+  The four shapes this has to tell apart, all settled against the
+  hand-written TUE 18/08 book:
+
+  | Diagram | Last berth | Then | PM reads |
+  |---|---|---|---|
+  | `RM301` | Ramsgate Depot | **works** `2U80` to Gillingham Depot | `RE` — the berth |
+  | `RM058` | West Marina | empty to Hastings, **same area** | `XSE` — the berth |
+  | `SG448`/`449` | Grove Park sidings | empty, day ends at **Cannon Street** | `GPU` — the berth |
+  | `GT103`/`104` | Ashford East Sdgs | empty to Folkestone train roads | `FKE` — the finish |
+  | `SG810` | Dartford Down Sdgs | empty home to Slade Green | `SG` — the finish |
+
+  **Dwell length is not the test**, and a threshold would get it backwards:
+  `RM058` stands 189 minutes and reads its berth, `GT103` stands 158 and reads
+  its finish, `SG810` pauses 37 and reads its finish.
+
+  This was wrong until the books were read against it. The code held the last
+  berth whenever the unit moved on after 20:00, so `SG810` printed `DFD` for a
+  47-minute pause in Dartford Down Sidings on its way home to Slade Green, and
+  `GT103`/`104` printed `AFE`. The tests had the same mistake pinned into them,
+  copied from a comment nobody had checked. Measured after the fix: **230 of
+  230** AM cells and **230 of 230** PM cells match the hand-written 18/08 book,
+  the Metro book's `CANNON STREET 06 26` reads `SG` for `SG403` as the tool now
+  does, and the depot's own 395 sheet shows `AZ612` running `5W31 ASH` to
+  Ashford, where the tool used to say Ramsgate.
 * **SPLITS / SPLITS PM.** The flag follows where the units of a departure
   part company, read off their whole day rather than off this stint: two
   diagrams worked as one train carry identical rows until they divide, so the

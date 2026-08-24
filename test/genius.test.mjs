@@ -489,12 +489,24 @@ test("a late evening move leaves the berth it stood on in the PM column", async 
   // shunted out of the shed to Hastings for the night: still a shed unit
   assert.equal(norm(one("WEST MARINA")[0].units[0].pm), "XSE",
     "St Leonards shed keeps its unit");
-  // off the east sidings to the Folkestone Train Roads, but AFE until then
-  assert.equal(norm(one("ASHFORD")[0].units[0].pm), "AFE",
-    "Ashford east sidings keep theirs too");
-  // and the same shape across to Grove Park
+  /* Off the east sidings to the Folkestone train roads on an EMPTY run, and
+     out of the Ashford berthing area - so the unit is taking itself home for
+     the night and the sheets follow it there. This asserted AFE until the
+     real TUE 18/08 book was read against it: 377 diagrams 103 and 104 read
+     FKE on every row there, the 05 42 and the 22+53 alike, and the 22+53 one
+     names the sidings in its NOTES column instead. The old expectation came
+     from a code comment nobody had checked. */
+  assert.equal(norm(one("ASHFORD")[0].units[0].pm), "FKE",
+    "an empty run out of the area follows the unit home");
+  /* Slade Green depot, then 5S04 empty across to Grove Park - the same shape
+     again, and read the same way. No real diagram on the three days to hand
+     berths at one depot and runs empty to another, so this one rests on the
+     two that the TUE 18/08 book does settle: 377 103/104 off Ashford east
+     sidings, and 376 810 out of Dartford. Both leave their area empty and
+     both read where they finish. */
   const sg = one("SLADE GREEN");
-  assert.equal(norm(sg[0].units[0].pm), "SG", "Slade Green keeps its unit");
+  assert.equal(norm(sg[0].units[0].pm), "GPD",
+    "empty out of the area, so the sheet follows it to Grove Park");
   // a train booked into the depot is destined GPD, one into the station GPK
   const dests = norm(sg.map(e => e.dest));
   assert.ok(dests.includes("GPD"), "depot arrival destined GPD: " + dests);
@@ -923,11 +935,17 @@ test("a diagram out a third time reads its last berth until the last journey", a
      carries where it finishes.
 
      375/3 diagram 301 on 12/08 works out of Grove Park, stands at Ramsgate
-     from 20 34, then works 2U80 out again to Gillingham depot: the Ashford
+     from 20 34, then WORKS 2U80 out again to Gillingham depot: the Ashford
      and Grove Park rows read RE, and only the entry leaving Ramsgate reads
-     GI. 377 diagram 103/104 is the same shape with an empty final run -
-     Ashford east sidings, then 5R96 to the Folkestone train roads - and the
-     operator reads it the same way: AFE on the rows before, FKE on the run.
+     GI. The unit went out on a duty, so the berth was where it spent the
+     evening.
+
+     377 diagram 103/104 looks the same but is not: Ashford east sidings,
+     then 5R96 EMPTY to the Folkestone train roads. Nothing is worked, and
+     the run leaves the Ashford berthing area, so the unit is simply taking
+     itself home - and the real TUE 18/08 book reads FKE on every one of its
+     rows, not AFE on the ones before. This test asserted AFE until that book
+     was read against it.
 
      Built through the CSV reader rather than the PDF one because these rows
      can be written out exactly, without disturbing the shared fixture the
@@ -987,8 +1005,8 @@ test("a diagram out a third time reads its last berth until the last journey", a
     "the fixture built something to look at");
   assert.deepEqual(pmOf("201"), ["ASHFORD=RE", "RAMSGATE=GI"],
     "the berth until the last journey, then where that journey finishes");
-  assert.deepEqual(pmOf("202"), ["ASHFORD=AFE", "ASHFORD=FKE"],
-    "an empty final run reads no differently");
+  assert.deepEqual(pmOf("202"), ["ASHFORD=FKE", "ASHFORD=FKE"],
+    "an empty final run out of the area is the unit going home, all rows");
 });
 
 test("a Summary row is read whether or not the UNITS column is filled", () => {

@@ -6886,9 +6886,49 @@ const GENIUS = (() => {
         // night, and the sheets follow it there.
         const lastStint = stints[stints.length - 1];
         const lb = stops[lastStint[0]], lastStop = stops[stops.length - 1];
-        const lateMove = !!stints.length &&
+        /* Does it go out and WORK again after that berth, or only run empty?
+           A passenger departure anywhere after it is the unit going out for
+           real; ECS all the way is the unit taking itself home. */
+        let worksAfter = false;
+        for (let i = lastStint[0]; i < stops.length; i++)
+          if (stops[i].hcOut && /^[12]/.test(stops[i].hcOut) &&
+              stops[i].dep !== null) { worksAfter = true; break; }
+        /* Measured against the hand-written TUE 18/08 book, which settles all
+           four shapes this has to tell apart:
+             RM301  stands at Ramsgate Depot, then WORKS 2U80 away and ends at
+                    Gillingham Depot        - book reads RE, the berth
+             RM058  stands at West Marina, runs empty to Hastings, SAME AREA
+                                            - book reads XSE, the berth
+             GT103/104 stand at Ashford East, run empty to Folkestone
+                                            - book reads FKE, the finish
+             SG810  pauses at Dartford, runs empty home to Slade Green
+                                            - book reads SG, the finish
+           So the berth holds when it goes out to work again or when the move
+           keeps it inside one berthing area; an empty run out of the area TO
+           SOMEWHERE IT CAN STABLE is it going home for the night, and the
+           sheets follow it there. That last clause is what the note above
+           always said and the code never did, which is why 810, 103 and 104
+           read their staging post instead of their depot.
+
+           The stabling test is what keeps the Metro book still: 465 diagrams
+           448/449 and 715/716 run out of the Grove Park sidings and their
+           day simply ends at Cannon Street and Charing Cross. Nobody stands
+           a unit overnight in a terminal platform, so the sidings are still
+           the answer there, and without this clause they would have read
+           CST and CHX. */
+        /* Two questions, and they are not the same one. lateBerth asks
+           whether the unit stood somewhere into the evening and then moved
+           on at all - that is what empties the AM column, because an entry
+           for such a stint is a PM entry whatever happens next. lateMove
+           asks the narrower question above: is that berth the PM END POINT,
+           or was it only a staging post on the way home? Reading the second
+           off the first is what put 810, 103 and 104 wrong. */
+        const lateBerth = !!stints.length &&
           core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
           lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
+        const lateMove = lateBerth &&
+          (worksAfter || sameArea(areaOf(lb), areaOf(lastStop)) ||
+           !isStabling(lastStop));
         /* A diagram that goes out a THIRD time has two PM berths, and the
            column means a different one on each row. 375/3 diagram 301 works
            out of Grove Park, stands at Ramsgate from 20 34, then goes out
@@ -6913,7 +6953,7 @@ const GENIUS = (() => {
           E = fc;
           // The berth the unit sits on into the night is its PM one wherever
           // it ends up afterwards, so the AM column stays empty for it.
-          if (lateMove && u.si + 1 === stints.length - 1 &&
+          if (lateBerth && u.si + 1 === stints.length - 1 &&
               (prof.firstDepAll || lb.arr === null ||
                sortkey(lb.arr) >= AM_CUTOFF)) D = "";
         }
