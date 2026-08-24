@@ -306,6 +306,10 @@
     text-transform:uppercase; color:var(--amber); display:block; margin-bottom:4px}
   .smallprint{margin:46px 0 0; padding-top:16px; border-top:1px solid var(--apron-dk);
     font-size:12.5px; color:var(--chalk); max-width:60ch}
+  /* the build stamp sits under the small print, tighter to it than to the
+     paragraph above, because it is a label on the file rather than prose */
+  .buildstamp{margin-top:14px; padding-top:0; border-top:0}
+  .buildstamp .bsnote{display:block; margin-top:4px; opacity:.72}
 
   /* ---------- fleet sprites ---------- */
   .lineup{display:flex; gap:32px; align-items:flex-end; margin:26px 0 0; flex-wrap:wrap}
@@ -841,6 +845,13 @@
       this one file, running in the browser on this computer. No report,
       print or sheet leaves the machine, and the page works without an
       internet connection.</p>
+    <!-- Once this file is emailed round, synced and put on SharePoint there
+         is no other way to tell which copy somebody has open, and a fix
+         reported as "still wrong" is usually an old one. -->
+    <p class="smallprint buildstamp">Version <b>2.1.0</b> &middot;
+      24 August 2026<span class="bsnote">If something looks wrong, check this
+      against the newest version you were sent before reporting it — an old
+      copy of this file keeps working, and keeps its old mistakes.</span></p>
   </footer>
 </section>
 <script>

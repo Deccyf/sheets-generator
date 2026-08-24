@@ -5,7 +5,9 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const read = p => readFileSync(new URL(p, import.meta.url), "utf8");
-const version = JSON.parse(read("./package.json")).version;
+const pkg = JSON.parse(read("./package.json"));
+const version = pkg.version;
+const released = pkg.released || "";
 
 /* Load order matters: data before the engines, the writer before the
    engines that call it, UI last. */
@@ -29,7 +31,13 @@ const scripts =
 
 const html = read("./src/page.html")
   .replace("{{CSS}}", () => read("./src/styles.css").trimEnd())
-  .replace("{{SCRIPTS}}", () => scripts);
+  .replace("{{SCRIPTS}}", () => scripts)
+  /* Stamped into the page so a copy can be identified. Once this file is
+     emailed round, synced and put on SharePoint there is no other way to
+     tell which one somebody is looking at - a fix reported as "still
+     wrong" is usually an old copy. */
+  .replace("{{VERSION}}", () => version)
+  .replace("{{RELEASED}}", () => released);
 
 writeFileSync(new URL("./Sheets Generator.html", import.meta.url), html);
 console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes ` +

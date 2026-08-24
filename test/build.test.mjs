@@ -28,6 +28,23 @@ test("the built file is self-contained and lean", () => {
   assert.match(html, /Class 395 Javelin/, "sprites present");
 });
 
+test("the page says which build it is", () => {
+  /* Once this file is emailed round, synced, and put on SharePoint there is
+     no other way to tell which copy somebody has open. A fix reported as
+     "still wrong" is usually an old copy, and without a stamp on the page
+     that costs a round trip every time to establish. */
+  const html = readFileSync(BUILT, "utf8");
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  assert.ok(html.includes(">" + pkg.version + "<"),
+    "the version from package.json reaches the page: " + pkg.version);
+  assert.ok(pkg.released && html.includes(pkg.released),
+    "and so does the release date: " + pkg.released);
+  /* A placeholder that stops being substituted would print as itself, and
+     the page would still look fine at a glance. */
+  assert.ok(!/\{\{[A-Z_]+\}\}/.test(html),
+    "no build placeholder was left unsubstituted");
+});
+
 test("all modules come up in a clean context", () => {
   const ctx = built();
   for (const name of ["SHEETS_DATA", "SHEETS_CORE", "SHEETS_RULEBOOK",
