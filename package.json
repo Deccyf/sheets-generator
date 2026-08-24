@@ -1,6 +1,6 @@
 {
   "name": "sheets-generator",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "//released": "Shown in the page footer so a copy can be identified. Set by hand with the version - NOT from the clock, because CI rebuilds and fails on any diff, so a wall-clock stamp would break every run.",
   "released": "24 August 2026",
   "private": true,

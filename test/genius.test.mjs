@@ -1141,3 +1141,101 @@ test("a formation that turns round in the platform prints the other way up", asy
   assert.equal(order("803"), "803,804",
     "runs straight through the platform — the order stands");
 });
+
+/* Two units leaving one berth together, in the two shapes that look alike in
+   the reports and are not the same thing. Built through the CSV reader so the
+   rows can be written out exactly. */
+function berthedPairDay() {
+  const H = '"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,' +
+    '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+    '"Controller:","NA","Signon:","TEST","Name:","TEST","Time:","00:00",' +
+    '"Diagram Summary for:"," 03/08/26","DIAGRAM","UNITS","FLEET","OFF",' +
+    '"START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL","MILES",' +
+    '"TOT. FUEL  MILES","NOTES","NOTES",';
+  const sum = [
+    ["RM821", 1, "15:05", "RAMSGTD", "DOVERP", "16:23"],
+    ["RM822", 2, "04:50", "RAMSGTE", "DOVERP", "16:23"],
+    ["GT901", 1, "07:45", "ASHFEBS", "LENHAM", "08:07"],
+    ["GT902", 2, "05:31", "ASHFEBS", "LENHAM", "08:07"],
+  ].map(([d, pos, st, from, to, en]) => H +
+    ['"' + d + '"', "", '"375/6"', "0.00", pos, '"' + st + '"',
+     '"' + from + '"', '"' + to + '"', '"' + en + '"', "-0.60", "100.00",
+     "100.00", "", ""].join(",")).join("\r\n");
+  const GD = '"GENIUS","Diagram Detail Report","Page:","Page -1 of 1",,,,,' +
+    '"Control:","SouthEastern Trains","Print Date:","August 2, 2026",' +
+    '"Diagram Details for:"," 03/08/26",';
+  const leg = (code, stops) => {
+    const head = GD + '"Diagram","' + code + '","On","03/08/26","Notes",,' +
+      '"Miles","Fuel Miles",';
+    const out = [];
+    for (let i = 0; i + 1 < stops.length; i++) {
+      const a = stops[i], b = stops[i + 1];
+      out.push(head + ['"' + a[0] + '"', '"' + a[0] + '"',
+        a[1] ? '"' + a[1] + '"' : "", a[2] ? '"' + a[2] + '"' : "", "",
+        '"' + (a[3] || "") + '"', "1.00", "1.00",
+        '"' + b[0] + '"', '"' + b[0] + '"', '"' + (b[1] || b[2]) + '"',
+        '"Off Diagram"', '"  000"', '"Works"', '"  000"'].join(","));
+    }
+    return out;
+  };
+  /* the shared afternoon: out of the depot, into the platform, away */
+  const pmRun = [["RAM5143", "15:14", "15:23", "5W52"],
+                 ["RAMSGTE", "15:25", "15:46", "2W73"],
+                 ["DOVERP", "16:23", "", "2W73"]];
+  /* RM821 simply starts standing in the depot - no arrival at all */
+  const startsThere = [["RAMSGTD", "", "15:05", "5W52"], ...pmRun];
+  /* RM822 worked the morning and came back to the same depot at 10:24 */
+  const cameBack = [["RAMSGTE", "", "04:50", "2W80"],
+                    ["DOVERP", "05:26", "05:27", "2W80"],
+                    ["RAMSGTD", "10:24", "15:05", "5W52"], ...pmRun];
+  /* the manual's Ashford shape: GT901's diagram opens by coming INTO the
+     east sidings a minute before the departure, joining GT902's train */
+  const joins = [["ASHFEBS", "07:45", "07:46", "5A18"],
+                 ["ASHFKY", "07:50", "07:55", "2A18"],
+                 ["LENHAM", "08:07", "", "2A18"]];
+  const resident = [["ASHFEBS", "", "05:31", "5A05"],
+                    ["MSTONEE", "06:04", "06:18", "2N06"],
+                    ["ASHFEBS", "06:59", "07:46", "5A18"],
+                    ["ASHFKY", "07:50", "07:55", "2A18"],
+                    ["LENHAM", "08:07", "", "2A18"]];
+  const det = [...leg("RM821", startsThere), ...leg("RM822", cameBack),
+               ...leg("GT901", joins), ...leg("GT902", resident)].join("\r\n");
+  return [sum, det];
+}
+
+test("two units berthed together both print; a unit joining does not", async () => {
+  /* Reported off the 25/08 book: RM041 vanished from the Ramsgate PM sheet.
+     It should have printed with RM308 on the 15 46, and the two are the same
+     train from 15 05 - RM308's diagram starts standing in the depot, RM041
+     had been alongside it since 10 24.
+
+     The rule that dropped it exists for the manual's Ashford 07 55, where
+     GT117's diagram opens by attaching at the east sidings at 07 45 and
+     leaving at 07 46: that IS a unit joining a made-up train, and the book
+     lists one with an ATTACHMENT note. The tell is whether the printed unit
+     came in to the berth at all. Across five real days the rule fires on
+     exactly these two shapes. */
+  const N = built();
+  const res = await N.GENIUS.build(berthedPairDay());
+  const day = Object.keys(res.secsByDay)[0];
+  const at = (sec, hh) => {
+    const list = res.secsByDay[day].get(sec) || [];
+    const e = list.find(x => String(Math.floor(x.time / 60) % 24)
+      .padStart(2, "0") === hh);
+    /* sorted: this test is about which units reach the sheet, not which way
+       round they stand - the synthetic route happens to turn in the
+       platform, which is PLATFORM_TURN's business and tested elsewhere */
+    return e ? { diags: e.units.map(u => u.diag).sort().join(","),
+                 attachment: !!e.attachment } : null;
+  };
+  const ram = at("RAMSGATE", "15");
+  assert.ok(ram, "the Ramsgate afternoon departure was built");
+  assert.equal(ram.diags, "821,822",
+    "both units were standing in the depot, so both print");
+  assert.equal(ram.attachment, false, "and nothing joined, so no note");
+
+  const afk = at("ASHFORD", "07");
+  assert.ok(afk, "the Ashford departure was built");
+  assert.equal(afk.diags, "901", "the joining unit prints on its own");
+  assert.equal(afk.attachment, true, "and carries the ATTACHMENT note");
+});

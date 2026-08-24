@@ -911,7 +911,7 @@
     <!-- Once this file is emailed round, synced and put on SharePoint there
          is no other way to tell which copy somebody has open, and a fix
          reported as "still wrong" is usually an old one. -->
-    <p class="smallprint buildstamp">Version <b>2.1.1</b> &middot;
+    <p class="smallprint buildstamp">Version <b>2.1.2</b> &middot;
       24 August 2026<span class="bsnote">If something looks wrong, check this
       against the newest version you were sent before reporting it — an old
       copy of this file keeps working, and keeps its old mistakes.</span></p>
@@ -7152,8 +7152,26 @@ const GENIUS = (() => {
       // East Sidings shown as the note). It comes BEFORE the order lookup:
       // the key has to name the units that print, or a pin written for a
       // pair stops matching the moment a third unit attaches.
-      if (blocks.length > 1 && blocks.some(x => x.si === 0) &&
-          blocks.some(x => x.si > 0)) {
+      /* ...but the unit that prints has to have COME IN to the berth for
+         this departure. GT117's diagram opens by attaching at the East
+         Sidings at 07 45 and leaving at 07 46: it joins a train that is
+         already made up, and GT116 is the train. RM308's opens standing in
+         Ramsgate depot at 15 05 with no arrival at all, and RM041 has been
+         alongside it since 10 24 - nothing joined anything there, they are
+         two berthed units going out together, and the book lists both.
+
+         A stint whose first stop has no arrival time is a diagram that
+         simply starts at that berth, which cannot be a unit joining another
+         unit's departure. Reading the two shapes the same way dropped RM041
+         off the Ramsgate PM sheet. Across the five real days to hand this
+         rule fires exactly twice - the Ashford 07 55 the manual describes,
+         and this one. */
+      const cameIn = x => {
+        const m = meta.get(x.diag), st = m && m.stints[x.si];
+        return !!st && m.stops[st[0]].arr !== null;
+      };
+      if (blocks.length > 1 && blocks.some(x => x.si > 0) &&
+          blocks.some(x => x.si === 0 && cameIn(x))) {
         e.blocks = blocks.filter(x => x.si === 0);
         e.attachment = true;
       } else e.blocks = blocks;
