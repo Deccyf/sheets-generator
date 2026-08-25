@@ -134,7 +134,7 @@ test("GENIUS.build output is identical to the legacy build", async () => {
      as the sheet prints them, and no "Position" or "pinned". Compare the
      kinds both builds raise, in the shape this one uses. */
   const SINCE_LEGACY =
-    /has a corrected order recorded at|as a berthing —|AM unit positions only/;
+    /has a corrected order recorded at|as a berthing —|AM unit positions only|runs through the platform from a road|loses its correction/;
   const asNow = m => m
     .replace(/^suppressed: /, "Left off — ")
     .replace(/\) - /, "): ")
@@ -423,12 +423,15 @@ test("which unit leads is per section, from the fleet profile", async () => {
   assert.ok(sg && sg.length === 1, "one Slade Green departure");
   assert.deepEqual(norm(sg[0].units.map(u => u.diag)), ["908", "907"],
     "metro unchanged");
-  // …and a formation the books say is the other way round beats the section
-  // rule (Dover Priory lists lowest first, but not this pair).
+  /* …and a platform turn beats the section rule: this pair backs out to
+     signal YE621 and leaves the way it came, so it prints the other way up
+     against Dover Priory's lowest-first. This used to be the shipped
+     DOVER PRIORY|013,014 pin; PLATFORM_TURN derives it now, and the pin is
+     gone. ORDER_FIX-beats-everything has its own tests. */
   const dp = res.secsByDay.M.get("DOVER PRIORY");
   assert.ok(dp && dp.length === 1, "one Dover Priory departure");
   assert.deepEqual(norm(dp[0].units.map(u => u.diag)), ["014", "013"],
-    "ORDER_FIX beats the section rule");
+    "the platform turn flips the pair, no pin involved");
 });
 
 test("units the reports cannot order are named on the review list", async () => {

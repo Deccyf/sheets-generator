@@ -717,13 +717,19 @@ const GENIUS = (() => {
         let turn = false;
         const pt = PLATFORM_TURN[e.sec];
         if (pt) {
-          /* The platform call on this working. It is usually the stop the
-             entry is timed off - these sections print the platform
-             departure - so look across the whole stint rather than after
-             the exit. */
+          /* The platform call this ENTRY is timed off - the last platform
+             call at or before the exit stop, searched across the stint
+             because these sections print the platform departure. It was the
+             FIRST call in the stint until Hastings showed why that is wrong:
+             RM029/030 start their day IN the platform, shunt out to Signal
+             70 and come back, and the first call is the standing start while
+             the turn happens on the return. Bounded by the exit on purpose -
+             a later out-and-back inside the same stint (Ramsgate sees them)
+             belongs to a later departure, not this one. */
           let k = -1;
-          for (let i = sa2; i <= sb2 && i < stops.length; i++)
-            if (stops[i].code === pt.platform) { k = i; break; }
+          const lim = Math.min(u.exitIdx, sb2);
+          for (let i = sa2; i <= lim && i < stops.length; i++)
+            if (stops[i].code === pt.platform) k = i;
           /* It has only turned round if it came INTO the platform from
              somewhere else on this same working. One that starts in the
              platform never backed in, so it stands as the numbers give it. */
@@ -812,6 +818,10 @@ const GENIUS = (() => {
       let pinned = false;
       {
         const diags = e.blocks.map(x => x.diag.slice(2)).sort().join(",");
+        /* the order the RULES gave, before any pin - recorded so the Unit
+           order tab (and any audit) can see what the tool would have printed
+           unaided, which is the measure of whether a pin still earns its keep */
+        const derived = e.blocks.map(x => x.diag.slice(2));
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
         const kSec = e.sec + "|" + diags;
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
@@ -861,7 +871,18 @@ const GENIUS = (() => {
           fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
                             bucket: prof.bucket,
                             lookupDiags: diags, keysTried: [kTimed, kSec, diags],
-                            applied, units: e.blocks.map(x => x.diag.slice(2)) });
+                            applied, units: e.blocks.map(x => x.diag.slice(2)),
+                            derived,
+                            /* the physical evidence behind the order: which
+                               berth each unit came off, its Position for this
+                               working, and whether it turned in the platform */
+                            ev: e.blocks.map(x => {
+                              const m = meta.get(x.diag);
+                              const st = m && m.stints[x.si];
+                              return { diag: x.diag.slice(2), pos: x.pos,
+                                       road: st ? m.stops[st[0]].code : null,
+                                       turn: x.turn === undefined ? null : x.turn };
+                            }) });
       }
       /* A real formation of n units carries Positions 1..n. Anything else and
          the numbers came from different formations, so comparing them orders

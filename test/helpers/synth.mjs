@@ -384,9 +384,13 @@ export const REVERSED_ORDER_DETAIL = [
     orderLeg(d, 18, "SLADEGD", "Slade Green T&R.S.M.D", "06:00:00", "5C40", "SLADEGN", "Slade Green", "06:10:00"),
     orderLeg(d, 18, "SLADEGN", "Slade Green", "06:20:00", "2C40", "CANONST", "Cannon Street", "07:00:00"),
   ]),
+  /* the real 013/014 shape: back out of the sidings to signal YE621, into
+     the platform, away toward Ashford the way they came - a platform turn,
+     which is what flips them against Dover Priory's lowest-first rule */
   ...["DP013", "DP014"].flatMap(d => [
-    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "04:30:00", "5W05", "DOVERP", "Dover Priory", "04:40:00"),
-    orderLeg(d, 30, "DOVERP", "Dover Priory", "04:50:00", "2W05", "CANONST", "Cannon Street", "06:00:00"),
+    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "04:10:00", "5W05", "DOVE621", "Dover Signal YE6", "04:12:00"),
+    orderLeg(d, 30, "DOVE621", "Dover Signal YE6", "04:19:00", "5W05", "DOVERP", "Dover Priory", "04:21:00"),
+    orderLeg(d, 30, "DOVERP", "Dover Priory", "04:50:00", "2W05", "ASHFKY", "Ashford Kent", "06:00:00"),
   ]),
 ].join("\r\n");
 
@@ -422,17 +426,20 @@ export const GAPPED_POSITION_SUMMARY = [
   "Start Location,End Time,End Location,Distance,First Train Note," +
   "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
   "Diagram Comments,Coverage Notes",
-  "RM920,Covered,375/6,,0,10/08/2026 06:00,2,5A31,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM920,,",
-  "RM921,Covered,375/6,,0,10/08/2026 06:00,3,5A31,DOVERPS,10/08/2026 07:20,ASHFKY,30,,,,,,RM921,,",
+  "RM920,Covered,375/6,,0,10/08/2026 06:00,2,5A31,GLNGDEP,10/08/2026 07:20,VICTRIE,30,,,,,,RM920,,",
+  "RM921,Covered,375/6,,0,10/08/2026 06:00,3,5A31,GLNGDEP,10/08/2026 07:20,VICTRIE,30,,,,,,RM921,,",
 ].join("\r\n");
 
 export const GAPPED_POSITION_DETAIL = [
   "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
   "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
   "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  /* Gillingham, not Dover Priory: the point here is the 2-and-3 gap, and
+     Gillingham reads lowest-first with no platform-turn table, so nothing
+     else moves the pair while the note is under test. */
   ...["RM920", "RM921"].flatMap(d => [
-    orderLeg(d, 30, "DOVERPS", "Dover Priory Sidings", "06:00:00", "5A31", "DOVERP", "Dover Priory", "06:10:00"),
-    orderLeg(d, 30, "DOVERP", "Dover Priory", "06:20:00", "2A31", "ASHFKY", "Ashford", "07:20:00"),
+    orderLeg(d, 30, "GLNGDEP", "Gillingham Depot", "06:00:00", "5A31", "GLNGHMK", "Gillingham", "06:10:00"),
+    orderLeg(d, 30, "GLNGHMK", "Gillingham", "06:20:00", "2A31", "VICTRIE", "Victoria", "07:20:00"),
   ]),
 ].join("\r\n");
 

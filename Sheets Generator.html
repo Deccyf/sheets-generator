@@ -921,8 +921,8 @@
     <!-- Once this file is emailed round, synced and put on SharePoint there
          is no other way to tell which copy somebody has open, and a fix
          reported as "still wrong" is usually an old one. -->
-    <p class="smallprint buildstamp">Version <b>2.3.0</b> &middot;
-      24 August 2026<span class="bsnote">If something looks wrong, check this
+    <p class="smallprint buildstamp">Version <b>2.4.0</b> &middot;
+      25 August 2026<span class="bsnote">If something looks wrong, check this
       against the newest version you were sent before reporting it — an old
       copy of this file keeps working, and keeps its old mistakes.</span></p>
   </footer>
@@ -1244,8 +1244,57 @@ const SIDING_CLASS_RE = new RegExp(
         MINSTER: "E", DOVERP: "E", RAM5143: "E",
       },
     },
+    /* Dover Priory. RM013/014 back out of the Priory sidings to signal YE621
+       and depart the way they came, toward Ashford - the pin that held them
+       is derived by this. Everything via YE623 heads on to Faversham and
+       runs straight through, which is 015/016, 917/016 and 018, all correct
+       unpinned. The sides are empirical, read off both properly-exported
+       days: 621 with the Ashford exits, 623 opposite Faversham. */
+    "DOVER PRIORY": {
+      platform: "DOVERP",
+      side: {
+        // the Ashford/Folkestone end: both shunt signals and the sidings
+        DOVE621: "A", DOVE623: "A", DOVERPS: "A", ASHFKY: "A",
+        // the Faversham end, via Canterbury East
+        FAVRSHM: "F",
+      },
+    },
+    /* Faversham. FT019/020 come off the Up Sidings and head for Dover -
+       same side, so they turn, which is what their pin recorded. 021/022
+       come off the same road toward Gillingham - opposite side, straight -
+       and were always right unpinned. The Up Sidings therefore sit at the
+       Dover end. The Back Road is left out on purpose: no coupled working
+       off it appears in the days to hand, so one would be named for review
+       rather than guessed. */
+    FAVERSHAM: {
+      platform: "FAVRSHM",
+      side: {
+        FAVRUPS: "E", DOVERP: "E",
+        GLNGHMK: "W", STNGBRN: "W",
+      },
+    },
+    /* Hastings. RM029/030 start IN the platform, shunt out to Signal 70 and
+       come back, then leave for Battle - out and back the same side is the
+       turn their pin recorded, and the reports even show it: the section
+       starts at the station with 029 on Position 1, and 030 leads the
+       departure. The Park Sidings formations (033/034, 035/036/037, 038)
+       cross the station to Battle and run straight, all correct unpinned -
+       so Signal 70 is at the Battle end and the Park Sidings at the Ore
+       end. The St Leonards shunt neck is Battle-side too. */
+    HASTINGS: {
+      platform: "HASTING",
+      side: {
+        HASTS70: "W", BATTLE: "W", STLNSHN: "W",
+        HASTPSD: "E", OREE: "E",
+      },
+    },
   };
 
+  /* Three pins used to sit in this table and are now derived by
+     PLATFORM_TURN above - Dover Priory 014,013 (backs out via YE621),
+     Faversham 020,019 (Up Sidings to Dover, same side), and Hastings
+     030,029 (out to Signal 70 and back). Each is reproduced by the rule on
+     every day to hand; the sides tables above say how. */
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
@@ -1267,8 +1316,8 @@ const SIDING_CLASS_RE = new RegExp(
     "ASHFORD|117,128": ["128", "117"],
     "ASHFORD|301,901,902": ["901", "902", "301"],
     "ASHFORD 15+43|101,102": ["101", "102"],
-    "DOVER PRIORY|013,014": ["014", "013"],
-    "FAVERSHAM|019,020": ["020", "019"],
+
+
     "GROVE PARK|021,022": ["022", "021"],
     "GROVE PARK|118,119": ["118", "119"],
     /* 301 is last at Ashford and first at Grove Park, so this cannot be a bare
@@ -1287,7 +1336,7 @@ const SIDING_CLASS_RE = new RegExp(
        fires. Caveat: the key is built before attaching units are filtered, so
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
-    "HASTINGS|029,030": ["030", "029"],
+
     /* Ramsgate's five backwards formations used to be pinned here, one key
        per formation. They are gone: PLATFORM_TURN above derives all five,
        because every one of them is a working that backs into the platform
@@ -7170,13 +7219,19 @@ const GENIUS = (() => {
         let turn = false;
         const pt = PLATFORM_TURN[e.sec];
         if (pt) {
-          /* The platform call on this working. It is usually the stop the
-             entry is timed off - these sections print the platform
-             departure - so look across the whole stint rather than after
-             the exit. */
+          /* The platform call this ENTRY is timed off - the last platform
+             call at or before the exit stop, searched across the stint
+             because these sections print the platform departure. It was the
+             FIRST call in the stint until Hastings showed why that is wrong:
+             RM029/030 start their day IN the platform, shunt out to Signal
+             70 and come back, and the first call is the standing start while
+             the turn happens on the return. Bounded by the exit on purpose -
+             a later out-and-back inside the same stint (Ramsgate sees them)
+             belongs to a later departure, not this one. */
           let k = -1;
-          for (let i = sa2; i <= sb2 && i < stops.length; i++)
-            if (stops[i].code === pt.platform) { k = i; break; }
+          const lim = Math.min(u.exitIdx, sb2);
+          for (let i = sa2; i <= lim && i < stops.length; i++)
+            if (stops[i].code === pt.platform) k = i;
           /* It has only turned round if it came INTO the platform from
              somewhere else on this same working. One that starts in the
              platform never backed in, so it stands as the numbers give it. */
@@ -7265,6 +7320,10 @@ const GENIUS = (() => {
       let pinned = false;
       {
         const diags = e.blocks.map(x => x.diag.slice(2)).sort().join(",");
+        /* the order the RULES gave, before any pin - recorded so the Unit
+           order tab (and any audit) can see what the tool would have printed
+           unaided, which is the measure of whether a pin still earns its keep */
+        const derived = e.blocks.map(x => x.diag.slice(2));
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
         const kSec = e.sec + "|" + diags;
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
@@ -7314,7 +7373,18 @@ const GENIUS = (() => {
           fx.coupled.push({ sec: e.sec, timeText: fmtT(e.tmin, e.hc),
                             bucket: prof.bucket,
                             lookupDiags: diags, keysTried: [kTimed, kSec, diags],
-                            applied, units: e.blocks.map(x => x.diag.slice(2)) });
+                            applied, units: e.blocks.map(x => x.diag.slice(2)),
+                            derived,
+                            /* the physical evidence behind the order: which
+                               berth each unit came off, its Position for this
+                               working, and whether it turned in the platform */
+                            ev: e.blocks.map(x => {
+                              const m = meta.get(x.diag);
+                              const st = m && m.stints[x.si];
+                              return { diag: x.diag.slice(2), pos: x.pos,
+                                       road: st ? m.stops[st[0]].code : null,
+                                       turn: x.turn === undefined ? null : x.turn };
+                            }) });
       }
       /* A real formation of n units carries Positions 1..n. Anything else and
          the numbers came from different formations, so comparing them orders

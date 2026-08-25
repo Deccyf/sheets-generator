@@ -292,8 +292,57 @@ const SIDING_CLASS_RE = new RegExp(
         MINSTER: "E", DOVERP: "E", RAM5143: "E",
       },
     },
+    /* Dover Priory. RM013/014 back out of the Priory sidings to signal YE621
+       and depart the way they came, toward Ashford - the pin that held them
+       is derived by this. Everything via YE623 heads on to Faversham and
+       runs straight through, which is 015/016, 917/016 and 018, all correct
+       unpinned. The sides are empirical, read off both properly-exported
+       days: 621 with the Ashford exits, 623 opposite Faversham. */
+    "DOVER PRIORY": {
+      platform: "DOVERP",
+      side: {
+        // the Ashford/Folkestone end: both shunt signals and the sidings
+        DOVE621: "A", DOVE623: "A", DOVERPS: "A", ASHFKY: "A",
+        // the Faversham end, via Canterbury East
+        FAVRSHM: "F",
+      },
+    },
+    /* Faversham. FT019/020 come off the Up Sidings and head for Dover -
+       same side, so they turn, which is what their pin recorded. 021/022
+       come off the same road toward Gillingham - opposite side, straight -
+       and were always right unpinned. The Up Sidings therefore sit at the
+       Dover end. The Back Road is left out on purpose: no coupled working
+       off it appears in the days to hand, so one would be named for review
+       rather than guessed. */
+    FAVERSHAM: {
+      platform: "FAVRSHM",
+      side: {
+        FAVRUPS: "E", DOVERP: "E",
+        GLNGHMK: "W", STNGBRN: "W",
+      },
+    },
+    /* Hastings. RM029/030 start IN the platform, shunt out to Signal 70 and
+       come back, then leave for Battle - out and back the same side is the
+       turn their pin recorded, and the reports even show it: the section
+       starts at the station with 029 on Position 1, and 030 leads the
+       departure. The Park Sidings formations (033/034, 035/036/037, 038)
+       cross the station to Battle and run straight, all correct unpinned -
+       so Signal 70 is at the Battle end and the Park Sidings at the Ore
+       end. The St Leonards shunt neck is Battle-side too. */
+    HASTINGS: {
+      platform: "HASTING",
+      side: {
+        HASTS70: "W", BATTLE: "W", STLNSHN: "W",
+        HASTPSD: "E", OREE: "E",
+      },
+    },
   };
 
+  /* Three pins used to sit in this table and are now derived by
+     PLATFORM_TURN above - Dover Priory 014,013 (backs out via YE621),
+     Faversham 020,019 (Up Sidings to Dover, same side), and Hastings
+     030,029 (out to Signal 70 and back). Each is reproduced by the rule on
+     every day to hand; the sides tables above say how. */
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
@@ -315,8 +364,8 @@ const SIDING_CLASS_RE = new RegExp(
     "ASHFORD|117,128": ["128", "117"],
     "ASHFORD|301,901,902": ["901", "902", "301"],
     "ASHFORD 15+43|101,102": ["101", "102"],
-    "DOVER PRIORY|013,014": ["014", "013"],
-    "FAVERSHAM|019,020": ["020", "019"],
+
+
     "GROVE PARK|021,022": ["022", "021"],
     "GROVE PARK|118,119": ["118", "119"],
     /* 301 is last at Ashford and first at Grove Park, so this cannot be a bare
@@ -335,7 +384,7 @@ const SIDING_CLASS_RE = new RegExp(
        fires. Caveat: the key is built before attaching units are filtered, so
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
-    "HASTINGS|029,030": ["030", "029"],
+
     /* Ramsgate's five backwards formations used to be pinned here, one key
        per formation. They are gone: PLATFORM_TURN above derives all five,
        because every one of them is a working that backs into the platform
