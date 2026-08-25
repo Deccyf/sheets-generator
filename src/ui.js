@@ -186,6 +186,109 @@ function persistEdits() {
 }
 
 
+/* ---------------- the printed book's memory ----------------
+   The plan moves after the book is printed - a working cancelled overnight,
+   a formation re-made, a berth changed - and the sheet on the wall stays as
+   it was. So the tool remembers a fingerprint of every book at the moment it
+   is SAVED (saving is what precedes printing), and when a later export of
+   the same date is built it says, at the top of the Review tab, exactly
+   which entries no longer match the book that went out. Free, offline, and
+   the only data source that always knows the current plan: the plan.
+   Lives in this browser's storage, so the comparison works on the machine
+   the book was saved on. */
+const PRINTED_LS_KEY = "sheetsPrinted.v1";
+function loadPrinted() {
+  if (!rulesStore) return {};
+  try { return JSON.parse(rulesStore.getItem(PRINTED_LS_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function bookFingerprint(secs, day) {
+  const out = [];
+  const m = secs && secs[day];
+  if (!m || typeof m.get !== "function") return out;
+  for (const [sec, ents] of m)
+    for (const e of ents)
+      out.push([sec, e.time, e.time_kind || "",
+        (e.units || []).map(u =>
+          u.diag + ":" + (u.am || "") + "/" + (u.pm || "")).join(","),
+        e.dest || ""].join("\u0001"));
+  return out.sort();
+}
+/* Saved under the date LABEL ("MON 24/08"), because that is the identity a
+   re-export of the same day shares. Newest eight labels kept. */
+function storePrinted(res) {
+  if (!rulesStore || !res) return;
+  const all = loadPrinted();
+  for (const day of Object.keys(res.labels)) {
+    all[res.labels[day]] = {
+      saved: new Date().toISOString(),
+      main: bookFingerprint(res.secsByDay, day),
+      metro: bookFingerprint(res.metroSecs, day),
+      hs: bookFingerprint(res.hsSecs, day),
+    };
+  }
+  const labels = Object.keys(all)
+    .sort((a, b) => String(all[b].saved).localeCompare(String(all[a].saved)));
+  for (const l of labels.slice(8)) delete all[l];
+  try { rulesStore.setItem(PRINTED_LS_KEY, JSON.stringify(all)); }
+  catch (e) { /* storage full or blocked: the feature just stays quiet */ }
+}
+/* What moved between the saved book and this build, as review items. Entries
+   pair on section + time; a pair with different units or berths is
+   "changed", the rest are gone or new. */
+function printedDiff(oldFp, newFp) {
+  const fmtT = (t, k) => SHEETS_CORE.fmtTime(Number(t), k || "pax");
+  const key = l => l.split("\u0001").slice(0, 3).join("\u0001");
+  const byKey = list => {
+    const m = new Map();
+    for (const l of list) { const k = key(l);
+      if (!m.has(k)) m.set(k, []); m.get(k).push(l); }
+    return m;
+  };
+  const A = byKey(oldFp), B = byKey(newFp), out = [];
+  const units = l => (l.split("\u0001")[3] || "")
+    .split(",").filter(Boolean).map(x => x.split(":")[0]).join(",");
+  for (const [k, was] of A) {
+    const now = B.get(k);
+    const [sec, t, kind] = k.split("\u0001");
+    const at = sec + " " + fmtT(t, kind);
+    if (!now) { out.push({ sec, msg: at + " (" + units(was[0]) + "): in the " +
+      "saved book, not in this plan" }); continue; }
+    if (was.join("\u0002") !== now.join("\u0002"))
+      out.push({ sec, msg: at + ": the saved book has " + units(was[0]) +
+        " - this plan has " + units(now[0]) +
+        (units(was[0]) === units(now[0]) ? " with different berths" : "") });
+  }
+  for (const [k, now] of B) if (!A.has(k)) {
+    const [sec, t, kind] = k.split("\u0001");
+    out.push({ sec, msg: sec + " " + fmtT(t, kind) + " (" + units(now[0]) +
+      "): not in the saved book" });
+  }
+  return out;
+}
+/* The review items for one bucket of one build, against whatever book was
+   saved for the same date label. Empty when nothing was saved or nothing
+   moved. Capped so a wholly different day cannot bury the real notes. */
+function sinceSaved(res, secs, bucketKey) {
+  if (!rulesStore) return [];
+  const all = loadPrinted(), out = [];
+  for (const day of Object.keys(res.labels)) {
+    const rec = all[res.labels[day]];
+    if (!rec || !rec[bucketKey]) continue;
+    const diffs = printedDiff(rec[bucketKey], bookFingerprint(secs, day));
+    if (!diffs.length) continue;
+    const when = String(rec.saved).replace(/T/, " ").slice(0, 16);
+    out.push({ sec: null, msg: "The plan has moved since a " +
+      res.labels[day] + " book was saved here (" + when + "). Check the " +
+      "printed copy against these:" });
+    out.push(...diffs.slice(0, 20));
+    if (diffs.length > 20)
+      out.push({ sec: null, msg: "…and " + (diffs.length - 20) +
+        " more entries differ." });
+  }
+  return out;
+}
+
 /* The Rules pane. Everything it shows comes from the build that produced
    these very books - res.rules is the table that ran, not the tables read
    again at display time - so it cannot drift from what you are looking at.
@@ -634,12 +737,22 @@ function reviewPane(items) {
     // RAMSGATE plus the section-less general ones (unreadable diagrams,
     // date notices, location look-ups).
     const msgs = list => list.map(x => x.msg);
-    const revs = {
-      main: msgs(res.reviews.main),
-      ram: msgs(res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE")),
-      metro: msgs(res.reviews.metro),
-      hs: msgs(res.reviews.hs),
+    /* what moved since a book for this date was saved on this machine -
+       these go FIRST, because a printed book that no longer matches the
+       plan beats every other kind of note */
+    const moved = {
+      main: sinceSaved(res, res.secsByDay, "main"),
+      metro: sinceSaved(res, res.metroSecs, "metro"),
+      hs: sinceSaved(res, res.hsSecs, "hs"),
     };
+    const revs = {
+      main: msgs(moved.main.concat(res.reviews.main)),
+      ram: msgs(moved.main.filter(x => !x.sec || x.sec === "RAMSGATE")
+        .concat(res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE"))),
+      metro: msgs(moved.metro.concat(res.reviews.metro)),
+      hs: msgs(moved.hs.concat(res.reviews.hs)),
+    };
+    const movedCount = moved.main.length + moved.metro.length + moved.hs.length;
     // Every fleet gets a road whether or not the reports carry its diagrams.
     // What it holds is decided below by the entry count, so an empty Metro
     // road reads exactly like an empty High Speed one.
@@ -741,6 +854,7 @@ function reviewPane(items) {
    files into a folder without asking, or where a policy blocks it, the
    only thing to do was click again. */
       const acts = [["Save book", () => {
+        storePrinted(res);
         download(book.name, book.bytes, XLSX_MIME);
         say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
       }]];
@@ -774,8 +888,14 @@ function reviewPane(items) {
         " made on this computer " + (ed === 1 ? "is" : "are") +
         " in force — see the Unit order tab."
       : "";
-    say("Books built — look them over below, then save." + rv + mine,
-        (res.review.length || ed) ? "warn" : "go");
+    /* A book already saved for this date that no longer matches the plan is
+       the sharpest thing this page can say, so it leads the message. */
+    const chg = movedCount
+      ? " The plan has MOVED since a book for this date was saved on this" +
+        " computer — the differences lead the Review tabs."
+      : "";
+    say("Books built — look them over below, then save." + chg + rv + mine,
+        (movedCount || res.review.length || ed) ? "warn" : "go");
   }
 
   async function accept(file) {
@@ -878,6 +998,7 @@ function reviewPane(items) {
 
   dlall.addEventListener("click", () => {
     if (!built || !built.length) return;
+    if (lastRes) storePrinted(lastRes);
     downloadZip(zipName, built.map(b => [b.name, b.bytes]));
     say("Saved " + zipName + " — " + built.length + " book" +
         (built.length === 1 ? "" : "s") +

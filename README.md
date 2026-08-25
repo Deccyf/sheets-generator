@@ -540,6 +540,22 @@ second.
 Every build shows a count of review items and a tab listing them. Typical
 entries:
 
+* **what moved since the book was printed.** Saving a book stores a
+  fingerprint of it in this browser (nothing leaves the machine). When a
+  later export of the **same date** is built on the same computer, any entry
+  that no longer matches the saved book leads the Review tab — a working
+  gone from the plan, a new one, a formation or berth changed — and the
+  status line says the plan has moved. An unchanged re-export stays quiet.
+
+  This is the free answer to plan drift: the plan changes after the book is
+  printed, and no report the tool reads says so. Re-export the same day's
+  pair the next morning, drop it in, and the differences against the printed
+  book are the first thing shown. It costs nothing and uses no internet —
+  the source that always knows the current plan is the plan. (What it cannot
+  see is a swap made on the ground that never reaches Genius; no free data
+  source carries those.) Fingerprints for the last eight saved dates are
+  kept, on the machine the book was saved on.
+
 * a location that is not in the section list (given its own section — check
   whether it should live under an existing one);
 * a suppressed empty move to a berth, named diagram by diagram. Only moves

@@ -133,5 +133,44 @@ console.log("files dragged into boxes :", await page.textContent("#status"));
 if (!await page.locator("#roads .road").count())
   throw new Error("files dragged into the boxes built no roads");
 
+/* ---- the printed book's memory: save, rebuild a changed plan, be told ----
+   The books on screen are for MON 03/08. Saving stores their fingerprint;
+   a re-export of the same date with GT101 gone - its Ashford pair now runs alone. (GT106 would be no test: its only move is an empty hop to a berth, which the books suppress.)
+   must then lead the Review tab with the difference, and say so up top. */
+await page.locator("#roads .road").first().locator("button:has-text('Save book')").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Saved"), null, { timeout: 10000 });
+const changedSum = geniusSummaryCsv().split("\r\n")
+  .filter(l => !l.includes('"GT101"')).join("\r\n");
+const changedDet = geniusDetailCsv().split("\r\n")
+  .filter(l => !l.includes('"GT101"')).join("\r\n");
+await put("#paste_sum", changedSum);
+await put("#paste_det", changedDet);
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+const movedStatus = await page.textContent("#status");
+console.log("plan moved after save    :", movedStatus.slice(0, 120));
+if (!/plan has MOVED/.test(movedStatus))
+  throw new Error("a changed re-export of a saved date must say the plan moved");
+await page.locator("#roads .road").first().locator("button:has-text('Look at it')").click();
+await page.locator("#roads .road").first().locator(".tab", { hasText: "Review" }).click();
+const review = await page.locator("#roads .road").first().locator(".view").textContent();
+if (!/since a MON 03\/08 book was saved/.test(review))
+  throw new Error("the Review tab should open with what moved since the save");
+if (!/101/.test(review))
+  throw new Error("the vanished diagram should be named in the differences");
+console.log("review leads with        : the moved-plan differences, naming 101");
+
+/* and a re-export that matches the saved book stays quiet */
+await put("#paste_sum", geniusSummaryCsv());
+await put("#paste_det", geniusDetailCsv());
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+if (/plan has MOVED/.test(await page.textContent("#status")))
+  throw new Error("an unchanged re-export must not claim the plan moved");
+console.log("unchanged re-export      : quiet, as it should be");
+
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");
