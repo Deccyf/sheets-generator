@@ -921,7 +921,7 @@
     <!-- Once this file is emailed round, synced and put on SharePoint there
          is no other way to tell which copy somebody has open, and a fix
          reported as "still wrong" is usually an old one. -->
-    <p class="smallprint buildstamp">Version <b>2.2.0</b> &middot;
+    <p class="smallprint buildstamp">Version <b>2.2.1</b> &middot;
       24 August 2026<span class="bsnote">If something looks wrong, check this
       against the newest version you were sent before reporting it — an old
       copy of this file keeps working, and keeps its old mistakes.</span></p>
@@ -1249,6 +1249,14 @@ const SIDING_CLASS_RE = new RegExp(
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
+    /* Both units come through the reports on Position 1 for this working, so
+       the numbers cannot separate them and the order fell to the diagram
+       tie-break, which carries no meaning. It happened to land the right way
+       up, and the TUE 18/08 book confirms 117 then 128 - but a pair of
+       diagram numbers that ever changed would flip it silently, so the book's
+       answer is written down instead of left to luck. It is the only coupled
+       entry on either sectioned day whose Positions are not 1..n. */
+    "ASHFORD|117,128": ["117", "128"],
     "ASHFORD|301,901,902": ["901", "902", "301"],
     "ASHFORD 15+43|101,102": ["101", "102"],
     "DOVER PRIORY|013,014": ["014", "013"],
@@ -7231,6 +7239,7 @@ const GENIUS = (() => {
       // order is taken verbatim (see ORDER_FIX). A formation that reads one
       // way in the morning and the other in the afternoon is named with its
       // time; one that holds all day is named without.
+      let pinned = false;
       {
         const diags = e.blocks.map(x => x.diag.slice(2)).sort().join(",");
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
@@ -7238,8 +7247,8 @@ const GENIUS = (() => {
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
         const applied = fx.table[kTimed] ? kTimed
                       : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
-        if (fix) e.blocks.sort((x, y) =>
-          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
+        if (fix) { pinned = true; e.blocks.sort((x, y) =>
+          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2))); }
         /* A pin that silently stops matching is the worst failure this table
            has: someone wrote down the order for these very units, the working
            moved by a minute or changed headcode, and the sheet quietly went
@@ -7280,7 +7289,9 @@ const GENIUS = (() => {
          once in 180 coupled entries - itself a tie - while the AM-only 24/08
          export trips it 11 times in 179. It marks an export's damage rather
          than inventing work. */
-      if (e.blocks.length > 1) {
+      /* A pinned entry is not a guess: somebody read the order off the real
+         book and wrote it down, which is exactly what this note asks for. */
+      if (e.blocks.length > 1 && !pinned) {
         const ps = e.blocks.map(x => x.pos);
         const seq = ps.every(p => p != null) &&
           ps.slice().sort((a, b) => a - b).every((p, i) => p === i + 1);

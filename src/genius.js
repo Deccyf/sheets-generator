@@ -794,6 +794,7 @@ const GENIUS = (() => {
       // order is taken verbatim (see ORDER_FIX). A formation that reads one
       // way in the morning and the other in the afternoon is named with its
       // time; one that holds all day is named without.
+      let pinned = false;
       {
         const diags = e.blocks.map(x => x.diag.slice(2)).sort().join(",");
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
@@ -801,8 +802,8 @@ const GENIUS = (() => {
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
         const applied = fx.table[kTimed] ? kTimed
                       : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
-        if (fix) e.blocks.sort((x, y) =>
-          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2)));
+        if (fix) { pinned = true; e.blocks.sort((x, y) =>
+          fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2))); }
         /* A pin that silently stops matching is the worst failure this table
            has: someone wrote down the order for these very units, the working
            moved by a minute or changed headcode, and the sheet quietly went
@@ -843,7 +844,9 @@ const GENIUS = (() => {
          once in 180 coupled entries - itself a tie - while the AM-only 24/08
          export trips it 11 times in 179. It marks an export's damage rather
          than inventing work. */
-      if (e.blocks.length > 1) {
+      /* A pinned entry is not a guess: somebody read the order off the real
+         book and wrote it down, which is exactly what this note asks for. */
+      if (e.blocks.length > 1 && !pinned) {
         const ps = e.blocks.map(x => x.pos);
         const seq = ps.every(p => p != null) &&
           ps.slice().sort((a, b) => a - b).every((p, i) => p === i + 1);
