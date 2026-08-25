@@ -298,13 +298,21 @@ const SIDING_CLASS_RE = new RegExp(
     "ASHFORD|004,905": ["004", "905"],
     "ASHFORD|114,115": ["115", "114"],
     /* Both units come through the reports on Position 1 for this working, so
-       the numbers cannot separate them and the order fell to the diagram
-       tie-break, which carries no meaning. It happened to land the right way
-       up, and the TUE 18/08 book confirms 117 then 128 - but a pair of
-       diagram numbers that ever changed would flip it silently, so the book's
-       answer is written down instead of left to luck. It is the only coupled
-       entry on either sectioned day whose Positions are not 1..n. */
-    "ASHFORD|117,128": ["117", "128"],
+       the numbers cannot separate them at all and the order was falling to
+       the diagram tie-break, which carries no meaning of its own. It is the
+       only coupled entry whose Positions are not 1..n on either properly
+       sectioned day.
+
+       128 LEADS and 117 TRAILS, per the depot.
+
+       Note for whoever reads this next: the hand-written TUE 18/08 book has
+       it the other way up, 117 on the first row of its 15 27 and 128 on the
+       second (rows 39 and 40). The depot says that book is wrong here, and
+       the depot is the authority on which end of a train is which - a
+       hand-kept book carrying an error is one of the reasons this tool
+       exists. So the entry-by-entry check against that book now reports this
+       one as a difference on purpose; it is not a regression. */
+    "ASHFORD|117,128": ["128", "117"],
     "ASHFORD|301,901,902": ["901", "902", "301"],
     "ASHFORD 15+43|101,102": ["101", "102"],
     "DOVER PRIORY|013,014": ["014", "013"],
