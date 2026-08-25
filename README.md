@@ -896,6 +896,30 @@ ones, all commented at the point of implementation:
   covering its own working. An **Integrale** export has one row per diagram
   and cannot express this, so on Integrale data every entry gets the one value
   the export gives.
+
+  **What decides how many rows a diagram gets: the `#` in its Detail.** Genius
+  marks a shunt on the spot with `#` in the activity column, and that is
+  exactly where it cuts a diagram into sections — one section per `#`, plus
+  the one it starts with. Measured on two properly exported days:
+
+  ```
+  sections = "#" markers + 1      322 of 322 diagrams, 18/08 and 25/08 alike
+  ```
+
+  No exceptions either day. So a diagram with no `#` gets **one** row and one
+  `Position` for the whole day, however many formations it runs in. `GT117` is
+  that case: no `#`, one row, `Position 1` from 07:45 to 23:29 — while it
+  works with `GT116` in the morning and `GT128` in the afternoon. Its 15 27
+  position and `GT128`'s are both 1, which cannot both be true, and no rule
+  can derive an order from it. That is why the `ASHFORD|117,128` pin exists,
+  and the pin would be unnecessary if that diagram carried a `#` where it
+  changes formation.
+
+  The same law explains what a Summary exported **without** the session
+  setting loses. On the 24/08 file it holds only for the 177 diagrams that
+  have no `#` at all; it breaks for exactly the **145** that do — those are
+  the diagrams whose extra sections, and so whose afternoon positions, the
+  export dropped.
 * **Coupling order.** Which unit leads comes from the Summary's `Position`
   field, and the direction is **per section** (`posAsc` in the fleet
   profiles). In the mainline book these list the *lowest* Position first —
