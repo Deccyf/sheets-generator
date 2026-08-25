@@ -23,6 +23,21 @@ const GENIUS = (() => {
     return m;
   }
   const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
+  /* Every pin, split into the location it names and the units it names, so a
+     formation can be compared against it loosely. A pin is keyed on an EXACT
+     set of diagram numbers, which is its weak point: when a formation loses
+     or gains a unit the key stops matching and the sheet goes quietly back
+     to guessing. That is what happened to the Ramsgate orders the day
+     043/044/910 ran as 043/044, and the same-set check above cannot see it,
+     because the set is not the same. */
+  function orderFixNear(table) {
+    return Object.keys(table).map(k => {
+      const i = k.indexOf("|");
+      return { key: k,
+               sec: i < 0 ? null : k.slice(0, i).replace(/ \d\d[ +]\d\d$/, ""),
+               set: new Set((i < 0 ? k : k.slice(i + 1)).split(",")) };
+    });
+  }
   /* The locations the books actually print a page for. */
   const PAGE_SECTIONS = new Set([...SHEETS_DATA.MAIN_ORDER,
     ...SHEETS_DATA.METRO_ORDER, ...SHEETS_DATA.HS_ORDER]);
@@ -816,6 +831,23 @@ const GENIUS = (() => {
             [...fx.keys.get(diags)].join(" and ") + ", but not here, so this " +
             "one is ordered off the reports. Check it — it may need the same " +
             "correction" });
+        /* The set is not the same, but a pin covers most of these units at
+           this location: the formation has gained or lost one and taken its
+           correction with it. Silent until now, and it is the failure that
+           put the Ramsgate orders back the wrong way round. */
+        else if (e.blocks.length > 1) {
+          const mine = new Set(e.blocks.map(x => x.diag.slice(2)));
+          const near = (fx.near || []).filter(p =>
+            (!p.sec || p.sec === e.sec) &&
+            [...mine].filter(x => p.set.has(x)).length >= 2);
+          if (near.length) warn.push({ sec: e.sec, msg: e.sec + " " +
+            fmtT(e.tmin, e.hc) + " (" + [...mine].join("+") + "): a corrected " +
+            "order is recorded for " + [...near[0].set].join(", ") + " at this " +
+            "location, and this formation is not that set, so the correction " +
+            "does not apply and the order comes off the reports. A formation " +
+            "that gains or loses a unit loses its correction with it — check " +
+            "this one against the real book" });
+        }
         /* What the lookup consulted, recorded at the lookup itself so nothing
            downstream has to re-derive a key and risk deriving a different
            one. It goes AFTER the sort on purpose: the Unit order tab labels
@@ -1126,7 +1158,8 @@ const GENIUS = (() => {
     const hasEdits = Object.keys(edits).length > 0;
     const fixTable = hasEdits
       ? SHEETS_RULES.mergeOrderFix(ORDER_FIX, edits) : ORDER_FIX;
-    const fx = { table: fixTable, keys: orderFixKeys(fixTable), coupled: [],
+    const fx = { table: fixTable, keys: orderFixKeys(fixTable),
+                 near: orderFixNear(fixTable), coupled: [],
                  platformStands: !!(opts && opts.platformStands) };
     const review = [];
     // per-book lists: the combined `review` keeps the legacy order, these

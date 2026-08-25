@@ -985,6 +985,49 @@ ones, all commented at the point of implementation:
   minute or two. `RM101`/`RM102` need it: they leave Ashford 102-first at
   05 05 and 101-first at 15+43.
 
+  #### What the pins cost, and what guards them
+
+  Pins are the least durable thing in the tool, and it is worth being plain
+  about why. Measured across four real days:
+
+  | | |
+  |---|---|
+  | Pins in the table | **25** — 22 by section, 2 timed, 1 bare |
+  | Coupled entries on a typical day | ~190 |
+  | Entries a pin touches | **17 (9%)** — the other 91% are derived |
+  | Pins that fired on at least one of the four days | 15 of 25 |
+  | Pins that fired on **none** of them | **10** |
+
+  **A pin is keyed on an exact set of diagram numbers, and that is its weak
+  point.** When a formation gains or loses a unit the key stops matching, and
+  the entry falls back to the position numbers — which is what the pin existed
+  to overrule. Three guards now stand against that, each covering a different
+  way it goes wrong:
+
+  1. **The same set, no key here.** A pin names these very units somewhere
+     else but not at this location. Fires ~11 times a day.
+  2. **A different set, mostly these units.** A pin covers two or more of them
+     at this location and did not fire, because the formation is not that set
+     any more. This is the failure that put the Ramsgate orders back the wrong
+     way round when `043,044,910` ran as `043,044`, and it was silent until
+     now. Fires once or twice a day — and it is not hypothetical: on every day
+     to hand, `GROVE PARK 04+58` runs `441,440` while the pin names
+     `204, 440, 441`, so the recorded order is not being applied and the sheet
+     prints the opposite way round.
+  3. **Positions that are not 1..n.** The reports cannot place these units at
+     all, so nothing derived can be trusted either.
+
+  A pinned entry does **not** raise (3): somebody read that order off the real
+  book and wrote it down, which is what the note asks for.
+
+  **The direction of travel is to derive, not to pin.** `PLATFORM_TURN` is the
+  worked example: five Ramsgate formations were pinned one at a time, and one
+  physical rule — a train that backs into the platform and leaves the way it
+  came in is standing the other way round — reproduced all five and let four
+  pins be deleted. A rule survives a timetable change; a pin keyed on
+  `043,044,910` does not. Where several pins at one location share a physical
+  cause, that is the fix worth looking for.
+
   **When the timetable changes**, run the mark-up sheet —
   `node tools/order-check.mjs out.csv summary.csv diagrams.csv` — which lists
   every coupled departure in all three books both ways round. Tick A or B

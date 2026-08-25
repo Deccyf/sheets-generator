@@ -1239,3 +1239,37 @@ test("two units berthed together both print; a unit joining does not", async () 
   assert.equal(afk.diags, "901", "the joining unit prints on its own");
   assert.equal(afk.attachment, true, "and carries the ATTACHMENT note");
 });
+
+test("a formation that has lost a unit is told its pin no longer covers it", async () => {
+  /* The failure this catches, from the real books: a pin named 043, 044 and
+     910; the day ran 043 and 044; the key stopped matching and the sheet went
+     back to guessing with nothing said, in the opposite order to the one
+     somebody had written down. The same-set check cannot see it, because the
+     set is not the same.
+
+     Still live in the shipped table on every day to hand: GROVE PARK 04+58
+     runs 441+440 while the pin names 204, 440 and 441. */
+  const N = built();
+  const { ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL } =
+    await import("./helpers/synth.mjs");
+  /* the review list mixes plain strings with {sec, msg} objects */
+  const text = r => typeof r === "string" ? r : (r.msg || "");
+  const near = res => res.review.map(text).filter(m => /loses its correction/.test(m));
+
+  /* no pin for these units at all: nothing to say */
+  const clean = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL]);
+  assert.equal(near(clean).length, 0, "quiet when no pin mentions them");
+
+  /* a pin naming one more unit than actually turned up */
+  const res = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],
+    { orderFix: { "ASHFORD|951,952,953": ["951", "952", "953"] } });
+  const hits = near(res);
+  assert.equal(hits.length, 1, "exactly one formation is short of its pin");
+  assert.match(hits[0], /951/, "it names the units that did turn up");
+  assert.match(hits[0], /gains or loses a unit/,
+    "and says why the correction stopped applying");
+  /* the exact-set pin still fires and still says nothing */
+  const exact = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],
+    { orderFix: { "ASHFORD|951,952": ["952", "951"] } });
+  assert.equal(near(exact).length, 0, "a pin that fits is not a near miss");
+});
