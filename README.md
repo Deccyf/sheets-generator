@@ -1292,7 +1292,7 @@ what the plan means for **looking after** the units:
 | Question | What it reports |
 | --- | --- |
 | Arrivals home | How many diagrams put a unit into the home depot, split morning / afternoon / after midnight, and how many stands are nowhere near a depot that can repair the fleet |
-| Home before 20:00 | The diagrams back in the home area between noon and 20:00, and where each of them started |
+| Home before 20:00 | The diagrams that **finish** in the home area between noon and 20:00, counted apart from those that call in and go out again — and where each of them started |
 | Restricted units | The diagrams coupled on *every* leg — the only ones an **MO** unit can take — with where each starts and ends |
 | Week joins | Whether the plan closes on itself, day by day, and how many units must be repositioned at each join |
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
@@ -1326,6 +1326,21 @@ Both are real and both matter, so the tool never prints `MO` bare:
   nothing to do with the day code.
 
 Day codes are always shown spelt out (`Mon only`, `Mon–Thu`) for this reason.
+
+### Calling in is not the same as being finished with
+
+An arrival counts any stand of an hour or more, not only the end of a
+diagram — a unit standing at the depot for four hours is reachable whether
+or not it is done for the day. But the two are **not** the same thing, and
+adding them together makes the report claim something untrue: RM307 is at
+Ramsgate Depot from 12:18, away again at 14:05, and finishes the day at
+Faversham Back Road. It was being counted as home for the evening.
+
+So every arrival row says which it is — *stays for the night* or *out again
+at 14:05* — and carries the place the diagram actually **ends**, and the two
+are counted separately rather than summed. On the MAY26 books four 375
+diagrams finish in the Ramsgate area between noon and 20:00 and four more
+only call in.
 
 ### A home depot the prints never mention
 

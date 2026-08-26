@@ -600,7 +600,7 @@ have picked:
 | Section | What it tells you |
 | --- | --- |
 | **Arrivals into &lt;depot&gt;** | How many diagrams bring a unit home, split morning, afternoon and after midnight — and how many stands are nowhere near a depot that can repair the fleet |
-| **Home before 20:00** | Which diagrams are back early enough to be worked on the same evening, and where each one started that morning |
+| **Home before 20:00** | Which diagrams **finish** early enough to be worked on the same evening — counted apart from the ones that call in and go out again, which is a window rather than a homecoming. Every row says which it is and where the diagram really ends |
 | **Diagrams a restricted unit can work** | The diagrams that stay coupled the whole day — the only ones you can put an **MO** unit on |
 | **Does the week close on itself?** | Whether the plan runs itself, or whether units have to be moved at the end of a day. One line per join, Monday through Sunday |
 | **Mileage per unit** | What one *unit* covers a day, a week and a year — split by sub-fleet, because a 375/6 works harder than a 375/3. Also the units the plan needs, and the whole-fleet annual total |

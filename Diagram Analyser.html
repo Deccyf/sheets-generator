@@ -670,7 +670,7 @@ table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>1.1.0</b> &middot; 26 August 2026</p>
+    <p class="small">Version <b>1.1.1</b> &middot; 26 August 2026</p>
   </footer>
 </div>
 <script>
@@ -2491,7 +2491,10 @@ function build(all, fleet, cfg){
   for (const k of ["AM", "PM", "NIGHT"])
     for (const x of a.home[k])
       arrRows.push([x.d.key, F.daysLabel(x.d.days), bucketLabel(x.t), hm(x.t),
-                    x.loc, x.last ? "stays overnight" : "stands " + hm(x.mins).replace(":", "h"),
+                    x.loc,
+                    x.last ? "stays for the night"
+                           : "out again " + hm(x.t + x.mins),
+                    x.last ? x.loc : endOf(x.d).loc,
                     startOf(x.d).loc, hm(startOf(x.d).t)]);
   secs.push({
     id: "arrivals",
@@ -2511,31 +2514,51 @@ function build(all, fleet, cfg){
     stat: [["Into " + c.home + " — AM", a.home.AM.length],
            ["Into " + c.home + " — PM", a.home.PM.length],
            ["Into " + c.home + " — after midnight", a.home.NIGHT.length],
+           ["Of those, finish there for the day",
+            ["AM", "PM", "NIGHT"].reduce((t, k) =>
+              t + a.home[k].filter(x => x.last).length, 0)],
            ["Into any repair depot",
             a.repair.AM.length + a.repair.PM.length + a.repair.NIGHT.length],
            ["Away from any repair depot",
             a.away.AM.length + a.away.PM.length + a.away.NIGHT.length]],
-    head: ["Diagram", "Days", "AM/PM", "Arrives", "Where", "Then", "Started at", "Started"],
+    head: ["Diagram", "Days", "AM/PM", "Arrives", "Where", "Then",
+           "Ends the day at", "Started at", "Started"],
     rows: arrRows,
   });
 
   /* ---- 2. the early evening arrivals, and where they came from ---- */
+  /* Coming into the depot is not the same as being FINISHED with. A diagram
+     that calls for two hours at midday and goes out again has not brought
+     the unit home for the evening, and counting it as though it had was
+     the whole trouble with this section: RM307 stands at Ramsgate from
+     12:18 and is away again at 14:05, finishing the day at Faversham. The
+     two are now counted apart and every row says which it is. */
   const early = a.arrivals
     .filter(x => a.inHome(x.loc) && x.t != null && x.t >= 720 && x.t < 1200)
     .sort((p, q) => p.t - q.t);
+  const stay = early.filter(x => x.last), visit = early.filter(x => !x.last);
   secs.push({
     id: "early",
     tab: "Home before 8pm",
     title: "Home before 20:00",
-    lede: early.length
-      ? `${early.length} diagram${early.length === 1 ? "" : "s"} bring a unit into the ` +
-        `${c.home} area between noon and 20:00 — the window where a unit is back ` +
-        `early enough to be worked on the same evening.`
-      : `Nothing reaches the ${c.home} area between noon and 20:00. The fleet is ` +
-        `out until the evening peak has finished.`,
-    head: ["Diagram", "Days", "Arrives", "Where", "Started at", "Started", "Miles"],
+    lede: (stay.length
+      ? `<b>${stay.length}</b> diagram${stay.length === 1 ? "" : "s"} finish` +
+        `${stay.length === 1 ? "es" : ""} in the ${c.home} area between noon and ` +
+        `20:00 — the unit is done for the day and can be worked on that evening. `
+      : `Nothing <b>finishes</b> in the ${c.home} area between noon and 20:00. `) +
+      (visit.length
+        ? `A further <b>${visit.length}</b> call in and go out again, which is a ` +
+          `window rather than a homecoming — the diagram wants the unit back.`
+        : ""),
+    stat: [["Finish here for the day", stay.length],
+           ["Call in and go out again", visit.length]],
+    head: ["Diagram", "Days", "Arrives", "Where", "Then", "Ends the day at",
+           "Started at", "Started"],
     rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.t), x.loc,
-                          startOf(x.d).loc, hm(startOf(x.d).t), x.d.totalMiles || 0]),
+                          x.last ? "stays for the night"
+                                 : "out again " + hm(x.t + x.mins),
+                          x.last ? x.loc : endOf(x.d).loc,
+                          startOf(x.d).loc, hm(startOf(x.d).t)]),
   });
 
   /* ---- 3. diagrams a restricted unit can take ---- */

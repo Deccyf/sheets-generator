@@ -179,6 +179,43 @@ test("a place with no coupled diagram out of it cannot contain a restriction", (
   assert.ok(home.ok > 0, "Home Dep has a coupled diagram and should say so");
 });
 
+test("calling in is not the same as being finished with", () => {
+  /* A diagram that stands at the home depot for hours and then goes out
+     again has not brought the unit home for the evening. Counting it as a
+     homecoming is what made RM307 - in at 12:18, away at 14:05, finishing
+     the day at Faversham - read as back for the night. */
+  const rep = R.build(DS, "375", { monday: MONDAY });
+  const early = rep.secs.find(x => x.id === "early");
+  const then = early.head.indexOf("Then");
+  const ends = early.head.indexOf("Ends the day at");
+  assert.ok(then > -1 && ends > -1, "the section must say what happens next");
+  for (const r of early.rows){
+    if (/^out again /.test(r[then]))
+      assert.notEqual(r[ends], r[3],
+        "a unit that goes out again cannot end the day where it called");
+    else
+      assert.equal(r[then], "stays for the night");
+  }
+  /* The two are counted apart rather than added together. */
+  const labels = early.stat.map(x => x[0]);
+  assert.ok(labels.some(l => /Finish here for the day/.test(l)));
+  assert.ok(labels.some(l => /Call in and go out again/.test(l)));
+  assert.equal(early.stat[0][1] + early.stat[1][1], early.rows.length);
+});
+
+test("XX101 calls at its depot mid-day and is not counted as home for it", () => {
+  /* 101 stands at Home Dep 10:30-16:00 and finishes there at 23:40. The
+     mid-day stand is a window; the 23:40 arrival is the homecoming. */
+  const a = F.analyse(DS, "375", { monday: MONDAY,
+    "375": { home: "Ramsgate", repair: ["Ramsgate"] } });
+  const d = F.roll(byKey("XX101"));
+  const bs = F.berthsOf(d);
+  const midday = bs.find(b => b.from === 10 * 60 + 30);
+  assert.equal(midday.last, false, "the mid-day stand is not the end of the day");
+  assert.equal(bs[bs.length - 1].last, true);
+  assert.equal(F.endsAt(d).loc, "Home Dep");
+});
+
 test("the week's joins say where units have to be moved", () => {
   const wk = F.week(DS, "375", MONDAY);
   assert.equal(wk.length, 7);

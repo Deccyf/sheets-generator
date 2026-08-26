@@ -710,8 +710,10 @@ const children = [
       "after midnight — and how many stands are nowhere near a depot that " +
       "can repair the fleet."],
      ["Home before 20:00",
-      "Which diagrams are back early enough to be worked on the same " +
-      "evening, and where each one started that morning."],
+      "Which diagrams FINISH early enough to be worked on the same evening " +
+      "— counted apart from the ones that call in and go out again, which " +
+      "is a window rather than a homecoming. Every row says which it is and " +
+      "where the diagram really ends."],
      ["Diagrams a restricted unit can work",
       "The diagrams that stay coupled all day — the only ones you can put " +
       "an MO unit on — and whether that work carries over to the next day."],
