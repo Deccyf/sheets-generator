@@ -9,8 +9,24 @@ const F = FLEET;
 const n0 = x => Math.round(x).toLocaleString("en-GB");
 const one = x => (Math.round(x * 10) / 10).toLocaleString("en-GB");
 const pct = (a, b) => b ? Math.round(a * 100 / b) + "%" : "—";
-/* Rolled past midnight: 25:02 is two minutes past one the next morning,
-   and saying so is the whole point - see roll() in fleet.js. */
+/* Times are rolled past midnight inside the tool so the order of a day
+   stays right - see roll() in fleet.js - but 25:26 is not how anybody reads
+   a clock. On the page it becomes the time it actually is, with the day it
+   falls on, so the reader is never asked to do the arithmetic.
+
+   Durations are a different thing and get a different shape: 5h40, never
+   05:40, so a length can never be mistaken for a time of day. */
+function at(v){
+  if (v == null) return "—";
+  const day = Math.floor(v / 1440);
+  const t = ((v % 1440) + 1440) % 1440;
+  const s = String(Math.floor(t / 60)).padStart(2, "0") + ":" +
+            String(t % 60).padStart(2, "0");
+  return day > 0 ? s + " (+" + day + ")" : s;
+}
+const dur = m => m == null ? "—"
+  : Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
+/* Cut-offs and other plain times of day, which never roll. */
 const hm = F.hm;
 /* The prints abbreviate; a sentence should not. */
 const LONG = {Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday",
@@ -33,12 +49,12 @@ function build(all, fleet, cfg){
   const arrRows = [];
   for (const k of ["AM", "PM", "NIGHT"])
     for (const x of a.home[k])
-      arrRows.push([x.d.key, F.daysLabel(x.d.days), bucketLabel(x.t), hm(x.t),
+      arrRows.push([x.d.key, F.daysLabel(x.d.days), bucketLabel(x.t), at(x.t),
                     x.loc,
                     x.last ? "stays for the night"
-                           : "out again " + hm(x.t + x.mins),
+                           : "out again " + at(x.t + x.mins),
                     x.last ? x.loc : endOf(x.d).loc,
-                    startOf(x.d).loc, hm(startOf(x.d).t)]);
+                    startOf(x.d).loc, at(startOf(x.d).t)]);
   secs.push({
     id: "arrivals",
     tab: "Arrivals home",
@@ -97,11 +113,11 @@ function build(all, fleet, cfg){
            ["Call in and go out again", visit.length]],
     head: ["Diagram", "Days", "Arrives", "Where", "Then", "Ends the day at",
            "Started at", "Started"],
-    rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.t), x.loc,
+    rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.t), x.loc,
                           x.last ? "stays for the night"
-                                 : "out again " + hm(x.t + x.mins),
+                                 : "out again " + at(x.t + x.mins),
                           x.last ? x.loc : endOf(x.d).loc,
-                          startOf(x.d).loc, hm(startOf(x.d).t)]),
+                          startOf(x.d).loc, at(startOf(x.d).t)]),
   });
 
   /* ---- 3. diagrams a restricted unit can take ---- */
@@ -112,7 +128,7 @@ function build(all, fleet, cfg){
   const okRows = a.moOk.map(x => {
     const s = startOf(x.d), e = endOf(x.d);
     return [x.d.key, F.daysLabel(x.d.days), x.c.legs, x.c.partners.join(" "),
-            s.loc, hm(s.t), e.loc, hm(e.t), x.d.totalMiles || 0];
+            s.loc, at(s.t), e.loc, at(e.t), x.d.totalMiles || 0];
   }).sort((p, q) => p[4] < q[4] ? -1 : p[4] > q[4] ? 1 : 0);
   secs.push({
     id: "mo",
@@ -251,7 +267,7 @@ function build(all, fleet, cfg){
       const mins = xs.map(x => x.b.mins).filter(m => m != null).sort((p, q) => p - q);
       const am = xs.filter(x => x.b.from != null && x.b.from < 720).length;
       return [loc, xs.length, am, xs.length - am,
-              mins.length ? hm(mins[Math.floor(mins.length / 2)]).replace(":", "h") : "all day",
+              mins.length ? dur(mins[Math.floor(mins.length / 2)]) : "all day",
               a.atRepair(loc) ? "repair depot" : a.inHome(loc) ? "home area" : "outstation",
               xs.slice(0, 8).map(x => x.d.key).join(" ")];
     })
@@ -281,10 +297,10 @@ function build(all, fleet, cfg){
       stat.push([`Parked units, ${w.name}`, g.stand.length]);
       for (const kind of ["finisher", "stand"])
         for (const x of g[kind])
-          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, hm(x.b.from), x.b.loc,
+          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, at(x.b.from), x.b.loc,
             kind === "finisher" ? "finished for the day" : "parked mid-diagram",
             kind === "finisher" ? "nothing — its work is done"
-              : `the rest of ${x.d.key}, which works again at ${hm(x.b.to)}`]);
+              : `the rest of ${x.d.key}, which works again at ${at(x.b.to)}`]);
     }
     const fin = v.windows.reduce((t, w) => t + v.by[w.name].finisher.length, 0);
     const std = v.windows.reduce((t, w) => t + v.by[w.name].stand.length, 0);
@@ -301,7 +317,7 @@ function build(all, fleet, cfg){
         `taking one leaves the rest of its diagram to cover). ` +
         (v.missed.length
           ? `A further <b>${v.missed.length}</b> finish at ${v.label} too late ` +
-            `for either window — the earliest at ${hm(v.missed[0].b.from)}.`
+            `for either window — the earliest at ${at(v.missed[0].b.from)}.`
           : "") +
         `<span class="aside">Windows are ` +
         v.windows.map(w => `${w.name} up to ${hm(w.by)}`).join(" and ") +
@@ -314,8 +330,8 @@ function build(all, fleet, cfg){
         tab: "Too late for " + c.home,
         title: "Finish at " + v.label + " too late for either window",
         head: ["Diagram", "Days", "Arrives", "Where", "How late"],
-        rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.b.from),
-          x.b.loc, hm(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
+        rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.b.from),
+          x.b.loc, dur(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
       } : null,
     });
   }
@@ -404,7 +420,7 @@ function sheets(rep){
       .concat(a.day.map(d => {
         const c = F.coupling(d), s = F.startsAt(d), e = F.endsAt(d);
         return [d.key, F.daysLabel(d.days), d.fleet, d.from, d.until,
-                s.loc, hm(s.t), e.loc, hm(e.t), c.legs,
+                s.loc, at(s.t), e.loc, at(e.t), c.legs,
                 c.moCapable ? "yes" : "no", F.splitsOf(d).length, d.totalMiles || 0];
       })),
   });

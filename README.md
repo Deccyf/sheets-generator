@@ -1455,8 +1455,13 @@ that week is reported rather than quietly summed.
 * **The clock has to roll past midnight.** A diagram starting 05.00 and
   finishing 00.54 finishes *after* midnight. Wrapped to a 24-hour clock it
   reads as the earliest arrival of the day and the morning/afternoon split
-  comes out backwards. Times are shown rolled, so `25:02` means two minutes
-  past one the next morning.
+  comes out backwards. So times are rolled *inside* the tool — but a clock
+  does not go to 25, and `out again 25:26` asks the reader to do the
+  arithmetic. On the page a rolled time is printed as the time it actually
+  is with the day it falls on: **`01:26 (+1)`**. Durations are given a
+  different shape again — `5h40`, never `05:40` — so a length can never be
+  mistaken for a time of day. A test walks every rendered cell of every
+  section and the workbook and fails on any hour above 23.
 
 Diagrams that never move (every line `STABLD`, no miles) are kept and counted.
 The berthing sheets leave them out because there is nothing to berth;

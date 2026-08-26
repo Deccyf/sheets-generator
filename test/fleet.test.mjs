@@ -317,6 +317,37 @@ test("a fleet whose home is on the network gets no handover section", () => {
   assert.ok(!rep.secs.some(s => s.id === "deliver"));
 });
 
+test("no rolled time reaches the page: 25:26 is shown as 01:26 (+1)", () => {
+  /* Times are rolled past midnight inside the tool so a day sorts right,
+     but a clock does not go to 25. Every time on the page has to be a real
+     one, with the day marked when it is not today. */
+  const reps = [R.build(DS, "375", { monday: MONDAY }),
+                R.build(DS, "377", { monday: MONDAY,
+                  "377": { home: "Selhurst", repair: ["Selhurst"] } })];
+  const tables = [];
+  for (const rep of reps)
+    for (const sec of rep.secs){
+      tables.push(sec.rows);
+      if (sec.extra) tables.push(sec.extra.rows);
+      for (const d of sec.detail || []) tables.push(d.rows);
+    }
+  tables.push(R.sheets(reps[0]).map(x => x.rows).flat());
+  let sawRolled = false;
+  for (const rows of tables)
+    for (const r of rows)
+      for (const cell of r){
+        if (typeof cell !== "string") continue;
+        for (const m of cell.matchAll(/\b(\d{2}):(\d{2})\b/g)){
+          assert.ok(Number(m[1]) <= 23,
+            "a rolled clock reached the page: " + cell);
+          assert.ok(Number(m[2]) <= 59, "bad minutes: " + cell);
+        }
+        if (/\(\+\d\)/.test(cell)) sawRolled = true;
+      }
+  assert.ok(sawRolled,
+    "the fixture should contain at least one after-midnight time to prove the marker");
+});
+
 test("the report answers every question and the workbook matches it", () => {
   const rep = R.build(DS, "375", { monday: MONDAY });
   assert.deepEqual(arr(rep.secs.map(s => s.id)),
