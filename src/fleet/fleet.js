@@ -91,6 +91,71 @@ const DEPOTS = {
                               {name: "evening", by: 21 * 60}]}]},
 };
 
+/* ---- what a location code actually means -------------------------------
+   The prints name places in nine characters, so one station arrives as
+   several codes - Ashford as five - and they read as duplication until
+   they are spelt out. The names live in SHEETS_DATA.PLACE_NAMES with the
+   rest of the tool's local knowledge, never in a second table here.
+
+   A code with no name is NOT guessed at. It is shown as its station plus
+   the raw code, and reported as unnamed so it can be asked about and
+   added: an invented road name would read as fact.                       */
+const D = SHEETS_DATA;
+const stationOf = code => {
+  const manual = D.MANUAL_LOC[code];
+  if (manual) return manual[1];
+  const tlc = D.BERTH_CODE[code] || D.DEST_CODE[code];
+  /* STATIONS rows are [name, CRS, on the Southeastern roster]. */
+  const st = tlc && D.STATIONS.find(x => x[1] === tlc);
+  if (st) return st[0];
+  /* Some berth codes are not station codes at all - the Ramsgate carriage
+     roads answer to "RE" - so fall back to the book section the road
+     belongs to, which does name the place. */
+  for (const prof of D.PROFILES)
+    for (const sec of Object.keys(prof.sections))
+      if (prof.sections[sec].indexOf(code) !== -1) return titled(sec);
+  return null;
+};
+/* "DOVER PRIORY" -> "Dover Priory". The section names are shouted because
+   they are headings on a berthing sheet; here they are running text. */
+const titled = s => s.toLowerCase().replace(/(^|[\s(-])([a-z])/g,
+  (m, a, b) => a + b.toUpperCase());
+/* A siding or depot road, as against a station platform. Only these need a
+   name of their own: a station code resolves to the station and is already
+   as clear as it is going to get. */
+const isRoad = code => {
+  /* A code that IS a station name is a station, whatever else it is listed
+     under - New Cross is on the transit list because units pass through it,
+     not because it is a siding. */
+  if (D.STATIONS.some(x => x[0] === code)) return false;
+  return D.BASE_STABLING.has(code) || D.TRANSIT.has(code) ||
+    /(sd|sdg|sids?|sidings?|dep|depot|shed|yard|yd|dms|ebs|rd|tr)$/i.test(code.trim());
+};
+
+function placeName(code){
+  const explicit = D.PLACE_NAMES[code];
+  const st = stationOf(code);
+  if (explicit)
+    return {code, name: explicit, station: st, kind: isRoad(code) ? "road" : "station",
+            named: true};
+  if (isRoad(code))
+    return {code, name: st ? st + " — " + code : code, station: st,
+            kind: "road", named: false};
+  /* An ordinary station: the code is short for the name and nothing more. */
+  return {code, name: st || code, station: st, kind: "station", named: !!st};
+}
+/* Every place a set of diagrams touches, with how often, so the unnamed
+   ones can be seen rather than hunted for. */
+function places(ds){
+  const seen = new Map();
+  for (const d of ds)
+    for (const r of d.rows){
+      if (!seen.has(r.loc)) seen.set(r.loc, Object.assign(placeName(r.loc), {n: 0}));
+      seen.get(r.loc).n++;
+    }
+  return Array.from(seen.values()).sort((a, b) => b.n - a.n);
+}
+
 /* Which fleet a diagram belongs to, off its Fleet line. The diagram prefix
    will not do: SG covers both the 376s and the Metro classes. */
 function fleetOf(d){
@@ -434,6 +499,7 @@ function analyse(all, fleet, cfg){
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
     miles, deliver, offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
+    places: places(day),
     dupes, atHome, inHome, atRepair,
   };
 }
@@ -506,6 +572,7 @@ function moWeek(all, fleet, monday){
 }
 
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
+              placeName, places,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, analyse, balance, week,

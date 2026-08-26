@@ -91,7 +91,12 @@ function parsePrints(lines){
 }
 
 function finish(d){
-  d.key = d.code + d.num;
+  /* The prints write the number bare - "Diagram: RM 1" - but every book the
+     depot reads, and the berthing sheets themselves, write it to three
+     figures. RM001 beside RM901 is what the eye expects; RM1 beside RM901
+     reads as a different kind of thing. */
+  d.numText = String(d.num).padStart(3, "0");
+  d.key = d.code + d.numText;
   /* Not used at all that day: every line is STABLD and it runs no miles. */
   d.stabled = d.rows.every(r => /STABLD/i.test(r.act)) && !(d.totalMiles > 0);
   return d;

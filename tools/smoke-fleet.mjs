@@ -44,9 +44,12 @@ if (tabs.length !== 2) die("expected a tab per fleet, got " + tabs.length);
 const secs = await page.locator("#report .sech").allTextContents();
 console.log("sections:", secs.length);
 for (const s of secs) console.log("   -", s);
-if (secs.length !== 7) die("expected seven sections, got " + secs.length);
-if (!secs.some(s => /restricted unit can work/i.test(s)))
-  die("the restricted-unit section is missing");
+/* Eight for a fleet whose home is on this network; a ninth appears when it
+   is not, and that path is covered by the unit tests. */
+if (secs.length !== 8) die("expected eight sections, got " + secs.length);
+for (const want of [/restricted unit can work/i, /place codes mean/i,
+                    /Mileage per unit/i])
+  if (!secs.some(s => want.test(s))) die("a section is missing: " + want);
 
 const rows = await page.locator("#report table.rep tbody tr").count();
 console.log("rows drawn:", rows);

@@ -1298,6 +1298,7 @@ what the plan means for **looking after** the units:
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
 | Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
 | Getting units to &lt;depot&gt; | Only when the home depot is off this network: when a unit is standing at the handover point in time for a trip |
+| What the place codes mean | Every location code the fleet touches, spelt out — with the depot roads that have no name yet listed as such |
 | Cannot contain | The places a restricted unit has no diagram to take, because everything starting there leaves it on its own |
 
 Drop all the print books on it at once (FSX, FO, SO and Sun). Each fleet gets
@@ -1364,6 +1365,38 @@ of the file.
 The defaults are Ramsgate for the 375s, Gillingham for the 376s (also repaired
 at Ramsgate and Slade Green), Selhurst for the 377s (off this network — see
 above), Ashford for the 395s and Slade Green for the Metro classes.
+
+### Place codes, and why one station looks like five
+
+The prints have nine characters for a place name, so a station arrives as
+several codes — Ashford as `Ashfrd DS`, `AshfDYWRd`, `Ashford I`,
+`Ash Up Sd` and `Ashfd EBS` — and two roads at the same place read as two
+different places until they are spelt out.
+
+The names live in `SHEETS_DATA.PLACE_NAMES`, with the rest of the tool's
+local knowledge, so there is no second table in `src/fleet/` to drift from
+it. `placeName(code)` resolves in this order:
+
+1. an explicit name in `PLACE_NAMES` — `Dover PSd` → Dover Priory Sidings;
+2. otherwise, if the code **is** a station, the station's own name — `CX` →
+   London Charing Cross, which needs nothing further;
+3. otherwise, for a road or siding with no entry, the **station plus the raw
+   code**, reported as *not named yet*.
+
+Step 3 is the important one. A road name is a fact about the railway, not
+something to be inferred from an abbreviation, so an unknown one is left
+visible and listed rather than guessed at — a guess would read as fact. The
+*What the place codes mean* section counts them, which is how they get
+asked about and added.
+
+A code is treated as a road when it is in `BASE_STABLING` or `TRANSIT`, or
+ends in a siding word — except where the code is itself a station name, so
+`New Cross` stays a station despite being on the transit list.
+
+Diagram numbers are shown as the prefix plus three figures — `RM007`, not
+`RM7` — because that is what every book the depot reads does, and `RM1`
+beside `RM901` reads as a different kind of thing. The number stays numeric
+underneath, since the formation column writes it unpadded.
 
 ### Mileage is per unit, and per sub-fleet
 

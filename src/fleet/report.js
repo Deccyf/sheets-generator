@@ -297,6 +297,36 @@ function build(all, fleet, cfg){
     });
   }
 
+  /* ---- 6b. what the codes mean ---- */
+  /* The prints name places in nine characters, so Ashford arrives as five
+     codes and Ramsgate as eight. Spelt out they stop looking like
+     duplication. Anything with no name is listed as such rather than
+     guessed at. */
+  const roads = a.places.filter(p => p.kind === "road");
+  const unnamed = roads.filter(p => !p.named);
+  secs.push({
+    id: "places",
+    tab: "Place codes",
+    title: "What the place codes mean",
+    lede: `The prints have nine characters for a place name, so one station ` +
+      `arrives as several codes — Ashford as five — and two roads at the same ` +
+      `place can look like two different places. The ${c.label} touches ` +
+      `<b>${a.places.length}</b> codes, <b>${roads.length}</b> of them depot ` +
+      `roads and sidings rather than stations. ` +
+      (unnamed.length
+        ? `<b>${unnamed.length}</b> of those roads have no name in the tool yet, ` +
+          `so they are shown as the station plus the raw code — a guess would ` +
+          `read as fact. Say what they are and they will be spelt out here.`
+        : `Every road is named.`),
+    stat: [["Codes in use", a.places.length],
+           ["Depot roads and sidings", roads.length],
+           ["Roads not named yet", unnamed.length]],
+    head: ["Code", "What it is", "Station", "Kind", "Lines in the prints"],
+    rows: a.places.map(p => [p.code,
+      p.named ? p.name : "— not named yet —", p.station || "",
+      p.kind === "road" ? "road or siding" : "station", p.n]),
+  });
+
   /* ---- 7. where a restriction cannot be contained ---- */
   const contRows = a.containment.map(r => [
     r.loc, r.n, r.ok, r.n - r.ok,

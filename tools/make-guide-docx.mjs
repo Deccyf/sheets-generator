@@ -731,10 +731,19 @@ const children = [
       "for a trip, split into the ones finished for the day (free to take) " +
       "and the ones parked mid-diagram (taking one leaves the rest of its " +
       "diagram to cover)."],
+     ["What the place codes mean",
+      "Every place code the fleet touches, spelt out — Ram is Ramsgate " +
+      "Platform, RamsNewSd is Ramsgate New Sidings, Dover PSd is Dover " +
+      "Priory Sidings. The prints only have nine characters for a name, " +
+      "which is why one station turns up as several codes. Any depot road " +
+      "the tool has no name for yet is listed as such — tell us and it " +
+      "gets added."],
      ["Where a restricted unit cannot be contained",
       "The places where every diagram leaves a unit on its own at some " +
       "point, so a restricted unit standing there has nothing it can work."]]),
   gap(160),
+  p("Place codes in the tables carry their full name on a hover, so you do " +
+    "not have to keep the list open."),
   p("**Save this fleet as a spreadsheet** puts the lot into Excel, one tab " +
     "per section with the filters already on. **Save every fleet** does all " +
     "of them in one workbook. **Start over**, next to the message under the " +

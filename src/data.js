@@ -613,6 +613,50 @@ const NOTE_FROM_BERTH = {
  "Dart USd":"UPS","Dart DSd":"DN",
  "Ash Up Sd":"Up Sidings","Ashfd EBS":"East Sidings",
 };
+/* Plain English for the codes the prints use for depot roads, sidings and
+   yards. Several codes belong to one place - Ashford alone arrives as five
+   - and read as duplicates until they are spelt out.
+
+   Only names that are KNOWN go in here. A code with no entry is shown as
+   its station plus the raw code rather than a guess, and listed as unnamed
+   so it can be asked about and added. Inventing a road name would be worse
+   than leaving it blank: it would read as fact.
+
+   Sources: the depot (Dover Priory Sidings, Ashford East and Up Sidings,
+   Ramsgate Platform and New Sidings); the road names already in
+   NOTE_FROM_BERTH above; MANUAL_LOC; and the Folkestone East Train Roads
+   named in the rules. */
+const PLACE_NAMES = {
+ "Ram":         "Ramsgate Platform",
+ "Ram Depot":   "Ramsgate Depot",
+ "RamsNewSd":   "Ramsgate New Sidings",
+ "Ashford I":   "Ashford International",
+ "Ashfd EBS":   "Ashford East Sidings",
+ "Ash Up Sd":   "Ashford Up Sidings",
+ "Dover P":     "Dover Priory Platform",
+ "Dover PSd":   "Dover Priory Sidings",
+ "Fav Up Sd":   "Faversham Up Sidings",
+ "Fav Bk Rd":   "Faversham Back Road",
+ "Gill Dep":    "Gillingham Depot",
+ "Gill US":     "Gillingham Up Sidings",
+ "G Pk Dep":    "Grove Park Depot",
+ "G Pk DnSd":   "Grove Park Down Sidings",
+ "G Pk UpSd":   "Grove Park Up Sidings",
+ "S Gn Dep":    "Slade Green Depot",
+ "S Gn U Sd":   "Slade Green Up Sidings",
+ "Dart USd":    "Dartford Up Sidings",
+ "Dart DSd":    "Dartford Down Sidings",
+ "Orp Dn Sd":   "Orpington Down Sidings",
+ "Hast Pk S":   "Hastings Park Sidings",
+ "TonbJubS":    "Tonbridge Jubilee Sidings",
+ "St L Shed":   "St Leonards Shed",
+ "Folk E TR":   "Folkestone East Train Roads",
+ "Plum Sdg":    "Plumstead Sidings",
+ "Bell Sd":     "Bellingham Sidings",
+ "Ore Up Sd":   "Ore Up Sidings",
+ "VictGroSh":   "Victoria Grosvenor Carriage Shed",
+ "Vic (E)":     "London Victoria, Eastern side",
+};
 /* Sections with a station platform the unit may call at on its way out. The
    entry is timed off the platform when the unit runs through it, and off the
    first movement when it does not. */
@@ -734,6 +778,7 @@ return {
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
+  PLACE_NAMES,
   PROFILES,
 };
 })();

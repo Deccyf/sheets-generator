@@ -280,15 +280,16 @@ test("a fleet whose home is on the network gets no handover section", () => {
   assert.ok(!rep.secs.some(s => s.id === "deliver"));
 });
 
-test("the report answers all seven questions and the workbook matches it", () => {
+test("the report answers every question and the workbook matches it", () => {
   const rep = R.build(DS, "375", { monday: MONDAY });
   assert.deepEqual(arr(rep.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "cycle", "miles", "stands", "contain"]);
-  /* A fleet handed over off-network gets one more, between the two. */
+    ["arrivals", "early", "mo", "cycle", "miles", "stands", "places", "contain"]);
+  /* A fleet handed over off-network gets one more again. */
   const off = R.build(DS, "377", { monday: MONDAY,
     "377": { home: "Selhurst", repair: ["Selhurst"] } });
   assert.deepEqual(arr(off.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "cycle", "miles", "stands", "deliver", "contain"]);
+    ["arrivals", "early", "mo", "cycle", "miles", "stands", "deliver", "places",
+     "contain"]);
   for (const s of rep.secs){
     assert.ok(s.tab && s.tab.length <= 31, s.id + " needs a short tab name");
     assert.ok(s.head.length, s.id + " has no headings");
@@ -304,6 +305,50 @@ test("the report answers all seven questions and the workbook matches it", () =>
   assert.ok(names.includes("All diagrams"));
   assert.equal(sheets.find(s => s.name === "All diagrams").rows.length,
                rep.a.day.length + 1);
+});
+
+test("place codes are spelt out, and an unknown road is not guessed at", () => {
+  /* Several codes for one place is what makes the prints look duplicated. */
+  assert.equal(F.placeName("Ram").name, "Ramsgate Platform");
+  assert.equal(F.placeName("Ram Depot").name, "Ramsgate Depot");
+  assert.equal(F.placeName("RamsNewSd").name, "Ramsgate New Sidings");
+  assert.equal(F.placeName("Dover PSd").name, "Dover Priory Sidings");
+  assert.equal(F.placeName("Ashfd EBS").name, "Ashford East Sidings");
+  assert.equal(F.placeName("Ash Up Sd").name, "Ashford Up Sidings");
+  for (const c of ["Ram", "Ram Depot", "RamsNewSd"])
+    assert.equal(F.placeName(c).named, true);
+
+  /* A station code is a station, and needs no name of its own. */
+  const cx = F.placeName("CX");
+  assert.equal(cx.kind, "station");
+  assert.equal(cx.name, "London Charing Cross");
+  /* Even one on the transit list, if it IS a station. */
+  assert.equal(F.placeName("New Cross").kind, "station");
+
+  /* A road with no entry keeps its code and says so, rather than being
+     given a name that would read as fact. */
+  const road = F.placeName("RM EK4985");
+  assert.equal(road.kind, "road");
+  assert.equal(road.named, false);
+  assert.equal(road.station, "Ramsgate");
+  assert.ok(road.name.indexOf("RM EK4985") !== -1,
+    "an unnamed road must still show its code");
+});
+
+test("the diagram number keeps its prefix and its three figures", () => {
+  /* The prints write "Diagram: XX 101" bare, but every book the depot reads
+     writes three figures. RM1 beside RM901 reads as a different kind of
+     thing. */
+  const one = FP.parsePrints([
+    "Diagram:\tRM\t7\tFSX", "Fleet:\t375/6", "From:\t01/06/2026",
+    "\t\tHome Dep\t\t05.30\t5A01\t\t0.5\t",
+    "\t\tHome Dep\t23.40\t\t\t\t10.0\t",
+    "Total miles:\t10.0",
+  ])[0];
+  assert.equal(one.key, "RM007");
+  assert.equal(one.numText, "007");
+  assert.equal(one.num, 7, "the number stays numeric for formation matching");
+  assert.equal(byKey("XX101").key, "XX101");
 });
 
 test("the workbook is a real zip Excel will open", () => {

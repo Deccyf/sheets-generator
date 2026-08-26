@@ -233,6 +233,14 @@ function section(s){
   for (const d of s.detail || []) wrap.appendChild(more(d.title, d.head, d.rows));
   return wrap;
 }
+/* Place codes carry their meaning on a hover, so the tables can stay in the
+   prints' own shorthand without the reader having to know it. The full list
+   is a section of its own. */
+function placeTitle(v){
+  if (typeof v !== "string" || !v || v.length > 11) return null;
+  const p = F.placeName(v);
+  return p && p.name !== v ? p.name : null;
+}
 function table(head, rows){
   const tw = el("div", "tw" + (rows.length > 14 ? " tall" : ""));
   const t = el("table", "rep");
@@ -250,6 +258,8 @@ function table(head, rows){
       const shown = typeof v === "number" ? v.toLocaleString("en-GB")
         : v === "" || v == null ? "" : String(v);
       const td = el("td", null, shown);
+      const t = placeTitle(v);
+      if (t){ td.title = t; td.className = "place"; }
       if (typeof v === "number") td.className = "num";
       else if (/^NO —/.test(shown)) td.className = "no";
       else if (/^yes/.test(shown)) td.className = "yes";

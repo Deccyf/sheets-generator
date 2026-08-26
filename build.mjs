@@ -49,6 +49,10 @@ console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes 
    stands tonight, this says what the plan means for looking after it. */
 const fleetModules = [
   "src/vendor/fflate.js",
+  /* The location names live with the rest of the tool's local knowledge
+     in src/data.js, so the analyser reads them from there rather than
+     keeping a second table that would drift. */
+  "src/data.js",
   "src/prints-read.js",
   "src/fleet/prints.js",
   "src/fleet/fleet.js",
