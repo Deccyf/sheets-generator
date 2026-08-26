@@ -1298,11 +1298,17 @@ what the plan means for **looking after** the units:
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
 | Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
 | Getting units to &lt;depot&gt; | Only when the home depot is off this network: when a unit is standing at the handover point in time for a trip |
-| What the place codes mean | Every location code the fleet touches, spelt out — with the depot roads that have no name yet listed as such |
+| What the place codes mean | Every location code the fleet touches, spelt out — signals and shunt points listed apart, and any road with no name yet shown as such |
 | Cannot contain | The places a restricted unit has no diagram to take, because everything starting there leaves it on its own |
 
 Drop all the print books on it at once (FSX, FO, SO and Sun). Each fleet gets
 a tab; everything can be saved as a spreadsheet, one tab per question.
+
+Each section leads with the answer in a sentence or two and puts the method
+behind a **How this is worked out** fold, so the numbers come first and the
+reasoning is there when it is wanted. A contents row jumps between sections,
+a summary line names the fleet and week for anything printed or screenshotted,
+and the depot settings fold away once they are set.
 **Start over** clears the prints and the report and puts the page back as it
 opened, keeping the depot settings — those are standing arrangements, not
 part of the drop, and have their own reset.
@@ -1442,8 +1448,21 @@ share:
 * **A code ending in a number is a signal, not a road** — `Dover621` is
   Dover signal YE 621, `RM EK4985` is Ramsgate signal EK4985, `Hast 70` is
   Hastings signal 70. A unit stands at one while it shunts and is not
-  berthed there, which is why they are all in `NON_BERTH_VISIT`. They get
-  their own `kind`, so they can never be counted as stabling.
+  berthed there, which is why they are all in `NON_BERTH_VISIT`.
+
+**Shunt points are dropped from the berthing questions**, the way the
+berthing sheets already drop them from the books. `NON_BERTH_PRINTS` in
+`src/data.js` is the same idea keyed by the print code: the signals, plus
+headshunts and shunt necks (`St L ShNk`, `Gvpuphs`, `SldGrDEHs`), turnbacks
+and loops (`TunWellTB`, `SevngtnLp`, `Ore Up Sd`, `Redhill U`), and
+Folkestone East. A unit draws up to one of these and goes on, so counting
+one as a stand would invent stabling that does not exist. They are listed
+separately in the place-codes section rather than hidden, and left out of
+the attendable stands.
+
+A reception or washer road is the same case: `RM DRW` and `AshfDYWRd` are on
+the berthing sheets' transit list, so they are the depot **area**, not the
+depot proper — a unit passing over the washer road is not yet home.
 * `Dep` / `EMUD` / `CSD` / `TRSMD` is the depot proper; `Sd` / `Sdg` / `CHS`
   a siding; `Hs` / `ShNk` a headshunt or shunt neck; `Bk Rd` / `WRd` a named
   road; `TB` / `TR` a turnback or train road.

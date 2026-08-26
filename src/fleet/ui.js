@@ -32,7 +32,7 @@ function save(){
 }
 const cfgFor = k => Object.assign({}, F.FLEETS[k], cfg[k]);
 
-let ALL = [], REP = {}, CURRENT = null;
+let ALL = [], REP = {}, CURRENT = null, openedSetup = false;
 
 /* ---- reading the files ---- */
 function handle(files){
@@ -72,6 +72,10 @@ function read(files){
   $("startover").hidden = false;
   drawSetup();
   rebuild();
+  /* Opened on the first drop so the settings are seen once, then left
+     to the reader to fold away - a panel that reopens on every drop is
+     a panel somebody has to close again every time. */
+  if (!openedSetup){ $("setup").open = true; openedSetup = true; }
 }
 
 /* ---- depot settings panel ---- */
@@ -201,17 +205,54 @@ function show(k){
   const keys = fleetsPresent().filter(x => REP[x]);
   Array.prototype.forEach.call($("fleetbar").children, (b, i) =>
     b.setAttribute("aria-selected", keys[i] === k ? "true" : "false"));
-  const box = $("report");
+  const rep = REP[k], box = $("report");
   box.textContent = "";
-  for (const s of REP[k].secs) box.appendChild(section(s));
+
+  /* One line saying what is being looked at, so a printed page or a
+     screenshot still says which fleet and which week it came from. */
+  const sum = el("p", "summary");
+  sum.appendChild(el("b", null, "Class " + rep.cfg.label));
+  for (const bit of [
+    rep.a.day.length + " diagrams on a " + LONG[F.dayName(rep.monday)],
+    "home " + rep.cfg.home,
+    "week of " + new Date(rep.monday).toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric"}),
+  ]) sum.appendChild(el("span", null, bit));
+  box.appendChild(sum);
+
+  /* Nine sections is more than fits on a screen, so they get a contents. */
+  const nav = el("nav", "jump");
+  nav.setAttribute("aria-label", "Jump to a section");
+  for (const sec of rep.secs){
+    const a = el("a", null, sec.tab);
+    a.href = "#sec-" + sec.id;
+    nav.appendChild(a);
+  }
+  box.appendChild(nav);
+
+  for (const s of rep.secs) box.appendChild(section(s));
 }
+const LONG = {Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
+              Fri: "Friday", Sat: "Saturday", Sun: "Sunday"};
 
 function section(s){
   const wrap = el("section");
+  wrap.id = "sec-" + s.id;
   wrap.appendChild(el("h2", "sech", s.title));
   const n = el("p", "secn");
-  n.innerHTML = s.lede;          // the ledes carry <b> and a note span
+  n.innerHTML = s.lede;          // the ledes carry <b> and <em>
   wrap.appendChild(n);
+  /* The method sits behind a fold. It matters - somebody will want to know
+     why a number is what it is - but putting it in front of the answer
+     buries the answer, which is what it used to do. */
+  if (s.how){
+    const d = el("details", "how");
+    d.appendChild(el("summary", null, "How this is worked out"));
+    const p = el("p");
+    p.innerHTML = s.how;
+    d.appendChild(p);
+    wrap.appendChild(d);
+  }
   if (s.stat && s.stat.length){
     const g = el("div", "stats");
     for (const [label, v] of s.stat){
@@ -329,6 +370,7 @@ function startOver(){
   $("setup").hidden = true;
   $("startover").hidden = true;
   $("file").value = "";
+  openedSetup = false;
   say("");
   /* Back to the top, or on a long report the cleared page looks like
      nothing happened. */

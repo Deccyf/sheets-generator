@@ -583,7 +583,9 @@ footer{margin:56px 0 0; padding-top:18px; border-top:1px solid var(--rule)}
 footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch}
 
 @media print{
-  .berth, .actions, .fleetbar, #setup, .status{display:none !important}
+  .berth, .actions, .fleetbar, #setup, .status, .jump,
+  .statusrow{display:none !important}
+  details.how{display:none}
   .tw{overflow:visible; max-height:none}
   .tw.tall{max-height:none}
   details.more{display:none}
@@ -605,6 +607,53 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
 /* a place code whose full name is a hover away */
 table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
   text-decoration:underline dotted rgba(0,0,0,.28); text-underline-offset:3px}
+
+/* ---------- what you are looking at ---------- */
+.summary{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px;
+  margin:26px 0 0; padding:12px 16px; background:var(--paper);
+  border:1px solid var(--rule); font-size:14px;
+}
+.summary b{font-family:var(--mono); font-size:16px}
+.summary span{color:var(--chalk); font-size:13px}
+.summary span::before{content:"· "; color:var(--rule)}
+
+/* ---------- contents ---------- */
+.jump{display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 0}
+.jump a{
+  font-size:13px; padding:5px 11px; text-decoration:none;
+  color:var(--chalk); background:var(--paper);
+  border:1px solid var(--rule); border-radius:2px;
+}
+.jump a:hover{color:var(--steel); border-color:var(--rail)}
+.jump a:focus-visible{outline:2px solid var(--steel); outline-offset:2px}
+
+/* ---------- the method, behind a fold ---------- */
+details.how{margin:0 0 16px; max-width:74ch}
+details.how>summary{
+  cursor:pointer; font-size:13px; color:var(--chalk);
+  padding:3px 0; width:fit-content;
+}
+details.how>summary:hover{color:var(--steel)}
+details.how p{
+  margin:8px 0 0; padding:11px 14px; font-size:13px; color:#3C464D;
+  background:var(--paper); border-left:3px solid var(--rule);
+}
+
+/* a section is a jump target, so keep its heading clear of the top edge */
+#report > section{scroll-margin-top:12px}
+
+/* ---------- the depot settings, folded away once they are set ---------- */
+details.setup{margin:34px 0 0; border:1px solid var(--rule); background:var(--paper)}
+details.setup>summary{
+  padding:13px 16px; cursor:pointer; font-size:14px; color:var(--steel);
+}
+details.setup>summary b{font-family:var(--mono); font-size:15px}
+details.setup>summary:hover{background:var(--apron)}
+details.setup>summary:focus-visible{outline:3px solid var(--steel); outline-offset:-3px}
+details.setup .secn{margin:0 16px 14px; max-width:74ch}
+details.setup[open]>summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
+details.setup .depots{padding:0 16px}
 </style>
 </head>
 <body>
@@ -646,16 +695,17 @@ table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
       Start over</button>
   </div>
 
-  <section id="setup" hidden>
-    <h2 class="sech">Depots</h2>
-    <p class="secn">Which depot owns each fleet, and everywhere it can be repaired.
-      These are your arrangements, not something the prints state, so set them here
-      rather than waiting on a new version of this file. They are remembered on this
-      computer.</p>
+  <details id="setup" class="setup" hidden>
+    <summary><b>Depots</b> — which depot owns each fleet, and where it can be
+      repaired</summary>
+    <p class="secn">These are your arrangements, not something the prints state,
+      so set them here rather than waiting on a new version of this file. They
+      are remembered on this computer, and everything below redraws as soon as
+      you change one.</p>
     <div id="depots" class="depots"></div>
-    <p class="secn"><button type="button" class="btn ghost" id="resetcfg">Put the
-      depots back to the defaults</button></p>
-  </section>
+    <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
+      the depots back to the defaults</button></p>
+  </details>
 
   <section id="out" hidden>
     <div class="fleetbar" id="fleetbar" role="tablist"></div>
@@ -670,7 +720,7 @@ table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>1.2.0</b> &middot; 26 August 2026</p>
+    <p class="small">Version <b>1.3.0</b> &middot; 26 August 2026</p>
   </footer>
 </div>
 <script>
@@ -1384,7 +1434,44 @@ const PLACE_NAMES = {
  "Strood630":   "Strood shunt signal NK1630",
  "VictGroSh":   "Victoria Grosvenor Shed",
  "Vic (E)":     "London Victoria, Eastern side",
+ /* --- stations the prints abbreviate past recognition --- */
+ "Ore":         "Ore",
+ "Broadstrs":   "Broadstairs",
+ "London Br":   "London Bridge",
+ "Lndon BrE":   "London Bridge, Eastern side",
+ "Grove Par":   "Grove Park",
+ "Beck Jn":     "Beckenham Junction",
+ "Folk C":      "Folkestone Central",
+ "Bell":        "Bellingham",
+ "Cray":        "Crayford",
+ "Lee":         "Lee",
+ "Minster":     "Minster",
+ "Sandwich":    "Sandwich",
+ /* --- somewhere a unit stands and then goes on, never berths --- */
+ "Folk E":      "Folkestone East",
+ "SevngtnLp":   "Sevington Loop",
 };
+
+/* Places a unit VISITS but is never berthed at: signals it draws up to,
+   headshunts and shunt necks it reverses in, turnbacks and loops it
+   stands in before going on somewhere else. The berthing sheets already
+   leave these out - NON_BERTH_VISIT above does it by the Genius long name
+   - and the fleet analysis has to leave them out of the same questions,
+   or a unit shunting reads as a unit stabled.
+
+   Same list, keyed by the code the prints use.                          */
+const NON_BERTH_PRINTS = new Set([
+ /* signals */
+ "Dover621", "Dover623", "FV EK4327", "Hast 70", "Strood625", "Strood630",
+ "Tonbdg160", "RM EK4981", "RM EK4985", "RM EK5143", "RM EK5145",
+ /* headshunts, shunt necks and depot extensions */
+ "St L ShNk", "Gvpuphs", "GrPkDCtEE", "SldGrDEHs", "RM DRW", "AshfDYWRd",
+ /* turnbacks and loops - stood in, then straight out again */
+ "TunWellTB", "SevngtnLp", "Ore Up Sd", "Redhill U",
+ /* Folkestone East: the shunting point beside the train roads, not a
+    station in its own right */
+ "Folk E",
+]);
 /* Sections with a station platform the unit may call at on its way out. The
    entry is timed off the platform when the unit runs through it, and off the
    first movement when it does not. */
@@ -1506,7 +1593,7 @@ return {
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
-  PLACE_NAMES,
+  PLACE_NAMES, NON_BERTH_PRINTS,
   PROFILES,
 };
 })();
@@ -1991,11 +2078,14 @@ function daysLabel(code){
    the sidings and the station alongside: a unit there is at home for
    planning, but it is not standing over a pit.                           */
 const DEPOTS = {
-  Ramsgate:   {roads: ["Ram Depot", "RM DRW"],
-               area: ["RamsNewSd", "Ram", "RM EK4985", "RM EK5145",
-                      "RM EK5143", "RM EK4981"]},
-  Ashford:    {roads: ["Ashfrd DS", "AshfDYWRd"],
-               area: ["Ashfd EBS", "Ash Up Sd", "Ashford I"]},
+  /* "roads" is the depot proper. A reception road or a washer road is
+     passed through on the way in, never berthed in, so it belongs in the
+     area rather than the depot - the same call src/data.js makes by
+     putting RM DRW and AshfDYWRd on its transit list. */
+  Ramsgate:   {roads: ["Ram Depot"],
+               area: ["RM DRW", "RamsNewSd", "Ram"]},
+  Ashford:    {roads: ["Ashfrd DS"],
+               area: ["AshfDYWRd", "Ashfd EBS", "Ash Up Sd", "Ashford I"]},
   "Slade Green": {roads: ["S Gn Dep"], area: ["S Gn U Sd", "S Gn"]},
   Gillingham: {roads: ["Gill Dep"], area: ["Gill US", "Gill ReRd", "Gill"]},
   "Grove Park": {roads: ["G Pk Dep"], area: ["G Pk DnSd", "G Pk UpSd"]},
@@ -2023,6 +2113,9 @@ const DEPOTS = {
    added: an invented road name would read as fact.                       */
 const D = SHEETS_DATA;
 const stationOf = code => {
+  /* The code may simply BE the station's name - Ore, Hastings, Tonbridge. */
+  const exact = D.STATIONS.find(x => x[0] === code);
+  if (exact) return exact[0];
   const manual = D.MANUAL_LOC[code];
   if (manual) return manual[1];
   const tlc = D.BERTH_CODE[code] || D.DEST_CODE[code];
@@ -2053,22 +2146,32 @@ const isRoad = code => {
     /(sd|sdg|sids?|sidings?|dep|depot|shed|yard|yd|dms|ebs|rd|tr)$/i.test(code.trim());
 };
 
+/* Somewhere a unit draws up to, reverses in or waits at on its way
+   somewhere else - a signal, a headshunt, a turnback, a loop. The berthing
+   sheets leave these out of the books, and so must anything here that
+   counts where a unit is stabled, or shunting reads as berthing. */
+const isShunt = code => D.NON_BERTH_PRINTS.has(code);
+
 function placeName(code){
   const explicit = D.PLACE_NAMES[code];
   const st = stationOf(code);
+  const shunt = isShunt(code);
   if (explicit){
-    /* A code ending in a number is a signal, not a road. A unit stands at
-       one while it shunts and is not berthed there, so counting it as a
-       berthing point would invent stabling that does not exist. */
+    /* A code ending in a number is a signal - the commonest of these. */
     const kind = /signal/i.test(explicit) ? "signal"
+      : shunt ? "shunt"
       : isRoad(code) ? "road" : "station";
-    return {code, name: explicit, station: st, kind, named: true};
+    return {code, name: explicit, station: st, kind, shunt, named: true};
   }
+  if (shunt)
+    return {code, name: st ? st + " — " + code : code, station: st,
+            kind: "shunt", shunt: true, named: false};
   if (isRoad(code))
     return {code, name: st ? st + " — " + code : code, station: st,
-            kind: "road", named: false};
+            kind: "road", shunt: false, named: false};
   /* An ordinary station: the code is short for the name and nothing more. */
-  return {code, name: st || code, station: st, kind: "station", named: !!st};
+  return {code, name: st || code, station: st, kind: "station",
+          shunt: false, named: !!st};
 }
 /* Every place a set of diagrams touches, with how often, so the unnamed
    ones can be seen rather than hunted for. */
@@ -2369,7 +2472,7 @@ function analyse(all, fleet, cfg){
   const attend = [];
   for (const d of work)
     for (const b of berthsOf(d))
-      if (!b.last && b.mins != null && b.mins >= ATTENDABLE)
+      if (!b.last && b.mins != null && b.mins >= ATTENDABLE && !isShunt(b.loc))
         attend.push({d, b});
   for (const d of still)
     attend.push({d, b: {loc: d.rows[0].loc, from: null, to: null,
@@ -2612,7 +2715,7 @@ function moWeek(all, fleet, monday){
 }
 
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
-              placeName, places,
+              placeName, places, isShunt,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
@@ -2683,16 +2786,19 @@ function build(all, fleet, cfg){
     tab: "Arrivals home",
     title: "Arrivals into " + c.home,
     lede: (a.offNetwork
-      ? `<b>${c.home} is not on this network</b> — no diagram in these books ` +
-        `calls there, so none of them bring a unit home and the counts below ` +
-        `are zero by definition. See <em>Getting units to ${c.home}</em> for ` +
-        `what the plan can actually say. ` : "") +
-      `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
-      `${a.home.AM.length} put a unit into ${c.home} in the morning, ` +
-      `${a.home.PM.length} in the afternoon or evening, and ` +
-      `${a.home.NIGHT.length} after midnight. ` +
-      `${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length} stands are nowhere ` +
-      `near a depot that can repair this fleet.`,
+      ? `<b>${c.home} is not on this network.</b> No diagram in these books ` +
+        `calls there, so nothing below can bring a unit home — the counts are ` +
+        `zero because of where the depot is, not because of the plan. See ` +
+        `<em>Getting units to ${c.home}</em> for what the plan can say. `
+      : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> diagrams put a ` +
+        `unit into ${c.home} in the morning, <b>${a.home.PM.length}</b> in the ` +
+        `afternoon or evening and <b>${a.home.NIGHT.length}</b> after midnight. ` +
+        `<b>${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length}</b> ` +
+        `stands are nowhere near a depot that can repair this fleet.`),
+    how: `An arrival is a diagram either finishing somewhere or standing there ` +
+      `an hour or more — a unit parked for four hours can be reached whether or ` +
+      `not it is done for the day. The two are counted apart, and every row says ` +
+      `which it is, because a unit that goes out again has not come home.`,
     stat: [["Into " + c.home + " — AM", a.home.AM.length],
            ["Into " + c.home + " — PM", a.home.PM.length],
            ["Into " + c.home + " — after midnight", a.home.NIGHT.length],
@@ -2703,8 +2809,8 @@ function build(all, fleet, cfg){
             a.repair.AM.length + a.repair.PM.length + a.repair.NIGHT.length],
            ["Away from any repair depot",
             a.away.AM.length + a.away.PM.length + a.away.NIGHT.length]],
-    head: ["Diagram", "Days", "AM/PM", "Arrives", "Where", "Then",
-           "Ends the day at", "Started at", "Started"],
+    head: ["Diagram", "Runs", "Part of day", "Gets in", "Where",
+           "What happens next", "Ends the day at", "Out from", "Left at"],
     rows: arrRows,
   });
 
@@ -2726,16 +2832,19 @@ function build(all, fleet, cfg){
     lede: (stay.length
       ? `<b>${stay.length}</b> diagram${stay.length === 1 ? "" : "s"} finish` +
         `${stay.length === 1 ? "es" : ""} in the ${c.home} area between noon and ` +
-        `20:00 — the unit is done for the day and can be worked on that evening. `
-      : `Nothing <b>finishes</b> in the ${c.home} area between noon and 20:00. `) +
+        `20:00, so the unit is free for that evening. `
+      : `Nothing finishes in the ${c.home} area between noon and 20:00. `) +
       (visit.length
-        ? `A further <b>${visit.length}</b> call in and go out again, which is a ` +
-          `window rather than a homecoming — the diagram wants the unit back.`
+        ? `<b>${visit.length}</b> more call in and go out again — a window to ` +
+          `catch a unit, not a homecoming.`
         : ""),
+    how: `"Finishes" means the diagram ends there and the unit is handed over. ` +
+      `A diagram that calls in at midday and leaves at 14:05 takes the unit with ` +
+      `it, so it is counted separately and the row shows where it really ends up.`,
     stat: [["Finish here for the day", stay.length],
            ["Call in and go out again", visit.length]],
-    head: ["Diagram", "Days", "Arrives", "Where", "Then", "Ends the day at",
-           "Started at", "Started"],
+    head: ["Diagram", "Runs", "Gets in", "Where", "What happens next",
+           "Ends the day at", "Out from", "Left at"],
     rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.t), x.loc,
                           x.last ? "stays for the night"
                                  : "out again " + at(x.t + x.mins),
@@ -2757,27 +2866,30 @@ function build(all, fleet, cfg){
     id: "mo",
     tab: "Restricted units",
     title: "Diagrams a restricted unit can work",
-    lede: `A restricted unit — the depot's <b>MO</b> — may not run on its own, so it ` +
-      `can only take a diagram that is coupled for every leg. ` +
-      `<b>${a.moOk.length} of ${a.work.length}</b> (${pct(a.moOk.length, a.work.length)}) ` +
-      `qualify. The rest run alone at some point in the day. ` +
+    lede: `A restricted unit cannot run on its own, so it can only take a ` +
+      `diagram that stays coupled all day. ` +
+      `<b>${a.moOk.length} of ${a.work.length}</b> ` +
+      `(${pct(a.moOk.length, a.work.length)}) do. ` +
       (moWk[0].b.stranded
-        ? `This work does <b>not</b> close on itself overnight: on a ` +
-          `${longDay(a.monday)} night ${moWk[0].b.carries} of ${moWk[0].b.today} ` +
-          `finish where another can be picked up and <b>${moWk[0].b.stranded} do ` +
-          `not</b>, so a restricted unit on one of those has to be repositioned ` +
-          `before it can work again. `
-        : `The work closes on itself overnight, so a restricted unit can stay ` +
-          `on it without being moved. `) +
-      `<span class="aside">This is nothing to do with <b>MO</b> as a day code on the ` +
-      `print, which means Mondays Only.</span>`,
+        ? `They do not carry over cleanly, though: on a ${longDay(a.monday)} ` +
+          `night <b>${moWk[0].b.stranded} of ${moWk[0].b.today}</b> finish where ` +
+          `no other suitable diagram starts, so those units have to be moved ` +
+          `before they can work again.`
+        : `They also carry over cleanly overnight, so a restricted unit can ` +
+          `stay on this work without being moved.`),
+    how: `Every leg of a diagram carries a formation showing the units in the ` +
+      `train. A leg with none is a unit running alone, so a diagram counts here ` +
+      `only if every one of its legs is formed with somebody else. ` +
+      `<b>Note:</b> this has nothing to do with <b>MO</b> as a day code on the ` +
+      `print, where it means Mondays Only — the tool always writes day codes ` +
+      `out in full to keep the two apart.`,
     stat: [["Coupled every leg", a.moOk.length],
            ["Run alone at some point", a.work.length - a.moOk.length],
            ["Of the working diagrams", a.work.length],
            ["Carry over to the next day", moWk[0].b.carries],
            ["Stranded overnight", moWk[0].b.stranded]],
-    head: ["Diagram", "Days", "Legs", "Runs with", "Starts at", "Starts",
-           "Ends at", "Ends", "Miles"],
+    head: ["Diagram", "Runs", "Legs", "Coupled to", "Starts at", "Away at",
+           "Ends at", "In at", "Miles"],
     rows: okRows,
     detail: [{
       tab: "MO night by night",
@@ -2785,8 +2897,8 @@ function build(all, fleet, cfg){
         (worstNight
           ? "no, it is stranded on every join"
           : "yes, every night carries over"),
-      head: ["Join", "MO diagrams today", "MO diagrams tomorrow",
-             "Carry over in place", "Stranded", "Left standing at"],
+      head: ["Night", "Suitable diagrams today", "Suitable tomorrow",
+             "Carry over in place", "Left stranded", "Stranded at"],
       rows: moWk.map(x => [x.from + " \u2192 " + x.to, x.b.today, x.b.next,
         x.b.carries, x.b.stranded,
         x.b.at.slice(0, 6).map(y => y.loc + " +" + y.n).join(", ")]),
@@ -2812,29 +2924,29 @@ function build(all, fleet, cfg){
     id: "back",
     tab: "Days back to depot",
     title: "How long back to " + (a.offNetwork ? aim : c.home) + "?",
-    lede: `A unit can only take a diagram that <em>starts</em> where it is ` +
-      `standing, and a diagram is a day's work — so this is the shortest way ` +
-      `home through the plan itself, a day for each diagram and a day for ` +
-      `standing where nothing leaves. Each place is measured from the morning ` +
-      `after the plan actually leaves a unit there, not from an arbitrary ` +
-      `Monday: the only night a 375 is left at Tonbridge is a Saturday, and ` +
-      `asking from a Monday would answer a question that never comes up. ` +
-      `The furthest any place is from <b>${aim}</b> is <b>${worst} day` +
-      `${worst === 1 ? "" : "s"}</b>, and <b>${sameDay}</b> of ${back.length} ` +
-      `are one diagram away. ` +
+    lede: `Leave a unit anywhere in the table below and this is how long the ` +
+      `diagrams take to get it back to <b>${aim}</b>. The furthest is ` +
+      `<b>${worst} day${worst === 1 ? "" : "s"}</b>, and <b>${sameDay}</b> of ` +
+      `${back.length} places are a single diagram away. ` +
       (never.length
         ? `<b>${never.length}</b> can never get there on the diagrams at all: ` +
-          `${never.map(r => r.loc).join(", ")}. `
-        : "") +
-      `<span class="aside">A unit counts as back when a diagram <em>ends</em> ` +
-      `there. One that only calls in on its way past takes the unit away ` +
-      `again — those are in the arrivals section, not this one.</span>`,
+          `${never.map(r => r.loc).join(", ")}.`
+        : ""),
+    how: `A unit can only take a diagram that <em>starts</em> where it is ` +
+      `standing, and a diagram is a day's work — so this is the shortest way ` +
+      `home through the plan itself, counting a day for each diagram and a day ` +
+      `for standing where nothing leaves. It counts as back only when a diagram ` +
+      `<em>ends</em> at the depot; one that calls in on its way past takes the ` +
+      `unit with it. Each place is measured from the morning after the plan ` +
+      `really does leave a unit there — the only night a 375 is left at ` +
+      `Tonbridge is a Saturday, so measuring from a Monday would answer a ` +
+      `question that never comes up.`,
     stat: [["Worst case", worst + (worst === 1 ? " day" : " days")],
            ["One diagram away", sameDay],
            ["Places a unit is left", back.filter(r => r.everLeft).length],
            ["No way back on the diagrams", never.length]],
-    head: ["Standing at", "Days back", "Worst", "Left here on", "First move",
-           "The way back"],
+    head: ["If a unit is left at", "Days back", "Worst case",
+           "Nights one is left here", "First diagram", "The way back"],
     rows: back.map(r => [
       r.loc,
       r.never ? "never" : r.days,
@@ -2852,8 +2964,8 @@ function build(all, fleet, cfg){
       title: "Does each day's set hand over to the next? — " +
         (clean === 7 ? "every join balances"
                      : clean + " of the 7 joins balance"),
-      head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
-             "Places", "Units to move"],
+      head: ["Night", "Diagrams today", "Diagrams tomorrow",
+             "Places that match", "Places", "Units to move"],
       rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
                          x.b.matched, x.b.locations, x.b.moved]),
     }].concat(wk.filter(x => x.b.moved > 0).map(x => ({
@@ -2880,33 +2992,34 @@ function build(all, fleet, cfg){
     id: "miles",
     tab: "Mileage",
     title: "Mileage per unit",
-    lede: `A diagram is worked by one unit and its <em>Total miles</em> is the ` +
-      `distance that unit covers — two units coupled are two diagrams, each ` +
-      `carrying the whole distance — so miles per diagram is miles per unit. ` +
-      `Each day's miles are divided by the diagrams in force that day and the ` +
-      `daily averages added across a week, which is what one unit covers in a ` +
-      `week. On these diagrams a ${c.label} unit averages ` +
+    lede: `On these diagrams a ${c.label} unit averages ` +
       `<b>${n0(M.total.dailyPerUnit)} miles a day</b> and ` +
       `<b>${n0(M.total.annualPerUnit)} a year</b>.` +
       (spread.length > 1
         ? ` The sub-fleets are not worked alike: a <b>${spread[0].sub}</b> covers ` +
           `${n0(spread[0].annualPerUnit)} a year against ` +
           `${n0(spread[spread.length - 1].annualPerUnit)} for a ` +
-          `<b>${spread[spread.length - 1].sub}</b>.` : "") +
-      `<span class="aside">Units is what the <em>plan</em> needs on its busiest ` +
-      `day. A diagram book carries no spare or exam float, so the fleet as owned ` +
-      `is always larger — and the per-unit mileage correspondingly lower.</span>`,
+          `<b>${spread[spread.length - 1].sub}</b>.` : ""),
+    how: `Exams fall due on a unit's clock, so this is what one unit covers, ` +
+      `not what the fleet racks up between them. A diagram is worked by one ` +
+      `unit and its <em>Total miles</em> is the distance that unit covers — two ` +
+      `units coupled are two diagrams, each carrying the whole distance — so ` +
+      `miles per diagram is miles per unit. Each day's miles are divided by the ` +
+      `diagrams running that day, and the daily averages added across a week. ` +
+      `<b>Units</b> is what the <em>plan</em> needs on its busiest day: a ` +
+      `diagram book carries no spare or exam float, so the fleet as owned is ` +
+      `larger and the real per-unit mileage lower.`,
     stat: [["Miles per unit per day", n0(M.total.dailyPerUnit)],
            ["Miles per unit per year", n0(M.total.annualPerUnit)],
            ["Units the plan needs", M.total.units],
            ["Whole fleet per year", n0(M.total.annualTotal)]],
-    head: ["Sub-fleet", "Units", "Per unit / day", "Per unit / week",
-           "Per unit / year", "Sub-fleet / year"],
+    head: ["Sub-fleet", "Units the plan needs", "Miles per unit a day",
+           "Per unit a week", "Per unit a year", "Whole sub-fleet a year"],
     rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
     detail: [{
       tab: "Mileage by day",
       title: "Day by day, per sub-fleet",
-      head: ["Sub-fleet", "Day", "Diagrams", "Standing all day", "Miles",
+      head: ["Sub-fleet", "Day", "Diagrams", "Standing all day", "Total miles",
              "Miles per unit"],
       rows: M.rows.concat(M.rows.length > 1 ? [M.total] : []).reduce((out, r) => {
         for (const d of r.perDay)
@@ -2943,12 +3056,16 @@ function build(all, fleet, cfg){
     id: "stands",
     tab: "Attendable stands",
     title: "Where a unit stands long enough to be attended",
-    lede: `Stands of ${F.ATTENDABLE / 60} hours or more that are not the overnight one, ` +
-      `plus any diagram that stands still all day. These are what a mobile engineer or ` +
-      `a toilet fitter can actually reach. ${a.attend.length} on a ` +
-      `${F.dayName(a.monday)}, ${amStands} of them starting before noon.`,
-    head: ["Place", "Stands", "Starting AM", "Starting PM", "Median stand",
-           "Kind", "Diagrams"],
+    lede: `Where a unit sits still long enough for somebody to get to it and ` +
+      `do something — what a mobile engineer or a toilet fitter can actually ` +
+      `reach. <b>${a.attend.length}</b> on a ${longDay(a.monday)}, ` +
+      `<b>${amStands}</b> of them starting before noon.`,
+    how: `A stand of ${F.ATTENDABLE / 60} hours or more that is not the ` +
+      `overnight one, plus any diagram that never moves all day. Signals, ` +
+      `headshunts and turnbacks are left out: a unit draws up to one and goes ` +
+      `on, so it is not standing there to be worked on.`,
+    head: ["Place", "Units standing", "Starting before noon", "Starting after",
+           "Typical stand", "Kind of place", "Diagrams"],
     rows: standRows,
   });
 
@@ -2974,28 +3091,28 @@ function build(all, fleet, cfg){
       id: "deliver",
       tab: "To " + c.home,
       title: "Getting units to " + c.home,
-      lede: `${c.home} is not on this network — no diagram in these books calls ` +
-        `there — so the plan cannot say when a unit comes home. What it can say ` +
-        `is when one is standing at <b>${v.label}</b> early enough to be run ` +
-        `across. On a ${longDay(a.monday)}: <b>${fin} finisher` +
-        `${fin === 1 ? "" : "s"}</b> (work done, free to take) and ` +
-        `<b>${std} parked unit${std === 1 ? "" : "s"}</b> (there and idle, but ` +
-        `taking one leaves the rest of its diagram to cover). ` +
+      lede: `${c.home} is off this network, so units get there by being handed ` +
+        `over at <b>${v.label}</b>. On a ${longDay(a.monday)} there are ` +
+        `<b>${fin} finisher${fin === 1 ? "" : "s"}</b> — work done, free to ` +
+        `take — and <b>${std} parked unit${std === 1 ? "" : "s"}</b>, there and ` +
+        `idle but still wanted by their diagrams. ` +
         (v.missed.length
-          ? `A further <b>${v.missed.length}</b> finish at ${v.label} too late ` +
-            `for either window — the earliest at ${at(v.missed[0].b.from)}.`
-          : "") +
-        `<span class="aside">Windows are ` +
+          ? `<b>${v.missed.length}</b> more finish at ${v.label} too late for ` +
+            `either window, the earliest at ${at(v.missed[0].b.from)}.`
+          : ""),
+      how: `Windows are ` +
         v.windows.map(w => `${w.name} up to ${hm(w.by)}`).join(" and ") +
-        `. Change them on the depot card above.</span>`,
+        `; change them on the depot card at the top of the page. A finisher ` +
+        `costs nothing to take. A parked unit is idle but its diagram wants it ` +
+        `back, and the last column says when.`,
       stat,
-      head: ["Diagram", "Days", "Window", "At " + v.label, "Where", "State",
-             "What taking it costs"],
+      head: ["Diagram", "Runs", "Window", "At " + v.label, "Where",
+             "State of the unit", "What taking it costs"],
       rows,
       extra: v.missed.length ? {
         tab: "Too late for " + c.home,
         title: "Finish at " + v.label + " too late for either window",
-        head: ["Diagram", "Days", "Arrives", "Where", "How late"],
+        head: ["Diagram", "Runs", "Gets in", "Where", "How late"],
         rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.b.from),
           x.b.loc, dur(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
       } : null,
@@ -3004,32 +3121,55 @@ function build(all, fleet, cfg){
 
   /* ---- 6b. what the codes mean ---- */
   /* The prints name places in nine characters, so Ashford arrives as five
-     codes and Ramsgate as eight. Spelt out they stop looking like
-     duplication. Anything with no name is listed as such rather than
-     guessed at. */
-  const roads = a.places.filter(p => p.kind === "road");
-  const unnamed = roads.filter(p => !p.named);
+     codes and Ramsgate as nine. Spelt out they stop looking like
+     duplication. Signals, headshunts and turnbacks are kept apart from
+     the rest: a unit draws up to one and goes on, and the berthing sheets
+     leave them out of the books for exactly that reason. */
+  const berths = a.places.filter(p => !p.shunt);
+  const shunts = a.places.filter(p => p.shunt);
+  const roads = berths.filter(p => p.kind === "road");
+  const unnamed = a.places.filter(p => !p.named);
   secs.push({
     id: "places",
     tab: "Place codes",
     title: "What the place codes mean",
-    lede: `The prints have nine characters for a place name, so one station ` +
-      `arrives as several codes — Ashford as five — and two roads at the same ` +
-      `place can look like two different places. The ${c.label} touches ` +
-      `<b>${a.places.length}</b> codes, <b>${roads.length}</b> of them depot ` +
-      `roads and sidings rather than stations. ` +
+    lede: `The prints have nine characters for a place, so one station turns ` +
+      `up as several codes. These are the <b>${berths.length}</b> the ` +
+      `${c.label} berths or calls at` +
+      (shunts.length
+        ? `, with <b>${shunts.length}</b> signals and shunt points listed ` +
+          `separately below — a unit draws up to one of those and goes on, so ` +
+          `it is never stabled there`
+        : "") + `. ` +
       (unnamed.length
-        ? `<b>${unnamed.length}</b> of those roads have no name in the tool yet, ` +
-          `so they are shown as the station plus the raw code — a guess would ` +
-          `read as fact. Say what they are and they will be spelt out here.`
-        : `Every road is named.`),
-    stat: [["Codes in use", a.places.length],
+        ? `<b>${unnamed.length}</b> still have no name in the tool: they show ` +
+          `as the raw code, because a guess would read as fact. Say what they ` +
+          `are and they will be spelt out.`
+        : `All of them are named.`),
+    how: `Names come from the same table the berthing sheets use, so the two ` +
+      `tools can never disagree. A code ending in a number is a signal — ` +
+      `Dover621 is Dover signal YE 621. "Dep", "EMUD", "CSD" and "TRSMD" are ` +
+      `the depot proper; "Sd", "Sdg" and "CHS" a siding; "Hs" and "ShNk" a ` +
+      `headshunt or shunt neck; "TB", "TR" and "Lp" a turnback, train road or ` +
+      `loop.`,
+    stat: [["Places it berths or calls at", berths.length],
            ["Depot roads and sidings", roads.length],
-           ["Roads not named yet", unnamed.length]],
-    head: ["Code", "What it is", "Station", "Kind", "Lines in the prints"],
-    rows: a.places.map(p => [p.code,
+           ["Signals and shunt points", shunts.length],
+           ["Still without a name", unnamed.length]],
+    head: ["Code", "What it is", "Station", "Kind of place",
+           "Lines in the prints"],
+    rows: berths.map(p => [p.code,
       p.named ? p.name : "— not named yet —", p.station || "",
-      p.kind === "road" ? "road or siding" : "station", p.n]),
+      p.kind === "road" ? "depot road or siding" : "station", p.n]),
+    extra: shunts.length ? {
+      tab: "Shunt points",
+      title: "Signals and shunt points — passed through, never berthed",
+      head: ["Code", "What it is", "Station", "Kind of place",
+             "Lines in the prints"],
+      rows: shunts.map(p => [p.code,
+        p.named ? p.name : "— not named yet —", p.station || "",
+        p.kind === "signal" ? "signal" : "headshunt, turnback or loop", p.n]),
+    } : null,
   });
 
   /* ---- 7. where a restriction cannot be contained ---- */
@@ -3044,16 +3184,19 @@ function build(all, fleet, cfg){
     id: "contain",
     tab: "Cannot contain",
     title: "Where a restricted unit cannot be contained",
-    lede: `A restricted unit standing at one of these has no diagram it can take: ` +
-      `every diagram starting there leaves it on its own at some point, so the ` +
-      `restriction cannot be contained from there and the unit has to be moved ` +
-      `before it can work. ` +
-      (none.length
-        ? `<b>${none.length} of ${a.containment.length}</b> starting points are like ` +
-          `this: ${none.map(r => r.loc).join(", ")}.`
-        : `Every starting point has at least one diagram that stays coupled.`),
-    head: ["Starts here", "Diagrams", "Stay coupled", "Run alone",
-           "Can a restricted unit work from here?", "Which diagrams"],
+    lede: (none.length
+        ? `A restricted unit left at one of these has nothing it can work — ` +
+          `every diagram out of there leaves it on its own at some point, so it ` +
+          `must be moved first. <b>${none.length} of ${a.containment.length}</b> ` +
+          `places are like this: ${none.map(r => r.loc).join(", ")}.`
+        : `Every place has at least one diagram that stays coupled, so a ` +
+          `restricted unit can be worked from anywhere.`),
+    how: `Grouped by where a diagram <em>starts</em>, because that is where a ` +
+      `unit has to be standing to take it up. "Stay coupled" counts the ` +
+      `diagrams from that place that never leave a unit running alone.`,
+    head: ["A unit standing at", "Diagrams out of here", "Stay coupled",
+           "Run alone at some point", "Can a restricted unit work from here?",
+           "Which diagrams"],
     rows: contRows,
     extra: {
       tab: "Split locations",
@@ -3259,7 +3402,7 @@ function save(){
 }
 const cfgFor = k => Object.assign({}, F.FLEETS[k], cfg[k]);
 
-let ALL = [], REP = {}, CURRENT = null;
+let ALL = [], REP = {}, CURRENT = null, openedSetup = false;
 
 /* ---- reading the files ---- */
 function handle(files){
@@ -3299,6 +3442,10 @@ function read(files){
   $("startover").hidden = false;
   drawSetup();
   rebuild();
+  /* Opened on the first drop so the settings are seen once, then left
+     to the reader to fold away - a panel that reopens on every drop is
+     a panel somebody has to close again every time. */
+  if (!openedSetup){ $("setup").open = true; openedSetup = true; }
 }
 
 /* ---- depot settings panel ---- */
@@ -3428,17 +3575,54 @@ function show(k){
   const keys = fleetsPresent().filter(x => REP[x]);
   Array.prototype.forEach.call($("fleetbar").children, (b, i) =>
     b.setAttribute("aria-selected", keys[i] === k ? "true" : "false"));
-  const box = $("report");
+  const rep = REP[k], box = $("report");
   box.textContent = "";
-  for (const s of REP[k].secs) box.appendChild(section(s));
+
+  /* One line saying what is being looked at, so a printed page or a
+     screenshot still says which fleet and which week it came from. */
+  const sum = el("p", "summary");
+  sum.appendChild(el("b", null, "Class " + rep.cfg.label));
+  for (const bit of [
+    rep.a.day.length + " diagrams on a " + LONG[F.dayName(rep.monday)],
+    "home " + rep.cfg.home,
+    "week of " + new Date(rep.monday).toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric"}),
+  ]) sum.appendChild(el("span", null, bit));
+  box.appendChild(sum);
+
+  /* Nine sections is more than fits on a screen, so they get a contents. */
+  const nav = el("nav", "jump");
+  nav.setAttribute("aria-label", "Jump to a section");
+  for (const sec of rep.secs){
+    const a = el("a", null, sec.tab);
+    a.href = "#sec-" + sec.id;
+    nav.appendChild(a);
+  }
+  box.appendChild(nav);
+
+  for (const s of rep.secs) box.appendChild(section(s));
 }
+const LONG = {Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
+              Fri: "Friday", Sat: "Saturday", Sun: "Sunday"};
 
 function section(s){
   const wrap = el("section");
+  wrap.id = "sec-" + s.id;
   wrap.appendChild(el("h2", "sech", s.title));
   const n = el("p", "secn");
-  n.innerHTML = s.lede;          // the ledes carry <b> and a note span
+  n.innerHTML = s.lede;          // the ledes carry <b> and <em>
   wrap.appendChild(n);
+  /* The method sits behind a fold. It matters - somebody will want to know
+     why a number is what it is - but putting it in front of the answer
+     buries the answer, which is what it used to do. */
+  if (s.how){
+    const d = el("details", "how");
+    d.appendChild(el("summary", null, "How this is worked out"));
+    const p = el("p");
+    p.innerHTML = s.how;
+    d.appendChild(p);
+    wrap.appendChild(d);
+  }
   if (s.stat && s.stat.length){
     const g = el("div", "stats");
     for (const [label, v] of s.stat){
@@ -3556,6 +3740,7 @@ function startOver(){
   $("setup").hidden = true;
   $("startover").hidden = true;
   $("file").value = "";
+  openedSetup = false;
   say("");
   /* Back to the top, or on a long report the cleared page looks like
      nothing happened. */

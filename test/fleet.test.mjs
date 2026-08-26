@@ -186,7 +186,7 @@ test("calling in is not the same as being finished with", () => {
      the day at Faversham - read as back for the night. */
   const rep = R.build(DS, "375", { monday: MONDAY });
   const early = rep.secs.find(x => x.id === "early");
-  const then = early.head.indexOf("Then");
+  const then = early.head.indexOf("What happens next");
   const ends = early.head.indexOf("Ends the day at");
   assert.ok(then > -1 && ends > -1, "the section must say what happens next");
   for (const r of early.rows){
@@ -399,6 +399,10 @@ test("the report answers every question and the workbook matches it", () => {
      "contain"]);
   for (const s of rep.secs){
     assert.ok(s.tab && s.tab.length <= 31, s.id + " needs a short tab name");
+    assert.ok(s.how && s.how.length > 20,
+      s.id + " needs a 'how this is worked out' note");
+    assert.ok(!/<span class="aside"/.test(s.lede),
+      s.id + ": the method belongs in `how`, not buried in the headline");
     assert.ok(s.head.length, s.id + " has no headings");
     for (const r of s.rows)
       assert.equal(r.length, s.head.length, s.id + " row is the wrong width");
@@ -448,6 +452,48 @@ test("place codes are spelt out, and an unknown road is not guessed at", () => {
   assert.equal(road.named, false);
   assert.ok(road.name.indexOf("Made Up Sd") !== -1,
     "an unnamed road must still show its code");
+});
+
+test("a signal or a shunt neck is never counted as somewhere a unit berths", () => {
+  /* The berthing sheets leave these out of the books - a unit draws up to a
+     signal, reverses in a headshunt, waits in a loop, and goes on. Counting
+     one as stabling would invent a berth that does not exist. */
+  for (const code of ["Dover621", "RM EK4985", "Hast 70", "Tonbdg160"]){
+    assert.equal(F.isShunt(code), true, code);
+    assert.equal(F.placeName(code).kind, "signal", code);
+  }
+  for (const code of ["St L ShNk", "Gvpuphs", "SldGrDEHs", "TunWellTB",
+                      "SevngtnLp", "Ore Up Sd", "Folk E", "Redhill U"]){
+    assert.equal(F.isShunt(code), true, code);
+    assert.equal(F.placeName(code).kind, "shunt", code);
+  }
+  /* A depot road and a station are not shunt points. */
+  assert.equal(F.isShunt("Ram Depot"), false);
+  assert.equal(F.isShunt("St L Shed"), false);
+  assert.equal(F.isShunt("CX"), false);
+});
+
+test("a station the prints abbreviate is still named", () => {
+  assert.equal(F.placeName("Ore").name, "Ore");
+  assert.equal(F.placeName("Broadstrs").name, "Broadstairs");
+  assert.equal(F.placeName("London Br").name, "London Bridge");
+  assert.equal(F.placeName("Grove Par").name, "Grove Park");
+  for (const c of ["Ore", "Broadstrs", "London Br", "Grove Par"])
+    assert.equal(F.placeName(c).named, true, c);
+  /* Sevington Loop is a loop, not a station, whatever its name looks like. */
+  assert.equal(F.placeName("SevngtnLp").kind, "shunt");
+  assert.equal(F.placeName("Folk E").kind, "shunt");
+});
+
+test("a reception or washer road is the depot area, not the depot proper", () => {
+  /* Both are on the berthing sheets' transit list: passed through on the way
+     in, never berthed in. Calling one a depot road would count a unit as
+     home while it is still moving. */
+  const ram = arr(F.depotSet(["Ramsgate"], "roads"));
+  assert.deepEqual(ram, ["Ram Depot"]);
+  assert.ok(arr(F.depotSet(["Ramsgate"], "area")).indexOf("RM DRW") !== -1);
+  const ash = arr(F.depotSet(["Ashford"], "roads"));
+  assert.deepEqual(ash, ["Ashfrd DS"]);
 });
 
 test("the diagram number keeps its prefix and its three figures", () => {

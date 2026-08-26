@@ -47,16 +47,17 @@
       Start over</button>
   </div>
 
-  <section id="setup" hidden>
-    <h2 class="sech">Depots</h2>
-    <p class="secn">Which depot owns each fleet, and everywhere it can be repaired.
-      These are your arrangements, not something the prints state, so set them here
-      rather than waiting on a new version of this file. They are remembered on this
-      computer.</p>
+  <details id="setup" class="setup" hidden>
+    <summary><b>Depots</b> — which depot owns each fleet, and where it can be
+      repaired</summary>
+    <p class="secn">These are your arrangements, not something the prints state,
+      so set them here rather than waiting on a new version of this file. They
+      are remembered on this computer, and everything below redraws as soon as
+      you change one.</p>
     <div id="depots" class="depots"></div>
-    <p class="secn"><button type="button" class="btn ghost" id="resetcfg">Put the
-      depots back to the defaults</button></p>
-  </section>
+    <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
+      the depots back to the defaults</button></p>
+  </details>
 
   <section id="out" hidden>
     <div class="fleetbar" id="fleetbar" role="tablist"></div>

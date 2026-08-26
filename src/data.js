@@ -702,7 +702,44 @@ const PLACE_NAMES = {
  "Strood630":   "Strood shunt signal NK1630",
  "VictGroSh":   "Victoria Grosvenor Shed",
  "Vic (E)":     "London Victoria, Eastern side",
+ /* --- stations the prints abbreviate past recognition --- */
+ "Ore":         "Ore",
+ "Broadstrs":   "Broadstairs",
+ "London Br":   "London Bridge",
+ "Lndon BrE":   "London Bridge, Eastern side",
+ "Grove Par":   "Grove Park",
+ "Beck Jn":     "Beckenham Junction",
+ "Folk C":      "Folkestone Central",
+ "Bell":        "Bellingham",
+ "Cray":        "Crayford",
+ "Lee":         "Lee",
+ "Minster":     "Minster",
+ "Sandwich":    "Sandwich",
+ /* --- somewhere a unit stands and then goes on, never berths --- */
+ "Folk E":      "Folkestone East",
+ "SevngtnLp":   "Sevington Loop",
 };
+
+/* Places a unit VISITS but is never berthed at: signals it draws up to,
+   headshunts and shunt necks it reverses in, turnbacks and loops it
+   stands in before going on somewhere else. The berthing sheets already
+   leave these out - NON_BERTH_VISIT above does it by the Genius long name
+   - and the fleet analysis has to leave them out of the same questions,
+   or a unit shunting reads as a unit stabled.
+
+   Same list, keyed by the code the prints use.                          */
+const NON_BERTH_PRINTS = new Set([
+ /* signals */
+ "Dover621", "Dover623", "FV EK4327", "Hast 70", "Strood625", "Strood630",
+ "Tonbdg160", "RM EK4981", "RM EK4985", "RM EK5143", "RM EK5145",
+ /* headshunts, shunt necks and depot extensions */
+ "St L ShNk", "Gvpuphs", "GrPkDCtEE", "SldGrDEHs", "RM DRW", "AshfDYWRd",
+ /* turnbacks and loops - stood in, then straight out again */
+ "TunWellTB", "SevngtnLp", "Ore Up Sd", "Redhill U",
+ /* Folkestone East: the shunting point beside the train roads, not a
+    station in its own right */
+ "Folk E",
+]);
 /* Sections with a station platform the unit may call at on its way out. The
    entry is timed off the platform when the unit runs through it, and off the
    first movement when it does not. */
@@ -824,7 +861,7 @@ return {
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
   TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
-  PLACE_NAMES,
+  PLACE_NAMES, NON_BERTH_PRINTS,
   PROFILES,
 };
 })();

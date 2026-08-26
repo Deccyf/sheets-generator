@@ -90,7 +90,9 @@ footer{margin:56px 0 0; padding-top:18px; border-top:1px solid var(--rule)}
 footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch}
 
 @media print{
-  .berth, .actions, .fleetbar, #setup, .status{display:none !important}
+  .berth, .actions, .fleetbar, #setup, .status, .jump,
+  .statusrow{display:none !important}
+  details.how{display:none}
   .tw{overflow:visible; max-height:none}
   .tw.tall{max-height:none}
   details.more{display:none}
@@ -112,3 +114,50 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
 /* a place code whose full name is a hover away */
 table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
   text-decoration:underline dotted rgba(0,0,0,.28); text-underline-offset:3px}
+
+/* ---------- what you are looking at ---------- */
+.summary{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px;
+  margin:26px 0 0; padding:12px 16px; background:var(--paper);
+  border:1px solid var(--rule); font-size:14px;
+}
+.summary b{font-family:var(--mono); font-size:16px}
+.summary span{color:var(--chalk); font-size:13px}
+.summary span::before{content:"· "; color:var(--rule)}
+
+/* ---------- contents ---------- */
+.jump{display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 0}
+.jump a{
+  font-size:13px; padding:5px 11px; text-decoration:none;
+  color:var(--chalk); background:var(--paper);
+  border:1px solid var(--rule); border-radius:2px;
+}
+.jump a:hover{color:var(--steel); border-color:var(--rail)}
+.jump a:focus-visible{outline:2px solid var(--steel); outline-offset:2px}
+
+/* ---------- the method, behind a fold ---------- */
+details.how{margin:0 0 16px; max-width:74ch}
+details.how>summary{
+  cursor:pointer; font-size:13px; color:var(--chalk);
+  padding:3px 0; width:fit-content;
+}
+details.how>summary:hover{color:var(--steel)}
+details.how p{
+  margin:8px 0 0; padding:11px 14px; font-size:13px; color:#3C464D;
+  background:var(--paper); border-left:3px solid var(--rule);
+}
+
+/* a section is a jump target, so keep its heading clear of the top edge */
+#report > section{scroll-margin-top:12px}
+
+/* ---------- the depot settings, folded away once they are set ---------- */
+details.setup{margin:34px 0 0; border:1px solid var(--rule); background:var(--paper)}
+details.setup>summary{
+  padding:13px 16px; cursor:pointer; font-size:14px; color:var(--steel);
+}
+details.setup>summary b{font-family:var(--mono); font-size:15px}
+details.setup>summary:hover{background:var(--apron)}
+details.setup>summary:focus-visible{outline:3px solid var(--steel); outline-offset:-3px}
+details.setup .secn{margin:0 16px 14px; max-width:74ch}
+details.setup[open]>summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
+details.setup .depots{padding:0 16px}

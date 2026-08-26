@@ -70,11 +70,14 @@ function daysLabel(code){
    the sidings and the station alongside: a unit there is at home for
    planning, but it is not standing over a pit.                           */
 const DEPOTS = {
-  Ramsgate:   {roads: ["Ram Depot", "RM DRW"],
-               area: ["RamsNewSd", "Ram", "RM EK4985", "RM EK5145",
-                      "RM EK5143", "RM EK4981"]},
-  Ashford:    {roads: ["Ashfrd DS", "AshfDYWRd"],
-               area: ["Ashfd EBS", "Ash Up Sd", "Ashford I"]},
+  /* "roads" is the depot proper. A reception road or a washer road is
+     passed through on the way in, never berthed in, so it belongs in the
+     area rather than the depot - the same call src/data.js makes by
+     putting RM DRW and AshfDYWRd on its transit list. */
+  Ramsgate:   {roads: ["Ram Depot"],
+               area: ["RM DRW", "RamsNewSd", "Ram"]},
+  Ashford:    {roads: ["Ashfrd DS"],
+               area: ["AshfDYWRd", "Ashfd EBS", "Ash Up Sd", "Ashford I"]},
   "Slade Green": {roads: ["S Gn Dep"], area: ["S Gn U Sd", "S Gn"]},
   Gillingham: {roads: ["Gill Dep"], area: ["Gill US", "Gill ReRd", "Gill"]},
   "Grove Park": {roads: ["G Pk Dep"], area: ["G Pk DnSd", "G Pk UpSd"]},
@@ -102,6 +105,9 @@ const DEPOTS = {
    added: an invented road name would read as fact.                       */
 const D = SHEETS_DATA;
 const stationOf = code => {
+  /* The code may simply BE the station's name - Ore, Hastings, Tonbridge. */
+  const exact = D.STATIONS.find(x => x[0] === code);
+  if (exact) return exact[0];
   const manual = D.MANUAL_LOC[code];
   if (manual) return manual[1];
   const tlc = D.BERTH_CODE[code] || D.DEST_CODE[code];
@@ -132,22 +138,32 @@ const isRoad = code => {
     /(sd|sdg|sids?|sidings?|dep|depot|shed|yard|yd|dms|ebs|rd|tr)$/i.test(code.trim());
 };
 
+/* Somewhere a unit draws up to, reverses in or waits at on its way
+   somewhere else - a signal, a headshunt, a turnback, a loop. The berthing
+   sheets leave these out of the books, and so must anything here that
+   counts where a unit is stabled, or shunting reads as berthing. */
+const isShunt = code => D.NON_BERTH_PRINTS.has(code);
+
 function placeName(code){
   const explicit = D.PLACE_NAMES[code];
   const st = stationOf(code);
+  const shunt = isShunt(code);
   if (explicit){
-    /* A code ending in a number is a signal, not a road. A unit stands at
-       one while it shunts and is not berthed there, so counting it as a
-       berthing point would invent stabling that does not exist. */
+    /* A code ending in a number is a signal - the commonest of these. */
     const kind = /signal/i.test(explicit) ? "signal"
+      : shunt ? "shunt"
       : isRoad(code) ? "road" : "station";
-    return {code, name: explicit, station: st, kind, named: true};
+    return {code, name: explicit, station: st, kind, shunt, named: true};
   }
+  if (shunt)
+    return {code, name: st ? st + " — " + code : code, station: st,
+            kind: "shunt", shunt: true, named: false};
   if (isRoad(code))
     return {code, name: st ? st + " — " + code : code, station: st,
-            kind: "road", named: false};
+            kind: "road", shunt: false, named: false};
   /* An ordinary station: the code is short for the name and nothing more. */
-  return {code, name: st || code, station: st, kind: "station", named: !!st};
+  return {code, name: st || code, station: st, kind: "station",
+          shunt: false, named: !!st};
 }
 /* Every place a set of diagrams touches, with how often, so the unnamed
    ones can be seen rather than hunted for. */
@@ -448,7 +464,7 @@ function analyse(all, fleet, cfg){
   const attend = [];
   for (const d of work)
     for (const b of berthsOf(d))
-      if (!b.last && b.mins != null && b.mins >= ATTENDABLE)
+      if (!b.last && b.mins != null && b.mins >= ATTENDABLE && !isShunt(b.loc))
         attend.push({d, b});
   for (const d of still)
     attend.push({d, b: {loc: d.rows[0].loc, from: null, to: null,
@@ -691,7 +707,7 @@ function moWeek(all, fleet, monday){
 }
 
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
-              placeName, places,
+              placeName, places, isShunt,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,

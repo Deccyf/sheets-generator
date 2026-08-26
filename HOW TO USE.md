@@ -606,11 +606,15 @@ have picked:
 | **Mileage per unit** | What one *unit* covers a day, a week and a year — split by sub-fleet, because a 375/6 works harder than a 375/3. Also the units the plan needs, and the whole-fleet annual total |
 | **Where a unit stands long enough to be attended** | Every place a unit sits still for two hours or more during the day — where MSE or MIST can actually get to it |
 | **Getting units to &lt;depot&gt;** | Only shows when the home depot is off this network, like Selhurst. When a unit is standing at the handover point — Victoria — in time for a trip, split into the ones that have finished for the day (free to take) and the ones parked mid-diagram (taking one leaves the rest of its diagram to cover) |
-| **What the place codes mean** | Every place code the fleet touches, spelt out — `Ram` is Ramsgate Platform, `RamsNewSd` is Ramsgate New Sidings, `Dover PSd` is Dover Priory Sidings. The prints only have nine characters for a name, which is why one station turns up as several codes. Any depot road the tool has no name for yet is listed as such — tell us and it gets added |
+| **What the place codes mean** | Every place code the fleet touches, spelt out — `Ram` is Ramsgate Platform, `RamsNewSd` is Ramsgate New Sidings, `Dover PSd` is Dover Priory Sidings. The prints only have nine characters for a name, which is why one station turns up as several codes. Signals and shunt points are listed separately, since a unit only draws up to one on its way somewhere else. Any road the tool has no name for yet is shown as such — tell us and it gets added |
 | **Where a restricted unit cannot be contained** | The places where every diagram leaves a unit on its own at some point, so a restricted unit standing there has nothing it can work |
 
 Place codes in the tables carry their full name on a hover, so you do not
 have to keep the list open.
+
+Every section leads with the answer; **How this is worked out** underneath it
+opens up the reasoning if you want it. The row of buttons under the fleet tabs
+jumps straight to a section.
 
 **Save this fleet as a spreadsheet** puts the lot into Excel, one tab per
 section, with the filters already on. **Save every fleet** does all of them in
