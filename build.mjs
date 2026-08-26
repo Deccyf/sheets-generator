@@ -56,15 +56,19 @@ const fleetModules = [
   "src/fleet/xlsx.js",
   "src/fleet/ui.js",
 ];
+/* Its own version, not the berthing sheets'. They are different files with
+   different histories, and a fault reported against "version 2.6" has to
+   name one file unambiguously. */
+const fleet = pkg.analyser || { version: "0.0.0", released: "" };
 const fleetHtml = read("./src/fleet/page.html")
   .replace("{{CSS}}", () =>
     read("./src/styles.css").trimEnd() + "\n\n" + read("./src/fleet/fleet.css").trimEnd())
   .replace("{{SCRIPTS}}", () =>
     fleetModules.map(m => "<script>\n" + read("./" + m).trimEnd() + "\n</script>").join("\n"))
-  .replace("{{VERSION}}", () => version)
-  .replace("{{RELEASED}}", () => released);
+  .replace("{{VERSION}}", () => fleet.version)
+  .replace("{{RELEASED}}", () => fleet.released);
 writeFileSync(new URL("./Diagram Analyser.html", import.meta.url), fleetHtml);
-console.log(`built "Diagram Analyser.html" v${version} — ${fleetHtml.length} bytes ` +
+console.log(`built "Diagram Analyser.html" v${fleet.version} — ${fleetHtml.length} bytes ` +
   `(${(fleetHtml.length / 1024).toFixed(0)} KB)`);
 
 /* The documents that are generated FROM the tool are part of the build, not

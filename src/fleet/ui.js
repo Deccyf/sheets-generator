@@ -69,6 +69,7 @@ function read(files){
       new Date(mon).toLocaleDateString("en-GB", {day:"2-digit",month:"short",year:"numeric"}) +
       (bad.length ? " · " + bad.length + " file(s) skipped" : ""), "go");
   if (bad.length) console.warn(bad.join("\n"));
+  $("startover").hidden = false;
   drawSetup();
   rebuild();
 }
@@ -302,6 +303,30 @@ function saveAll(){
   say("Saved every fleet.", "go");
 }
 
+/* ---- starting again ----
+   Clears the prints and the report and puts the page back as it opened.
+   The depot settings are deliberately kept: they are the user's standing
+   arrangements, not part of the drop, and "Put the depots back to the
+   defaults" is the button for those. */
+function startOver(){
+  ALL = [];
+  REP = {};
+  CURRENT = null;
+  $("report").textContent = "";
+  $("fleetbar").textContent = "";
+  $("depots").textContent = "";
+  $("out").hidden = true;
+  $("setup").hidden = true;
+  $("startover").hidden = true;
+  $("file").value = "";
+  say("");
+  /* Back to the top, or on a long report the cleared page looks like
+     nothing happened. */
+  if (window.scrollTo) window.scrollTo(0, 0);
+  const z = $("zone");
+  if (z && z.focus) z.focus();
+}
+
 /* ---- events ---- */
 function wire(){
   const zone = $("zone"), file = $("file");
@@ -318,6 +343,7 @@ function wire(){
   });
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => e.preventDefault());
+  $("startover").addEventListener("click", startOver);
   $("save").addEventListener("click", saveOne);
   $("saveall").addEventListener("click", saveAll);
   $("resetcfg").addEventListener("click", () => {

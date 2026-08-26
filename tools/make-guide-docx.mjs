@@ -737,7 +737,9 @@ const children = [
   gap(160),
   p("**Save this fleet as a spreadsheet** puts the lot into Excel, one tab " +
     "per section with the filters already on. **Save every fleet** does all " +
-    "of them in one workbook."),
+    "of them in one workbook. **Start over**, next to the message under the " +
+    "drop panel, clears the prints and the report so you can begin again " +
+    "with a different set of books — your depot settings are kept."),
   callout("MO means two different things",
     "On the print, MO is a DAY CODE — Mondays Only. The tool always writes " +
     "day codes out in full (Mon only, Mon–Thu) so this can never be misread. " +
@@ -756,6 +758,9 @@ const children = [
     "trip to be made. The 377s default to Victoria, morning by 11:00 and " +
     "evening by 21:00; change either and everything redraws."),
   p("As with the sheets, nothing leaves the computer."),
+  p("This page has its own version number in its footer, separate from the " +
+    "Sheets Generator\u2019s — they are two different files. If you report " +
+    "something, say which one and quote the version off the bottom of the page."),
 
   gap(80),
   p("*A rule that doesn't match how your patch does it? Say so — the rules live " +

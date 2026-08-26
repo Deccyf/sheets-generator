@@ -595,6 +595,12 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
   font-size:13px; color:var(--steel)}
 .dep .wins input{font:inherit; font-size:13px; padding:3px 5px;
   border:1px solid var(--rule); background:#fff; color:var(--steel)}
+
+/* the status line and its Start over button share a row */
+.statusrow{display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin:18px 0 0}
+.statusrow .status{margin:0; flex:1 1 auto; min-width:0}
+.btn.tight{padding:6px 13px; font-size:13px}
 </style>
 </head>
 <body>
@@ -629,7 +635,12 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
   </button>
   <input type="file" id="file" multiple hidden
          accept=".doc,.docx,.txt,.csv,application/msword">
-  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <div class="statusrow">
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <button type="button" class="btn ghost tight" id="startover" hidden
+      title="Clear the prints and the report. Your depot settings are kept.">
+      Start over</button>
+  </div>
 
   <section id="setup" hidden>
     <h2 class="sech">Depots</h2>
@@ -655,7 +666,7 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>2.6.0</b> &middot; 26 August 2026</p>
+    <p class="small">Version <b>1.0.0</b> &middot; 26 August 2026</p>
   </footer>
 </div>
 <script>
@@ -2143,6 +2154,7 @@ function read(files){
       new Date(mon).toLocaleDateString("en-GB", {day:"2-digit",month:"short",year:"numeric"}) +
       (bad.length ? " · " + bad.length + " file(s) skipped" : ""), "go");
   if (bad.length) console.warn(bad.join("\n"));
+  $("startover").hidden = false;
   drawSetup();
   rebuild();
 }
@@ -2376,6 +2388,30 @@ function saveAll(){
   say("Saved every fleet.", "go");
 }
 
+/* ---- starting again ----
+   Clears the prints and the report and puts the page back as it opened.
+   The depot settings are deliberately kept: they are the user's standing
+   arrangements, not part of the drop, and "Put the depots back to the
+   defaults" is the button for those. */
+function startOver(){
+  ALL = [];
+  REP = {};
+  CURRENT = null;
+  $("report").textContent = "";
+  $("fleetbar").textContent = "";
+  $("depots").textContent = "";
+  $("out").hidden = true;
+  $("setup").hidden = true;
+  $("startover").hidden = true;
+  $("file").value = "";
+  say("");
+  /* Back to the top, or on a long report the cleared page looks like
+     nothing happened. */
+  if (window.scrollTo) window.scrollTo(0, 0);
+  const z = $("zone");
+  if (z && z.focus) z.focus();
+}
+
 /* ---- events ---- */
 function wire(){
   const zone = $("zone"), file = $("file");
@@ -2392,6 +2428,7 @@ function wire(){
   });
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => e.preventDefault());
+  $("startover").addEventListener("click", startOver);
   $("save").addEventListener("click", saveOne);
   $("saveall").addEventListener("click", saveAll);
   $("resetcfg").addEventListener("click", () => {

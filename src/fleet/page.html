@@ -40,7 +40,12 @@
   </button>
   <input type="file" id="file" multiple hidden
          accept=".doc,.docx,.txt,.csv,application/msword">
-  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <div class="statusrow">
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <button type="button" class="btn ghost tight" id="startover" hidden
+      title="Clear the prints and the report. Your depot settings are kept.">
+      Start over</button>
+  </div>
 
   <section id="setup" hidden>
     <h2 class="sech">Depots</h2>

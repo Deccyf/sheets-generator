@@ -623,7 +623,7 @@ test suite drives them.
 | Path | What it is |
 |---|---|
 | `Sheets Generator.html` | **The built deliverable** — committed so it can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. |
-| `Diagram Analyser.html` | **The second built deliverable** — the maintenance-planning view of the same diagram prints. Same rule: regenerate, never edit. See [The diagram analyser](#the-diagram-analyser). |
+| `Diagram Analyser.html` | **The second built deliverable** — the maintenance-planning view of the same diagram prints. Same rule: regenerate, never edit. Carries **its own version** (`analyser` in `package.json`), not the berthing sheets': they are different files with different histories, and a fault reported against "version 2.6" has to name one of them unambiguously. See [The diagram analyser](#the-diagram-analyser). |
 | `HOW TO USE.md` | The guide for the people who run the sheets — no build steps, no code. This README is the technical account; that one is the working one. |
 | `HOW TO USE.docx` | The same guide as a Word document, for circulating. **`node build.mjs` rebuilds it** along with the rules page — it sat a day behind the tool for exactly as long as it took nobody to run it by hand. Needs `npm i docx`; without that the build says it skipped it and carries on. Edit the Markdown and `tools/make-guide-docx.mjs` together, never the `.docx`. That script's header has the recipe for rendering it to check — it needs `libreoffice-writer`, not just `libreoffice-core`. |
 | `BERTHING SHEET RULES.html` | The rules the tool goes by, written for colleagues who will never open it. Rebuilt by `node build.mjs` via `tools/make-rules-doc.mjs`, from the built file's own tables — **nothing on it is typed out separately**, so it cannot drift from what the books do. One self-contained page; open it or print it to PDF. Each book is written for the document it actually is: the two berthing books get the berthing rules, and Metro and High Speed get their own sheets described with the berthing-only sections (which unit prints first, end markers, routes, the notes column, the corrections list) left off. Passing that flag was missed when the Metro sheet arrived, so the handout described all four as berthing sheets until it was caught here. |
@@ -1302,6 +1302,14 @@ what the plan means for **looking after** the units:
 
 Drop all the print books on it at once (FSX, FO, SO and Sun). Each fleet gets
 a tab; everything can be saved as a spreadsheet, one tab per question.
+**Start over** clears the prints and the report and puts the page back as it
+opened, keeping the depot settings — those are standing arrangements, not
+part of the drop, and have their own reset.
+
+It carries its own version, starting at 1.0.0. The stamp is there because
+once a copy is emailed round and put on SharePoint there is no other way to
+tell which one somebody is looking at — but inheriting the berthing sheets'
+2.6.0 would have claimed five releases this file never had.
 
 ### MO means two different things
 

@@ -610,7 +610,9 @@ have picked:
 
 **Save this fleet as a spreadsheet** puts the lot into Excel, one tab per
 section, with the filters already on. **Save every fleet** does all of them in
-one workbook.
+one workbook. **Start over**, next to the message under the drop panel, clears
+the prints and the report so you can begin again with a different set of
+books — your depot settings are kept.
 
 ### A word about "MO"
 
@@ -637,6 +639,10 @@ either and everything redraws.
 
 > As with the sheets, nothing leaves the computer. It reads the prints in the
 > page and writes the spreadsheet in the page.
+
+This page has its own version number in its footer, separate from the Sheets
+Generator's — they are two different files. If you report something, say
+which one and quote the version off the bottom of the page.
 
 ---
 

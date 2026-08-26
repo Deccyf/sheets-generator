@@ -82,6 +82,28 @@ const all = page.waitForEvent("download", { timeout: 15000 });
 await page.locator("#saveall").click();
 console.log("download:", (await all).suggestedFilename());
 
+/* Start over clears the prints and the report but keeps the depot
+   settings, and the page has to accept a fresh drop afterwards. */
+await page.selectOption("#home-375", "Ashford");
+await page.locator("#startover").click();
+await page.waitForFunction(() => document.getElementById("out").hidden,
+  null, { timeout: 5000 });
+if (await page.locator("#report .sech").count()) die("the report was not cleared");
+if (!(await page.locator("#setup").isHidden())) die("the depot panel was not cleared");
+if (await page.textContent("#status")) die("the status line was not cleared");
+if (!(await page.locator("#startover").isHidden()))
+  die("Start over is still offered with nothing loaded");
+console.log("after start over: report and panels cleared");
+
+await page.setInputFiles("#file", [prints]);
+await page.waitForFunction(
+  () => document.querySelector("#status").textContent.includes("diagrams read"),
+  null, { timeout: 20000 });
+const kept = await page.locator("#report .sech").first().textContent();
+console.log("second drop:", await page.textContent("#status"), "| first section:", kept);
+if (!/Arrivals into Ashford/i.test(kept))
+  die("the depot setting was lost across Start over");
+
 await browser.close();
 if (failed) process.exitCode = 1;
 else console.log("\nanalyser smoke OK");
