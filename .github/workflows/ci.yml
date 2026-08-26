@@ -34,6 +34,7 @@ jobs:
         run: |
           git diff --exit-code -- \
             "Sheets Generator.html" \
+            "Diagram Analyser.html" \
             "BERTHING SHEET RULES.html" \
             "HOW TO USE.docx" \
           || {
@@ -62,8 +63,13 @@ jobs:
       - name: Browser smoke — Genius and Integrale CSVs
         run: node tools/smoke-gcsv.mjs
 
+      - name: Browser smoke — the diagram analyser
+        run: node tools/smoke-fleet.mjs
+
       - name: Upload built artifact
         uses: actions/upload-artifact@v4
         with:
           name: sheets-generator
-          path: Sheets Generator.html
+          path: |
+            Sheets Generator.html
+            Diagram Analyser.html

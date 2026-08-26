@@ -15,6 +15,7 @@ const modules = [
   "src/vendor/fflate.js",
   "src/data.js",
   "src/rules.js",
+  "src/prints-read.js",
   "src/core.js",
   "src/rulebook.js",
   "src/xlsx.js",
@@ -42,6 +43,29 @@ const html = read("./src/page.html")
 writeFileSync(new URL("./Sheets Generator.html", import.meta.url), html);
 console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes ` +
   `(${(html.length / 1024).toFixed(0)} KB)`);
+
+/* The second deliverable. It reads the same prints through the same reader
+   and is otherwise its own tool: the berthing sheets say where a unit
+   stands tonight, this says what the plan means for looking after it. */
+const fleetModules = [
+  "src/vendor/fflate.js",
+  "src/prints-read.js",
+  "src/fleet/prints.js",
+  "src/fleet/fleet.js",
+  "src/fleet/report.js",
+  "src/fleet/xlsx.js",
+  "src/fleet/ui.js",
+];
+const fleetHtml = read("./src/fleet/page.html")
+  .replace("{{CSS}}", () =>
+    read("./src/styles.css").trimEnd() + "\n\n" + read("./src/fleet/fleet.css").trimEnd())
+  .replace("{{SCRIPTS}}", () =>
+    fleetModules.map(m => "<script>\n" + read("./" + m).trimEnd() + "\n</script>").join("\n"))
+  .replace("{{VERSION}}", () => version)
+  .replace("{{RELEASED}}", () => released);
+writeFileSync(new URL("./Diagram Analyser.html", import.meta.url), fleetHtml);
+console.log(`built "Diagram Analyser.html" v${version} — ${fleetHtml.length} bytes ` +
+  `(${(fleetHtml.length / 1024).toFixed(0)} KB)`);
 
 /* The documents that are generated FROM the tool are part of the build, not
    an afterthought - the Word guide sat a day behind for exactly as long as

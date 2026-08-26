@@ -44,3 +44,7 @@ export async function openPage(viewport) {
   await page.goto(BUILT_URL);
   return { browser, page };
 }
+
+/* The second deliverable, same treatment. */
+export const ANALYSER = fileURLToPath(new URL("../Diagram Analyser.html", import.meta.url));
+export const ANALYSER_URL = "file://" + ANALYSER.replace(/ /g, "%20");

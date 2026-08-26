@@ -27,6 +27,11 @@ also rebuilds the two generated documents.
 > double-check the generated sheets against the ACWNs before anything goes
 > out.
 
+There is a **second deliverable** in this repository, built by the same
+command: `Diagram Analyser.html`. It reads the same diagram prints and answers
+the maintenance planner's questions rather than the berthing sheet's — see
+[The diagram analyser](#the-diagram-analyser).
+
 ---
 
 ## Contents
@@ -46,6 +51,7 @@ also rebuilds the two generated documents.
   - [Genius and Integrale are not interchangeable](#genius-and-integrale-are-not-interchangeable)
   - [Failing loudly](#failing-loudly)
   - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
+- [The diagram analyser](#the-diagram-analyser)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
 - [Requirements and privacy](#requirements-and-privacy)
 - [Building and testing](#building-and-testing)
@@ -617,6 +623,7 @@ test suite drives them.
 | Path | What it is |
 |---|---|
 | `Sheets Generator.html` | **The built deliverable** — committed so it can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. |
+| `Diagram Analyser.html` | **The second built deliverable** — the maintenance-planning view of the same diagram prints. Same rule: regenerate, never edit. See [The diagram analyser](#the-diagram-analyser). |
 | `HOW TO USE.md` | The guide for the people who run the sheets — no build steps, no code. This README is the technical account; that one is the working one. |
 | `HOW TO USE.docx` | The same guide as a Word document, for circulating. **`node build.mjs` rebuilds it** along with the rules page — it sat a day behind the tool for exactly as long as it took nobody to run it by hand. Needs `npm i docx`; without that the build says it skipped it and carries on. Edit the Markdown and `tools/make-guide-docx.mjs` together, never the `.docx`. That script's header has the recipe for rendering it to check — it needs `libreoffice-writer`, not just `libreoffice-core`. |
 | `BERTHING SHEET RULES.html` | The rules the tool goes by, written for colleagues who will never open it. Rebuilt by `node build.mjs` via `tools/make-rules-doc.mjs`, from the built file's own tables — **nothing on it is typed out separately**, so it cannot drift from what the books do. One self-contained page; open it or print it to PDF. Each book is written for the document it actually is: the two berthing books get the berthing rules, and Metro and High Speed get their own sheets described with the berthing-only sections (which unit prints first, end markers, routes, the notes column, the corrections list) left off. Passing that flag was missed when the Metro sheet arrived, so the handout described all four as berthing sheets until it was caught here. |
@@ -629,11 +636,17 @@ test suite drives them.
 | `src/xlsx.js` | **`SHEETS_XLSX`** — the one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate) plus the weekday book layout and the one preview renderer used by both panels. Widths and page setup come from the layout, so one workbook can be portrait eight-column and another landscape fourteen. |
 | `src/hs.js` | **`SHEETS_HS`** — the High Speed book as the depot's Class 395 Allocations Sheet: a worksheet per day, a block per depot, last night's arrivals beside today's allocations. Not a berthing sheet — see [The High Speed sheet](#the-high-speed-sheet). |
 | `src/metro.js` | **`SHEETS_METRO`** — the Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns, read by Position. Not a berthing sheet — see [The Metro sheets](#the-metro-sheets). |
-| `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: `.docx`/`.doc` reading, diagram parsing, generation, reissue merge, report builder. |
+| `src/prints-read.js` | **`SHEETS_PRINTS`** — opening a set of diagram prints, whatever they arrive as: `.docx`, legacy `.doc` (OLE compound file and Word piece table, by hand), plain text, or a CSV save. **Both tools read the prints through this one module**, so a fix for an older Word or a new export quirk reaches both. It also owns `csvParse`, a plain CSV splitter with no berthing knowledge in it, which `SHEETS_CORE` re-exports for everything else that asks. |
+| `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: diagram parsing, generation, reissue merge, report builder. Reading the file is `src/prints-read.js`. |
 | `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/ui.js` | Page wiring for both panels, the fleet sprites, and the tabbed previews. |
+| `src/fleet/prints.js` | **`FLEET_PRINTS`** — the prints parsed for the fleet's sake: the day code, the validity dates, the running miles and the activity against every line, all of which the berthing parser has no use for and drops. |
+| `src/fleet/fleet.js` | **`FLEET`** — the analysis. Day codes, depots, the rolled clock, berths, coupling (`moCapable`), splits, the reference week, and whether the plan closes on itself. The two meanings of **MO** are written down at the top of this file. |
+| `src/fleet/report.js` | **`FLEET_REPORT`** — the seven questions, answered once and rendered twice, so the spreadsheet cannot drift from the screen. |
+| `src/fleet/xlsx.js` | **`FLEET_XLSX`** — a very small workbook writer: plain grids, one tab per question. Nothing here is a designed page, so none of `src/xlsx.js` is needed. |
+| `src/fleet/ui.js`, `src/fleet/page.html`, `src/fleet/fleet.css` | The analyser's page. It reuses `src/styles.css` for its colours, header and drop zone, and adds only the report furniture. |
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code left: zip/unzip for docx and xlsx, zlib inflate for the PDF streams. |
-| `build.mjs` | Assembles `src/` into the single file. |
+| `build.mjs` | Assembles `src/` into both single files. |
 | `test/` | The golden test suite (see [Building and testing](#building-and-testing)). `test/fixtures/legacy.html` is the frozen pre-overhaul build the suite compares against. |
 | `tools/` | Development utilities: the Playwright smoke tests and screenshot scripts (all of which share `tools/browser.mjs` for finding Chromium), the order mark-up sheet, and the Word-guide generator. |
 
@@ -1266,6 +1279,86 @@ used until both were brought onto the one rule.
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.
 
+## The diagram analyser
+
+`Diagram Analyser.html` is the second tool in this repository. It reads the
+**same diagram print books** as the weekend berthing sheets — through the same
+reader, `src/prints-read.js`, so the two can never disagree about what counts
+as a readable file — but it asks different questions of them.
+
+The berthing sheets answer *where is every unit tonight*. The analyser answers
+what the plan means for **looking after** the units:
+
+| Question | What it reports |
+| --- | --- |
+| Arrivals home | How many diagrams put a unit into the home depot, split morning / afternoon / after midnight, and how many stands are nowhere near a depot that can repair the fleet |
+| Home before 20:00 | The diagrams back in the home area between noon and 20:00, and where each of them started |
+| Restricted units | The diagrams coupled on *every* leg — the only ones an **MO** unit can take — with where each starts and ends |
+| Week joins | Whether the plan closes on itself, day by day, and how many units must be repositioned at each join |
+| Mileage | Annual and average daily miles, measured over one full week of the timetable |
+| Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
+| Cannot contain | The places a restricted unit has no diagram to take, because everything starting there leaves it on its own |
+
+Drop all the print books on it at once (FSX, FO, SO and Sun). Each fleet gets
+a tab; everything can be saved as a spreadsheet, one tab per question.
+
+### MO means two different things
+
+Both are real and both matter, so the tool never prints `MO` bare:
+
+* On a print, **MO** is a **day code**: *Mondays Only*. It is read by
+  `daysOf()` alongside `FSX`, `FO`, `SO`, `Su`, `WThO` and the rest. `Th` has
+  to be matched before `T`, or Thursday becomes Tuesday followed by a stray H.
+* In the depot, **MO** is a **restricted unit**: one that may not run on its
+  own and has to be coupled to another. A diagram can carry one only if the
+  unit is attached for every leg it works — `moCapable()`. That is what the
+  *Restricted units* and *Cannot contain* sections are about, and it has
+  nothing to do with the day code.
+
+Day codes are always shown spelt out (`Mon only`, `Mon–Thu`) for this reason.
+
+### Home and repair depots are settings, not facts
+
+The prints do not say which depot owns a fleet, so the tool carries that as a
+setting you can change on the page — a home depot plus everywhere the fleet
+can actually be repaired, which is usually more places than one. The choice is
+remembered in the browser. A fleet moving depot must never need a new version
+of the file.
+
+The defaults are Ramsgate for the 375s, Gillingham for the 376s (also repaired
+at Ramsgate and Slade Green), Ashford for the 395s and Slade Green for the
+Metro classes. **The 377 default, Ashford, is worked out from the prints
+rather than given**, and the page says so on the card.
+
+### Why every total is measured on a date
+
+A diagram is printed **once per validity period**, so the same number appears
+more than once with different `From`/`Until` dates whenever an engineering
+period splits it. Adding up the printed diagrams therefore counts a re-issued
+one twice — it put the 375 annual mileage 6% high before this was found. Every
+figure is instead measured on a **reference week**: the diagrams actually valid
+that day, running that weekday, over seven days. Anything still duplicated on
+that week is reported rather than quietly summed.
+
+### Two things that are easy to get wrong
+
+* **A berth spans two lines.** A stand is written as an arrival on one line
+  (arrive filled, depart blank, often with `ATTACH`/`DETACH` against it) and a
+  departure on the next. Subtracting within a line finds nothing, and every
+  mid-day stand disappears — which is most of what the depot wants to see.
+* **The clock has to roll past midnight.** A diagram starting 05.00 and
+  finishing 00.54 finishes *after* midnight. Wrapped to a 24-hour clock it
+  reads as the earliest arrival of the day and the morning/afternoon split
+  comes out backwards. Times are shown rolled, so `25:02` means two minutes
+  past one the next morning.
+
+Diagrams that never move (every line `STABLD`, no miles) are kept and counted.
+The berthing sheets leave them out because there is nothing to berth;
+maintenance wants them most of all, because a unit standing still all day is
+precisely the one that can be reached.
+
+---
+
 ## Reference data — where the knowledge lives
 
 All of the tool's local knowledge lives in **one module — `src/data.js`
@@ -1302,6 +1395,7 @@ written to the review list so it can be checked and, if right, promoted into
 
 ```
 node build.mjs     # assemble src/ into "Sheets Generator.html"
+                   # and "Diagram Analyser.html"
 npm test           # build, then run the golden test suite (no dependencies)
 ```
 
@@ -1327,10 +1421,24 @@ compared deeply —
 * `test/build.test.mjs` — the artifact is lean, self-contained, and free
   of the removed dead code.
 
-`tools/smoke.mjs` additionally drives the real page in the pre-installed
-Chromium via Playwright — drops files on both panels through the actual file
-inputs and checks the previews render. CI (`.github/workflows/ci.yml`) builds
-the file, runs the suite, and uploads the artifact.
+The diagram analyser has no legacy build to be compared against, so
+`test/fleet.test.mjs` tests it against stated behaviour instead: the day
+codes (including `Th` before `T`, and `MO` as *Mondays Only*), the clock
+rolling past midnight, a berth being an arrival paired with the *next*
+line's departure, `moCapable` on a diagram that detaches, a location with
+nothing coupled leaving it, and mileage over a reference week refusing to
+count a re-issued diagram twice. Its fixture is invented, like every other
+fixture here — **no real planning data is ever committed**.
+
+`tools/smoke.mjs`, `tools/smoke-gcsv.mjs` and `tools/smoke-fleet.mjs`
+additionally drive the real pages in the pre-installed Chromium via
+Playwright — they drop files through the actual file inputs and check what
+renders. The unit tests run in a `vm` with a stubbed DOM, so `ui.js` only has
+to *parse* to pass them; renaming one selector it depends on leaves the page
+completely dead with every test still green, and only a browser catches that.
+CI (`.github/workflows/ci.yml`) builds both files, fails if either committed
+build has drifted from `src/`, runs the suite and all three smokes, and
+uploads the artifacts.
 
 Development notes:
 

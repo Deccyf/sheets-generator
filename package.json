@@ -1,10 +1,10 @@
 {
   "name": "sheets-generator",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "//released": "Shown in the page footer so a copy can be identified. Set by hand with the version - NOT from the clock, because CI rebuilds and fails on any diff, so a wall-clock stamp would break every run.",
-  "released": "25 August 2026",
+  "released": "26 August 2026",
   "private": true,
-  "description": "Unit berthing sheets from Genius reports and weekend diagram prints — a single offline HTML file.",
+  "description": "Unit berthing sheets from Genius reports and weekend diagram prints, and a fleet analysis of the same prints — two single offline HTML files.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",

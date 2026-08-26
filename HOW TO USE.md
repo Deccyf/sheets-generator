@@ -20,6 +20,7 @@ No training needed — if you can find the reports, the page does the rest.
 10a. [Long platform stands](#10a-long-platform-stands)
 11. [When something looks wrong](#11-when-something-looks-wrong)
 12. [Before the books go out](#12-before-the-books-go-out)
+13. [The diagram analyser — a separate tool](#13-the-diagram-analyser--a-separate-tool)
 
 ---
 
@@ -583,6 +584,56 @@ St Pancras or Swanley is not a berthing question.
 * Remember this is a **drafting tool**. It applies the house rules faithfully and
   tells you where it had to make a call — but the books are yours, and a human
   signs them off.
+
+---
+
+## 13. The diagram analyser — a separate tool
+
+`Diagram Analyser.html` is a **second page**, opened the same way as this one.
+It reads the *same* diagram print books, but instead of building berthing
+sheets it answers the questions maintenance planning keeps asking.
+
+Drop **all** the print books on it at once — FSX, FO, SO and Sun together.
+Each fleet gets a tab across the top. What comes back, for whichever fleet you
+have picked:
+
+| Section | What it tells you |
+| --- | --- |
+| **Arrivals into &lt;depot&gt;** | How many diagrams bring a unit home, split morning, afternoon and after midnight — and how many stands are nowhere near a depot that can repair the fleet |
+| **Home before 20:00** | Which diagrams are back early enough to be worked on the same evening, and where each one started that morning |
+| **Diagrams a restricted unit can work** | The diagrams that stay coupled the whole day — the only ones you can put an **MO** unit on |
+| **Does the week close on itself?** | Whether the plan runs itself, or whether units have to be moved at the end of a day. One line per join, Monday through Sunday |
+| **Mileage** | Annual and average daily miles for the fleet, and the miles each day of the week |
+| **Where a unit stands long enough to be attended** | Every place a unit sits still for two hours or more during the day — where MSE or MIST can actually get to it |
+| **Where a restricted unit cannot be contained** | The places where every diagram leaves a unit on its own at some point, so a restricted unit standing there has nothing it can work |
+
+**Save this fleet as a spreadsheet** puts the lot into Excel, one tab per
+section, with the filters already on. **Save every fleet** does all of them in
+one workbook.
+
+### A word about "MO"
+
+**MO means two different things**, and the tool keeps them apart:
+
+* On the print, **MO** is a *day code* — **Mondays Only**. The tool always
+  writes day codes out in full (`Mon only`, `Mon–Thu`) so this can never be
+  misread.
+* In the depot, an **MO unit** is a *restricted* unit that can't run on its
+  own. Everywhere the analyser says "restricted unit", that is what it means.
+
+### Set your depots first
+
+The prints don't say which depot owns a fleet, so the **Depots** panel near
+the top lets you set it: a home depot, plus everywhere else the fleet can be
+repaired. Tick Ramsgate and Slade Green for the 376s, for instance, and both
+count as somewhere a 376 can be worked on. Your choices are remembered on that
+computer, and everything below redraws as soon as you change one.
+
+The 377 setting is a **guess made from the prints** rather than something the
+tool was told, and the card says so — check it.
+
+> As with the sheets, nothing leaves the computer. It reads the prints in the
+> page and writes the spreadsheet in the page.
 
 ---
 

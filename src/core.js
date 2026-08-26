@@ -5,6 +5,10 @@
 "use strict";
 const SHEETS_CORE = (() => {
 const { DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE } = SHEETS_DATA;
+/* csvParse lives with the file readers in src/prints-read.js - it is a
+   plain CSV splitter with no berthing knowledge, and both tools need it.
+   Re-exported here because every caller already asks SHEETS_CORE for it. */
+const { csvParse } = SHEETS_PRINTS;
 function pyStr(v) {
   if (typeof v === "number" && Number.isInteger(v)) return String(v);
   return String(v);
@@ -118,30 +122,6 @@ function amPm(visits, flags) {
    and so are the weekend prints when somebody has saved them out of a
    spreadsheet, so it cannot live in either engine. Quoted fields, doubled
    quotes inside them, CRLF or LF, and a leading byte-order mark. */
-function csvParse(text) {
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  const rows = [];
-  let row = [], field = "", q = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (q) {
-      if (c === '"') {
-        if (text[i + 1] === '"') { field += '"'; i++; }
-        else q = false;
-      } else field += c;
-    } else if (c === '"') q = true;
-    else if (c === ",") { row.push(field); field = ""; }
-    else if (c === "\n" || c === "\r") {
-      if (c === "\r" && text[i + 1] === "\n") i++;
-      row.push(field); field = "";
-      if (row.length > 1 || row[0] !== "") rows.push(row);
-      row = [];
-    } else field += c;
-  }
-  row.push(field);
-  if (row.length > 1 || row[0] !== "") rows.push(row);
-  return rows;
-}
 
 return { strip, pyStr, pad2, cleanLoc, norm, sheetStation, isSiding,
          locBinfo, destTlc, fmtTime, amPm, csvParse,

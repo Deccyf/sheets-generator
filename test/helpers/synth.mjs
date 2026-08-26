@@ -653,3 +653,74 @@ export const STABLED_PRINTS = printsLines([
   "From:\t01/08/2026",
   "\t\tS Gn U Sd\t\t\t\tSTABLD\t\t",
 ]);
+
+/* ---- an invented set of prints -----------------------------------------
+   Two depots, a fleet that comes home mid-morning and goes out again, one
+   diagram that never uncouples and one that does, and a place every
+   diagram runs alone out of.                                             */
+export const FLEET_LINES = [
+  /* Monday to Thursday: out early, stands at the depot all day, back late.
+     Coupled on every leg, so a restricted unit could take it. */
+  "Diagram:\tXX\t101\tFSX",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tHome Dep\t\t05.30\t5A01\t\t0.5\t101(1)\\102(2)",
+  "\t\tHome Stn\t05.35\t05.45\t2A01\t\t10.0\t101(1)\\102(2)",
+  "\t\tFar Stn\t07.00\t\t\tATTACH\t60.0\t",
+  "\t\tFar Stn\t\t09.00\t2A02\t\t60.0\t101(1)\\102(2)",
+  "\t\tHome Dep\t10.30\t\t\t#\t110.0\t",
+  "\t\tHome Dep\t\t16.00\t5A05\t\t110.0\t101(1)\\102(2)",
+  "\t\tHome Stn\t16.05\t16.10\t2A06\t\t120.0\t101(1)\\102(2)",
+  "\t\tHome Dep\t23.40\t\t\t\t180.0\t",
+  "Total miles:\t180.0",
+  /* The same days, but it detaches and finishes the day on its own, so a
+     restricted unit could NOT take it. It also runs past midnight. */
+  "Diagram:\tXX\t102\tFSX",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tHome Dep\t\t05.30\t5A01\t\t0.5\t101(1)\\102(2)",
+  "\t\tHome Stn\t05.35\t05.45\t2A01\t\t10.0\t101(1)\\102(2)",
+  "\t\tFar Stn\t07.00\t\t\tDETACH\t60.0\t",
+  "\t\tFar Stn\t\t09.00\t2B02\t\t60.0\t",
+  "\t\tOut Sdg\t00.20\t\t\t\t150.0\t",
+  "Total miles:\t150.0",
+  /* Out Sdg is the only place this one starts, and it runs alone the whole
+     way: nothing coupled leaves Out Sdg. */
+  "Diagram:\tXX\t103\tFSX",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tOut Sdg\t\t06.00\t5C01\t\t0.5\t",
+  "\t\tHome Stn\t08.00\t08.10\t2C02\t\t40.0\t",
+  "\t\tOut Sdg\t22.00\t\t\t\t90.0\t",
+  "Total miles:\t90.0",
+  /* Mondays only — the day code, which has nothing to do with a restricted
+     unit. Reading "MO" as anything else would put this on every day. */
+  "Diagram:\tXX\t104\tMO",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tHome Dep\t\t07.00\t5D01\t\t0.5\t104(1)\\101(2)",
+  "\t\tHome Stn\t07.20\t07.30\t2D02\t\t20.0\t104(1)\\101(2)",
+  "\t\tHome Dep\t21.00\t\t\t\t70.0\t",
+  "Total miles:\t70.0",
+  /* Thursdays only — "Th" must be read before "T", or this lands on Tue. */
+  "Diagram:\tXX\t105\tThO",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tHome Dep\t\t08.00\t5E01\t\t0.5\t",
+  "\t\tHome Dep\t20.00\t\t\t\t50.0\t",
+  "Total miles:\t50.0",
+  /* Never moves: every line STABLD and no miles. The berthing sheets leave
+     these out; maintenance wants them most of all. */
+  "Diagram:\tXX\t106\tFSX",
+  "Fleet:\t375/6",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tHome Dep\t\t\t\tSTABLD\t\t",
+  "Total miles:\t0.0",
+  /* Another fleet entirely, to prove the split by Fleet: and not by prefix. */
+  "Diagram:\tXX\t201\tFSX",
+  "Fleet:\t377/5",
+  "From:\t01/06/2026\tUntil:\t31/12/2026",
+  "\t\tOther Dep\t\t06.00\t5F01\t\t0.5\t",
+  "\t\tOther Dep\t22.00\t\t\t\t100.0\t",
+  "Total miles:\t100.0",
+];

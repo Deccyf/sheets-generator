@@ -694,6 +694,59 @@ const children = [
       "and tells you where it had to make a call — but the books are yours, and " +
       "a human signs them off.",
   ]),
+  gap(240),
+
+  h2("13. The diagram analyser — a separate tool"),
+  lead("A second page, opened the same way as this one. It reads the SAME " +
+    "diagram print books, but instead of building berthing sheets it answers " +
+    "the questions maintenance planning keeps asking."),
+  p("Drop **all** the print books on it at once — FSX, FO, SO and Sun " +
+    "together. Each fleet gets a tab across the top, and for whichever fleet " +
+    "you have picked you get:"),
+  grid([4600, W - 4600],
+    ["Section", "What it tells you"],
+    [["Arrivals into <depot>",
+      "How many diagrams bring a unit home, split morning, afternoon and " +
+      "after midnight — and how many stands are nowhere near a depot that " +
+      "can repair the fleet."],
+     ["Home before 20:00",
+      "Which diagrams are back early enough to be worked on the same " +
+      "evening, and where each one started that morning."],
+     ["Diagrams a restricted unit can work",
+      "The diagrams that stay coupled all day — the only ones you can put " +
+      "an MO unit on — and whether that work carries over to the next day."],
+     ["Does the week close on itself?",
+      "Whether the plan runs itself or units have to be moved at the end of " +
+      "a day. One line per join, Monday through Sunday."],
+     ["Mileage",
+      "Annual and average daily miles for the fleet, and the miles each day."],
+     ["Where a unit stands long enough to be attended",
+      "Every place a unit sits still for two hours or more during the day — " +
+      "where MSE or MIST can actually get to it."],
+     ["Where a restricted unit cannot be contained",
+      "The places where every diagram leaves a unit on its own at some " +
+      "point, so a restricted unit standing there has nothing it can work."]]),
+  gap(160),
+  p("**Save this fleet as a spreadsheet** puts the lot into Excel, one tab " +
+    "per section with the filters already on. **Save every fleet** does all " +
+    "of them in one workbook."),
+  callout("MO means two different things",
+    "On the print, MO is a DAY CODE — Mondays Only. The tool always writes " +
+    "day codes out in full (Mon only, Mon–Thu) so this can never be misread. " +
+    "In the depot, an MO unit is a RESTRICTED unit that cannot run on its " +
+    "own. Everywhere the analyser says \u201crestricted unit\u201d, that is " +
+    "what it means."),
+  h3("Set your depots first"),
+  p("The prints do not say which depot owns a fleet, so the **Depots** panel " +
+    "near the top lets you set it: a home depot, plus everywhere else the " +
+    "fleet can be repaired. Tick Ramsgate and Slade Green for the 376s, for " +
+    "instance, and both count as somewhere a 376 can be worked on. Your " +
+    "choices are remembered on that computer, and everything below redraws " +
+    "as soon as you change one."),
+  p("The 377 setting is a **guess made from the prints** rather than " +
+    "something the tool was told, and the card says so — check it."),
+  p("As with the sheets, nothing leaves the computer."),
+
   gap(80),
   p("*A rule that doesn't match how your patch does it? Say so — the rules live " +
     "in one place and can be corrected.*"),

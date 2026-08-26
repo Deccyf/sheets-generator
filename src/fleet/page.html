@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram analyser — what the prints say about looking after the units</title>
+<style>
+{{CSS}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <noscript><p style="border:2px solid #9B2226;padding:14px;font-family:var(--mono);
+    font-size:13px">Scripting is switched off in this browser, so the prints can't be
+    read. Switch it on, or open this file in Edge, Chrome or Firefox.</p></noscript>
+  <p id="oldbrowser" hidden style="border:2px solid #9B2226;padding:14px;
+    font-family:var(--mono);font-size:13px">This browser is too old to read the
+    prints. Right-click the file, choose Open with, and pick Edge, Chrome or
+    Firefox.</p>
+
+  <header>
+    <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
+    <h1>Diagram analyser <span class="sub">what the prints say about looking after the units</span></h1>
+    <p class="lede">Drop the diagram print books on the road below — all of them at
+      once — and the questions maintenance planning keeps asking come back answered:
+      when each fleet comes home, what stands still long enough to be worked on,
+      what can carry a restricted unit, and where a diagram comes apart.
+      Nothing leaves this computer.</p>
+  </header>
+
+  <button type="button" class="berth" id="zone">
+    <span class="berth-inner">
+      <span class="buffer"></span>
+      <span class="berth-txt">
+        <strong>Drop the diagram prints here</strong>
+        <span id="zonehint">The Word documents straight off the planning system — FSX,
+          FO, SO and Sun together. A text or CSV save of the same works too.</span>
+      </span>
+    </span>
+  </button>
+  <input type="file" id="file" multiple hidden
+         accept=".doc,.docx,.txt,.csv,application/msword">
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <section id="setup" hidden>
+    <h2 class="sech">Depots</h2>
+    <p class="secn">Which depot owns each fleet, and everywhere it can be repaired.
+      These are your arrangements, not something the prints state, so set them here
+      rather than waiting on a new version of this file. They are remembered on this
+      computer.</p>
+    <div id="depots" class="depots"></div>
+    <p class="secn"><button type="button" class="btn ghost" id="resetcfg">Put the
+      depots back to the defaults</button></p>
+  </section>
+
+  <section id="out" hidden>
+    <div class="fleetbar" id="fleetbar" role="tablist"></div>
+    <div id="report"></div>
+    <p class="actions">
+      <button type="button" class="btn" id="save">Save this fleet as a spreadsheet</button>
+      <button type="button" class="btn ghost" id="saveall">Save every fleet</button>
+    </p>
+  </section>
+
+  <footer>
+    <p class="small">Reads the diagram prints only — the Word documents the plan is
+      published as. Everything is worked out in this page; no file is uploaded and
+      nothing is sent anywhere.</p>
+    <p class="small">Version <b>{{VERSION}}</b> &middot; {{RELEASED}}</p>
+  </footer>
+</div>
+{{SCRIPTS}}
+</body>
+</html>

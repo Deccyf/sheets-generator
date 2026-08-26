@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagram analyser — what the prints say about looking after the units</title>
+<style>
+  :root{
+    --apron:#D5D7D0; --apron-dk:#C4C7BF; --steel:#262E33; --paper:#FAF9F5;
+    --signal:#0E7C42; --amber:#9C5C10; --chalk:#525A62; --rail:#5A6169;
+    /* --rule was used by the Rules tables and never declared, so their
+       header borders and the note rail simply did not draw */
+    --rule:#C4C7BF;
+    /* the warning colour: --amber only reaches 3.67:1 on the apron */
+    --warn:#7A470C;
+    /* the double-check notice is the one thing on the page that is about a
+       sheet going out wrong, so it is signal red rather than amber. Measured
+       6.96:1 on --paper and 5.05:1 on the apron, so it clears AA for the
+       small uppercase label as well as the body text. */
+    --danger:#A81E17;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--apron); color:var(--steel); font-family:var(--sans);
+    font-size:15px; line-height:1.5;
+  }
+  .wrap{max-width:700px; margin:0 auto; padding:38px 20px 64px}
+
+  /* ---------- header ---------- */
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:.20em;
+    text-transform:uppercase; color:var(--chalk); margin:0 0 10px;
+  }
+  h1{
+    font-family:var(--mono); font-weight:600; font-size:clamp(28px,6vw,42px);
+    letter-spacing:-.01em; margin:0; line-height:1.05;
+  }
+  h1 .sub{display:block; color:var(--chalk); font-weight:400; font-size:.45em;
+    letter-spacing:.16em; text-transform:uppercase; margin-top:12px}
+  .lede{max-width:52ch; margin:18px 0 0; color:#3C464D}
+
+  /* ---------- drop zone: a berth road ---------- */
+  .berth{
+    margin:30px 0 0; padding:0; border:0; background:none; width:100%;
+    display:block; cursor:pointer; font:inherit; color:inherit; text-align:left;
+  }
+  .berth-inner{
+    border:2px dashed var(--rail); background:var(--paper);
+    padding:30px 26px; display:flex; gap:20px; align-items:center;
+    transition:border-color .15s, background .15s, box-shadow .15s;
+  }
+  .berth:hover .berth-inner, .berth:focus-visible .berth-inner{
+    border-color:var(--signal); box-shadow:0 0 0 3px rgba(14,124,66,.14);
+  }
+  /* A real ring, not the hover treatment recoloured. Keyboard focus was a
+     2px dashed border going from grey to green - 1.22:1 against the
+     unfocused state, where 3:1 is wanted, and indistinguishable from hover.
+     Every other control on the page already carries a proper ring. */
+  .berth:focus-visible{outline:3px solid var(--steel); outline-offset:3px}
+  .berth.dragover .berth-inner{
+    border-style:solid; border-color:var(--signal); background:#F2F7F3;
+  }
+  .buffer{flex:0 0 auto; width:44px; height:44px; position:relative}
+  .buffer::before{
+    content:""; position:absolute; inset:auto 0 12px 0; height:2px; background:var(--rail);
+  }
+  .buffer::after{
+    content:""; position:absolute; right:0; bottom:4px; width:8px; height:18px;
+    background:var(--rail);
+  }
+  .berth-txt strong{display:block; font-family:var(--mono); font-size:16px;
+    letter-spacing:.01em}
+  .berth-txt span{display:block; color:var(--chalk); font-size:13px; margin-top:4px}
+
+  /* ---------- status ---------- */
+  .status{
+    margin:18px 0 0; font-family:var(--mono); font-size:13px; letter-spacing:.04em;
+    min-height:20px; color:var(--chalk);
+  }
+  .status.err{color:#9B2226}
+  .status.go{color:var(--signal)}
+  /* The build asked for this and it did not exist, so the one message that
+     says something needs a human eye fell back to the faintest grey on the
+     page while "nothing needed a human eye" got the green. */
+  .status.warn{color:var(--warn)}
+
+  /* ---------- roads ---------- */
+  .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}
+  /* before anything is built the panel left 88px of nothing between the
+     headcode box and the notes below it, which reads as a broken page */
+  .roads:empty{margin:0}
+  .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
+  /* The Metro sheet is fourteen columns across, which will not sit inside the
+     page's own column. This one card steps outside it. */
+  /* Every road card is the same width as every other, and as the rest of the
+     page. The Metro and 395 cards used to step outside the column to fit
+     their wider sheets, and a populated one then sat half again as wide as
+     the card above it - an empty road never took the break-out at all, so
+     the same page could show both. A sheet wider than the card scrolls
+     inside its own preview instead, which is where the scrollbar belongs. */
+  .pickbar{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
+  }
+  .pickbar label{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); display:flex; gap:8px;
+    align-items:center;
+  }
+  .pickbar select{
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    padding:6px 9px; border:1px solid var(--apron-dk); background:#fff;
+    color:var(--steel); text-transform:none;
+  }
+  .pickbar .picknote{font-family:var(--mono); font-size:11px; color:var(--chalk)}
+  .metro-view{overflow:auto}
+  .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  .road-no{
+    font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    color:#fff; background:var(--steel); padding:3px 7px;
+  }
+  .road-name{font-family:var(--mono); font-size:19px; margin:0; font-weight:600}
+  .road-fleet{font-family:var(--mono); font-size:12px; color:var(--chalk);
+    letter-spacing:.08em; margin-left:auto}
+
+  .track{
+    position:relative; height:46px; margin:16px 0 14px;
+    border-top:2px solid var(--rail); border-bottom:2px solid var(--rail);
+    background-image:repeating-linear-gradient(90deg,
+      var(--apron-dk) 0 3px, transparent 3px 14px);
+  }
+  .unit{
+    position:absolute; top:6px; left:8px; height:30px; display:flex; align-items:center;
+    gap:9px; padding:0 12px; background:var(--steel); color:var(--paper);
+    font-family:var(--mono); font-size:12px; letter-spacing:.08em;
+    animation:roll .45s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .unit b{font-size:14px; font-weight:600}
+  .unit::after{
+    content:""; position:absolute; right:-7px; top:50%; margin-top:-4px;
+    width:0; height:0; border-left:7px solid var(--steel);
+    border-top:4px solid transparent; border-bottom:4px solid transparent;
+  }
+  @keyframes roll{from{transform:translateX(-40px); opacity:0} to{transform:none; opacity:1}}
+
+  .nothing{margin:14px 0 0; font-size:13.5px; color:var(--chalk)}
+  .reviewline{
+    font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:.03em;
+    margin:0 0 13px;
+  }
+  .reviewline.clean{color:var(--signal)}
+  .panel{margin:15px 0 0; border-top:1px solid var(--apron-dk); padding-top:13px}
+  .tabs{display:flex; gap:7px; margin:0 0 11px}
+  .tab{
+    font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    padding:6px 11px; border:1px solid var(--apron-dk); background:none; cursor:pointer;
+    color:var(--chalk);
+  }
+  .tab[aria-selected="true"]{background:var(--steel); color:var(--paper); border-color:var(--steel)}
+  .tab:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+  .view{max-height:58vh; overflow:auto; background:#fff; border:1px solid var(--apron-dk)}
+  table.sheet{
+    border-collapse:collapse; table-layout:fixed;
+    font-family:Arial, Helvetica, sans-serif; color:#000;
+  }
+  /* the 395 sheet is set in Calibri throughout, so it is said once here
+     rather than on every one of its hundred-odd style records */
+  table.sheet.calibri{font-family:Calibri, Carlito, Arial, sans-serif}
+  /* Excel lets a long value spill across the empty cells beside it, and the
+     395 sheet's headings depend on that - clipped to their own column they
+     read TRAI…, ARRI…, CET…, so the check on screen was less legible than
+     the workbook it previews. A filled cell paints over its neighbour, the
+     way the spreadsheet does; an empty one stays out of the way. */
+  table.sheet td{
+    padding:1px 3px; height:23px; vertical-align:middle;
+    white-space:nowrap; overflow:visible;
+  }
+  table.sheet td:not(:empty){position:relative; z-index:1; background:#fff}
+  /* where the paper falls when the book is printed */
+  table.sheet tr.pbrk td{
+    border-top:2px dashed #7A8A94; height:18px; padding:2px 3px 0;
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:#7A8A94; text-align:left;
+  }
+  ul.reviews{margin:0; padding:14px 16px 14px 32px; font-size:13.5px; color:#3C464D}
+  ul.reviews li{margin:0 0 6px}
+  ul.reviews li:last-child{margin:0}
+  .noreviews{margin:0; padding:16px; font-size:13.5px; color:var(--chalk)}
+  .acts{display:flex; gap:9px; flex-wrap:wrap}
+  .btn{
+    font-family:var(--mono); font-size:12px; letter-spacing:.09em; text-transform:uppercase;
+    padding:9px 14px; border:1.5px solid var(--steel); background:var(--steel);
+    color:var(--paper); cursor:pointer;
+  }
+  .btn.ghost{background:none; color:var(--steel)}
+  .btn:hover{background:var(--signal); border-color:var(--signal); color:#fff}
+  .btn:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+
+
+  .allbar{margin:28px 0 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .allbar .note{font-family:var(--mono); font-size:11.5px; color:var(--chalk);
+    letter-spacing:.05em}
+
+  footer{
+    margin:46px 0 0; padding-top:18px; border-top:1px solid var(--apron-dk);
+    font-size:13.5px; color:#4A545B; max-width:56ch;
+  }
+  footer h2{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--chalk); margin:0 0 8px; font-weight:400}
+  footer p{margin:0 0 10px}
+  @media (prefers-reduced-motion: reduce){ .unit{animation:none} }
+
+  /* ---------- page structure: platforms & explainers ---------- */
+  [hidden]{display:none !important}
+  .ink{color:#3C464D}
+  .quick{
+    margin:26px 0 0; background:var(--paper); border-left:4px solid var(--signal);
+    padding:16px 20px 14px;
+  }
+  .quick h2{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--chalk); margin:0 0 10px; font-weight:400}
+  .steps{margin:0; padding:0; list-style:none; counter-reset:step}
+  .steps > li{
+    position:relative; padding:0 0 8px 40px; counter-increment:step; font-size:14px;
+  }
+  .steps > li:last-child{padding-bottom:0}
+  /* One setting decides whether the reports carry the unit order at all, so
+     it gets a rule down the side rather than another grey sentence. */
+  .mustdo{
+    display:block; margin:8px 0 0; padding:8px 12px; font-size:13px;
+    line-height:1.5; color:#3C464D; background:#FFF6E8;
+    border-left:3px solid var(--amber);
+  }
+  .mustdo b{color:var(--amber); font-family:var(--mono); font-size:11px;
+    letter-spacing:.08em; text-transform:uppercase; display:block;
+    margin-bottom:3px}
+  .mustdo code{font-family:var(--mono); font-size:12px; background:#fff;
+    border:1px solid #E8CFA6; padding:1px 4px}
+  .steps > li::before{
+    content:counter(step); position:absolute; left:0; top:1px; width:24px; height:24px;
+    background:var(--steel); color:var(--paper); font-family:var(--mono); font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  details.hint{display:block; position:relative; margin-top:5px}
+  details.hint summary{
+    display:inline; cursor:pointer; list-style:none; font-size:13px;
+    color:var(--signal); text-decoration:underline dotted; user-select:none;
+  }
+  details.hint summary::-webkit-details-marker{display:none}
+  details.hint summary:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+  details.hint .pop{
+    display:block; margin:10px 0 4px; padding:10px; background:var(--paper);
+    border:1px solid var(--apron-dk); box-shadow:0 4px 14px rgba(38,46,51,.18);
+    max-width:280px;
+  }
+  details.hint .pop img{display:block; width:100%; height:auto;
+    border:1px solid var(--apron-dk)}
+  details.hint .pop span{display:block; margin-top:7px; font-size:12px;
+    color:var(--chalk)}
+  details.hint.wide .pop{max-width:520px}
+  details.hint .pop .how-h{
+    display:block; font-family:var(--mono); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--steel); margin:1px 0 6px;
+  }
+  details.hint .pop ol.how{
+    margin:0 0 12px; padding:0 0 0 18px; font-size:12.5px; line-height:1.5;
+    color:#3C464D;
+  }
+  details.hint .pop ol.how li{margin:0 0 5px}
+  details.hint .pop ol.how img{margin:6px 0 2px}
+  .platform{margin:44px 0 0; padding-top:26px; border-top:2px solid var(--steel)}
+  .sign{
+    display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:#fff; background:var(--steel); padding:4px 9px;
+  }
+  .platform h2{
+    font-family:var(--mono); font-size:21px; font-weight:600; margin:12px 0 0;
+    letter-spacing:0;
+  }
+  .platform > .whatfor{margin:8px 0 0; color:#3C464D; max-width:58ch; font-size:14px}
+  details.explain{
+    margin:16px 0 0; background:var(--paper); border:1px solid var(--apron-dk);
+  }
+  details.explain summary{
+    cursor:pointer; padding:11px 16px; font-family:var(--mono); font-size:12.5px;
+    letter-spacing:.06em; color:var(--steel); list-style:none; user-select:none;
+  }
+  details.explain summary::-webkit-details-marker{display:none}
+  details.explain summary::before{content:"+"; display:inline-block; width:18px;
+    color:var(--signal); font-weight:600}
+  details.explain[open] summary::before{content:"\2212"}
+  details.explain summary:focus-visible{outline:2px solid var(--signal); outline-offset:-2px}
+  .explain-body{padding:2px 18px 15px; font-size:13.5px; color:#3C464D}
+  .explain-body p{margin:0 0 10px; max-width:60ch}
+  .explain-body p:last-child{margin-bottom:0}
+  .explain-body dt{font-family:var(--mono); font-size:12px; letter-spacing:.05em;
+    margin:12px 0 3px; color:var(--steel)}
+  .explain-body dd{margin:0 0 4px; max-width:58ch}
+  .books{margin:14px 0 0; padding:0; list-style:none; display:grid; gap:8px}
+  .books li{background:var(--paper); border:1px solid var(--apron-dk); padding:10px 14px;
+    font-size:13.5px}
+  .books b{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em}
+  .checknote{
+    margin:14px 0 0; padding:13px 16px; background:var(--paper);
+    border-left:5px solid var(--danger); font-size:14px; line-height:1.55;
+    color:#333B41; font-weight:500; max-width:60ch;
+  }
+  .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--danger); font-weight:700;
+    display:block; margin-bottom:5px}
+  .smallprint{margin:46px 0 0; padding-top:16px; border-top:1px solid var(--apron-dk);
+    font-size:12.5px; color:var(--chalk); max-width:60ch}
+  /* the build stamp sits under the small print, tighter to it than to the
+     paragraph above, because it is a label on the file rather than prose */
+  .buildstamp{margin-top:14px; padding-top:0; border-top:0}
+  .buildstamp .bsnote{display:block; margin-top:4px; opacity:.72}
+
+  /* ---------- fleet sprites ---------- */
+  .lineup{display:flex; gap:32px; align-items:flex-end; margin:26px 0 0; flex-wrap:wrap}
+  .lineup figure{margin:0}
+  .lineup svg{height:32px; width:auto; display:block}
+  .lineup figcaption{font-family:var(--mono); font-size:10.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--chalk); margin-top:7px}
+  .road-sprite{margin-left:14px; align-self:center}
+  .road-sprite svg{height:20px; width:auto; display:block}
+  .unit svg{height:16px; width:auto; display:block}
+
+
+  /* ---------- paste the reports in instead of dropping files ----------
+     Some machines will not let the reports be saved anywhere the browser can
+     reach. The panel stays shut until it is wanted, so the ordinary route
+     still reads as the ordinary route. */
+  .orpaste{margin:14px 0 0}
+  .linkish{
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    color:var(--rail); background:none; border:0; padding:0; cursor:pointer;
+    text-decoration:underline; text-underline-offset:3px;
+  }
+  .linkish:hover{color:var(--signal)}
+  .linkish:focus-visible{outline:2px solid var(--signal); outline-offset:3px}
+  .linkish::before{content:"+ "; text-decoration:none}
+  [aria-expanded="true"].linkish::before{content:"\2212 "}
+  .pastebox{
+    margin:12px 0 0; padding:14px; border:1px solid var(--apron-dk);
+    background:var(--paper);
+  }
+  .paste-hint{margin:0 0 12px; font-size:12.5px; line-height:1.45;
+    color:var(--chalk)}
+  .paste-hint em{font-style:normal; color:var(--steel)}
+  .paste-pair{display:flex; gap:14px; flex-wrap:wrap}
+  /* stretch so the two boxes line up at the bottom whatever their labels do */
+  .paste-fld{flex:1 1 260px; display:flex; flex-direction:column; gap:5px}
+  .paste-fld textarea{flex:1 1 auto}
+  .paste-fld > span{
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--steel); font-weight:700;
+  }
+  .paste-fld em{
+    display:block; font-family:var(--sans); font-size:11.5px; font-style:normal;
+    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400;
+    margin-top:2px;
+  }
+  .paste-fld textarea{
+    font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
+    border:1px solid var(--apron-dk); background:#fff; color:var(--steel);
+    resize:vertical; min-height:96px; width:100%;
+  }
+  .paste-fld textarea:focus-visible{outline:2px solid var(--signal);
+    outline-offset:-1px}
+  /* a file being dragged into the box, for a machine that will not paste */
+  .paste-fld textarea.dragover{
+    border:2px dashed var(--signal); background:#FFFDF5;
+  }
+  /* a box with something in it should look answered at a glance */
+  .paste-fld textarea.filled{border-color:var(--signal);
+    box-shadow:inset 3px 0 0 var(--signal)}
+  .paste-acts{margin:12px 0 0; display:flex; gap:10px; flex-wrap:wrap}
+  .paste-say{margin:10px 0 0; font-family:var(--mono); font-size:12px;
+    letter-spacing:.04em; color:var(--chalk); min-height:18px}
+  .paste-say.err{color:#9B2226}
+  .paste-say.go{color:var(--signal)}
+
+  /* ---------- per-book options ---------- */
+  .opts{
+    margin:14px 0 0; padding:9px 14px 11px; border:1px solid var(--apron-dk);
+    background:var(--paper); display:flex; gap:9px 18px; align-items:center;
+    flex-wrap:wrap;
+  }
+  /* the legend sits on the border, so it stays short enough never to wrap */
+  .opts legend{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); padding:0 6px;
+    font-weight:700; white-space:nowrap;
+  }
+  .opts .opts-hint{
+    flex:0 0 100%; margin:0; font-size:12.5px; line-height:1.45;
+    color:var(--chalk);
+  }
+  .opts label{
+    font-family:var(--mono); font-size:12px; letter-spacing:.05em;
+    color:var(--steel); display:flex; gap:6px; align-items:center;
+    cursor:pointer;
+  }
+  .opts input[type="checkbox"]{accent-color:var(--signal); width:14px; height:14px}
+
+  /* ---------- Rules tab ---------- */
+  .rules h3{font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--steel); margin:14px 0 6px}
+  .rules h3:first-of-type{margin-top:4px}
+  /* keep the rules pane to a readable measure whatever the card is doing */
+  .rules p{font-size:12.5px; line-height:1.55; margin:0 0 8px; max-width:74ch}
+  .rules code{font-family:var(--mono); font-size:11.5px}
+  .rules-t{border-collapse:collapse; width:100%; margin:0 0 10px;
+    font-size:12px}
+  .rules-t th{text-align:left; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--chalk); font-weight:400;
+    border-bottom:1px solid var(--rule); padding:3px 8px 3px 0}
+  .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron);
+    vertical-align:top}
+  .rules-t .tag-local{color:var(--amber); font-weight:700}
+  /* a formation you turned round yourself, so it is obvious which rows are
+     yours and which came with the tool */
+  .rules-t tr.flipped td{background:#FFF6E8; border-bottom-color:#E8CFA6}
+  .rules-t tr.flipped td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+  .flag-you{font-family:var(--mono); font-size:10px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--amber); white-space:nowrap}
+  .rule-sec{margin:0 0 18px}
+  .rule-sec + .rule-sec{border-top:1px solid var(--apron); padding-top:12px}
+  .rules ul{margin:0 0 10px; padding-left:18px}
+  .rules li{font-size:12.5px; line-height:1.55; margin:0 0 5px}
+  .rules .rule-note{border-left:2px solid var(--rule); padding-left:10px;
+    color:var(--steel)}
+  .editline{color:var(--amber); font-size:12px; margin:0 0 8px}
+
+  /* ---------- wide screens ----------
+     The page was laid out as one 700px column, which is right on a laptop
+     lid and looks stranded on a depot monitor: the previews and road cards
+     are wide tables squeezed into half the glass while the prose hugs the
+     left edge. Everything below only applies from 1000px up, so the narrow
+     layout is untouched wherever the window really is narrow.
+
+     The width goes to the things that can use it - the drop panels, the road
+     cards, the previews, and the lists that become grids. Running text keeps
+     a readable measure whatever the window does: a 1100px line of prose is
+     harder to read than a 700px one, not easier. */
+  @media (min-width: 1000px){
+    .wrap{max-width:1120px; padding-left:32px; padding-right:32px}
+    /* the masthead reads as one band: what this is on the left, the fleets
+       it covers on the right, instead of the sprites sitting in a gap */
+    header{display:grid; grid-template-columns:minmax(0,1fr) auto;
+      grid-template-areas:"eyebrow lineup" "title lineup" "lede lineup"
+                          "quick quick"; column-gap:48px; align-items:start}
+    header .eyebrow{grid-area:eyebrow}
+    header h1{grid-area:title}
+    header .lede{grid-area:lede; max-width:58ch}
+    header .lineup{grid-area:lineup; margin:6px 0 0; align-self:center;
+      flex-direction:column; align-items:flex-start; gap:14px}
+    header .quick{grid-area:quick}
+    /* Two columns, not three. Step 1 carries the export-setting box and runs
+       about as long as steps 2 and 3 together, so across three columns it
+       left two of them half empty. Spanning it down the left instead puts
+       the three roughly level and still reads 1, 2, 3. */
+    .steps{display:grid; grid-template-columns:repeat(2, minmax(0,1fr));
+      grid-template-rows:auto auto 1fr;
+      column-gap:40px; row-gap:20px; align-items:start}
+    .steps > li{padding-bottom:0}
+    /* Steps 2 and 3 size rows 1 and 2; the empty third row takes whatever
+       step 1 is taller by. Spanning step 1 across only the two filled rows
+       inflated both of them and left a hole between 2 and 3. Placed by
+       number because there are three steps and they are a fixed sequence -
+       a fourth would need a line here. */
+    .steps > li:nth-child(1){grid-area:1 / 1 / 4 / 2}
+    .steps > li:nth-child(2){grid-area:1 / 2 / 2 / 3}
+    .steps > li:nth-child(3){grid-area:2 / 2 / 3 / 3}
+    .books{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px}
+    /* the last book spans so a row of two never leaves one card stranded */
+    .books li:last-child:nth-child(odd){grid-column:1 / -1}
+    /* the closing note reads as a pair: what to check, and the warning.
+       The base rule caps the footer at 56ch, which is right in one column and
+       here would squeeze both halves into the left third of the page. */
+    footer{max-width:none;
+      display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+      column-gap:48px; align-items:start}
+    footer h2{grid-column:1 / -1}
+    footer > p:first-of-type{margin-top:0}
+    footer .checknote{margin-top:0; max-width:none; align-self:stretch}
+    footer .smallprint{grid-column:1 / -1}
+    footer .buildstamp{grid-column:1 / -1}
+    .smallprint{max-width:78ch}
+  }
+
+/* The analyser's own furniture. The shared stylesheet gives the page its
+   colours, header and drop zone; what follows is the report itself, which
+   the berthing sheets have no equivalent of. */
+
+.wrap{max-width:960px}
+
+.sech{
+  font-family:var(--mono); font-size:13px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--chalk); font-weight:600;
+  margin:38px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--rule);
+}
+.secn{margin:0 0 14px; color:#3C464D; font-size:14px; max-width:74ch}
+.secn .aside{display:block; margin-top:6px; color:var(--chalk); font-size:13px}
+
+/* ---------- depot settings ---------- */
+.depots{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.dep{background:var(--paper); border:1px solid var(--rule); padding:14px 16px}
+.dep h3{font-family:var(--mono); font-size:15px; margin:0 0 4px}
+.dep .who{color:var(--chalk); font-size:12px; margin:0 0 10px}
+.dep label{display:block; font-size:12px; color:var(--chalk); margin:8px 0 3px}
+.dep select{
+  width:100%; font:inherit; font-size:13px; padding:5px 6px;
+  border:1px solid var(--rule); background:#fff; color:var(--steel);
+}
+.dep .reps{display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:4px}
+.dep .reps label{display:flex; align-items:center; gap:5px; margin:0; font-size:13px;
+  color:var(--steel)}
+.dep .derived{color:var(--warn); font-size:12px; margin:8px 0 0}
+
+/* ---------- fleet tabs ---------- */
+.fleetbar{display:flex; flex-wrap:wrap; gap:6px; margin:34px 0 0}
+.ftab{
+  font:inherit; font-family:var(--mono); font-size:14px; letter-spacing:.04em;
+  padding:9px 16px; border:1px solid var(--rule); background:var(--paper);
+  color:var(--chalk); cursor:pointer;
+}
+.ftab:hover{border-color:var(--rail); color:var(--steel)}
+.ftab[aria-selected="true"]{
+  background:var(--steel); border-color:var(--steel); color:var(--paper); font-weight:600;
+}
+.ftab .n{display:block; font-size:11px; letter-spacing:.10em; opacity:.75; margin-top:2px}
+.ftab:focus-visible{outline:3px solid var(--steel); outline-offset:2px}
+
+/* ---------- the numbers across the top of a section ---------- */
+.stats{display:grid; gap:10px; margin:0 0 16px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.stat{background:var(--paper); border:1px solid var(--rule); padding:12px 14px}
+.stat b{display:block; font-family:var(--mono); font-size:24px; line-height:1.1}
+.stat span{display:block; font-size:12px; color:var(--chalk); margin-top:5px}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto; border:1px solid var(--rule); background:var(--paper)}
+table.rep{border-collapse:collapse; width:100%; font-size:13px}
+table.rep th, table.rep td{
+  padding:6px 10px; text-align:left; border-bottom:1px solid var(--rule);
+  white-space:nowrap;
+}
+table.rep th{
+  font-family:var(--mono); font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--chalk); font-weight:600;
+  background:var(--apron); position:sticky; top:0;
+}
+table.rep tbody tr:nth-child(even){background:rgba(0,0,0,.022)}
+table.rep td.num{text-align:right; font-family:var(--mono)}
+table.rep td.no{color:var(--danger); font-weight:600}
+table.rep td.yes{color:var(--signal)}
+table.rep td.wide{white-space:normal; min-width:22ch}
+.tw.tall{max-height:460px; overflow-y:auto}
+.rowcount{margin:6px 0 0; font-size:12px; color:var(--chalk)}
+
+details.more{margin:12px 0 0; background:var(--paper); border:1px solid var(--rule)}
+details.more>summary{padding:9px 14px; cursor:pointer; font-family:var(--mono);
+  font-size:13px}
+details.more>summary:hover{background:var(--apron)}
+details.more .tw{border:0; border-top:1px solid var(--rule)}
+
+/* ---------- buttons ---------- */
+.actions{margin:34px 0 0; display:flex; gap:10px; flex-wrap:wrap}
+.btn{
+  font:inherit; font-family:var(--mono); font-size:14px; padding:11px 20px;
+  background:var(--steel); color:var(--paper); border:1px solid var(--steel);
+  cursor:pointer;
+}
+.btn:hover{background:#000}
+.btn.ghost{background:var(--paper); color:var(--steel)}
+.btn.ghost:hover{background:var(--apron)}
+.btn:focus-visible{outline:3px solid var(--signal); outline-offset:2px}
+
+footer{margin:56px 0 0; padding-top:18px; border-top:1px solid var(--rule)}
+footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch}
+
+@media print{
+  .berth, .actions, .fleetbar, #setup, .status{display:none !important}
+  .tw{overflow:visible; max-height:none}
+  .tw.tall{max-height:none}
+  details.more{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <noscript><p style="border:2px solid #9B2226;padding:14px;font-family:var(--mono);
+    font-size:13px">Scripting is switched off in this browser, so the prints can't be
+    read. Switch it on, or open this file in Edge, Chrome or Firefox.</p></noscript>
+  <p id="oldbrowser" hidden style="border:2px solid #9B2226;padding:14px;
+    font-family:var(--mono);font-size:13px">This browser is too old to read the
+    prints. Right-click the file, choose Open with, and pick Edge, Chrome or
+    Firefox.</p>
+
+  <header>
+    <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
+    <h1>Diagram analyser <span class="sub">what the prints say about looking after the units</span></h1>
+    <p class="lede">Drop the diagram print books on the road below — all of them at
+      once — and the questions maintenance planning keeps asking come back answered:
+      when each fleet comes home, what stands still long enough to be worked on,
+      what can carry a restricted unit, and where a diagram comes apart.
+      Nothing leaves this computer.</p>
+  </header>
+
+  <button type="button" class="berth" id="zone">
+    <span class="berth-inner">
+      <span class="buffer"></span>
+      <span class="berth-txt">
+        <strong>Drop the diagram prints here</strong>
+        <span id="zonehint">The Word documents straight off the planning system — FSX,
+          FO, SO and Sun together. A text or CSV save of the same works too.</span>
+      </span>
+    </span>
+  </button>
+  <input type="file" id="file" multiple hidden
+         accept=".doc,.docx,.txt,.csv,application/msword">
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <section id="setup" hidden>
+    <h2 class="sech">Depots</h2>
+    <p class="secn">Which depot owns each fleet, and everywhere it can be repaired.
+      These are your arrangements, not something the prints state, so set them here
+      rather than waiting on a new version of this file. They are remembered on this
+      computer.</p>
+    <div id="depots" class="depots"></div>
+    <p class="secn"><button type="button" class="btn ghost" id="resetcfg">Put the
+      depots back to the defaults</button></p>
+  </section>
+
+  <section id="out" hidden>
+    <div class="fleetbar" id="fleetbar" role="tablist"></div>
+    <div id="report"></div>
+    <p class="actions">
+      <button type="button" class="btn" id="save">Save this fleet as a spreadsheet</button>
+      <button type="button" class="btn ghost" id="saveall">Save every fleet</button>
+    </p>
+  </section>
+
+  <footer>
+    <p class="small">Reads the diagram prints only — the Word documents the plan is
+      published as. Everything is worked out in this page; no file is uploaded and
+      nothing is sent anywhere.</p>
+    <p class="small">Version <b>2.6.0</b> &middot; 26 August 2026</p>
+  </footer>
+</div>
+<script>
+/* fflate (MIT) — https://github.com/101arrowz/fflate — bundled verbatim
+   from the legacy build. Zip/unzip for docx + xlsx, and zlib inflate for
+   the Genius PDF streams. */
+!function(f){typeof module!='undefined'&&typeof exports=='object'?module.exports=f():typeof define!='undefined'&&define.amd?define(f):(typeof self!='undefined'?self:this).fflate=f()}(function(){var _e={};"use strict";_e.deflate=zt,_e.deflateSync=kt,_e.inflate=At,_e.inflateSync=Tt,_e.gzip=It,_e.compress=It,_e.gzipSync=Ut,_e.compressSync=Ut,_e.gunzip=Zt,_e.gunzipSync=qt,_e.zlib=Lt,_e.zlibSync=Bt,_e.unzlib=Nt,_e.unzlibSync=Pt,_e.gzip=It,_e.compress=It,_e.decompress=Jt,_e.decompressSync=Kt,_e.strToU8=nn,_e.strFromU8=rn,_e.zip=dn,_e.zipSync=gn,_e.unzip=zn,_e.unzipSync=kn;var t=(typeof module!='undefined'&&typeof exports=='object'?function(_f){"use strict";var e,r,t,n=";var __w=require('worker_threads');__w.parentPort.on('message',function(m){onmessage({data:m})}),postMessage=function(m,t){__w.parentPort.postMessage(m,t)},close=process.exit;self=global";try{e=require("worker_threads"),r=e.Worker,t=e.isMarkedAsUntransferable}catch(e){}exports.default=r?function(e,o,a,s,u){var i=!1,l=new r(e+n,{eval:!0}).on("error",function(e){return u(e,null)}).on("message",function(e){return u(null,e)}).on("exit",function(e){e&&!i&&u(Error("exited with code "+e),null)});return t&&(s=s.filter(function(e){return!t(e)})),l.postMessage(a,s),l.terminate=function(){return i=!0,r.prototype.terminate.call(l)},l}:function(e,r,t,n,o){setImmediate(function(){return o(Error("async operations unsupported - update to Node 12+ (or Node 10-11 with the --experimental-worker CLI flag)"),null)});var a=function(){};return{terminate:a,postMessage:a}};return _f}:function(_f){"use strict";var e={};_f.default=function(r,t,s,a,n){var o=new Worker(e[t]||(e[t]=URL.createObjectURL(new Blob([r+';addEventListener("error",function(e){e=e.error;postMessage({$e$:[e.message,e.code,e.stack]})})'],{type:"text/javascript"}))));return o.onmessage=function(e){var r=e.data,t=r.$e$;if(t){var s=Error(t[0]);s.code=t[1],s.stack=t[2],n(s,null)}else n(null,r)},o.postMessage(s,a),o};return _f})({}),n=Uint8Array,r=Uint16Array,i=Int32Array,e=new n([0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,0,0,0]),o=new n([0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,0,0]),s=new n([16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15]),a=function(t,n){for(var e=new r(31),o=0;o<31;++o)e[o]=n+=1<<t[o-1];var s=new i(e[30]);for(o=1;o<30;++o)for(var a=e[o];a<e[o+1];++a)s[a]=a-e[o]<<5|o;return{b:e,r:s}},u=a(e,2),h=u.b,f=u.r;h[28]=258,f[258]=28;for(var c=a(o,0),l=c.b,p=c.r,v=new r(32768),d=0;d<32768;++d){var g=(43690&d)>>1|(21845&d)<<1;v[d]=((65280&(g=(61680&(g=(52428&g)>>2|(13107&g)<<2))>>4|(3855&g)<<4))>>8|(255&g)<<8)>>1}var y=function(t,n,i){for(var e=t.length,o=0,s=new r(n);o<e;++o)t[o]&&++s[t[o]-1];var a,u=new r(n);for(o=1;o<n;++o)u[o]=u[o-1]+s[o-1]<<1;if(i){a=new r(1<<n);var h=15-n;for(o=0;o<e;++o)if(t[o])for(var f=o<<4|t[o],c=n-t[o],l=u[t[o]-1]++<<c,p=l|(1<<c)-1;l<=p;++l)a[v[l]>>h]=f}else for(a=new r(e),o=0;o<e;++o)t[o]&&(a[o]=v[u[t[o]-1]++]>>15-t[o]);return a},m=new n(288);for(d=0;d<144;++d)m[d]=8;for(d=144;d<256;++d)m[d]=9;for(d=256;d<280;++d)m[d]=7;for(d=280;d<288;++d)m[d]=8;var b=new n(32);for(d=0;d<32;++d)b[d]=5;var w=y(m,9,0),x=y(m,9,1),z=y(b,5,0),k=y(b,5,1),M=function(t){for(var n=t[0],r=1;r<t.length;++r)t[r]>n&&(n=t[r]);return n},S=function(t,n,r){var i=n/8|0;return(t[i]|t[i+1]<<8)>>(7&n)&r},A=function(t,n){var r=n/8|0;return(t[r]|t[r+1]<<8|t[r+2]<<16)>>(7&n)},T=function(t){return(t+7)/8|0},D=function(t,r,i){return(null==r||r<0)&&(r=0),(null==i||i>t.length)&&(i=t.length),new n(t.subarray(r,i))};_e.FlateErrorCode={UnexpectedEOF:0,InvalidBlockType:1,InvalidLengthLiteral:2,InvalidDistance:3,StreamFinished:4,NoStreamHandler:5,InvalidHeader:6,NoCallback:7,InvalidUTF8:8,ExtraFieldTooLong:9,InvalidDate:10,FilenameTooLong:11,StreamFinishing:12,InvalidZipData:13,UnknownCompressionMethod:14};var C=["unexpected EOF","invalid block type","invalid length/literal","invalid distance","stream finished","no stream handler",,"no callback","invalid UTF-8 data","extra field too long","date not in range 1980-2099","filename too long","stream finishing","invalid zip data"],I=function(t,n,r){var i=Error(n||C[t]);if(i.code=t,Error.captureStackTrace&&Error.captureStackTrace(i,I),!r)throw i;return i},U=function(t,r,i,a){var u=t.length,f=a?a.length:0;if(!u||r.f&&!r.l)return i||new n(0);var c=!i,p=c||2!=r.i,v=r.i;c&&(i=new n(3*u));var d=function(t){var r=i.length;if(t>r){var e=new n(Math.max(2*r,t));e.set(i),i=e}},g=r.f||0,m=r.p||0,b=r.b||0,w=r.l,z=r.d,C=r.m,U=r.n,F=8*u;do{if(!w){g=S(t,m,1);var E=S(t,m+1,3);if(m+=3,!E){var Z=t[(Y=T(m)+4)-4]|t[Y-3]<<8,q=Y+Z;if(q>u){v&&I(0);break}p&&d(b+Z),i.set(t.subarray(Y,q),b),r.b=b+=Z,r.p=m=8*q,r.f=g;continue}if(1==E)w=x,z=k,C=9,U=5;else if(2==E){var O=S(t,m,31)+257,G=S(t,m+10,15)+4,L=O+S(t,m+5,31)+1;m+=14;for(var B=new n(L),H=new n(19),j=0;j<G;++j)H[s[j]]=S(t,m+3*j,7);m+=3*G;var N=M(H),P=(1<<N)-1,V=y(H,N,1);for(j=0;j<L;){var Y,J=V[S(t,m,P)];if(m+=15&J,(Y=J>>4)<16)B[j++]=Y;else{var K=0,Q=0;for(16==Y?(Q=3+S(t,m,3),m+=2,K=B[j-1]):17==Y?(Q=3+S(t,m,7),m+=3):18==Y&&(Q=11+S(t,m,127),m+=7);Q--;)B[j++]=K}}var R=B.subarray(0,O),W=B.subarray(O);C=M(R),U=M(W),w=y(R,C,1),z=y(W,U,1)}else I(1);if(m>F){v&&I(0);break}}p&&d(b+131072);for(var X=(1<<C)-1,$=(1<<U)-1,_=m;;_=m){var tt=(K=w[A(t,m)&X])>>4;if((m+=15&K)>F){v&&I(0);break}if(K||I(2),tt<256)i[b++]=tt;else{if(256==tt){_=m,w=null;break}var nt=tt-254;tt>264&&(nt=S(t,m,(1<<(et=e[j=tt-257]))-1)+h[j],m+=et);var rt=z[A(t,m)&$],it=rt>>4;if(rt||I(3),m+=15&rt,W=l[it],it>3){var et=o[it];W+=A(t,m)&(1<<et)-1,m+=et}if(m>F){v&&I(0);break}p&&d(b+131072);var ot=b+nt;if(b<W){var st=f-W,at=Math.min(W,ot);for(st+b<0&&I(3);b<at;++b)i[b]=a[st+b]}for(;b<ot;++b)i[b]=i[b-W]}}r.l=w,r.p=_,r.b=b,r.f=g,w&&(g=1,r.m=C,r.d=z,r.n=U)}while(!g);return b!=i.length&&c?D(i,0,b):i.subarray(0,b)},F=function(t,n,r){var i=n/8|0;t[i]|=r<<=7&n,t[i+1]|=r>>8},E=function(t,n,r){var i=n/8|0;t[i]|=r<<=7&n,t[i+1]|=r>>8,t[i+2]|=r>>16},Z=function(t,i){for(var e=[],o=0;o<t.length;++o)t[o]&&e.push({s:o,f:t[o]});var s=e.length,a=e.slice();if(!s)return{t:j,l:0};if(1==s){var u=new n(e[0].s+1);return u[e[0].s]=1,{t:u,l:1}}e.sort(function(t,n){return t.f-n.f}),e.push({s:-1,f:25001});var h=e[0],f=e[1],c=0,l=1,p=2;for(e[0]={s:-1,f:h.f+f.f,l:h,r:f};l!=s-1;)h=e[e[c].f<e[p].f?c++:p++],f=e[c!=l&&e[c].f<e[p].f?c++:p++],e[l++]={s:-1,f:h.f+f.f,l:h,r:f};var v=a[0].s;for(o=1;o<s;++o)a[o].s>v&&(v=a[o].s);var d=new r(v+1),g=q(e[l-1],d,0);if(g>i){o=0;var y=0,m=g-i,b=1<<m;for(a.sort(function(t,n){return d[n.s]-d[t.s]||t.f-n.f});o<s;++o){var w=a[o].s;if(!(d[w]>i))break;y+=b-(1<<g-d[w]),d[w]=i}for(y>>=m;y>0;){var x=a[o].s;d[x]<i?y-=1<<i-d[x]++-1:++o}for(;o>=0&&y;--o){var z=a[o].s;d[z]==i&&(--d[z],++y)}g=i}return{t:new n(d),l:g}},q=function(t,n,r){return-1==t.s?Math.max(q(t.l,n,r+1),q(t.r,n,r+1)):n[t.s]=r},O=function(t){for(var n=t.length;n&&!t[--n];);for(var i=new r(++n),e=0,o=t[0],s=1,a=function(t){i[e++]=t},u=1;u<=n;++u)if(t[u]==o&&u!=n)++s;else{if(!o&&s>2){for(;s>138;s-=138)a(32754);s>2&&(a(s>10?s-11<<5|28690:s-3<<5|12305),s=0)}else if(s>3){for(a(o),--s;s>6;s-=6)a(8304);s>2&&(a(s-3<<5|8208),s=0)}for(;s--;)a(o);s=1,o=t[u]}return{c:i.subarray(0,e),n:n}},G=function(t,n){for(var r=0,i=0;i<n.length;++i)r+=t[i]*n[i];return r},L=function(t,n,r){var i=r.length,e=T(n+2);t[e]=255&i,t[e+1]=i>>8,t[e+2]=255^t[e],t[e+3]=255^t[e+1];for(var o=0;o<i;++o)t[e+o+4]=r[o];return 8*(e+4+i)},B=function(t,n,i,a,u,h,f,c,l,p,v){F(n,v++,i),++u[256];for(var d=Z(u,15),g=d.t,x=d.l,k=Z(h,15),M=k.t,S=k.l,A=O(g),T=A.c,D=A.n,C=O(M),I=C.c,U=C.n,q=new r(19),B=0;B<T.length;++B)++q[31&T[B]];for(B=0;B<I.length;++B)++q[31&I[B]];for(var H=Z(q,7),j=H.t,N=H.l,P=19;P>4&&!j[s[P-1]];--P);var V,Y,J,K,Q=p+5<<3,R=G(u,m)+G(h,b)+f,W=G(u,g)+G(h,M)+f+14+3*P+G(q,j)+2*q[16]+3*q[17]+7*q[18];if(l>=0&&Q<=R&&Q<=W)return L(n,v,t.subarray(l,l+p));if(F(n,v,1+(W<R)),v+=2,W<R){V=y(g,x,0),Y=g,J=y(M,S,0),K=M;var X=y(j,N,0);for(F(n,v,D-257),F(n,v+5,U-1),F(n,v+10,P-4),v+=14,B=0;B<P;++B)F(n,v+3*B,j[s[B]]);v+=3*P;for(var $=[T,I],_=0;_<2;++_){var tt=$[_];for(B=0;B<tt.length;++B)F(n,v,X[rt=31&tt[B]]),v+=j[rt],rt>15&&(F(n,v,tt[B]>>5&127),v+=tt[B]>>12)}}else V=w,Y=m,J=z,K=b;for(B=0;B<c;++B){var nt=a[B];if(nt>255){var rt;E(n,v,V[257+(rt=nt>>18&31)]),v+=Y[rt+257],rt>7&&(F(n,v,nt>>23&31),v+=e[rt]);var it=31&nt;E(n,v,J[it]),v+=K[it],it>3&&(E(n,v,nt>>5&8191),v+=o[it])}else E(n,v,V[nt]),v+=Y[nt]}return E(n,v,V[256]),v+Y[256]},H=new i([65540,131080,131088,131104,262176,1048704,1048832,2114560,2117632]),j=new n(0),N=function(t,s,a,u,h,c){var l=c.z||t.length,v=new n(u+l+5*(1+Math.ceil(l/7e3))+h),d=v.subarray(u,v.length-h),g=c.l,y=7&(c.r||0);if(s){y&&(d[0]=c.r>>3);for(var m=H[s-1],b=m>>13,w=8191&m,x=(1<<a)-1,z=c.p||new r(32768),k=c.h||new r(x+1),M=Math.ceil(a/3),S=2*M,A=function(n){return(t[n]^t[n+1]<<M^t[n+2]<<S)&x},C=new i(25e3),I=new r(288),U=new r(32),F=0,E=0,Z=c.i||0,q=0,O=c.w||0,G=0;Z+2<l;++Z){var j=A(Z),N=32767&Z,P=k[j];if(z[N]=P,k[j]=N,O<=Z){var V=l-Z;if((F>7e3||q>24576)&&(V>423||!g)){y=B(t,d,0,C,I,U,E,q,G,Z-G,y),q=F=E=0,G=Z;for(var Y=0;Y<286;++Y)I[Y]=0;for(Y=0;Y<30;++Y)U[Y]=0}var J=2,K=0,Q=w,R=N-P&32767;if(V>2&&j==A(Z-R))for(var W=Math.min(b,V)-1,X=Math.min(32767,Z),$=Math.min(258,V);R<=X&&--Q&&N!=P;){if(t[Z+J]==t[Z+J-R]){for(var _=0;_<$&&t[Z+_]==t[Z+_-R];++_);if(_>J){if(J=_,K=R,_>W)break;var tt=Math.min(R,_-2),nt=0;for(Y=0;Y<tt;++Y){var rt=Z-R+Y&32767,it=rt-z[rt]&32767;it>nt&&(nt=it,P=rt)}}}R+=(N=P)-(P=z[N])&32767}if(K){C[q++]=268435456|f[J]<<18|p[K];var et=31&f[J],ot=31&p[K];E+=e[et]+o[ot],++I[257+et],++U[ot],O=Z+J,++F}else C[q++]=t[Z],++I[t[Z]]}}for(Z=Math.max(Z,O);Z<l;++Z)C[q++]=t[Z],++I[t[Z]];y=B(t,d,g,C,I,U,E,q,G,Z-G,y),g||(c.r=7&y|d[y/8|0]<<3,y-=7,c.h=k,c.p=z,c.i=Z,c.w=O)}else{for(Z=c.w||0;Z<l+g;Z+=65535){var st=Z+65535;st>=l&&(d[y/8|0]=g,st=l),y=L(d,y+1,t.subarray(Z,st))}c.i=l}return D(v,0,u+T(y)+h)},P=function(){for(var t=new Int32Array(256),n=0;n<256;++n){for(var r=n,i=9;--i;)r=(1&r&&-306674912)^r>>>1;t[n]=r}return t}(),V=function(){var t=-1;return{p:function(n){for(var r=t,i=0;i<n.length;++i)r=P[255&r^n[i]]^r>>>8;t=r},d:function(){return~t}}},Y=function(){var t=1,n=0;return{p:function(r){for(var i=t,e=n,o=0|r.length,s=0;s!=o;){for(var a=Math.min(s+2655,o);s<a;++s)e+=i+=r[s];i=(65535&i)+15*(i>>16),e=(65535&e)+15*(e>>16)}t=i,n=e},d:function(){return(255&(t%=65521))<<24|(65280&t)<<8|(255&(n%=65521))<<8|n>>8}}},J=function(t,r,i,e,o){if(!o&&(o={l:1},r.dictionary)){var s=r.dictionary.subarray(-32768),a=new n(s.length+t.length);a.set(s),a.set(t,s.length),t=a,o.w=s.length}return N(t,null==r.level?6:r.level,null==r.mem?o.l?Math.ceil(1.5*Math.max(8,Math.min(13,Math.log(t.length)))):20:12+r.mem,i,e,o)},K=function(t,n){var r={};for(var i in t)r[i]=t[i];for(var i in n)r[i]=n[i];return r},Q=function(t,n,r){for(var i=t(),e=""+t,o=e.slice(e.indexOf("[")+1,e.lastIndexOf("]")).replace(/\s+/g,"").split(","),s=0;s<i.length;++s){var a=i[s],u=o[s];if("function"==typeof a){n+=";"+u+"=";var h=""+a;if(a.prototype)if(-1!=h.indexOf("[native code]")){var f=h.indexOf(" ",8)+1;n+=h.slice(f,h.indexOf("(",f))}else for(var c in n+=h,a.prototype)n+=";"+u+".prototype."+c+"="+a.prototype[c];else n+=h}else r[u]=a}return n},R=[],W=function(t){var n=[];for(var r in t)t[r].buffer&&n.push((t[r]=new t[r].constructor(t[r])).buffer);return n},X=function(n,r,i,e){if(!R[i]){for(var o="",s={},a=n.length-1,u=0;u<a;++u)o=Q(n[u],o,s);R[i]={c:Q(n[a],o,s),e:s}}var h=K({},R[i].e);return(0,t.default)(R[i].c+";onmessage=function(e){for(var k in e.data)self[k]=e.data[k];onmessage="+r+"}",i,h,W(h),e)},$=function(){return[n,r,i,e,o,s,h,l,x,k,v,C,y,M,S,A,T,D,I,U,Tt,et,ot]},_=function(){return[n,r,i,e,o,s,f,p,w,m,z,b,v,H,j,y,F,E,Z,q,O,G,L,B,T,D,N,J,kt,et]},tt=function(){return[pt,gt,lt,V,P]},nt=function(){return[vt,dt]},rt=function(){return[yt,lt,Y]},it=function(){return[mt]},et=function(t){return postMessage(t,[t.buffer])},ot=function(t){return t&&{out:t.size&&new n(t.size),dictionary:t.dictionary}},st=function(t,n,r,i,e,o){var s=X(r,i,e,function(t,n){s.terminate(),o(t,n)});return s.postMessage([t,n],n.consume?[t.buffer]:[]),function(){s.terminate()}},at=function(t){return t.ondata=function(t,n){return postMessage([t,n],[t.buffer])},function(n){n.data[0]?(t.push(n.data[0],n.data[1]),postMessage([n.data[0].length])):t.flush(n.data[1])}},ut=function(t,n,r,i,e,o,s){var a,u=X(t,i,e,function(t,r){t?(u.terminate(),n.ondata.call(n,t)):Array.isArray(r)?1==r.length?(n.queuedSize-=r[0],n.ondrain&&n.ondrain(r[0])):(r[1]&&u.terminate(),n.ondata.call(n,t,r[0],r[1])):s(r)});u.postMessage(r),n.queuedSize=0,n.push=function(t,r){n.ondata||I(5),a&&n.ondata(I(4,0,1),null,!!r),n.queuedSize+=t.length,u.postMessage([t,a=r],t.buffer instanceof ArrayBuffer?[t.buffer]:[])},n.terminate=function(){u.terminate()},o&&(n.flush=function(t){u.postMessage([0,t])})},ht=function(t,n){return t[n]|t[n+1]<<8},ft=function(t,n){return(t[n]|t[n+1]<<8|t[n+2]<<16|t[n+3]<<24)>>>0},ct=function(t,n){return ft(t,n)+4294967296*ft(t,n+4)},lt=function(t,n,r){for(;r;++n)t[n]=r,r>>>=8},pt=function(t,n){var r=n.filename;if(t[0]=31,t[1]=139,t[2]=8,t[8]=n.level<2?4:9==n.level?2:0,t[9]=3,0!=n.mtime&&lt(t,4,Math.floor(new Date(n.mtime||Date.now())/1e3)),r){t[3]=8;for(var i=0;i<=r.length;++i)t[i+10]=r.charCodeAt(i)}},vt=function(t){31==t[0]&&139==t[1]&&8==t[2]||I(6,"invalid gzip data");var n=t[3],r=10;4&n&&(r+=2+(t[10]|t[11]<<8));for(var i=(n>>3&1)+(n>>4&1);i>0;i-=!t[r++]);return r+(2&n)},dt=function(t){var n=t.length;return(t[n-4]|t[n-3]<<8|t[n-2]<<16|t[n-1]<<24)>>>0},gt=function(t){return 10+(t.filename?t.filename.length+1:0)},yt=function(t,n){var r=n.level,i=0==r?0:r<6?1:9==r?3:2;if(t[0]=120,t[1]=i<<6|(n.dictionary&&32),t[1]|=31-(t[0]<<8|t[1])%31,n.dictionary){var e=Y();e.p(n.dictionary),lt(t,2,e.d())}},mt=function(t,n){return(8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31)&&I(6,"invalid zlib data"),(t[1]>>5&1)==+!n&&I(6,"invalid zlib data: "+(32&t[1]?"need":"unexpected")+" dictionary"),2+(t[1]>>3&4)};function bt(t,n){return"function"==typeof t&&(n=t,t={}),this.ondata=n,t}var wt=function(){function t(t,r){if("function"==typeof t&&(r=t,t={}),this.ondata=r,this.o=t||{},this.s={l:0,i:32768,w:32768,z:32768},this.b=new n(98304),this.o.dictionary){var i=this.o.dictionary.subarray(-32768);this.b.set(i,32768-i.length),this.s.i=32768-i.length}}return t.prototype.p=function(t,n){this.ondata(J(t,this.o,0,0,this.s),n)},t.prototype.push=function(t,r){this.ondata||I(5),this.s.l&&I(4);var i=t.length+this.s.z;if(i>this.b.length){if(i>2*this.b.length-32768){var e=new n(-32768&i);e.set(this.b.subarray(0,this.s.z)),this.b=e}var o=this.b.length-this.s.z;this.b.set(t.subarray(0,o),this.s.z),this.s.z=this.b.length,this.p(this.b,!1),this.b.set(this.b.subarray(-32768)),this.b.set(t.subarray(o),32768),this.s.z=t.length-o+32768,this.s.i=32766,this.s.w=32768}else this.b.set(t,this.s.z),this.s.z+=t.length;this.s.l=1&r,(this.s.z>this.s.w+8191||r)&&(this.p(this.b,r||!1),this.s.w=this.s.i,this.s.i-=2),r&&(this.s=this.o={},this.b=j)},t.prototype.flush=function(t){if(this.ondata||I(5),this.s.l&&I(4),this.p(this.b,!1),this.s.w=this.s.i,this.s.i-=2,t){var r=new n(6);r[0]=this.s.r>>3;var i=L(r,this.s.r,j);this.s.r=0,this.ondata(r.subarray(0,i>>3),!1)}},t}();_e.Deflate=wt;var xt=function(){return function(t,n){ut([_,function(){return[at,wt]}],this,bt.call(this,t,n),function(t){var n=new wt(t.data);onmessage=at(n)},6,1)}}();function zt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_],function(t){return et(kt(t.data[0],t.data[1]))},0,r)}function kt(t,n){return J(t,n||{},0,0)}_e.AsyncDeflate=xt;var Mt=function(){function t(t,r){"function"==typeof t&&(r=t,t={}),this.ondata=r;var i=t&&t.dictionary&&t.dictionary.subarray(-32768);this.s={i:0,b:i?i.length:0},this.o=new n(32768),this.p=new n(0),i&&this.o.set(i)}return t.prototype.e=function(t){if(this.ondata||I(5),this.d&&I(4),this.p.length){if(t.length){var r=new n(this.p.length+t.length);r.set(this.p),r.set(t,this.p.length),this.p=r}}else this.p=t},t.prototype.c=function(t){this.s.i=+(this.d=t||!1);var n=this.s.b,r=U(this.p,this.s,this.o);this.ondata(D(r,n,this.s.b),this.d),this.o=D(r,this.s.b-32768),this.s.b=this.o.length,this.p=D(this.p,this.s.p/8|0),this.s.p&=7},t.prototype.push=function(t,n){this.e(t),this.c(n)},t}();_e.Inflate=Mt;var St=function(){return function(t,n){ut([$,function(){return[at,Mt]}],this,bt.call(this,t,n),function(t){var n=new Mt(t.data);onmessage=at(n)},7,0)}}();function At(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$],function(t){return et(Tt(t.data[0],ot(t.data[1])))},1,r)}function Tt(t,n){return U(t,{i:2},n&&n.out,n&&n.dictionary)}_e.AsyncInflate=St;var Dt=function(){function t(t,n){this.c=V(),this.l=0,this.v=1,wt.call(this,t,n)}return t.prototype.push=function(t,n){this.c.p(t),this.l+=t.length,wt.prototype.push.call(this,t,n)},t.prototype.p=function(t,n){var r=J(t,this.o,this.v&&gt(this.o),n&&8,this.s);this.v&&(pt(r,this.o),this.v=0),n&&(lt(r,r.length-8,this.c.d()),lt(r,r.length-4,this.l)),this.ondata(r,n)},t.prototype.flush=function(t){wt.prototype.flush.call(this,t)},t}();_e.Gzip=Dt,_e.Compress=Dt;var Ct=function(){return function(t,n){ut([_,tt,function(){return[at,wt,Dt]}],this,bt.call(this,t,n),function(t){var n=new Dt(t.data);onmessage=at(n)},8,1)}}();function It(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_,tt,function(){return[Ut]}],function(t){return et(Ut(t.data[0],t.data[1]))},2,r)}function Ut(t,n){n||(n={});var r=V(),i=t.length;r.p(t);var e=J(t,n,gt(n),8),o=e.length;return pt(e,n),lt(e,o-8,r.d()),lt(e,o-4,i),e}_e.AsyncGzip=Ct,_e.AsyncCompress=Ct;var Ft=function(){function t(t,n){this.v=1,this.r=0,Mt.call(this,t,n)}return t.prototype.push=function(t,r){if(Mt.prototype.e.call(this,t),this.r+=t.length,this.v){var i=this.p.subarray(this.v-1),e=i.length>3?vt(i):4;if(e>i.length){if(!r)return}else this.v>1&&this.onmember&&this.onmember(this.r-i.length);this.p=i.subarray(e),this.v=0}Mt.prototype.c.call(this,0),this.s.f&&!this.s.l?(this.v=T(this.s.p)+9,this.s={i:0},this.o=new n(0),this.push(new n(0),r)):r&&Mt.prototype.c.call(this,r)},t}();_e.Gunzip=Ft;var Et=function(){return function(t,n){var r=this;ut([$,nt,function(){return[at,Mt,Ft]}],this,bt.call(this,t,n),function(t){var n=new Ft(t.data);n.onmember=function(t){return postMessage(t)},onmessage=at(n)},9,0,function(t){return r.onmember&&r.onmember(t)})}}();function Zt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$,nt,function(){return[qt]}],function(t){return et(qt(t.data[0],t.data[1]))},3,r)}function qt(t,r){var i=vt(t);return i+8>t.length&&I(6,"invalid gzip data"),U(t.subarray(i,-8),{i:2},r&&r.out||new n(dt(t)),r&&r.dictionary)}_e.AsyncGunzip=Et;var Ot=function(){function t(t,n){this.c=Y(),this.v=1,wt.call(this,t,n)}return t.prototype.push=function(t,n){this.c.p(t),wt.prototype.push.call(this,t,n)},t.prototype.p=function(t,n){var r=J(t,this.o,this.v&&(this.o.dictionary?6:2),n&&4,this.s);this.v&&(yt(r,this.o),this.v=0),n&&lt(r,r.length-4,this.c.d()),this.ondata(r,n)},t.prototype.flush=function(t){wt.prototype.flush.call(this,t)},t}();_e.Zlib=Ot;var Gt=function(){return function(t,n){ut([_,rt,function(){return[at,wt,Ot]}],this,bt.call(this,t,n),function(t){var n=new Ot(t.data);onmessage=at(n)},10,1)}}();function Lt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[_,rt,function(){return[Bt]}],function(t){return et(Bt(t.data[0],t.data[1]))},4,r)}function Bt(t,n){n||(n={});var r=Y();r.p(t);var i=J(t,n,n.dictionary?6:2,4);return yt(i,n),lt(i,i.length-4,r.d()),i}_e.AsyncZlib=Gt;var Ht=function(){function t(t,n){Mt.call(this,t,n),this.v=t&&t.dictionary?2:1}return t.prototype.push=function(t,n){if(Mt.prototype.e.call(this,t),this.v){if(this.p.length<6&&!n)return;this.p=this.p.subarray(mt(this.p,this.v-1)),this.v=0}n&&(this.p.length<4&&I(6,"invalid zlib data"),this.p=this.p.subarray(0,-4)),Mt.prototype.c.call(this,n)},t}();_e.Unzlib=Ht;var jt=function(){return function(t,n){ut([$,it,function(){return[at,Mt,Ht]}],this,bt.call(this,t,n),function(t){var n=new Ht(t.data);onmessage=at(n)},11,0)}}();function Nt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),st(t,n,[$,it,function(){return[Pt]}],function(t){return et(Pt(t.data[0],ot(t.data[1])))},5,r)}function Pt(t,n){return U(t.subarray(mt(t,n&&n.dictionary),-4),{i:2},n&&n.out,n&&n.dictionary)}_e.AsyncUnzlib=jt;var Vt=function(){function t(t,n){this.o=bt.call(this,t,n)||{},this.G=Ft,this.I=Mt,this.Z=Ht}return t.prototype.i=function(){var t=this;this.s.ondata=function(n,r){t.ondata(n,r)}},t.prototype.push=function(t,r){if(this.ondata||I(5),this.s)this.s.push(t,r);else{if(this.p&&this.p.length){var i=new n(this.p.length+t.length);i.set(this.p),i.set(t,this.p.length)}else this.p=t;this.p.length>2&&(this.s=31==this.p[0]&&139==this.p[1]&&8==this.p[2]?new this.G(this.o):8!=(15&this.p[0])||this.p[0]>>4>7||(this.p[0]<<8|this.p[1])%31?new this.I(this.o):new this.Z(this.o),this.i(),this.s.push(this.p,r),this.p=null)}},t}();_e.Decompress=Vt;var Yt=function(){function t(t,n){Vt.call(this,t,n),this.queuedSize=0,this.G=Et,this.I=St,this.Z=jt}return t.prototype.i=function(){var t=this;this.s.ondata=function(n,r,i){t.ondata(n,r,i)},this.s.ondrain=function(n){t.queuedSize-=n,t.ondrain&&t.ondrain(n)}},t.prototype.push=function(t,n){this.queuedSize+=t.length,Vt.prototype.push.call(this,t,n)},t}();function Jt(t,n,r){return r||(r=n,n={}),"function"!=typeof r&&I(7),31==t[0]&&139==t[1]&&8==t[2]?Zt(t,n,r):8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31?At(t,n,r):Nt(t,n,r)}function Kt(t,n){return 31==t[0]&&139==t[1]&&8==t[2]?qt(t,n):8!=(15&t[0])||t[0]>>4>7||(t[0]<<8|t[1])%31?Tt(t,n):Pt(t,n)}_e.AsyncDecompress=Yt;var Qt=function(t,r,i,e){for(var o in t){var s=t[o],a=r+o,u=e;Array.isArray(s)&&(u=K(e,s[1]),s=s[0]),ArrayBuffer.isView(s)?i[a]=[s,u]:(i[a+="/"]=[new n(0),u],Qt(s,a,i,e))}},Rt="undefined"!=typeof TextEncoder&&new TextEncoder,Wt="undefined"!=typeof TextDecoder&&new TextDecoder,Xt=0;try{Wt.decode(j,{stream:!0}),Xt=1}catch(t){}var $t=function(t){for(var n="",r=0;;){var i=t[r++],e=(i>127)+(i>223)+(i>239);if(r+e>t.length)return{s:n,r:D(t,r-1)};e?3==e?(i=((15&i)<<18|(63&t[r++])<<12|(63&t[r++])<<6|63&t[r++])-65536,n+=String.fromCharCode(55296|i>>10,56320|1023&i)):n+=String.fromCharCode(1&e?(31&i)<<6|63&t[r++]:(15&i)<<12|(63&t[r++])<<6|63&t[r++]):n+=String.fromCharCode(i)}},_t=function(){function t(t){this.ondata=t,Xt?this.t=new TextDecoder:this.p=j}return t.prototype.push=function(t,r){if(this.ondata||I(5),r=!!r,this.t)return this.ondata(this.t.decode(t,{stream:!0}),r),void(r&&(this.t.decode().length&&I(8),this.t=null));this.p||I(4);var i=new n(this.p.length+t.length);i.set(this.p),i.set(t,this.p.length);var e=$t(i),o=e.s,s=e.r;r?(s.length&&I(8),this.p=null):this.p=s,this.ondata(o,r)},t}();_e.DecodeUTF8=_t;var tn=function(){function t(t){this.ondata=t}return t.prototype.push=function(t,n){this.ondata||I(5),this.d&&I(4),this.ondata(nn(t),this.d=n||!1)},t}();function nn(t,r){if(r){for(var i=new n(t.length),e=0;e<t.length;++e)i[e]=t.charCodeAt(e);return i}if(Rt)return Rt.encode(t);var o=t.length,s=new n(t.length+(t.length>>1)),a=0,u=function(t){s[a++]=t};for(e=0;e<o;++e){if(a+5>s.length){var h=new n(a+8+(o-e<<1));h.set(s),s=h}var f=t.charCodeAt(e);f<128||r?u(f):f<2048?(u(192|f>>6),u(128|63&f)):f>55295&&f<57344?(u(240|(f=65536+(1047552&f)|1023&t.charCodeAt(++e))>>18),u(128|f>>12&63),u(128|f>>6&63),u(128|63&f)):(u(224|f>>12),u(128|f>>6&63),u(128|63&f))}return D(s,0,a)}function rn(t,n){if(n){for(var r="",i=0;i<t.length;i+=16384)r+=String.fromCharCode.apply(null,t.subarray(i,i+16384));return r}if(Wt)return Wt.decode(t);var e=$t(t),o=e.s;return(r=e.r).length&&I(8),o}_e.EncodeUTF8=tn;var en=function(t){return 1==t?3:t<6?2:9==t?1:0},on=function(t,n){return n+30+ht(t,n+26)+ht(t,n+28)},sn=function(t,n,r){var i=ht(t,n+28),e=ht(t,n+30),o=rn(t.subarray(n+46,n+46+i),!(2048&ht(t,n+8))),s=n+46+i,a=an(t,s,e,r,ft(t,n+20),ft(t,n+24),ft(t,n+42)),u=a[0],h=a[1],f=a[2];return[ht(t,n+10),u,h,o,s+e+ht(t,n+32),f]},an=function(t,n,r,i,e,o,s){var a=4294967295==e,u=4294967295==o,h=4294967295==s,f=n+r;if(i&&a+u+h){for(;n+4<f;n+=4+ht(t,n+2))if(1==ht(t,n))return[a?ct(t,n+4+8*u):e,u?ct(t,n+4):o,h?ct(t,n+4+8*(u+a)):s,1];i<2&&I(13)}return[e,o,s,0]},un=function(t){var n=0;if(t)for(var r in t){var i=t[r].length;i>65535&&I(9),n+=i+4}return n},hn=function(t,n,r,i,e,o,s,a){var u=i.length,h=r.extra,f=a&&a.length,c=un(h);lt(t,n,null!=s?33639248:67324752),n+=4,null!=s&&(t[n++]=20,t[n++]=r.os),t[n]=20,n+=2,t[n++]=r.flag<<1|(o<0&&8),t[n++]=e&&8,t[n++]=255&r.compression,t[n++]=r.compression>>8;var l=new Date(null==r.mtime?Date.now():r.mtime),p=l.getFullYear()-1980;if((p<0||p>119)&&I(10),lt(t,n,p<<25|l.getMonth()+1<<21|l.getDate()<<16|l.getHours()<<11|l.getMinutes()<<5|l.getSeconds()>>1),n+=4,-1!=o&&(lt(t,n,r.crc),lt(t,n+4,o<0?-o-2:o),lt(t,n+8,r.size)),lt(t,n+12,u),lt(t,n+14,c),n+=16,null!=s&&(lt(t,n,f),lt(t,n+6,r.attrs),lt(t,n+10,s),n+=14),t.set(i,n),n+=u,c)for(var v in h){var d=h[v],g=d.length;lt(t,n,+v),lt(t,n+2,g),t.set(d,n+4),n+=4+g}return f&&(t.set(a,n),n+=f),n},fn=function(t,n,r,i,e){lt(t,n,101010256),lt(t,n+8,r),lt(t,n+10,r),lt(t,n+12,i),lt(t,n+16,e)},cn=function(){function t(t){this.filename=t,this.c=V(),this.size=0,this.compression=0}return t.prototype.process=function(t,n){this.ondata(null,t,n)},t.prototype.push=function(t,n){this.ondata||I(5),this.c.p(t),this.size+=t.length,n&&(this.crc=this.c.d()),this.process(t,n||!1)},t}();_e.ZipPassThrough=cn;var ln=function(){function t(t,n){var r=this;n||(n={}),cn.call(this,t),this.d=new wt(n,function(t,n){r.ondata(null,t,n)}),this.compression=8,this.flag=en(n.level)}return t.prototype.process=function(t,n){try{this.d.push(t,n)}catch(t){this.ondata(t,null,n)}},t.prototype.push=function(t,n){cn.prototype.push.call(this,t,n)},t}();_e.ZipDeflate=ln;var pn=function(){function t(t,n){var r=this;n||(n={}),cn.call(this,t),this.d=new xt(n,function(t,n,i){r.ondata(t,n,i)}),this.compression=8,this.flag=en(n.level),this.terminate=this.d.terminate}return t.prototype.process=function(t,n){this.d.push(t,n)},t.prototype.push=function(t,n){cn.prototype.push.call(this,t,n)},t}();_e.AsyncZipDeflate=pn;var vn=function(){function t(t){this.ondata=t,this.u=[],this.d=1}return t.prototype.add=function(t){var r=this;if(this.ondata||I(5),2&this.d)this.ondata(I(4+8*(1&this.d),0,1),null,!1);else{var i=nn(t.filename),e=i.length,o=t.comment,s=o&&nn(o),a=e!=t.filename.length||s&&o.length!=s.length,u=e+un(t.extra)+30;e>65535&&this.ondata(I(11,0,1),null,!1);var h=new n(u);hn(h,0,t,i,a,-1);var f=[h],c=function(){for(var t=0,n=f;t<n.length;t++)r.ondata(null,n[t],!1);f=[]},l=this.d;this.d=0;var p=this.u.length,v=K(t,{f:i,u:a,o:s,t:function(){t.terminate&&t.terminate()},r:function(){if(c(),l){var t=r.u[p+1];t?t.r():r.d=1}l=1}}),d=0;t.ondata=function(i,e,o){if(i)r.ondata(i,e,o),r.terminate();else if(d+=e.length,f.push(e),o){var s=new n(16);lt(s,0,134695760),lt(s,4,t.crc),lt(s,8,d),lt(s,12,t.size),f.push(s),v.c=d,v.b=u+d+16,v.crc=t.crc,v.size=t.size,l&&v.r(),l=1}else l&&c()},this.u.push(v)}},t.prototype.end=function(){var t=this;2&this.d?this.ondata(I(4+8*(1&this.d),0,1),null,!0):(this.d?this.e():this.u.push({r:function(){1&t.d&&(t.u.splice(-1,1),t.e())},t:function(){}}),this.d=3)},t.prototype.e=function(){for(var t=0,r=0,i=0,e=0,o=this.u;e<o.length;e++)i+=46+(h=o[e]).f.length+un(h.extra)+(h.o?h.o.length:0);for(var s=new n(i+22),a=0,u=this.u;a<u.length;a++){var h;hn(s,t,h=u[a],h.f,h.u,-h.c-2,r,h.o),t+=46+h.f.length+un(h.extra)+(h.o?h.o.length:0),r+=h.b}fn(s,t,this.u.length,i,r),this.ondata(null,s,!0),this.d=2},t.prototype.terminate=function(){for(var t=0,n=this.u;t<n.length;t++)n[t].t();this.d=2},t}();function dn(t,r,i){i||(i=r,r={}),"function"!=typeof i&&I(7);var e={};Qt(t,"",e,r);var o=Object.keys(e),s=o.length,a=0,u=0,h=s,f=Array(s),c=[],l=function(){for(var t=0;t<c.length;++t)c[t]()},p=function(t,n){xn(function(){i(t,n)})};xn(function(){p=i});var v=function(){var t=new n(u+22),r=a,i=u-a;u=0;for(var e=0;e<h;++e){var o=f[e];try{var s=o.c.length;hn(t,u,o,o.f,o.u,s);var c=30+o.f.length+un(o.extra),l=u+c;t.set(o.c,l),hn(t,a,o,o.f,o.u,s,u,o.m),a+=16+c+(o.m?o.m.length:0),u=l+s}catch(t){return p(t,null)}}fn(t,a,f.length,i,r),p(null,t)};s||v();for(var d=function(t){var n=o[t],r=e[n],i=r[0],h=r[1],d=V(),g=i.length;d.p(i);var y=nn(n),m=y.length,b=h.comment,w=b&&nn(b),x=w&&w.length,z=un(h.extra),k=0==h.level?0:8,M=function(r,i){if(r)l(),p(r,null);else{var e=i.length;f[t]=K(h,{size:g,crc:d.d(),c:i,f:y,m:w,u:m!=n.length||w&&b.length!=x,compression:k}),a+=30+m+z+e,u+=76+2*(m+z)+(x||0)+e,--s||v()}};if(m>65535&&M(I(11,0,1),null),k)if(g<16e4)try{M(null,kt(i,h))}catch(t){M(t,null)}else c.push(zt(i,h,M));else M(null,i)},g=0;g<h;++g)d(g);return l}function gn(t,r){r||(r={});var i={},e=[];Qt(t,"",i,r);var o=0,s=0;for(var a in i){var u=i[a],h=u[0],f=u[1],c=0==f.level?0:8,l=(M=nn(a)).length,p=f.comment,v=p&&nn(p),d=v&&v.length,g=un(f.extra);l>65535&&I(11);var y=c?kt(h,f):h,m=y.length,b=V();b.p(h),e.push(K(f,{size:h.length,crc:b.d(),c:y,f:M,m:v,u:l!=a.length||v&&p.length!=d,o:o,compression:c})),o+=30+l+g+m,s+=76+2*(l+g)+(d||0)+m}for(var w=new n(s+22),x=o,z=s-o,k=0;k<e.length;++k){var M;hn(w,(M=e[k]).o,M,M.f,M.u,M.c.length);var S=30+M.f.length+un(M.extra);w.set(M.c,M.o+S),hn(w,o,M,M.f,M.u,M.c.length,M.o,M.m),o+=16+S+(M.m?M.m.length:0)}return fn(w,o,e.length,z,x),w}_e.Zip=vn;var yn=function(){function t(){}return t.prototype.push=function(t,n){this.ondata(null,t,n)},t.compression=0,t}();_e.UnzipPassThrough=yn;var mn=function(){function t(){var t=this;this.i=new Mt(function(n,r){t.ondata(null,n,r)})}return t.prototype.push=function(t,n){try{this.i.push(t,n)}catch(t){this.ondata(t,null,n)}},t.compression=8,t}();_e.UnzipInflate=mn;var bn=function(){function t(t,n){var r=this;n<32e4?this.i=new Mt(function(t,n){r.ondata(null,t,n)}):(this.i=new St(function(t,n,i){r.ondata(t,n,i)}),this.terminate=this.i.terminate)}return t.prototype.push=function(t,n){this.i.terminate&&(t=D(t,0)),this.i.push(t,n)},t.compression=8,t}();_e.AsyncUnzipInflate=bn;var wn=function(){function t(t){this.onfile=t,this.k=[],this.o={0:yn},this.p=j}return t.prototype.push=function(t,r){var i=this;if(this.onfile||I(5),this.p||I(4),this.c>0){var e=Math.min(this.c,t.length),o=t.subarray(0,e);if(this.c-=e,this.d?this.d.push(o,!this.c):this.k[0].push(o),(t=t.subarray(e)).length)return this.push(t,r)}else{var s=0,a=0,u=void 0,h=void 0;this.p.length?t.length?((h=new n(this.p.length+t.length)).set(this.p),h.set(t,this.p.length)):h=this.p:h=t;for(var f=h.length,c=this.c,l=c&&this.d,p=function(){var t=ft(h,a);if(67324752==t){s=1,u=a,v.d=null,v.c=0;var n=ht(h,a+6),r=ht(h,a+8),e=2048&n,o=8&n,l=ht(h,a+26),p=ht(h,a+28);if(f>a+30+l+p){var d=[];v.k.unshift(d),s=2;var g,y=ft(h,a+18),m=ft(h,a+22),b=rn(h.subarray(a+30,a+=30+l),!e),w=an(h,a,p,2,y,m,0),x=w[0],z=w[1];o&&(x=-1-w[3]),a+=p,v.c=x;var k={name:b,compression:r,start:function(){if(k.ondata||I(5),x){var t=i.o[r];t||k.ondata(I(14,"unknown compression type "+r,1),null,!1),(g=x<0?new t(b):new t(b,x,z)).ondata=function(t,n,r){k.ondata(t,n,r)};for(var n=0,e=d;n<e.length;n++)g.push(e[n],!1);i.k[0]==d&&i.c?i.d=g:g.push(j,!0)}else k.ondata(null,j,!0)},terminate:function(){g&&g.terminate&&g.terminate()}};x>=0&&(k.size=x,k.originalSize=z),v.onfile(k)}return"break"}if(c){if(134695760==t)return u=a+=12+(-2==c&&8),s=3,v.c=0,"break";if(33639248==t)return u=a-=4,s=3,v.c=0,"break"}},v=this;a<f-4&&"break"!==p();++a);if(this.p=j,c<0){var d=h.subarray(0,s?u-12-(-2==c&&8)-(134695760==ft(h,u-16)&&4):a);l?l.push(d,!!s):this.k[+(2==s)].push(d)}if(2&s)return this.push(h.subarray(a),r);this.p=h.subarray(a)}r&&(this.c&&I(13),this.p=null)},t.prototype.register=function(t){this.o[t.compression]=t},t}();_e.Unzip=wn;var xn="function"==typeof queueMicrotask?queueMicrotask:"function"==typeof setTimeout?setTimeout:function(t){t()};function zn(t,r,i){i||(i=r,r={}),"function"!=typeof i&&I(7);var e=[],o=function(){for(var t=0;t<e.length;++t)e[t]()},s={},a=function(t,n){xn(function(){i(t,n)})};xn(function(){a=i});for(var u=t.length-22;101010256!=ft(t,u);--u)if(!u||t.length-u>65558)return a(I(13,0,1),null),o;var h=ht(t,u+8);if(h){var f=h,c=ft(t,u+16),l=117853008==ft(t,u-20);if(l){var p=ft(t,u-12);(l=101075792==ft(t,p))&&(f=h=ft(t,p+32),c=ft(t,p+48))}for(var v=r&&r.filter,d=function(r){var i=sn(t,c,l),u=i[0],f=i[1],p=i[2],d=i[3],g=i[4],y=on(t,i[5]);c=g;var m=function(t,n){t?(o(),a(t,null)):(n&&(s[d]=n),--h||a(null,s))};if(!v||v({name:d,size:f,originalSize:p,compression:u}))if(u)if(8==u){var b=t.subarray(y,y+f);if(p<524288||f>.8*p)try{m(null,Tt(b,{out:new n(p)}))}catch(t){m(t,null)}else e.push(At(b,{size:p},m))}else m(I(14,"unknown compression type "+u,1),null);else m(null,D(t,y,y+f));else m(null,null)},g=0;g<f;++g)d()}else a(null,{});return o}function kn(t,r){for(var i={},e=t.length-22;101010256!=ft(t,e);--e)(!e||t.length-e>65558)&&I(13);var o=ht(t,e+8);if(!o)return{};var s=ft(t,e+16),a=117853008==ft(t,e-20);if(a){var u=ft(t,e-12);(a=101075792==ft(t,u))&&(o=ft(t,u+32),s=ft(t,u+48))}for(var h=r&&r.filter,f=0;f<o;++f){var c=sn(t,s,a),l=c[0],p=c[1],v=c[2],d=c[3],g=c[4],y=on(t,c[5]);s=g,h&&!h({name:d,size:p,originalSize:v,compression:l})||(l?8==l?i[d]=Tt(t.subarray(y,y+p),{out:new n(v)}):I(14,"unknown compression type "+l):i[d]=D(t,y,y+p))}return i}return _e});
+</script>
+<script>
+/* Reading the diagram prints out of whatever file they arrive in.
+
+   The prints come round as a Word document - .docx from a current Word,
+   .doc from an older one - and sometimes as a text or CSV save of the same
+   thing. All four end up as the same list of paragraphs, tabs and all, and
+   nothing downstream cares which one it started as.
+
+   This lives on its own because two tools read the prints: the berthing
+   sheets and the fleet analysis. They ask different questions of the
+   diagrams, but they open the file the same way, and a fix to the reader -
+   an older Word, a new export quirk - has to reach both.
+
+   It also carries csvParse: a plain CSV splitter, no berthing knowledge
+   in it, needed here for the CSV save of the prints and re-exported by
+   SHEETS_CORE for everything else that asks. */
+;(function(root){
+"use strict";
+  /* ========================= docx -> lines ========================= */
+  function xmlUnescape(s){
+    return s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"')
+            .replace(/&apos;/g,"'")
+            .replace(/&#x([0-9a-fA-F]+);/g,(m,h)=>String.fromCodePoint(parseInt(h,16)))
+            .replace(/&#(\d+);/g,(m,d)=>String.fromCodePoint(parseInt(d,10)))
+            .replace(/&amp;/g,"&");
+  }
+  /* paragraph text exactly as python-docx builds it: run text, <w:tab/> -> \t,
+     <w:br/> and <w:cr/> -> \n */
+  function docxParagraphs(documentXml){
+    const paras = [];
+    const re = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g;
+    let m;
+    while ((m = re.exec(documentXml)) !== null){
+      const inner = m[1];
+      if (inner === undefined){ paras.push(""); continue; }
+      const body = inner.replace(/<w:pPr>[\s\S]*?<\/w:pPr>/g, "");
+      let text = "";
+      const tok = /<w:tab\/>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/?>|<w:cr\/>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:t(?:\s[^>]*)?\/>/g;
+      let t;
+      while ((t = tok.exec(body)) !== null){
+        const raw = t[0];
+        if (raw.startsWith("<w:tab")) text += "\t";
+        else if (raw.startsWith("<w:br") || raw.startsWith("<w:cr")) text += "\n";
+        else if (t[1] !== undefined) text += xmlUnescape(t[1]);
+      }
+      paras.push(text);
+    }
+    return paras;
+  }
+  function readDocx(bytes, unzip){
+    let files;
+    try { files = unzip(bytes); }
+    catch (e){
+      throw new Error("That file is damaged or isn't a Word document. " +
+                      "Try re-saving the prints from Word as .docx.");
+    }
+    const key = Object.keys(files).find(k => k === "word/document.xml");
+    if (!key) throw new Error("That doesn't look like a Word file — no document body inside.");
+    const xml = new TextDecoder("utf-8").decode(files[key]);
+    return docxParagraphs(xml);
+  }
+
+  /* ---- legacy .doc (Word 97-2003) ------------------------------------------
+     A .doc is an OLE compound file: a little filesystem holding a
+     "WordDocument" stream and a table stream. The text is not one run - the
+     table stream holds a piece table saying where each run of characters lives
+     and whether it is 1-byte or 2-byte encoded. This walks both.            */
+  function readCfb(bytes){
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const u16 = function(o){ return dv.getUint16(o, true); };
+    const u32 = function(o){ return dv.getUint32(o, true); };
+    const ssz = 1 << u16(0x1E), msz = 1 << u16(0x20);
+    const dirStart = u32(0x30), cutoff = u32(0x38);
+    const miniStart = u32(0x3C), difatStart = u32(0x44), nDifat = u32(0x48);
+    const sector = function(n){
+      const off = (n + 1) * ssz;
+      return bytes.subarray(off, off + ssz);
+    };
+    const fatSectors = [];
+    for (let i = 0; i < 109; i++){
+      const v = u32(0x4C + 4 * i);
+      if (v < 0xFFFFFFFA) fatSectors.push(v);
+    }
+    let nxt = difatStart, guard = 0;
+    while (nxt < 0xFFFFFFFA && guard < nDifat + 8){
+      const blk = sector(nxt);
+      const bv = new DataView(blk.buffer, blk.byteOffset, blk.byteLength);
+      for (let i = 0; i < ssz / 4 - 1; i++){
+        const v = bv.getUint32(4 * i, true);
+        if (v < 0xFFFFFFFA) fatSectors.push(v);
+      }
+      nxt = bv.getUint32(ssz - 4, true); guard++;
+    }
+    const fat = [];
+    for (const s of fatSectors){
+      const blk = sector(s);
+      const bv = new DataView(blk.buffer, blk.byteOffset, blk.byteLength);
+      for (let i = 0; i < ssz / 4; i++) fat.push(bv.getUint32(4 * i, true));
+    }
+    const chain = function(start){
+      const out = []; let cur = start;
+      while (cur < 0xFFFFFFFA && out.length < (1 << 22)){
+        out.push(cur);
+        cur = cur < fat.length ? fat[cur] : 0xFFFFFFFE;
+      }
+      return out;
+    };
+    const miniFat = [];
+    for (const s of chain(miniStart)){
+      const blk = sector(s);
+      const bv = new DataView(blk.buffer, blk.byteOffset, blk.byteLength);
+      for (let i = 0; i < ssz / 4; i++) miniFat.push(bv.getUint32(4 * i, true));
+    }
+    const miniChain = function(start){
+      const out = []; let cur = start;
+      while (cur < 0xFFFFFFFA && out.length < (1 << 20)){
+        out.push(cur);
+        cur = cur < miniFat.length ? miniFat[cur] : 0xFFFFFFFE;
+      }
+      return out;
+    };
+    const join = function(parts, size){
+      const total = parts.reduce(function(a, p){ return a + p.length; }, 0);
+      const out = new Uint8Array(total);
+      let o = 0;
+      for (const p of parts){ out.set(p, o); o += p.length; }
+      return size === undefined ? out : out.subarray(0, size);
+    };
+    const entries = [];
+    for (const s of chain(dirStart)){
+      const blk = sector(s);
+      for (let i = 0; i + 128 <= blk.length; i += 128){
+        const e = blk.subarray(i, i + 128);
+        const ev = new DataView(e.buffer, e.byteOffset, e.byteLength);
+        const nlen = ev.getUint16(64, true);
+        let name = "";
+        for (let k = 0; k + 1 < Math.max(0, nlen - 2); k += 2)
+          name += String.fromCharCode(ev.getUint16(k, true));
+        entries.push({name: name, type: e[66],
+                      start: ev.getUint32(116, true), size: ev.getUint32(120, true)});
+      }
+    }
+    const root = entries.find(function(e){ return e.type === 5; });
+    const miniStream = root
+      ? join(chain(root.start).map(sector)) : new Uint8Array(0);
+    const out = {};
+    for (const e of entries){
+      if (e.type !== 2 || !e.name) continue;
+      out[e.name] = e.size < cutoff
+        ? join(miniChain(e.start).map(function(n){
+            return miniStream.subarray(n * msz, (n + 1) * msz); }), e.size)
+        : join(chain(e.start).map(sector), e.size);
+    }
+    return out;
+  }
+  function readDoc(bytes){
+    let streams;
+    try { streams = readCfb(bytes); }
+    catch (e){ throw new Error("That .doc file could not be read. Try opening it " +
+                               "in Word and saving it again."); }
+    const wd = streams["WordDocument"];
+    if (!wd) throw new Error("That doesn't look like a Word file — no document body inside.");
+    const wv = new DataView(wd.buffer, wd.byteOffset, wd.byteLength);
+    if (wv.getUint16(0, true) !== 0xA5EC)
+      throw new Error("Unrecognised Word document header.");
+    const which = (wv.getUint16(0x0A, true) & 0x0200) ? "1Table" : "0Table";
+    const tbl = streams[which] || streams["1Table"] || streams["0Table"];
+    if (!tbl) throw new Error("That Word file is missing its table stream.");
+    const tv = new DataView(tbl.buffer, tbl.byteOffset, tbl.byteLength);
+    // walk the FIB to the Clx pointer rather than trusting a fixed offset
+    const csw = wv.getUint16(0x20, true);
+    const cslw = wv.getUint16(0x22 + csw * 2, true);
+    const base = 0x22 + csw * 2 + 2 + cslw * 4 + 2;
+    const fcClx = wv.getUint32(base + 33 * 8, true);
+    const lcbClx = wv.getUint32(base + 33 * 8 + 4, true);
+    let i = fcClx, pcdtAt = -1, pcdtLen = 0;
+    const end = fcClx + lcbClx;
+    while (i < end){
+      if (tbl[i] === 1) i += 3 + tv.getUint16(i + 1, true);
+      else if (tbl[i] === 2){
+        pcdtLen = tv.getUint32(i + 1, true); pcdtAt = i + 5; break;
+      } else break;
+    }
+    if (pcdtAt < 0) throw new Error("That Word file has no piece table.");
+    const n = Math.floor((pcdtLen - 4) / 12);
+    const cps = [];
+    for (let k = 0; k <= n; k++) cps.push(tv.getUint32(pcdtAt + 4 * k, true));
+    const dec1 = new TextDecoder("windows-1252");
+    const dec2 = new TextDecoder("utf-16le");
+    let body = "";
+    for (let k = 0; k < n; k++){
+      const p = pcdtAt + 4 * (n + 1) + 8 * k;
+      const fc = tv.getUint32(p + 2, true);
+      const compressed = (fc & 0x40000000) !== 0;
+      const off = compressed ? (fc & 0x3FFFFFFF) >>> 1 : (fc & 0x3FFFFFFF);
+      const chars = cps[k + 1] - cps[k];
+      body += compressed ? dec1.decode(wd.subarray(off, off + chars))
+                         : dec2.decode(wd.subarray(off, off + chars * 2));
+    }
+    return body.replace(/[\x07\x0b\x0c]/g, "\r").split("\r");
+  }
+  /* Prints as plain text - a .txt saved out of Word, or the document opened
+     and copied. What the two Word readers above produce IS this: a list of
+     paragraphs, tabs and all, and parseDiagrams reads nothing else. So the
+     text is not a lesser input, it is the same input a step earlier. Checked
+     on the real SUN 16/08 prints: 322 diagrams from the .docx, the same 322
+     from its paragraphs joined with newlines and split again.
+
+     The tabs are the whole structure - "Diagram:\tAZ\t601" - so this must
+     never be run through any comma/tab tidying. */
+  function looksLikePrints(text){
+    return /(^|\n)\s*Diagram:\t/.test(text) || /\bDiagram:\t\w+\t\d+/.test(text);
+  }
+  /* The extension is only a hint; what matters is the first few bytes. */
+  function readPrints(bytes, unzip){
+    const b = bytes;
+    if (b[0] === 0x50 && b[1] === 0x4B && b[2] === 0x03 && b[3] === 0x04)
+      return readDocx(bytes, unzip);
+    if (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0 &&
+        b[4] === 0xA1 && b[5] === 0xB1 && b[6] === 0x1A && b[7] === 0xE1)
+      return readDoc(bytes);
+    const dec = new TextDecoder("utf-8", {fatal:false});
+    const head = dec.decode(bytes.subarray(0, 16)).trimStart();
+    if (head.slice(0, 5) === "{\\rtf")
+      throw new Error("That file is Rich Text, not Word. Open it in Word and save " +
+                      "it as a Word Document.");
+    const text = dec.decode(bytes).replace(/^\uFEFF/, "");
+    if (looksLikePrints(text)) return text.replace(/\r\n?/g, "\n").split("\n");
+    const csv = printsFromCsv(text);
+    if (csv) return csv;
+    throw new Error("That isn't the diagram prints. Drop the Word document, or " +
+                    "save it as plain text or as a CSV — the diagram lines " +
+                    "have to keep their columns.");
+  }
+  function csvParse(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    const rows = [];
+    let row = [], field = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else q = false;
+        } else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    row.push(field);
+    if (row.length > 1 || row[0] !== "") rows.push(row);
+    return rows;
+  }
+
+  /* The prints saved as a CSV. Word tables and spreadsheets both write the
+     prints out with a comma between the cells instead of a tab, which the
+     reader above cannot see: "Diagram:,AZ,601" is the same line as
+     "Diagram:\tAZ\t601" and used to be refused as "not the diagram prints".
+     So the cells are read back and re-joined with tabs, which is the shape
+     everything downstream reads. Trailing empty cells go: a spreadsheet pads
+     every row out to the widest one, and a run of tabs at the end of a line
+     is not what the .docx produces.
+
+     Only a file that turns out to BE the prints is taken - a Diagram Summary
+     export is a CSV too, and it has to keep being refused rather than
+     half-read into an empty book. */
+  function printsFromCsv(text){
+    if (text.indexOf(",") < 0) return null;
+    const rows = csvParse(text);
+    if (!rows.length) return null;
+    const lines = rows.map(function(r){
+      let end = r.length;
+      while (end > 0 && String(r[end - 1]).trim() === "") end--;
+      return r.slice(0, end).join("\t");
+    });
+    return looksLikePrints(lines.join("\n")) ? lines : null;
+  }
+
+
+root.SHEETS_PRINTS = {readPrints, readDoc, readDocx, readCfb, docxParagraphs,
+                      looksLikePrints, printsFromCsv, xmlUnescape, csvParse};
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* The diagram prints, read for the fleet's sake rather than the berth's.
+
+   SHEETS_PRINTS opens the file and hands back the paragraphs. The berthing
+   sheets then keep only what a berthing sheet needs - where a unit stands
+   and in what order. Maintenance planning asks different questions, so this
+   keeps the columns that one throws away: the day code, the validity dates,
+   the running miles, and the activity against every line.
+
+   Column layout of a stop line, tab separated:
+     [2] location  [3] arrive  [4] depart  [5] headcode
+     [6] activity  [7] running miles  [8] formation                        */
+;(function(root){
+"use strict";
+
+/* Times are "05.03" for a passenger working and "05+03" for empty stock -
+   the same convention the berthing sheets read. A colon is accepted too:
+   the planning system does not write one, but a spreadsheet round-trip
+   does, and the berthing sheets have always tolerated it. */
+const TIME = /^(\d{1,2})[.+:](\d{2})$/;
+function tmin(s){
+  const m = TIME.exec((s || "").trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+const isEcs = s => /\+/.test(s || "");
+
+function num(s){
+  const t = (s || "").trim();
+  return t && !isNaN(Number(t)) ? Number(t) : null;
+}
+
+function parsePrints(lines){
+  const out = [];
+  let cur = null;
+  const push = () => { if (cur && cur.rows.length) out.push(finish(cur)); };
+  for (const ln of lines){
+    if (ln.indexOf("Diagram:") !== -1){
+      const m = /Diagram:\t(\w+)\t(\d+)\t(\S*)/.exec(ln);
+      if (m){
+        push();
+        cur = {code: m[1], num: parseInt(m[2], 10), days: (m[3] || "").trim(),
+               fleet: "", from: "", until: "", works: "",
+               totalMiles: null, loadedMiles: null, emptyMiles: null, rows: []};
+      }
+      continue;
+    }
+    if (!cur) continue;
+    if (ln.indexOf("Fleet:") !== -1){
+      const m = /Fleet:\t([\d/]+)/.exec(ln); if (m) cur.fleet = m[1];
+      continue;
+    }
+    if (ln.indexOf("From:") !== -1){
+      const m = /From:\t(\d{2}\/\d{2}\/\d{4})/.exec(ln); if (m) cur.from = m[1];
+      const u = /Until:\t(\d{2}\/\d{2}\/\d{4})/.exec(ln); if (u) cur.until = u[1];
+      continue;
+    }
+    if (ln.indexOf("Until:") !== -1){
+      const u = /Until:\t(\d{2}\/\d{2}\/\d{4})/.exec(ln); if (u) cur.until = u[1];
+      continue;
+    }
+    if (ln.indexOf("Total miles") !== -1){
+      const t = /Total miles:\t([\d.]+)/.exec(ln);
+      const l = /Total miles loaded:\t([\d.]+)/.exec(ln);
+      const e = /Total miles empty:\t([\d.]+)/.exec(ln);
+      if (t) cur.totalMiles = Number(t[1]);
+      if (l) cur.loadedMiles = Number(l[1]);
+      if (e) cur.emptyMiles = Number(e[1]);
+      continue;
+    }
+    if (ln.indexOf("Works:") !== -1){
+      const m = /Works:\t(.*)/.exec(ln); if (m) cur.works = m[1].trim();
+      continue;
+    }
+    const g = ln.split("\t");
+    if (g.length < 6) continue;
+    while (g.length < 9) g.push("");
+    const pick = i => (g[i] || "").trim();
+    const loc = pick(2);
+    if (!loc) continue;
+    const arr = pick(3), dep = pick(4), act = pick(6);
+    /* A STABLD line carries a place and no times at all - the unit is not
+       used and stands where it is. Skipping any line without a time threw
+       away every diagram that never moves, which is precisely the set
+       maintenance can reach. Keep it; the diagram is marked stabled below. */
+    if (!arr && !dep && !act) continue;
+    cur.rows.push({loc, arrRaw: arr, depRaw: dep, arr: tmin(arr), dep: tmin(dep),
+                   ecs: isEcs(arr) || isEcs(dep),
+                   hc: pick(5), act, miles: num(pick(7)), form: pick(8)});
+  }
+  push();
+  return out;
+}
+
+function finish(d){
+  d.key = d.code + d.num;
+  /* Not used at all that day: every line is STABLD and it runs no miles. */
+  d.stabled = d.rows.every(r => /STABLD/i.test(r.act)) && !(d.totalMiles > 0);
+  return d;
+}
+
+/* A diagram is printed once per validity period, so the same number appears
+   more than once with different From/Until dates whenever an engineering
+   period splits it. Anything counted over the whole book therefore counts
+   those twice - which is why every total here is measured on a date. */
+function parseDMY(s){
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s || "").trim());
+  return m ? Date.UTC(+m[3], +m[2] - 1, +m[1]) : null;
+}
+
+root.FLEET_PRINTS = {parsePrints, tmin, isEcs, parseDMY};
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* What the diagram prints say about looking after the units.
+
+   The berthing sheets answer "where is every unit tonight". This answers
+   the maintenance planner's questions instead: when does a fleet come home,
+   what stands still long enough to be worked on, what can carry a
+   restricted unit, and where does a diagram break apart.
+
+   Two words are worth pinning down before anything below makes sense.
+
+   MO means two different things and both matter here.
+     - On a print it is a DAY CODE: Mondays Only. That is all it says about
+       the diagram, and it is read by daysOf() with the rest of them.
+     - In the depot it is a RESTRICTED UNIT: one that may not run on its
+       own and has to be coupled to another unit. A diagram can carry such
+       a unit only if the unit is attached for every leg it works. That is
+       moCapable() below, and it has nothing to do with the day code.
+
+   HOME is the depot that owns the fleet. REPAIR depots are everywhere the
+   fleet can actually be worked on, which is usually more places than one.
+   Both are settings, not facts of the data - see FLEETS.                 */
+;(function(root){
+"use strict";
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/* ---- day codes ---------------------------------------------------------
+   A code names the days a diagram runs. "FSX" is the Monday-to-Thursday
+   book (Fridays and Saturdays excepted; Sunday has its own). Otherwise it
+   is day letters with "O" for Only - MO, WThO, MTWO. "Th" has to be read
+   before "T" or Thursday becomes Tuesday followed by a stray H.          */
+function daysOf(code){
+  const c = (code || "").trim();
+  if (c === "FSX") return ["Mon", "Tue", "Wed", "Thu"];
+  if (/^F(O)?$/.test(c)) return ["Fri"];
+  if (/^S(O)?$/.test(c)) return ["Sat"];
+  if (/^Su/.test(c)) return ["Sun"];
+  const body = c.replace(/O$/, "");
+  const out = [];
+  let i = 0;
+  while (i < body.length){
+    if (body.startsWith("Th", i)){ out.push("Thu"); i += 2; continue; }
+    const ch = body[i++];
+    if (ch === "M") out.push("Mon");
+    else if (ch === "T") out.push("Tue");
+    else if (ch === "W") out.push("Wed");
+    else if (ch === "F") out.push("Fri");
+    else if (ch === "S") out.push("Sat");
+  }
+  return out;
+}
+/* Spelt out, for a heading. "MO" on its own is ambiguous to a reader who
+   has the other MO in mind, so it is never printed bare. */
+function daysLabel(code){
+  const d = daysOf(code);
+  if (!d.length) return code || "?";
+  if (d.length === 7) return "every day";
+  if (d.length === 1) return d[0] + " only";
+  const runs = [];
+  let a = 0;
+  for (let i = 1; i <= d.length; i++)
+    if (i === d.length || DAYS.indexOf(d[i]) !== DAYS.indexOf(d[i - 1]) + 1){
+      runs.push(i - a > 1 ? d[a] + "–" + d[i - 1] : d[a]);
+      a = i;
+    }
+  return runs.join(", ");
+}
+
+/* ---- depots ------------------------------------------------------------
+   "roads" are inside the depot, where a unit can be worked on. "area" adds
+   the sidings and the station alongside: a unit there is at home for
+   planning, but it is not standing over a pit.                           */
+const DEPOTS = {
+  Ramsgate:   {roads: ["Ram Depot", "RM DRW"],
+               area: ["RamsNewSd", "Ram", "RM EK4985", "RM EK5145",
+                      "RM EK5143", "RM EK4981"]},
+  Ashford:    {roads: ["Ashfrd DS", "AshfDYWRd"],
+               area: ["Ashfd EBS", "Ash Up Sd", "Ashford I"]},
+  "Slade Green": {roads: ["S Gn Dep"], area: ["S Gn U Sd", "S Gn"]},
+  Gillingham: {roads: ["Gill Dep"], area: ["Gill US", "Gill ReRd", "Gill"]},
+  "Grove Park": {roads: ["G Pk Dep"], area: ["G Pk DnSd", "G Pk UpSd"]},
+};
+
+/* Which fleet a diagram belongs to, off its Fleet line. The diagram prefix
+   will not do: SG covers both the 376s and the Metro classes. */
+function fleetOf(d){
+  const f = d.fleet || "";
+  if (/^375/.test(f)) return "375";
+  if (/^376/.test(f)) return "376";
+  if (/^377/.test(f)) return "377";
+  if (/^395/.test(f)) return "395";
+  if (/^(465|466|707)/.test(f)) return "Metro";
+  return "other";
+}
+
+/* Home and repair depots per fleet. These are the depot's arrangements,
+   not something the prints state, so they are settings the tool carries
+   and the user can change - a fleet moving depot must not need a new
+   version of this file. */
+const FLEETS = {
+  "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"]},
+  "376": {label: "376", home: "Gillingham",
+          repair: ["Gillingham", "Ramsgate", "Slade Green"]},
+  "377": {label: "377", home: "Ashford", repair: ["Ashford"], derived: true},
+  "395": {label: "395", home: "Ashford", repair: ["Ashford"]},
+  "Metro": {label: "465/466/707", home: "Slade Green", repair: ["Slade Green"]},
+};
+
+function depotSet(names, which){
+  const s = new Set();
+  for (const n of names || []){
+    const d = DEPOTS[n];
+    if (!d) continue;
+    for (const l of d.roads) s.add(l);
+    if (which === "area") for (const l of d.area) s.add(l);
+  }
+  return s;
+}
+
+/* ---- times -------------------------------------------------------------
+   A diagram that starts at 05.00 and finishes at 00.54 finishes AFTER
+   midnight, not before breakfast. Rolling the clock forward keeps the
+   order of the day right; every time below is a rolled one, so 25:02
+   means two minutes past one the following morning. Without this an
+   overnight arrival reads as the earliest arrival of the day, and the
+   morning/afternoon split comes out backwards.                           */
+function roll(d){
+  let prev = -1;
+  const rows = d.rows.map(s => {
+    const r = v => {
+      if (v == null) return null;
+      let x = v;
+      while (x < prev - 60) x += 1440;
+      if (x > prev) prev = x;
+      return x;
+    };
+    const arr = r(s.arr), dep = r(s.dep);
+    return Object.assign({}, s, {arr, dep});
+  });
+  return Object.assign({}, d, {rows});
+}
+const hm = v => v == null ? "—"
+  : String(Math.floor(v / 60)).padStart(2, "0") + ":" + String(v % 60).padStart(2, "0");
+
+/* ---- berths ------------------------------------------------------------
+   A stand is written across two lines: the unit arrives on one (arrive
+   filled, depart blank, often with ATTACH or DETACH against it) and leaves
+   on the next. So a berth is an arrival paired with the NEXT departure,
+   never a subtraction inside one line - do it inside the line and every
+   mid-day stand disappears.                                              */
+function berthsOf(d){
+  const out = [], rows = d.rows;
+  for (let i = 0; i < rows.length; i++){
+    if (rows[i].arr == null) continue;
+    let j = i;
+    while (j < rows.length && rows[j].dep == null) j++;
+    const dep = j < rows.length ? rows[j].dep : null;
+    out.push({loc: rows[i].loc, from: rows[i].arr, to: dep,
+              mins: dep == null ? null : dep - rows[i].arr,
+              last: dep == null,
+              act: rows.slice(i, j + 1).map(r => r.act).filter(Boolean).join("/")});
+    i = j;
+  }
+  return out;
+}
+/* Long enough for somebody to get to the unit and do something to it. */
+const ATTENDABLE = 120;
+
+const startsAt = d => ({loc: d.rows[0].loc,
+                        t: d.stabled ? null : (d.rows[0].dep ?? d.rows[0].arr)});
+function endsAt(d){
+  const last = d.rows[d.rows.length - 1];
+  return {loc: last.loc, t: d.stabled ? null : (last.arr ?? last.dep)};
+}
+
+/* ---- coupling ----------------------------------------------------------
+   A working leg is a move with a headcode. The formation column names the
+   units in the train; a leg with none is a unit running on its own. A
+   RESTRICTED unit - the depot's "MO" - may never do that, so it can only
+   take a diagram whose every leg is formed with somebody else.           */
+const legsOf = d => d.rows.filter(r => r.hc && r.dep != null);
+function coupling(d){
+  const L = legsOf(d);
+  if (!L.length) return {legs: 0, alone: 0, moCapable: false, partners: []};
+  const alone = L.filter(r => !r.form).length;
+  const partners = new Set();
+  for (const r of L){
+    const re = /(\d+)\s*\(\d+\)/g;
+    let m;
+    while ((m = re.exec(r.form || "")) !== null)
+      if (m[1] !== String(d.num)) partners.add(m[1]);
+  }
+  return {legs: L.length, alone, moCapable: alone === 0,
+          partners: Array.from(partners).sort()};
+}
+const moCapable = d => coupling(d).moCapable;
+
+/* Where a diagram parts company. A unit that has to stay coupled cannot be
+   left behind by one of these, so the places they happen are the places a
+   restriction cannot be contained. */
+const SPLIT = /^(DETACH|DETTT)$/i;
+const splitsOf = d => d.rows.filter(r => SPLIT.test(r.act || ""))
+  .map(r => ({loc: r.loc, t: r.arr ?? r.dep}));
+
+/* ---- which diagrams are in force, and when -----------------------------
+   Counting every printed diagram counts a re-issued one twice, so
+   everything is measured on a date: the diagrams valid that day, running
+   that weekday. A whole week of those is one clean timetable.            */
+const parseDMY = FLEET_PRINTS.parseDMY;
+const dayName = ms => DAYS[(new Date(ms).getUTCDay() + 6) % 7];
+function validOn(d, ms){
+  const a = parseDMY(d.from), b = parseDMY(d.until);
+  if (a != null && ms < a) return false;
+  if (b != null && ms > b) return false;
+  return true;
+}
+const runsOn = (d, ms) => validOn(d, ms) && daysOf(d.days).indexOf(dayName(ms)) !== -1;
+const weekFrom = ms => DAYS.map((_, i) => ms + i * 86400000);
+/* The middle of the period the books cover, so every diagram is in force. */
+function referenceMonday(all){
+  const f = [], u = [];
+  for (const d of all){
+    const a = parseDMY(d.from), b = parseDMY(d.until);
+    if (a != null) f.push(a);
+    if (b != null) u.push(b);
+  }
+  if (!f.length) return null;
+  const mid = (Math.min.apply(null, f) + Math.max.apply(null, u.length ? u : f)) / 2;
+  let ms = Math.floor(mid / 86400000) * 86400000;
+  while (dayName(ms) !== "Mon") ms -= 86400000;
+  return ms;
+}
+
+/* ---- the day's picture for one fleet ---------------------------------- */
+const WEEKS = 365.25 / 7;
+
+function analyse(all, fleet, cfg){
+  const c = Object.assign({}, FLEETS[fleet], cfg && cfg[fleet]);
+  const monday = (cfg && cfg.monday) || referenceMonday(all);
+  const mine = all.filter(d => fleetOf(d) === fleet);
+  const roads = depotSet(c.repair, "roads");
+  const homeRoads = depotSet([c.home], "roads");
+  const homeArea = depotSet([c.home], "area");
+  const atRepair = l => roads.has(l);
+  const atHome = l => homeRoads.has(l);
+  const inHome = l => homeArea.has(l);
+
+  /* one weekday, so the counts read as "on a typical Monday" */
+  const day = mine.filter(d => runsOn(d, monday)).map(roll);
+  const work = day.filter(d => !d.stabled);
+  const still = day.filter(d => d.stabled);
+
+  /* Every arrival: the end of a diagram, plus any stand long enough to
+     matter on the way. Bucketed on the rolled clock, so a diagram running
+     past midnight lands in "after midnight" and not in the morning. */
+  const arrivals = [];
+  for (const d of work){
+    const bs = berthsOf(d);
+    for (const b of bs){
+      if (!b.last && !(b.mins >= 60)) continue;
+      arrivals.push({d, loc: b.loc, t: b.from, mins: b.mins, last: b.last,
+                     start: startsAt(d)});
+    }
+  }
+  const when = t => t == null ? "?" : t < 720 ? "AM" : t < 1440 ? "PM" : "NIGHT";
+  const bucket = f => {
+    const b = {AM: [], PM: [], NIGHT: []};
+    for (const a of arrivals) if (f(a.loc)) (b[when(a.t)] || []).push(a);
+    return b;
+  };
+
+  /* Stands a unit can be attended in: two hours or more, and not the one
+     it finishes the day on. */
+  const attend = [];
+  for (const d of work)
+    for (const b of berthsOf(d))
+      if (!b.last && b.mins != null && b.mins >= ATTENDABLE)
+        attend.push({d, b});
+  for (const d of still)
+    attend.push({d, b: {loc: d.rows[0].loc, from: null, to: null,
+                        mins: null, last: true, act: "STABLD"}});
+
+  /* Restricted units: the diagrams that never leave one on its own, and
+     where a diagram has to be standing to be taken up. */
+  const mo = work.map(d => ({d, c: coupling(d)}));
+  const moOk = mo.filter(x => x.c.moCapable);
+  const byStart = new Map();
+  for (const x of mo){
+    const l = startsAt(x.d).loc;
+    if (!byStart.has(l)) byStart.set(l, {loc: l, n: 0, ok: 0, okD: [], badD: []});
+    const r = byStart.get(l);
+    r.n++;
+    if (x.c.moCapable){ r.ok++; r.okD.push(x.d.key); } else r.badD.push(x.d.key);
+  }
+  const containment = Array.from(byStart.values()).sort((a, b) => b.n - a.n);
+
+  /* Where diagrams actually come apart. */
+  const splitAt = new Map();
+  for (const d of work)
+    for (const s of splitsOf(d)){
+      if (!splitAt.has(s.loc)) splitAt.set(s.loc, {loc: s.loc, n: 0, ds: new Set()});
+      const r = splitAt.get(s.loc);
+      r.n++;
+      r.ds.add(d.key);
+    }
+
+  /* Mileage over one real week, then annualised. */
+  const perDay = {};
+  for (const nm of DAYS) perDay[nm] = {miles: 0, diagrams: 0};
+  const dupes = [];
+  for (const ms of weekFrom(monday)){
+    const nm = dayName(ms), seen = new Map();
+    for (const d of mine){
+      if (!runsOn(d, ms)) continue;
+      seen.set(d.key, (seen.get(d.key) || 0) + 1);
+      perDay[nm].miles += d.totalMiles || 0;
+      perDay[nm].diagrams++;
+    }
+    for (const e of seen) if (e[1] > 1) dupes.push(nm + " " + e[0] + " ×" + e[1]);
+  }
+  const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
+
+  return {
+    fleet, cfg: c, monday, all: mine, day, work, still,
+    arrivals, home: bucket(atHome), homeArea: bucket(inHome),
+    repair: bucket(atRepair), away: bucket(l => !atRepair(l)),
+    attend, mo, moOk, containment,
+    splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
+    perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
+    dupes, atHome, inHome, atRepair,
+  };
+}
+
+/* ---- does the plan close on itself? ------------------------------------
+   A unit can only take up a diagram that starts where its last one
+   finished. So for a fleet to run without anybody moving units about, the
+   places diagrams END must match the places the next day's diagrams START.
+   Where they do not, something has to be repositioned, and that is where
+   a cycle breaks.                                                        */
+function balance(all, fleet, ms, msNext){
+  const on = t => all.filter(d => fleetOf(d) === fleet && runsOn(d, t)).map(roll);
+  const today = on(ms), next = on(msNext);
+  const ends = new Map(), starts = new Map();
+  for (const d of today) ends.set(endsAt(d).loc, (ends.get(endsAt(d).loc) || 0) + 1);
+  for (const d of next) starts.set(startsAt(d).loc, (starts.get(startsAt(d).loc) || 0) + 1);
+  const locs = new Set();
+  for (const k of ends.keys()) locs.add(k);
+  for (const k of starts.keys()) locs.add(k);
+  const rows = Array.from(locs).map(l => ({
+    loc: l, ends: ends.get(l) || 0, starts: starts.get(l) || 0,
+    diff: (ends.get(l) || 0) - (starts.get(l) || 0),
+  })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff) || b.ends - a.ends);
+  return {rows, moved: rows.reduce((t, r) => t + Math.max(0, r.diff), 0),
+          today: today.length, next: next.length,
+          matched: rows.filter(r => r.diff === 0).length, locations: rows.length};
+}
+/* The whole week's joins, so "cyclic or not" is answered day by day. */
+function week(all, fleet, monday){
+  const w = weekFrom(monday);
+  return w.map((ms, i) => ({
+    from: DAYS[i], to: DAYS[(i + 1) % 7],
+    b: balance(all, fleet, ms, w[(i + 1) % 7]),
+  }));
+}
+
+/* The same question asked of the restricted work only, which is the one that
+   actually matters for an MO unit. A unit that has to stay coupled can only
+   move from one MO-capable diagram to another, and only where the first
+   leaves it standing. So the fleet plan closing on itself is not enough:
+   the MO-capable SUBSET has to close as well, and it is a much smaller set.
+   Where it does not, the unit is stranded overnight and somebody has to
+   reposition it before it can work again. */
+function moBalance(all, fleet, ms, msNext){
+  const on = t => all.filter(d => fleetOf(d) === fleet && runsOn(d, t)).map(roll)
+    .filter(d => !d.stabled && moCapable(d));
+  const today = on(ms), next = on(msNext);
+  const ends = new Map(), starts = new Map();
+  for (const d of today) ends.set(endsAt(d).loc, (ends.get(endsAt(d).loc) || 0) + 1);
+  for (const d of next) starts.set(startsAt(d).loc, (starts.get(startsAt(d).loc) || 0) + 1);
+  const locs = new Set();
+  for (const k of ends.keys()) locs.add(k);
+  for (const k of starts.keys()) locs.add(k);
+  let carries = 0, stranded = 0;
+  const at = [];
+  for (const l of locs){
+    const e = ends.get(l) || 0, s = starts.get(l) || 0;
+    carries += Math.min(e, s);
+    if (e > s){ stranded += e - s; at.push({loc: l, n: e - s}); }
+  }
+  at.sort((a, b) => b.n - a.n);
+  return {today: today.length, next: next.length, carries, stranded, at};
+}
+function moWeek(all, fleet, monday){
+  const w = weekFrom(monday);
+  return w.map((ms, i) => ({
+    from: DAYS[i], to: DAYS[(i + 1) % 7],
+    b: moBalance(all, fleet, ms, w[(i + 1) % 7]),
+  }));
+}
+
+root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
+              roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
+              coupling, moCapable, splitsOf, dayName, validOn, runsOn,
+              weekFrom, referenceMonday, analyse, balance, week, moBalance, moWeek};
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* The seven questions, answered once and rendered twice.
+
+   Everything the page shows and everything the workbook exports comes from
+   here, so the spreadsheet cannot drift away from the screen.            */
+;(function(root){
+"use strict";
+const F = FLEET;
+
+const n0 = x => Math.round(x).toLocaleString("en-GB");
+const one = x => (Math.round(x * 10) / 10).toLocaleString("en-GB");
+const pct = (a, b) => b ? Math.round(a * 100 / b) + "%" : "—";
+/* Rolled past midnight: 25:02 is two minutes past one the next morning,
+   and saying so is the whole point - see roll() in fleet.js. */
+const hm = F.hm;
+/* The prints abbreviate; a sentence should not. */
+const LONG = {Mon:"Monday", Tue:"Tuesday", Wed:"Wednesday", Thu:"Thursday",
+              Fri:"Friday", Sat:"Saturday", Sun:"Sunday"};
+const longDay = ms => LONG[F.dayName(ms)] || F.dayName(ms);
+
+/* AM before noon, PM up to midnight, then the small hours of the next day.
+   Kept as one definition because every section leans on it. */
+function bucketLabel(t){
+  return t == null ? "—" : t < 720 ? "AM" : t < 1440 ? "PM" : "after midnight";
+}
+
+function build(all, fleet, cfg){
+  const a = F.analyse(all, fleet, cfg);
+  const c = a.cfg;
+  const secs = [];
+  const startOf = d => F.startsAt(d), endOf = d => F.endsAt(d);
+
+  /* ---- 1. home depot arrivals, AM and PM ---- */
+  const arrRows = [];
+  for (const k of ["AM", "PM", "NIGHT"])
+    for (const x of a.home[k])
+      arrRows.push([x.d.key, F.daysLabel(x.d.days), bucketLabel(x.t), hm(x.t),
+                    x.loc, x.last ? "stays overnight" : "stands " + hm(x.mins).replace(":", "h"),
+                    startOf(x.d).loc, hm(startOf(x.d).t)]);
+  secs.push({
+    id: "arrivals",
+    tab: "Arrivals home",
+    title: "Arrivals into " + c.home,
+    lede: `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
+      `${a.home.AM.length} put a unit into ${c.home} in the morning, ` +
+      `${a.home.PM.length} in the afternoon or evening, and ` +
+      `${a.home.NIGHT.length} after midnight. ` +
+      `${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length} stands are nowhere ` +
+      `near a depot that can repair this fleet.`,
+    stat: [["Into " + c.home + " — AM", a.home.AM.length],
+           ["Into " + c.home + " — PM", a.home.PM.length],
+           ["Into " + c.home + " — after midnight", a.home.NIGHT.length],
+           ["Into any repair depot",
+            a.repair.AM.length + a.repair.PM.length + a.repair.NIGHT.length],
+           ["Away from any repair depot",
+            a.away.AM.length + a.away.PM.length + a.away.NIGHT.length]],
+    head: ["Diagram", "Days", "AM/PM", "Arrives", "Where", "Then", "Started at", "Started"],
+    rows: arrRows,
+  });
+
+  /* ---- 2. the early evening arrivals, and where they came from ---- */
+  const early = a.arrivals
+    .filter(x => a.inHome(x.loc) && x.t != null && x.t >= 720 && x.t < 1200)
+    .sort((p, q) => p.t - q.t);
+  secs.push({
+    id: "early",
+    tab: "Home before 8pm",
+    title: "Home before 20:00",
+    lede: early.length
+      ? `${early.length} diagram${early.length === 1 ? "" : "s"} bring a unit into the ` +
+        `${c.home} area between noon and 20:00 — the window where a unit is back ` +
+        `early enough to be worked on the same evening.`
+      : `Nothing reaches the ${c.home} area between noon and 20:00. The fleet is ` +
+        `out until the evening peak has finished.`,
+    head: ["Diagram", "Days", "Arrives", "Where", "Started at", "Started", "Miles"],
+    rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.t), x.loc,
+                          startOf(x.d).loc, hm(startOf(x.d).t), x.d.totalMiles || 0]),
+  });
+
+  /* ---- 3. diagrams a restricted unit can take ---- */
+  /* The fleet plan closing on itself is not the same as the RESTRICTED work
+     closing on itself, and it is the second one an MO unit lives by. */
+  const moWk = F.moWeek(all, fleet, a.monday);
+  const worstNight = moWk.every(x => x.b.stranded > 0);
+  const okRows = a.moOk.map(x => {
+    const s = startOf(x.d), e = endOf(x.d);
+    return [x.d.key, F.daysLabel(x.d.days), x.c.legs, x.c.partners.join(" "),
+            s.loc, hm(s.t), e.loc, hm(e.t), x.d.totalMiles || 0];
+  }).sort((p, q) => p[4] < q[4] ? -1 : p[4] > q[4] ? 1 : 0);
+  secs.push({
+    id: "mo",
+    tab: "Restricted units",
+    title: "Diagrams a restricted unit can work",
+    lede: `A restricted unit — the depot's <b>MO</b> — may not run on its own, so it ` +
+      `can only take a diagram that is coupled for every leg. ` +
+      `<b>${a.moOk.length} of ${a.work.length}</b> (${pct(a.moOk.length, a.work.length)}) ` +
+      `qualify. The rest run alone at some point in the day. ` +
+      (moWk[0].b.stranded
+        ? `This work does <b>not</b> close on itself overnight: on a ` +
+          `${longDay(a.monday)} night ${moWk[0].b.carries} of ${moWk[0].b.today} ` +
+          `finish where another can be picked up and <b>${moWk[0].b.stranded} do ` +
+          `not</b>, so a restricted unit on one of those has to be repositioned ` +
+          `before it can work again. `
+        : `The work closes on itself overnight, so a restricted unit can stay ` +
+          `on it without being moved. `) +
+      `<span class="aside">This is nothing to do with <b>MO</b> as a day code on the ` +
+      `print, which means Mondays Only.</span>`,
+    stat: [["Coupled every leg", a.moOk.length],
+           ["Run alone at some point", a.work.length - a.moOk.length],
+           ["Of the working diagrams", a.work.length],
+           ["Carry over to the next day", moWk[0].b.carries],
+           ["Stranded overnight", moWk[0].b.stranded]],
+    head: ["Diagram", "Days", "Legs", "Runs with", "Starts at", "Starts",
+           "Ends at", "Ends", "Miles"],
+    rows: okRows,
+    detail: [{
+      tab: "MO night by night",
+      title: "Can a restricted unit stay on this work overnight? — " +
+        (worstNight
+          ? "no, it is stranded on every join"
+          : "yes, every night carries over"),
+      head: ["Join", "MO diagrams today", "MO diagrams tomorrow",
+             "Carry over in place", "Stranded", "Left standing at"],
+      rows: moWk.map(x => [x.from + " \u2192 " + x.to, x.b.today, x.b.next,
+        x.b.carries, x.b.stranded,
+        x.b.at.slice(0, 6).map(y => y.loc + " +" + y.n).join(", ")]),
+    }],
+  });
+
+  /* ---- 4. does the plan close on itself? ---- */
+  const wk = F.week(all, fleet, a.monday);
+  const clean = wk.filter(x => x.b.moved === 0).length;
+  secs.push({
+    id: "cycle",
+    tab: "Week joins",
+    title: "Does the week close on itself?",
+    lede: `A unit can only take up a diagram that starts where its last one ` +
+      `finished. Where the places diagrams END do not match the places the next ` +
+      `day's diagrams START, somebody has to move a unit. ` +
+      (clean === 7
+        ? `Every join balances: the ${c.label} plan is self-contained all week.`
+        : `${clean} of the 7 joins balance` +
+          (wk.slice(0, 4).every(x => x.b.moved === 0)
+            ? `, and the four weekday joins are among them — the plan runs itself ` +
+              `Monday to Thursday and only breaks over the weekend.` : `.`)),
+    head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
+           "Places", "Units to move"],
+    rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
+                       x.b.matched, x.b.locations, x.b.moved]),
+    detail: wk.filter(x => x.b.moved > 0).map(x => ({
+      tab: "Move " + x.from + "-" + x.to,
+      title: x.from + " → " + x.to + ": " + x.b.moved + " to move",
+      head: ["Place", "Ends there", "Starts there", "Spare (+) / short (−)"],
+      rows: x.b.rows.filter(r => r.diff !== 0)
+        .map(r => [r.loc, r.ends, r.starts, r.diff > 0 ? "+" + r.diff : r.diff]),
+    })),
+  });
+
+  /* ---- 5. mileage ---- */
+  secs.push({
+    id: "miles",
+    tab: "Mileage",
+    title: "Mileage",
+    lede: `Measured over one full week of the timetable and annualised. ` +
+      `Counting every printed diagram instead would count a re-issued one twice — ` +
+      `a diagram is printed once per validity period.` +
+      (a.dupes.length ? ` <b>${a.dupes.length} duplicate${a.dupes.length === 1 ? "" : "s"} ` +
+        `still seen on the reference week</b>, which needs looking at.` : ""),
+    stat: [["Annual miles", n0(a.annual)],
+           ["Average per day", n0(a.daily)],
+           ["One week", n0(a.weekly)],
+           ["Diagrams in the week", F.DAYS.reduce((t, d) => t + a.perDay[d].diagrams, 0)]],
+    head: ["Day", "Diagrams", "Miles", "Miles per diagram"],
+    rows: F.DAYS.map(d => [d, a.perDay[d].diagrams, Math.round(a.perDay[d].miles),
+      a.perDay[d].diagrams ? one(a.perDay[d].miles / a.perDay[d].diagrams) : ""]),
+  });
+
+  /* ---- 6. stands long enough to be attended ---- */
+  const byLoc = new Map();
+  for (const x of a.attend){
+    if (!byLoc.has(x.b.loc)) byLoc.set(x.b.loc, []);
+    byLoc.get(x.b.loc).push(x);
+  }
+  const standRows = Array.from(byLoc.entries())
+    .map(([loc, xs]) => {
+      const mins = xs.map(x => x.b.mins).filter(m => m != null).sort((p, q) => p - q);
+      const am = xs.filter(x => x.b.from != null && x.b.from < 720).length;
+      return [loc, xs.length, am, xs.length - am,
+              mins.length ? hm(mins[Math.floor(mins.length / 2)]).replace(":", "h") : "all day",
+              a.atRepair(loc) ? "repair depot" : a.inHome(loc) ? "home area" : "outstation",
+              xs.slice(0, 8).map(x => x.d.key).join(" ")];
+    })
+    .sort((p, q) => q[1] - p[1]);
+  const amStands = a.attend.filter(x => x.b.from != null && x.b.from < 720).length;
+  secs.push({
+    id: "stands",
+    tab: "Attendable stands",
+    title: "Where a unit stands long enough to be attended",
+    lede: `Stands of ${F.ATTENDABLE / 60} hours or more that are not the overnight one, ` +
+      `plus any diagram that stands still all day. These are what a mobile engineer or ` +
+      `a toilet fitter can actually reach. ${a.attend.length} on a ` +
+      `${F.dayName(a.monday)}, ${amStands} of them starting before noon.`,
+    head: ["Place", "Stands", "Starting AM", "Starting PM", "Median stand",
+           "Kind", "Diagrams"],
+    rows: standRows,
+  });
+
+  /* ---- 7. where a restriction cannot be contained ---- */
+  const contRows = a.containment.map(r => [
+    r.loc, r.n, r.ok, r.n - r.ok,
+    r.ok === 0 ? "NO — everything out of here runs alone at some point"
+      : r.ok === r.n ? "yes, every diagram" : "some",
+    r.okD.slice(0, 8).join(" "),
+  ]);
+  const none = a.containment.filter(r => r.ok === 0);
+  secs.push({
+    id: "contain",
+    tab: "Cannot contain",
+    title: "Where a restricted unit cannot be contained",
+    lede: `A restricted unit standing at one of these has no diagram it can take: ` +
+      `every diagram starting there leaves it on its own at some point, so the ` +
+      `restriction cannot be contained from there and the unit has to be moved ` +
+      `before it can work. ` +
+      (none.length
+        ? `<b>${none.length} of ${a.containment.length}</b> starting points are like ` +
+          `this: ${none.map(r => r.loc).join(", ")}.`
+        : `Every starting point has at least one diagram that stays coupled.`),
+    head: ["Starts here", "Diagrams", "Stay coupled", "Run alone",
+           "Can a restricted unit work from here?", "Which diagrams"],
+    rows: contRows,
+    extra: {
+      tab: "Split locations",
+      title: "Where diagrams actually come apart",
+      head: ["Place", "Splits", "Diagrams", "Kind"],
+      rows: a.splits.map(s => [s.loc, s.n, s.ds.size,
+        a.atRepair(s.loc) ? "repair depot" : a.inHome(s.loc) ? "home area" : "outstation"]),
+    },
+  });
+
+  return {fleet, cfg: c, a, secs, monday: a.monday};
+}
+
+/* The workbook: a tab per question, plus one row per diagram overall. */
+function sheets(rep){
+  /* Excel truncates a tab name at 31 characters, so each section carries a
+     short one of its own rather than losing the end of its heading. */
+  const out = rep.secs.map(s => ({name: s.tab, rows: [s.head].concat(s.rows)}));
+  for (const s of rep.secs){
+    if (s.extra) out.push({name: s.extra.tab,
+                           rows: [s.extra.head].concat(s.extra.rows)});
+    for (const d of s.detail || [])
+      out.push({name: d.tab, rows: [d.head].concat(d.rows)});
+  }
+  const a = rep.a;
+  out.push({
+    name: "All diagrams",
+    rows: [["Diagram", "Days", "Fleet", "From", "Until", "Starts at", "Starts",
+            "Ends at", "Ends", "Legs", "Coupled every leg", "Splits", "Miles"]]
+      .concat(a.day.map(d => {
+        const c = F.coupling(d), s = F.startsAt(d), e = F.endsAt(d);
+        return [d.key, F.daysLabel(d.days), d.fleet, d.from, d.until,
+                s.loc, hm(s.t), e.loc, hm(e.t), c.legs,
+                c.moCapable ? "yes" : "no", F.splitsOf(d).length, d.totalMiles || 0];
+      })),
+  });
+  return out;
+}
+
+root.FLEET_REPORT = {build, sheets, bucketLabel};
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* A very small .xlsx writer: plain grids, one tab per question.
+
+   The berthing sheets have their own writer, and it is a large one because
+   a berthing sheet is a designed page - column widths, merges, print
+   scaling, comments. Nothing here needs any of that. These are tables to
+   be sorted and filtered in Excel, so this writes exactly that and stays
+   short enough to read in one sitting.                                    */
+;(function(root){
+"use strict";
+
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    /* Control characters are not legal in XML at all and Excel refuses the
+       whole file rather than the cell, so they go before they get in. */
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+}
+function colName(n){
+  let s = "";
+  while (n > 0){ const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - r - 1) / 26; }
+  return s;
+}
+const isNum = v => typeof v === "number" && isFinite(v);
+
+/* rows: array of arrays. The first row is treated as the heading. */
+function sheetXml(rows, widths){
+  const cols = widths && widths.length
+    ? "<cols>" + widths.map((w, i) =>
+        `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("") + "</cols>"
+    : "";
+  const body = rows.map((r, ri) => {
+    const cells = (r || []).map((v, ci) => {
+      if (v === "" || v == null) return "";
+      const ref = colName(ci + 1) + (ri + 1);
+      const st = ri === 0 ? ' s="1"' : "";
+      return isNum(v)
+        ? `<c r="${ref}"${st}><v>${v}</v></c>`
+        : `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    }).join("");
+    return `<row r="${ri + 1}">${cells}</row>`;
+  }).join("");
+  const dim = rows.length
+    ? `A1:${colName(Math.max(1, ...rows.map(r => (r || []).length)))}${rows.length}` : "A1";
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    `<dimension ref="${dim}"/>` +
+    '<sheetViews><sheetView workbookViewId="0">' +
+    '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+    "</sheetView></sheetViews>" +
+    '<sheetFormatPr defaultRowHeight="15"/>' + cols +
+    `<sheetData>${body}</sheetData>` +
+    (rows.length > 1 ? `<autoFilter ref="${dim}"/>` : "") +
+    "</worksheet>";
+}
+
+/* Excel is unforgiving about tab names: 31 characters, and none of  \ / ? * [ ] */
+function tabName(s, taken){
+  let n = String(s || "Sheet").replace(/[\\\/\?\*\[\]:]/g, "-").slice(0, 31) || "Sheet";
+  let i = 2;
+  while (taken.has(n.toLowerCase())){
+    const suf = " (" + i++ + ")";
+    n = n.slice(0, 31 - suf.length) + suf;
+  }
+  taken.add(n.toLowerCase());
+  return n;
+}
+
+/* sheets: [{name, rows, widths}] -> a zipped .xlsx as bytes */
+function writeWorkbook(sheets, zipFn){
+  const taken = new Set();
+  const named = sheets.map(s => Object.assign({}, s, {name: tabName(s.name, taken)}));
+  const files = {};
+  files["[Content_Types].xml"] =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    named.map((s, i) =>
+      `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+    ).join("") + "</Types>";
+  files["_rels/.rels"] =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    "</Relationships>";
+  files["xl/workbook.xml"] =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+    named.map((s, i) => `<sheet name="${esc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") +
+    "</sheets></workbook>";
+  files["xl/_rels/workbook.xml.rels"] =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    named.map((s, i) =>
+      `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`
+    ).join("") +
+    `<Relationship Id="rId${named.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    "</Relationships>";
+  /* style 0 is the default, style 1 is the bold heading row */
+  files["xl/styles.xml"] =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>' +
+    "</styleSheet>";
+  named.forEach((s, i) => {
+    files[`xl/worksheets/sheet${i + 1}.xml`] = sheetXml(s.rows || [], s.widths);
+  });
+  const enc = new TextEncoder();
+  const raw = {};
+  for (const k of Object.keys(files)) raw[k] = enc.encode(files[k]);
+  return zipFn(raw);
+}
+
+root.FLEET_XLSX = {writeWorkbook, sheetXml, colName};
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+<script>
+/* Wiring: files in, report on the screen, spreadsheet out. */
+;(function(){
+"use strict";
+const F = FLEET, P = SHEETS_PRINTS, FP = FLEET_PRINTS, R = FLEET_REPORT;
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, txt) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (txt != null) n.textContent = txt;
+  return n;
+};
+function say(msg, kind){
+  const s = $("status");
+  s.textContent = msg;
+  s.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---- the depot settings, remembered on this computer ---- */
+const CFG_KEY = "diagramAnalyser.depots.v1";
+let cfg = load();
+function load(){
+  try {
+    const raw = localStorage.getItem(CFG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e){ /* private window, or storage switched off - use the defaults */ }
+  return {};
+}
+function save(){
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+  catch (e){ /* nothing to do: the settings just will not outlive the tab */ }
+}
+const cfgFor = k => Object.assign({}, F.FLEETS[k], cfg[k]);
+
+let ALL = [], REP = {}, CURRENT = null;
+
+/* ---- reading the files ---- */
+function handle(files){
+  if (!files || !files.length) return;
+  say("Reading " + files.length + " file" + (files.length === 1 ? "" : "s") + "…");
+  const jobs = Array.prototype.map.call(files, f =>
+    f.arrayBuffer().then(b => ({name: f.name, bytes: new Uint8Array(b)})));
+  Promise.all(jobs).then(read).catch(e => say(e.message || String(e), "err"));
+}
+function read(files){
+  const got = [], bad = [];
+  for (const f of files){
+    try {
+      const lines = P.readPrints(f.bytes, fflate.unzipSync);
+      const ds = FP.parsePrints(lines);
+      if (!ds.length) throw new Error("no diagrams in it");
+      for (const d of ds) got.push(Object.assign(d, {book: f.name}));
+    } catch (e){
+      bad.push(f.name + " — " + (e.message || String(e)));
+    }
+  }
+  if (!got.length){
+    say(bad.length ? bad[0] : "Nothing in those files reads as the diagram prints.", "err");
+    return;
+  }
+  ALL = got;
+  const mon = F.referenceMonday(ALL);
+  if (mon == null){
+    say("Those prints carry no From/Until dates, so a week cannot be measured.", "err");
+    return;
+  }
+  const stab = ALL.filter(d => d.stabled).length;
+  say(ALL.length + " diagrams read (" + stab + " standing still all day) · week of " +
+      new Date(mon).toLocaleDateString("en-GB", {day:"2-digit",month:"short",year:"numeric"}) +
+      (bad.length ? " · " + bad.length + " file(s) skipped" : ""), "go");
+  if (bad.length) console.warn(bad.join("\n"));
+  drawSetup();
+  rebuild();
+}
+
+/* ---- depot settings panel ---- */
+function drawSetup(){
+  const box = $("depots");
+  box.textContent = "";
+  const names = Object.keys(F.DEPOTS);
+  for (const k of fleetsPresent()){
+    const c = cfgFor(k);
+    const card = el("div", "dep");
+    card.appendChild(el("h3", null, "Class " + c.label));
+    card.appendChild(el("p", "who", countOf(k) + " diagrams in these prints"));
+
+    const hl = el("label", null, "Home depot");
+    hl.htmlFor = "home-" + k;
+    card.appendChild(hl);
+    const sel = el("select");
+    sel.id = "home-" + k;
+    for (const n of names){
+      const o = el("option", null, n);
+      o.value = n;
+      if (n === c.home) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", () => {
+      cfg[k] = Object.assign({}, cfg[k], {home: sel.value});
+      /* The home depot must always be somewhere it can be repaired, or the
+         report contradicts itself on its own front page. */
+      const rep = (cfg[k].repair || c.repair).slice();
+      if (rep.indexOf(sel.value) === -1) rep.push(sel.value);
+      cfg[k].repair = rep;
+      save(); drawSetup(); rebuild();
+    });
+    card.appendChild(sel);
+
+    card.appendChild(el("label", null, "Repaired at"));
+    const reps = el("div", "reps");
+    for (const n of names){
+      const lab = el("label");
+      const cb = el("input");
+      cb.type = "checkbox";
+      cb.checked = c.repair.indexOf(n) !== -1;
+      cb.disabled = n === c.home;
+      cb.addEventListener("change", () => {
+        const set = new Set(cfgFor(k).repair);
+        if (cb.checked) set.add(n); else set.delete(n);
+        set.add(cfgFor(k).home);
+        cfg[k] = Object.assign({}, cfg[k], {repair: Array.from(set)});
+        save(); rebuild();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(el("span", null, n));
+      reps.appendChild(lab);
+    }
+    card.appendChild(reps);
+    if (c.derived && !(cfg[k] && cfg[k].home))
+      card.appendChild(el("p", "derived",
+        "Worked out from the prints, not told to the tool — check it."));
+    box.appendChild(card);
+  }
+  $("setup").hidden = false;
+}
+const fleetsPresent = () =>
+  Object.keys(F.FLEETS).filter(k => ALL.some(d => F.fleetOf(d) === k));
+const countOf = k => ALL.filter(d => F.fleetOf(d) === k).length;
+
+/* ---- the report ---- */
+function rebuild(){
+  REP = {};
+  const keys = fleetsPresent();
+  for (const k of keys){
+    try { REP[k] = R.build(ALL, k, cfg); }
+    catch (e){ console.error("fleet " + k, e); }
+  }
+  const bar = $("fleetbar");
+  bar.textContent = "";
+  for (const k of keys){
+    if (!REP[k]) continue;
+    const b = el("button", "ftab");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.appendChild(el("span", null, "Class " + REP[k].cfg.label));
+    b.appendChild(el("span", "n", REP[k].a.day.length + " a day · " + REP[k].cfg.home));
+    b.addEventListener("click", () => show(k));
+    bar.appendChild(b);
+  }
+  $("out").hidden = false;
+  show(keys.indexOf(CURRENT) !== -1 ? CURRENT : keys[0]);
+}
+
+function show(k){
+  if (!REP[k]) return;
+  CURRENT = k;
+  const keys = fleetsPresent().filter(x => REP[x]);
+  Array.prototype.forEach.call($("fleetbar").children, (b, i) =>
+    b.setAttribute("aria-selected", keys[i] === k ? "true" : "false"));
+  const box = $("report");
+  box.textContent = "";
+  for (const s of REP[k].secs) box.appendChild(section(s));
+}
+
+function section(s){
+  const wrap = el("section");
+  wrap.appendChild(el("h2", "sech", s.title));
+  const n = el("p", "secn");
+  n.innerHTML = s.lede;          // the ledes carry <b> and a note span
+  wrap.appendChild(n);
+  if (s.stat && s.stat.length){
+    const g = el("div", "stats");
+    for (const [label, v] of s.stat){
+      const c = el("div", "stat");
+      c.appendChild(el("b", null, String(v)));
+      c.appendChild(el("span", null, label));
+      g.appendChild(c);
+    }
+    wrap.appendChild(g);
+  }
+  if (s.rows && s.rows.length){
+    wrap.appendChild(table(s.head, s.rows));
+    if (s.rows.length > 14)
+      wrap.appendChild(el("p", "rowcount", s.rows.length + " rows — the box scrolls"));
+  } else if (s.head){
+    wrap.appendChild(el("p", "rowcount", "Nothing to list."));
+  }
+  if (s.extra) wrap.appendChild(more(s.extra.title, s.extra.head, s.extra.rows));
+  for (const d of s.detail || []) wrap.appendChild(more(d.title, d.head, d.rows));
+  return wrap;
+}
+function table(head, rows){
+  const tw = el("div", "tw" + (rows.length > 14 ? " tall" : ""));
+  const t = el("table", "rep");
+  const th = el("thead"), tr = el("tr");
+  for (const h of head) tr.appendChild(el("th", null, h));
+  th.appendChild(tr);
+  t.appendChild(th);
+  const tb = el("tbody");
+  for (const r of rows){
+    const row = el("tr");
+    r.forEach((v, i) => {
+      const td = el("td", null, v === "" || v == null ? "" : String(v));
+      if (typeof v === "number") td.className = "num";
+      else if (/^NO —/.test(String(v))) td.className = "no";
+      else if (/^yes/.test(String(v))) td.className = "yes";
+      else if (String(v).length > 24) td.className = "wide";
+      row.appendChild(td);
+    });
+    tb.appendChild(row);
+  }
+  t.appendChild(tb);
+  tw.appendChild(t);
+  return tw;
+}
+function more(title, head, rows){
+  const d = el("details", "more");
+  d.appendChild(el("summary", null, title));
+  d.appendChild(table(head, rows));
+  return d;
+}
+
+/* ---- saving ---- */
+function download(name, bytes){
+  const blob = new Blob([bytes],
+    {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+const stamp = ms => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
+function saveOne(){
+  const rep = REP[CURRENT];
+  if (!rep) return;
+  const bytes = FLEET_XLSX.writeWorkbook(R.sheets(rep),
+    f => fflate.zipSync(f, {level: 6}));
+  download("DIAGRAMS_" + rep.cfg.label.replace(/\//g, "-") + "_" +
+           stamp(rep.monday) + ".xlsx", bytes);
+  say("Saved the " + rep.cfg.label + " workbook.", "go");
+}
+function saveAll(){
+  const sheets = [];
+  for (const k of fleetsPresent()){
+    if (!REP[k]) continue;
+    for (const s of R.sheets(REP[k]))
+      sheets.push({name: REP[k].cfg.label + " " + s.name, rows: s.rows});
+  }
+  if (!sheets.length) return;
+  const bytes = FLEET_XLSX.writeWorkbook(sheets, f => fflate.zipSync(f, {level: 6}));
+  download("DIAGRAMS_ALL_" + stamp(F.referenceMonday(ALL)) + ".xlsx", bytes);
+  say("Saved every fleet.", "go");
+}
+
+/* ---- events ---- */
+function wire(){
+  const zone = $("zone"), file = $("file");
+  if (!zone) return;
+  zone.addEventListener("click", () => file.click());
+  file.addEventListener("change", () => { handle(file.files); file.value = ""; });
+  for (const t of ["dragenter", "dragover"])
+    zone.addEventListener(t, e => { e.preventDefault(); zone.classList.add("dragover"); });
+  for (const t of ["dragleave", "drop"])
+    zone.addEventListener(t, e => { e.preventDefault(); zone.classList.remove("dragover"); });
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    handle(e.dataTransfer && e.dataTransfer.files);
+  });
+  document.addEventListener("dragover", e => e.preventDefault());
+  document.addEventListener("drop", e => e.preventDefault());
+  $("save").addEventListener("click", saveOne);
+  $("saveall").addEventListener("click", saveAll);
+  $("resetcfg").addEventListener("click", () => {
+    cfg = {};
+    save();
+    if (ALL.length){ drawSetup(); rebuild(); }
+  });
+  /* Anything without these cannot read the files at all, and the failure is
+     otherwise a silent do-nothing on the drop zone. */
+  if (typeof Promise === "undefined" || !window.File ||
+      !File.prototype.arrayBuffer || typeof TextDecoder === "undefined"){
+    const w = $("oldbrowser");
+    if (w) w.hidden = false;
+  }
+}
+if (document.readyState === "loading")
+  document.addEventListener("DOMContentLoaded", wire);
+else wire();
+})();
+</script>
+</body>
+</html>

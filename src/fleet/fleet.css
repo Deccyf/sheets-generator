@@ -1,0 +1,97 @@
+/* The analyser's own furniture. The shared stylesheet gives the page its
+   colours, header and drop zone; what follows is the report itself, which
+   the berthing sheets have no equivalent of. */
+
+.wrap{max-width:960px}
+
+.sech{
+  font-family:var(--mono); font-size:13px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--chalk); font-weight:600;
+  margin:38px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--rule);
+}
+.secn{margin:0 0 14px; color:#3C464D; font-size:14px; max-width:74ch}
+.secn .aside{display:block; margin-top:6px; color:var(--chalk); font-size:13px}
+
+/* ---------- depot settings ---------- */
+.depots{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.dep{background:var(--paper); border:1px solid var(--rule); padding:14px 16px}
+.dep h3{font-family:var(--mono); font-size:15px; margin:0 0 4px}
+.dep .who{color:var(--chalk); font-size:12px; margin:0 0 10px}
+.dep label{display:block; font-size:12px; color:var(--chalk); margin:8px 0 3px}
+.dep select{
+  width:100%; font:inherit; font-size:13px; padding:5px 6px;
+  border:1px solid var(--rule); background:#fff; color:var(--steel);
+}
+.dep .reps{display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:4px}
+.dep .reps label{display:flex; align-items:center; gap:5px; margin:0; font-size:13px;
+  color:var(--steel)}
+.dep .derived{color:var(--warn); font-size:12px; margin:8px 0 0}
+
+/* ---------- fleet tabs ---------- */
+.fleetbar{display:flex; flex-wrap:wrap; gap:6px; margin:34px 0 0}
+.ftab{
+  font:inherit; font-family:var(--mono); font-size:14px; letter-spacing:.04em;
+  padding:9px 16px; border:1px solid var(--rule); background:var(--paper);
+  color:var(--chalk); cursor:pointer;
+}
+.ftab:hover{border-color:var(--rail); color:var(--steel)}
+.ftab[aria-selected="true"]{
+  background:var(--steel); border-color:var(--steel); color:var(--paper); font-weight:600;
+}
+.ftab .n{display:block; font-size:11px; letter-spacing:.10em; opacity:.75; margin-top:2px}
+.ftab:focus-visible{outline:3px solid var(--steel); outline-offset:2px}
+
+/* ---------- the numbers across the top of a section ---------- */
+.stats{display:grid; gap:10px; margin:0 0 16px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.stat{background:var(--paper); border:1px solid var(--rule); padding:12px 14px}
+.stat b{display:block; font-family:var(--mono); font-size:24px; line-height:1.1}
+.stat span{display:block; font-size:12px; color:var(--chalk); margin-top:5px}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto; border:1px solid var(--rule); background:var(--paper)}
+table.rep{border-collapse:collapse; width:100%; font-size:13px}
+table.rep th, table.rep td{
+  padding:6px 10px; text-align:left; border-bottom:1px solid var(--rule);
+  white-space:nowrap;
+}
+table.rep th{
+  font-family:var(--mono); font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--chalk); font-weight:600;
+  background:var(--apron); position:sticky; top:0;
+}
+table.rep tbody tr:nth-child(even){background:rgba(0,0,0,.022)}
+table.rep td.num{text-align:right; font-family:var(--mono)}
+table.rep td.no{color:var(--danger); font-weight:600}
+table.rep td.yes{color:var(--signal)}
+table.rep td.wide{white-space:normal; min-width:22ch}
+.tw.tall{max-height:460px; overflow-y:auto}
+.rowcount{margin:6px 0 0; font-size:12px; color:var(--chalk)}
+
+details.more{margin:12px 0 0; background:var(--paper); border:1px solid var(--rule)}
+details.more>summary{padding:9px 14px; cursor:pointer; font-family:var(--mono);
+  font-size:13px}
+details.more>summary:hover{background:var(--apron)}
+details.more .tw{border:0; border-top:1px solid var(--rule)}
+
+/* ---------- buttons ---------- */
+.actions{margin:34px 0 0; display:flex; gap:10px; flex-wrap:wrap}
+.btn{
+  font:inherit; font-family:var(--mono); font-size:14px; padding:11px 20px;
+  background:var(--steel); color:var(--paper); border:1px solid var(--steel);
+  cursor:pointer;
+}
+.btn:hover{background:#000}
+.btn.ghost{background:var(--paper); color:var(--steel)}
+.btn.ghost:hover{background:var(--apron)}
+.btn:focus-visible{outline:3px solid var(--signal); outline-offset:2px}
+
+footer{margin:56px 0 0; padding-top:18px; border-top:1px solid var(--rule)}
+footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch}
+
+@media print{
+  .berth, .actions, .fleetbar, #setup, .status{display:none !important}
+  .tw{overflow:visible; max-height:none}
+  .tw.tall{max-height:none}
+  details.more{display:none}
+}
