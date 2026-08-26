@@ -63,19 +63,26 @@ function build(all, fleet, cfg){
         `calls there, so nothing below can bring a unit home — the counts are ` +
         `zero because of where the depot is, not because of the plan. See ` +
         `<em>Getting units to ${c.home}</em> for what the plan can say. `
-      : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> diagrams finish ` +
-        `at ${c.home} in the morning, <b>${a.home.PM.length}</b> in the ` +
-        `afternoon or evening and <b>${a.home.NIGHT.length}</b> after ` +
-        `midnight. <b>${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length}</b> ` +
-        `finish nowhere near a depot that can repair this fleet.`),
-    how: `An arrival is a diagram <em>ending</em> at ${c.home} — platform, ` +
-      `sidings or depot, they are all ${c.home} here, with the exact road on ` +
-      `the hover. A diagram that calls in and goes out again the same day is ` +
-      `not counted anywhere in this section; a long call shows up under ` +
-      `<em>attendable stands</em> instead, which is where a window belongs.`,
-    stat: [["Finish at " + c.home + " — AM", a.home.AM.length],
-           ["PM", a.home.PM.length],
-           ["After midnight", a.home.NIGHT.length],
+      : (a.home.AM.length === 0
+          ? `On a ${longDay(a.monday)}, <b>no unit is done for the day at ` +
+            `${c.home} before noon</b> — anything in during the morning goes ` +
+            `back out for PM service. `
+          : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> unit` +
+            `${a.home.AM.length === 1 ? " is" : "s are"} done for the day at ` +
+            `${c.home} before noon — in, and not out again for PM service. `) +
+        `<b>${a.home.PM.length}</b> are done there in the afternoon or ` +
+        `evening and <b>${a.home.NIGHT.length}</b> after midnight. ` +
+        `<b>${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length}</b> ` +
+        `end the day nowhere near a depot that can repair this fleet.`),
+    how: `A unit counts only when its diagram <em>ends</em> at ${c.home} and ` +
+      `it stays — one that comes in during the morning and goes back out for ` +
+      `PM service is not done for the day and is not counted here. Platform, ` +
+      `sidings and depot are all ${c.home}, with the exact road on the hover. ` +
+      `A long mid-day call shows under <em>attendable stands</em> instead, ` +
+      `which is where a window belongs.`,
+    stat: [["Done for the day by noon", a.home.AM.length],
+           ["Done in the PM", a.home.PM.length],
+           ["Done after midnight", a.home.NIGHT.length],
            ["At any repair depot",
             a.repair.AM.length + a.repair.PM.length + a.repair.NIGHT.length],
            ["Away from any repair depot",
