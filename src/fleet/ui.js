@@ -304,7 +304,10 @@ function table(head, rows){
       if (typeof v === "number") td.className = "num";
       else if (/^NO —/.test(shown)) td.className = "no";
       else if (/^yes/.test(shown)) td.className = "yes";
-      else if (shown.length > 24) td.className = "wide";
+      /* Only genuinely long prose is allowed to wrap - the way-back walks,
+         mostly. A middling cell that wraps makes its row twice the height
+         of its neighbours, and the table reads as broken. */
+      else if (shown.length > 48) td.className = "wide";
       row.appendChild(td);
     });
     tb.appendChild(row);

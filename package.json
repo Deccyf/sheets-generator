@@ -5,7 +5,7 @@
   "released": "26 August 2026",
   "//analyser": "The diagram analyser is its own tool with its own history, so it carries its own version and does NOT inherit the berthing sheets'. Stamping it 2.6.0 would claim five releases it never had, and a fault reported against 'version 2.6' would be ambiguous between two different files. Same rule as above: set by hand, never from the clock.",
   "analyser": {
-    "version": "1.4.1",
+    "version": "1.4.2",
     "released": "26 August 2026"
   },
   "private": true,

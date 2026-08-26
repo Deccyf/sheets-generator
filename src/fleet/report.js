@@ -25,6 +25,12 @@ function at(v){
             String(t % 60).padStart(2, "0");
   return day > 0 ? s + " (+" + day + ")" : s;
 }
+/* A list of diagrams that must stay one line high: the first few, then a
+   count. A cell that wraps makes its whole row tall, and a table where four
+   rows are three lines high reads as broken. */
+const few = (list, n) => list.length > n
+  ? list.slice(0, n).join(" ") + "  +" + (list.length - n) + " more"
+  : list.join(" ");
 const dur = m => m == null ? "—"
   : Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0");
 /* Cut-offs and other plain times of day, which never roll. */
@@ -307,7 +313,7 @@ function build(all, fleet, cfg){
       return [loc, xs.length, am, xs.length - am,
               mins.length ? dur(mins[Math.floor(mins.length / 2)]) : "all day",
               a.atRepair(xs[0].b.loc) ? "repair depot" : "outstation",
-              xs.slice(0, 8).map(x => x.d.key).join(" ")];
+              few(xs.map(x => x.d.key), 3)];
     })
     .sort((p, q) => q[1] - p[1]);
   const amStands = a.attend.filter(x => x.b.from != null && x.b.from < 720).length;
@@ -437,9 +443,9 @@ function build(all, fleet, cfg){
   /* ---- 7. where a restriction cannot be contained ---- */
   const contRows = a.containment.map(r => [
     r.loc, r.n, r.ok, r.n - r.ok,
-    r.ok === 0 ? "NO — everything out of here runs alone at some point"
-      : r.ok === r.n ? "yes, every diagram" : "some",
-    r.okD.slice(0, 8).join(" "),
+    r.ok === 0 ? "NO — nothing stays coupled"
+      : r.ok === r.n ? "yes, every diagram" : "yes, " + r.ok + " of " + r.n,
+    few(r.okD, 3),
   ]);
   const none = a.containment.filter(r => r.ok === 0);
   secs.push({
