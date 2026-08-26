@@ -78,6 +78,17 @@ const DEPOTS = {
   "Slade Green": {roads: ["S Gn Dep"], area: ["S Gn U Sd", "S Gn"]},
   Gillingham: {roads: ["Gill Dep"], area: ["Gill US", "Gill ReRd", "Gill"]},
   "Grove Park": {roads: ["G Pk Dep"], area: ["G Pk DnSd", "G Pk UpSd"]},
+  /* A depot off the network these prints cover. Selhurst is a Southern
+     depot and no diagram in these books ever calls there, so looking for
+     it finds nothing - and "when does the fleet come home" is the wrong
+     question to ask of the plan. What the plan CAN say is when a unit is
+     standing somewhere it can be handed over from. Units reach Selhurst
+     off Victoria, which does appear, so that is the handover point and
+     the windows are when a trip can be made. */
+  Selhurst: {roads: [], area: [], offNetwork: true,
+             via: [{label: "Victoria", at: ["Vic (E)", "VictGroSh"],
+                    windows: [{name: "morning", by: 11 * 60},
+                              {name: "evening", by: 21 * 60}]}]},
 };
 
 /* Which fleet a diagram belongs to, off its Fleet line. The diagram prefix
@@ -100,7 +111,7 @@ const FLEETS = {
   "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"]},
   "376": {label: "376", home: "Gillingham",
           repair: ["Gillingham", "Ramsgate", "Slade Green"]},
-  "377": {label: "377", home: "Ashford", repair: ["Ashford"], derived: true},
+  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"]},
   "395": {label: "395", home: "Ashford", repair: ["Ashford"]},
   "Metro": {label: "465/466/707", home: "Slade Green", repair: ["Slade Green"]},
 };
@@ -228,6 +239,57 @@ function referenceMonday(all){
   let ms = Math.floor(mid / 86400000) * 86400000;
   while (dayName(ms) !== "Mon") ms -= 86400000;
   return ms;
+}
+
+/* ---- getting units to a depot the prints never mention -----------------
+   When the home depot is off this network the plan cannot say when a unit
+   comes home, because it never does - it is handed over somewhere. What
+   the plan CAN say is when a unit is standing at the handover point early
+   enough for a trip to be made.
+
+   Two kinds of chance, and the difference matters:
+     - a FINISHER has done its work for the day, so taking it costs
+       nothing;
+     - a STAND is a unit parked mid-diagram. It is there and it is idle,
+       but taking it leaves the rest of that diagram to be covered.
+   They are never added together.                                         */
+function deliveries(work, home, windows){
+  const def = DEPOTS[home];
+  if (!def || !def.offNetwork || !def.via) return null;
+  const wins = windows || def.via[0].windows;
+  /* A window is everything up to its cut-off that a later one has not
+     already claimed, so they are read in order. */
+  const bucket = t => {
+    if (t == null) return null;
+    for (const w of wins) if (t < w.by) return w.name;
+    return null;
+  };
+  return def.via.map(v => {
+    const at = new Set(v.at);
+    const chances = [];
+    for (const d of work)
+      for (const b of berthsOf(d)){
+        if (!at.has(b.loc)) continue;
+        const win = bucket(b.from);
+        if (!win) continue;
+        if (b.last) chances.push({d, b, kind: "finisher", win});
+        else if (b.mins != null && b.mins >= ATTENDABLE)
+          chances.push({d, b, kind: "stand", win});
+      }
+    chances.sort((a, b) => a.b.from - b.b.from);
+    const by = {};
+    for (const w of wins) by[w.name] = {finisher: [], stand: []};
+    for (const c of chances) by[c.win][c.kind].push(c);
+    /* Everything that reaches the handover point too late to be any use -
+       the count that says whether the windows are the binding constraint. */
+    const missed = [];
+    for (const d of work)
+      for (const b of berthsOf(d))
+        if (at.has(b.loc) && b.last && bucket(b.from) == null)
+          missed.push({d, b});
+    missed.sort((a, b) => a.b.from - b.b.from);
+    return {label: v.label, at: v.at, windows: wins, chances, by, missed};
+  });
 }
 
 /* ---- mileage, per unit and per sub-fleet -------------------------------
@@ -362,6 +424,7 @@ function analyse(all, fleet, cfg){
   }
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
   const miles = mileage(all, fleet, monday);
+  const deliver = deliveries(work, c.home, c.windows);
 
   return {
     fleet, cfg: c, monday, all: mine, day, work, still,
@@ -370,7 +433,7 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
-    miles,
+    miles, deliver, offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     dupes, atHome, inHome, atRepair,
   };
 }
@@ -445,6 +508,6 @@ function moWeek(all, fleet, monday){
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
-              weekFrom, referenceMonday, mileage, analyse, balance, week, moBalance,
-              moWeek};
+              weekFrom, referenceMonday, mileage, deliveries, analyse, balance, week,
+              moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);

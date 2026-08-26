@@ -605,6 +605,7 @@ have picked:
 | **Does the week close on itself?** | Whether the plan runs itself, or whether units have to be moved at the end of a day. One line per join, Monday through Sunday |
 | **Mileage per unit** | What one *unit* covers a day, a week and a year — split by sub-fleet, because a 375/6 works harder than a 375/3. Also the units the plan needs, and the whole-fleet annual total |
 | **Where a unit stands long enough to be attended** | Every place a unit sits still for two hours or more during the day — where MSE or MIST can actually get to it |
+| **Getting units to &lt;depot&gt;** | Only shows when the home depot is off this network, like Selhurst. When a unit is standing at the handover point — Victoria — in time for a trip, split into the ones that have finished for the day (free to take) and the ones parked mid-diagram (taking one leaves the rest of its diagram to cover) |
 | **Where a restricted unit cannot be contained** | The places where every diagram leaves a unit on its own at some point, so a restricted unit standing there has nothing it can work |
 
 **Save this fleet as a spreadsheet** puts the lot into Excel, one tab per
@@ -629,8 +630,10 @@ repaired. Tick Ramsgate and Slade Green for the 376s, for instance, and both
 count as somewhere a 376 can be worked on. Your choices are remembered on that
 computer, and everything below redraws as soon as you change one.
 
-The 377 setting is a **guess made from the prints** rather than something the
-tool was told, and the card says so — check it.
+**If the home depot is off this network** — Selhurst for the 377s — the card
+also asks when a unit has to be at the handover point for a trip to be made.
+The 377s default to Victoria, morning by 11:00 and evening by 21:00; change
+either and everything redraws.
 
 > As with the sheets, nothing leaves the computer. It reads the prints in the
 > page and writes the spreadsheet in the page.

@@ -200,10 +200,95 @@ test("home, and everywhere the fleet can be repaired, are settings", () => {
   assert.deepEqual(arr(moved.cfg.repair), ["Ashford", "Ramsgate"]);
 });
 
+test("a home depot off this network is reached by handover, not by arriving", () => {
+  /* Selhurst never appears in any print, so "when does it come home" has no
+     answer. What the plan can say is when a unit is at the handover point
+     in time for a trip. */
+  const at = F.DEPOTS.Selhurst;
+  assert.equal(at.offNetwork, true);
+  assert.deepEqual(arr(at.roads), []);
+
+  const work = DS.filter(d => !d.stabled).map(F.roll);
+  /* Hand over at Home Stn instead, so the fixture can exercise it. */
+  const via = [{label: "Home Stn", at: ["Home Stn"],
+                windows: [{name: "morning", by: 11 * 60}]}];
+  const saved = F.DEPOTS.Selhurst.via;
+  F.DEPOTS.Selhurst.via = via;
+  try {
+    const [v] = F.deliveries(work, "Selhurst");
+    /* 101 and 102 call at Home Stn at 05.35 for ten minutes - far too short
+       to be a chance, and neither finishes there. 103 calls at 08.00 for
+       ten minutes too. So nothing qualifies. */
+    assert.equal(v.by.morning.finisher.length, 0);
+    assert.equal(v.by.morning.stand.length, 0);
+  } finally { F.DEPOTS.Selhurst.via = saved; }
+});
+
+test("the delivery windows are read in order, and a late one is missed", () => {
+  const lines2 = [
+    "Diagram:\tYY\t201\tFSX", "Fleet:\t377/5",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\tHand Pt\t\t05.00\t5Z01\t\t0.5\t",
+    "\t\tHand Pt\t09.30\t\t\t\t40.0\t",          // finishes 09.30 - morning
+    "Total miles:\t40.0",
+    "Diagram:\tYY\t202\tFSX", "Fleet:\t377/5",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\tHand Pt\t\t05.00\t5Z02\t\t0.5\t",
+    "\t\tHand Pt\t19.00\t\t\t\t60.0\t",          // finishes 19.00 - evening
+    "Total miles:\t60.0",
+    "Diagram:\tYY\t203\tFSX", "Fleet:\t377/5",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\tHand Pt\t\t05.00\t5Z03\t\t0.5\t",
+    "\t\tHand Pt\t23.30\t\t\t\t80.0\t",          // too late for either
+    "Total miles:\t80.0",
+    "Diagram:\tYY\t204\tFSX", "Fleet:\t377/5",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\tHand Pt\t\t06.00\t5Z04\t\t0.5\t",
+    "\t\tHand Pt\t08.00\t\t\t\t20.0\t",          // parked 08.00-16.00
+    "\t\tHand Pt\t\t16.00\t5Z05\t\t20.0\t",
+    "\t\tFar Pt\t18.00\t\t\t\t50.0\t",
+    "Total miles:\t50.0",
+  ];
+  const ds = FP.parsePrints(lines2).map(F.roll);
+  const saved = F.DEPOTS.Selhurst.via;
+  F.DEPOTS.Selhurst.via = [{label: "Hand Pt", at: ["Hand Pt"],
+    windows: [{name: "morning", by: 11 * 60}, {name: "evening", by: 21 * 60}]}];
+  try {
+    const [v] = F.deliveries(ds, "Selhurst");
+    assert.deepEqual(arr(v.by.morning.finisher.map(x => x.d.key)), ["YY201"]);
+    assert.deepEqual(arr(v.by.evening.finisher.map(x => x.d.key)), ["YY202"]);
+    /* 204 is parked eight hours from 08.00, so it lands in the MORNING
+       window - the earlier cut-off its arrival falls under, not the later. */
+    assert.deepEqual(arr(v.by.morning.stand.map(x => x.d.key)), ["YY204"]);
+    assert.equal(v.by.evening.stand.length, 0);
+    /* 203 is past both cut-offs and is reported as missed, not dropped. */
+    assert.deepEqual(arr(v.missed.map(x => x.d.key)), ["YY203"]);
+
+    /* Move the morning cut-off earlier and 204's stand moves with it. */
+    const [v2] = F.deliveries(ds, "Selhurst",
+      [{name: "morning", by: 7 * 60}, {name: "evening", by: 21 * 60}]);
+    assert.equal(v2.by.morning.stand.length, 0);
+    assert.deepEqual(arr(v2.by.evening.stand.map(x => x.d.key)), ["YY204"]);
+    assert.deepEqual(arr(v2.by.evening.finisher.map(x => x.d.key)),
+      ["YY201", "YY202"]);
+  } finally { F.DEPOTS.Selhurst.via = saved; }
+});
+
+test("a fleet whose home is on the network gets no handover section", () => {
+  assert.equal(F.deliveries(DS.map(F.roll), "Ramsgate"), null);
+  const rep = R.build(DS, "375", { monday: MONDAY });
+  assert.ok(!rep.secs.some(s => s.id === "deliver"));
+});
+
 test("the report answers all seven questions and the workbook matches it", () => {
   const rep = R.build(DS, "375", { monday: MONDAY });
   assert.deepEqual(arr(rep.secs.map(s => s.id)),
     ["arrivals", "early", "mo", "cycle", "miles", "stands", "contain"]);
+  /* A fleet handed over off-network gets one more, between the two. */
+  const off = R.build(DS, "377", { monday: MONDAY,
+    "377": { home: "Selhurst", repair: ["Selhurst"] } });
+  assert.deepEqual(arr(off.secs.map(s => s.id)),
+    ["arrivals", "early", "mo", "cycle", "miles", "stands", "deliver", "contain"]);
   for (const s of rep.secs){
     assert.ok(s.tab && s.tab.length <= 31, s.id + " needs a short tab name");
     assert.ok(s.head.length, s.id + " has no headings");

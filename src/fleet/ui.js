@@ -126,6 +126,39 @@ function drawSetup(){
       reps.appendChild(lab);
     }
     card.appendChild(reps);
+
+    /* A depot off this network is reached by handing a unit over somewhere
+       that IS on it, and only in time for a trip. The cut-offs are an
+       operational arrangement, so they belong here beside the depot rather
+       than buried in the code. */
+    const def = F.DEPOTS[c.home];
+    if (def && def.offNetwork && def.via){
+      const wins = (c.windows || def.via[0].windows).map(w =>
+        ({name: w.name, by: w.by}));
+      card.appendChild(el("label", null,
+        "Off this network — hand over at " + def.via[0].label + " by"));
+      const box2 = el("div", "wins");
+      wins.forEach((w, i) => {
+        const lab = el("label");
+        lab.appendChild(el("span", null, w.name));
+        const t = el("input");
+        t.type = "time";
+        t.value = F.hm(w.by);
+        t.addEventListener("change", () => {
+          const m = /^(\d{1,2}):(\d{2})$/.exec(t.value);
+          if (!m) return;
+          wins[i] = {name: w.name, by: Number(m[1]) * 60 + Number(m[2])};
+          /* Kept in order, or a later window would swallow an earlier one -
+             the bucket walk takes the first cut-off a time falls under. */
+          const sorted = wins.slice().sort((x, y) => x.by - y.by);
+          cfg[k] = Object.assign({}, cfg[k], {windows: sorted});
+          save(); rebuild();
+        });
+        lab.appendChild(t);
+        box2.appendChild(lab);
+      });
+      card.appendChild(box2);
+    }
     if (c.derived && !(cfg[k] && cfg[k].home))
       card.appendChild(el("p", "derived",
         "Worked out from the prints, not told to the tool — check it."));

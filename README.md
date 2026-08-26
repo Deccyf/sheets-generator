@@ -1297,6 +1297,7 @@ what the plan means for **looking after** the units:
 | Week joins | Whether the plan closes on itself, day by day, and how many units must be repositioned at each join |
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
 | Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
+| Getting units to &lt;depot&gt; | Only when the home depot is off this network: when a unit is standing at the handover point in time for a trip |
 | Cannot contain | The places a restricted unit has no diagram to take, because everything starting there leaves it on its own |
 
 Drop all the print books on it at once (FSX, FO, SO and Sun). Each fleet gets
@@ -1317,6 +1318,33 @@ Both are real and both matter, so the tool never prints `MO` bare:
 
 Day codes are always shown spelt out (`Mon only`, `Mon–Thu`) for this reason.
 
+### A home depot the prints never mention
+
+Not every fleet comes home under its own power. The 377s are owned by
+**Selhurst**, which is a Southern depot: no diagram in these books calls
+there, so searching for it finds nothing and *"when does the fleet come
+home"* is the wrong question to ask of the plan. Asking it anyway gives a
+column of zeroes, which reads like a fault rather than a fact.
+
+A depot can therefore be marked `offNetwork` with a **handover point** that
+does appear, plus the **windows** a trip can be made in. For Selhurst that is
+Victoria, morning up to 11:00 and evening up to 21:00. The tool then reports
+what the plan can actually say — when a unit is standing at Victoria early
+enough to be run across — and keeps two kinds of chance strictly apart:
+
+* a **finisher** has done its work for the day, so taking it costs nothing;
+* a **parked unit** is idle mid-diagram — it is there, but taking it leaves
+  the rest of that diagram to be covered.
+
+Anything reaching the handover point past the last cut-off is listed as
+missed rather than dropped, because that count is what says whether the
+windows are the binding constraint. On the MAY26 books they are: no 377
+finishes at Victoria before 11:00 on a weekday at all, and of the six that
+finish there, four are past 21:00.
+
+The cut-offs are an operational arrangement, so they are editable on the
+depot card beside the depot itself.
+
 ### Home and repair depots are settings, not facts
 
 The prints do not say which depot owns a fleet, so the tool carries that as a
@@ -1326,9 +1354,8 @@ remembered in the browser. A fleet moving depot must never need a new version
 of the file.
 
 The defaults are Ramsgate for the 375s, Gillingham for the 376s (also repaired
-at Ramsgate and Slade Green), Ashford for the 395s and Slade Green for the
-Metro classes. **The 377 default, Ashford, is worked out from the prints
-rather than given**, and the page says so on the card.
+at Ramsgate and Slade Green), Selhurst for the 377s (off this network — see
+above), Ashford for the 395s and Slade Green for the Metro classes.
 
 ### Mileage is per unit, and per sub-fleet
 

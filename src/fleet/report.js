@@ -40,7 +40,12 @@ function build(all, fleet, cfg){
     id: "arrivals",
     tab: "Arrivals home",
     title: "Arrivals into " + c.home,
-    lede: `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
+    lede: (a.offNetwork
+      ? `<b>${c.home} is not on this network</b> — no diagram in these books ` +
+        `calls there, so none of them bring a unit home and the counts below ` +
+        `are zero by definition. See <em>Getting units to ${c.home}</em> for ` +
+        `what the plan can actually say. ` : "") +
+      `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
       `${a.home.AM.length} put a unit into ${c.home} in the morning, ` +
       `${a.home.PM.length} in the afternoon or evening, and ` +
       `${a.home.NIGHT.length} after midnight. ` +
@@ -241,6 +246,56 @@ function build(all, fleet, cfg){
            "Kind", "Diagrams"],
     rows: standRows,
   });
+
+  /* ---- 6a. handing units over to a depot off this network ---- */
+  /* Only when there IS one. A Ramsgate fleet comes home under its own
+     power and this section would say nothing. */
+  for (const v of a.deliver || []){
+    const rows = [], stat = [];
+    for (const w of v.windows){
+      const g = v.by[w.name];
+      stat.push([`Finishers, ${w.name} (by ${hm(w.by)})`, g.finisher.length]);
+      stat.push([`Parked units, ${w.name}`, g.stand.length]);
+      for (const kind of ["finisher", "stand"])
+        for (const x of g[kind])
+          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, hm(x.b.from), x.b.loc,
+            kind === "finisher" ? "finished for the day" : "parked mid-diagram",
+            kind === "finisher" ? "nothing — its work is done"
+              : `the rest of ${x.d.key}, which works again at ${hm(x.b.to)}`]);
+    }
+    const fin = v.windows.reduce((t, w) => t + v.by[w.name].finisher.length, 0);
+    const std = v.windows.reduce((t, w) => t + v.by[w.name].stand.length, 0);
+    secs.push({
+      id: "deliver",
+      tab: "To " + c.home,
+      title: "Getting units to " + c.home,
+      lede: `${c.home} is not on this network — no diagram in these books calls ` +
+        `there — so the plan cannot say when a unit comes home. What it can say ` +
+        `is when one is standing at <b>${v.label}</b> early enough to be run ` +
+        `across. On a ${longDay(a.monday)}: <b>${fin} finisher` +
+        `${fin === 1 ? "" : "s"}</b> (work done, free to take) and ` +
+        `<b>${std} parked unit${std === 1 ? "" : "s"}</b> (there and idle, but ` +
+        `taking one leaves the rest of its diagram to cover). ` +
+        (v.missed.length
+          ? `A further <b>${v.missed.length}</b> finish at ${v.label} too late ` +
+            `for either window — the earliest at ${hm(v.missed[0].b.from)}.`
+          : "") +
+        `<span class="aside">Windows are ` +
+        v.windows.map(w => `${w.name} up to ${hm(w.by)}`).join(" and ") +
+        `. Change them on the depot card above.</span>`,
+      stat,
+      head: ["Diagram", "Days", "Window", "At " + v.label, "Where", "State",
+             "What taking it costs"],
+      rows,
+      extra: v.missed.length ? {
+        tab: "Too late for " + c.home,
+        title: "Finish at " + v.label + " too late for either window",
+        head: ["Diagram", "Days", "Arrives", "Where", "How late"],
+        rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.b.from),
+          x.b.loc, hm(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
+      } : null,
+    });
+  }
 
   /* ---- 7. where a restriction cannot be contained ---- */
   const contRows = a.containment.map(r => [

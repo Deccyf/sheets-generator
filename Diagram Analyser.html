@@ -588,6 +588,13 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
   .tw.tall{max-height:none}
   details.more{display:none}
 }
+
+/* delivery windows on a depot card, when home is off this network */
+.dep .wins{display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:4px}
+.dep .wins label{display:flex; align-items:center; gap:6px; margin:0;
+  font-size:13px; color:var(--steel)}
+.dep .wins input{font:inherit; font-size:13px; padding:3px 5px;
+  border:1px solid var(--rule); background:#fff; color:var(--steel)}
 </style>
 </head>
 <body>
@@ -1138,6 +1145,17 @@ const DEPOTS = {
   "Slade Green": {roads: ["S Gn Dep"], area: ["S Gn U Sd", "S Gn"]},
   Gillingham: {roads: ["Gill Dep"], area: ["Gill US", "Gill ReRd", "Gill"]},
   "Grove Park": {roads: ["G Pk Dep"], area: ["G Pk DnSd", "G Pk UpSd"]},
+  /* A depot off the network these prints cover. Selhurst is a Southern
+     depot and no diagram in these books ever calls there, so looking for
+     it finds nothing - and "when does the fleet come home" is the wrong
+     question to ask of the plan. What the plan CAN say is when a unit is
+     standing somewhere it can be handed over from. Units reach Selhurst
+     off Victoria, which does appear, so that is the handover point and
+     the windows are when a trip can be made. */
+  Selhurst: {roads: [], area: [], offNetwork: true,
+             via: [{label: "Victoria", at: ["Vic (E)", "VictGroSh"],
+                    windows: [{name: "morning", by: 11 * 60},
+                              {name: "evening", by: 21 * 60}]}]},
 };
 
 /* Which fleet a diagram belongs to, off its Fleet line. The diagram prefix
@@ -1160,7 +1178,7 @@ const FLEETS = {
   "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"]},
   "376": {label: "376", home: "Gillingham",
           repair: ["Gillingham", "Ramsgate", "Slade Green"]},
-  "377": {label: "377", home: "Ashford", repair: ["Ashford"], derived: true},
+  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"]},
   "395": {label: "395", home: "Ashford", repair: ["Ashford"]},
   "Metro": {label: "465/466/707", home: "Slade Green", repair: ["Slade Green"]},
 };
@@ -1288,6 +1306,57 @@ function referenceMonday(all){
   let ms = Math.floor(mid / 86400000) * 86400000;
   while (dayName(ms) !== "Mon") ms -= 86400000;
   return ms;
+}
+
+/* ---- getting units to a depot the prints never mention -----------------
+   When the home depot is off this network the plan cannot say when a unit
+   comes home, because it never does - it is handed over somewhere. What
+   the plan CAN say is when a unit is standing at the handover point early
+   enough for a trip to be made.
+
+   Two kinds of chance, and the difference matters:
+     - a FINISHER has done its work for the day, so taking it costs
+       nothing;
+     - a STAND is a unit parked mid-diagram. It is there and it is idle,
+       but taking it leaves the rest of that diagram to be covered.
+   They are never added together.                                         */
+function deliveries(work, home, windows){
+  const def = DEPOTS[home];
+  if (!def || !def.offNetwork || !def.via) return null;
+  const wins = windows || def.via[0].windows;
+  /* A window is everything up to its cut-off that a later one has not
+     already claimed, so they are read in order. */
+  const bucket = t => {
+    if (t == null) return null;
+    for (const w of wins) if (t < w.by) return w.name;
+    return null;
+  };
+  return def.via.map(v => {
+    const at = new Set(v.at);
+    const chances = [];
+    for (const d of work)
+      for (const b of berthsOf(d)){
+        if (!at.has(b.loc)) continue;
+        const win = bucket(b.from);
+        if (!win) continue;
+        if (b.last) chances.push({d, b, kind: "finisher", win});
+        else if (b.mins != null && b.mins >= ATTENDABLE)
+          chances.push({d, b, kind: "stand", win});
+      }
+    chances.sort((a, b) => a.b.from - b.b.from);
+    const by = {};
+    for (const w of wins) by[w.name] = {finisher: [], stand: []};
+    for (const c of chances) by[c.win][c.kind].push(c);
+    /* Everything that reaches the handover point too late to be any use -
+       the count that says whether the windows are the binding constraint. */
+    const missed = [];
+    for (const d of work)
+      for (const b of berthsOf(d))
+        if (at.has(b.loc) && b.last && bucket(b.from) == null)
+          missed.push({d, b});
+    missed.sort((a, b) => a.b.from - b.b.from);
+    return {label: v.label, at: v.at, windows: wins, chances, by, missed};
+  });
 }
 
 /* ---- mileage, per unit and per sub-fleet -------------------------------
@@ -1422,6 +1491,7 @@ function analyse(all, fleet, cfg){
   }
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
   const miles = mileage(all, fleet, monday);
+  const deliver = deliveries(work, c.home, c.windows);
 
   return {
     fleet, cfg: c, monday, all: mine, day, work, still,
@@ -1430,7 +1500,7 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
-    miles,
+    miles, deliver, offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     dupes, atHome, inHome, atRepair,
   };
 }
@@ -1505,8 +1575,8 @@ function moWeek(all, fleet, monday){
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
-              weekFrom, referenceMonday, mileage, analyse, balance, week, moBalance,
-              moWeek};
+              weekFrom, referenceMonday, mileage, deliveries, analyse, balance, week,
+              moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
 <script>
@@ -1552,7 +1622,12 @@ function build(all, fleet, cfg){
     id: "arrivals",
     tab: "Arrivals home",
     title: "Arrivals into " + c.home,
-    lede: `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
+    lede: (a.offNetwork
+      ? `<b>${c.home} is not on this network</b> — no diagram in these books ` +
+        `calls there, so none of them bring a unit home and the counts below ` +
+        `are zero by definition. See <em>Getting units to ${c.home}</em> for ` +
+        `what the plan can actually say. ` : "") +
+      `On a ${longDay(a.monday)} the ${c.label} has ${a.day.length} diagrams. ` +
       `${a.home.AM.length} put a unit into ${c.home} in the morning, ` +
       `${a.home.PM.length} in the afternoon or evening, and ` +
       `${a.home.NIGHT.length} after midnight. ` +
@@ -1753,6 +1828,56 @@ function build(all, fleet, cfg){
            "Kind", "Diagrams"],
     rows: standRows,
   });
+
+  /* ---- 6a. handing units over to a depot off this network ---- */
+  /* Only when there IS one. A Ramsgate fleet comes home under its own
+     power and this section would say nothing. */
+  for (const v of a.deliver || []){
+    const rows = [], stat = [];
+    for (const w of v.windows){
+      const g = v.by[w.name];
+      stat.push([`Finishers, ${w.name} (by ${hm(w.by)})`, g.finisher.length]);
+      stat.push([`Parked units, ${w.name}`, g.stand.length]);
+      for (const kind of ["finisher", "stand"])
+        for (const x of g[kind])
+          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, hm(x.b.from), x.b.loc,
+            kind === "finisher" ? "finished for the day" : "parked mid-diagram",
+            kind === "finisher" ? "nothing — its work is done"
+              : `the rest of ${x.d.key}, which works again at ${hm(x.b.to)}`]);
+    }
+    const fin = v.windows.reduce((t, w) => t + v.by[w.name].finisher.length, 0);
+    const std = v.windows.reduce((t, w) => t + v.by[w.name].stand.length, 0);
+    secs.push({
+      id: "deliver",
+      tab: "To " + c.home,
+      title: "Getting units to " + c.home,
+      lede: `${c.home} is not on this network — no diagram in these books calls ` +
+        `there — so the plan cannot say when a unit comes home. What it can say ` +
+        `is when one is standing at <b>${v.label}</b> early enough to be run ` +
+        `across. On a ${longDay(a.monday)}: <b>${fin} finisher` +
+        `${fin === 1 ? "" : "s"}</b> (work done, free to take) and ` +
+        `<b>${std} parked unit${std === 1 ? "" : "s"}</b> (there and idle, but ` +
+        `taking one leaves the rest of its diagram to cover). ` +
+        (v.missed.length
+          ? `A further <b>${v.missed.length}</b> finish at ${v.label} too late ` +
+            `for either window — the earliest at ${hm(v.missed[0].b.from)}.`
+          : "") +
+        `<span class="aside">Windows are ` +
+        v.windows.map(w => `${w.name} up to ${hm(w.by)}`).join(" and ") +
+        `. Change them on the depot card above.</span>`,
+      stat,
+      head: ["Diagram", "Days", "Window", "At " + v.label, "Where", "State",
+             "What taking it costs"],
+      rows,
+      extra: v.missed.length ? {
+        tab: "Too late for " + c.home,
+        title: "Finish at " + v.label + " too late for either window",
+        head: ["Diagram", "Days", "Arrives", "Where", "How late"],
+        rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), hm(x.b.from),
+          x.b.loc, hm(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
+      } : null,
+    });
+  }
 
   /* ---- 7. where a restriction cannot be contained ---- */
   const contRows = a.containment.map(r => [
@@ -2075,6 +2200,39 @@ function drawSetup(){
       reps.appendChild(lab);
     }
     card.appendChild(reps);
+
+    /* A depot off this network is reached by handing a unit over somewhere
+       that IS on it, and only in time for a trip. The cut-offs are an
+       operational arrangement, so they belong here beside the depot rather
+       than buried in the code. */
+    const def = F.DEPOTS[c.home];
+    if (def && def.offNetwork && def.via){
+      const wins = (c.windows || def.via[0].windows).map(w =>
+        ({name: w.name, by: w.by}));
+      card.appendChild(el("label", null,
+        "Off this network — hand over at " + def.via[0].label + " by"));
+      const box2 = el("div", "wins");
+      wins.forEach((w, i) => {
+        const lab = el("label");
+        lab.appendChild(el("span", null, w.name));
+        const t = el("input");
+        t.type = "time";
+        t.value = F.hm(w.by);
+        t.addEventListener("change", () => {
+          const m = /^(\d{1,2}):(\d{2})$/.exec(t.value);
+          if (!m) return;
+          wins[i] = {name: w.name, by: Number(m[1]) * 60 + Number(m[2])};
+          /* Kept in order, or a later window would swallow an earlier one -
+             the bucket walk takes the first cut-off a time falls under. */
+          const sorted = wins.slice().sort((x, y) => x.by - y.by);
+          cfg[k] = Object.assign({}, cfg[k], {windows: sorted});
+          save(); rebuild();
+        });
+        lab.appendChild(t);
+        box2.appendChild(lab);
+      });
+      card.appendChild(box2);
+    }
     if (c.derived && !(cfg[k] && cfg[k].home))
       card.appendChild(el("p", "derived",
         "Worked out from the prints, not told to the tool — check it."));

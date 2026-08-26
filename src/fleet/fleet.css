@@ -95,3 +95,10 @@ footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch
   .tw.tall{max-height:none}
   details.more{display:none}
 }
+
+/* delivery windows on a depot card, when home is off this network */
+.dep .wins{display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:4px}
+.dep .wins label{display:flex; align-items:center; gap:6px; margin:0;
+  font-size:13px; color:var(--steel)}
+.dep .wins input{font:inherit; font-size:13px; padding:3px 5px;
+  border:1px solid var(--rule); background:#fff; color:var(--steel)}
