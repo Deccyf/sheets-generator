@@ -109,14 +109,25 @@ function build(all, fleet, cfg){
     lede: early.length
       ? `<b>${early.length}</b> diagram${early.length === 1 ? "" : "s"} finish` +
         `${early.length === 1 ? "es" : ""} at ${c.home} between noon and ` +
-        `20:00, so the unit is free for that evening.`
+        `20:00, so the unit is free for that evening — until the diagram ` +
+        `goes out again, which the last column gives.`
       : `Nothing finishes at ${c.home} between noon and 20:00.`,
     how: `Only a diagram that <em>ends</em> at ${c.home} counts — one that ` +
       `calls in and goes out again the same day is passing through, however ` +
-      `long it stands, and is not in this section.`,
-    head: ["Diagram", "Runs", "Gets in", "Where exactly", "Out from", "Left at"],
-    rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.t), x.loc,
-                          gp(startOf(x.d).loc), at(startOf(x.d).t)]),
+      `long it stands, and is not in this section. "Free until" is that ` +
+      `diagram's own next start; the depot can of course use the unit for ` +
+      `something else instead, but that is the depot's choice, not the ` +
+      `plan's.`,
+    head: ["Diagram", "Runs", "Gets in", "Where exactly", "Out from", "Left at",
+           "Free until"],
+    rows: early.map(x => {
+      /* the evening window closes when this diagram next goes out */
+      const runsTomorrow = F.runsOn(x.d, a.monday + 86400000);
+      return [x.d.key, F.daysLabel(x.d.days), at(x.t), x.loc,
+              gp(startOf(x.d).loc), at(startOf(x.d).t),
+              runsTomorrow ? "next morning " + at(startOf(x.d).t)
+                           : "it does not run tomorrow"];
+    }),
   });
 
   /* ---- 3. diagrams a restricted unit can take ---- */

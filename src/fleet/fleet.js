@@ -292,6 +292,27 @@ function berthsOf(d){
 /* Long enough for somebody to get to the unit and do something to it. */
 const ATTENDABLE = 120;
 
+/* When a diagram ends in a string of shunts inside one place - Ram
+   platform 19.14, the reception road, the depot at 19+46 - the unit
+   ARRIVED at 19.14. The rest is the place putting it away, and timing the
+   arrival off the last shunt would push a before-eight arrival past
+   eight. So the arrival time is the first time in the diagram's closing
+   run of rows within one group. */
+function arrivedAt(d){
+  const rows = d.rows;
+  const g = groupOf(rows[rows.length - 1].loc);
+  let i = rows.length - 1;
+  while (i > 0 && groupOf(rows[i - 1].loc) === g) i--;
+  /* The whole diagram inside one place means there was no arrival - the
+     unit was there all along. Let the caller use the final time. */
+  if (i === 0) return null;
+  for (let k = i; k < rows.length; k++){
+    const t = rows[k].arr != null ? rows[k].arr : rows[k].dep;
+    if (t != null) return t;
+  }
+  return null;
+}
+
 const startsAt = d => ({loc: d.rows[0].loc,
                         t: d.stabled ? null : (d.rows[0].dep ?? d.rows[0].arr)});
 function endsAt(d){
@@ -382,27 +403,31 @@ function deliveries(work, home, windows){
   };
   return def.via.map(v => {
     const at = new Set(v.at);
-    const chances = [];
+    const chances = [], missed = [];
     for (const d of work)
       for (const b of berthsOf(d)){
         if (!at.has(b.loc)) continue;
-        const win = bucket(b.from);
-        if (!win) continue;
-        if (b.last) chances.push({d, b, kind: "finisher", win});
-        else if (b.mins != null && b.mins >= ATTENDABLE)
-          chances.push({d, b, kind: "stand", win});
+        if (b.last){
+          /* A finisher is there from the moment it first reaches the
+             place, not from its last internal shunt - arriving 20:55 and
+             being put away at 21:10 is inside a 21:00 window. */
+          const t = arrivedAt(d);
+          const bb = t != null && t < b.from
+            ? Object.assign({}, b, {from: t}) : b;
+          const win = bucket(bb.from);
+          if (win) chances.push({d, b: bb, kind: "finisher", win});
+          /* Too late for any window - the count that says whether the
+             windows are the binding constraint. */
+          else missed.push({d, b: bb});
+        } else if (b.mins != null && b.mins >= ATTENDABLE){
+          const win = bucket(b.from);
+          if (win) chances.push({d, b, kind: "stand", win});
+        }
       }
     chances.sort((a, b) => a.b.from - b.b.from);
     const by = {};
     for (const w of wins) by[w.name] = {finisher: [], stand: []};
     for (const c of chances) by[c.win][c.kind].push(c);
-    /* Everything that reaches the handover point too late to be any use -
-       the count that says whether the windows are the binding constraint. */
-    const missed = [];
-    for (const d of work)
-      for (const b of berthsOf(d))
-        if (at.has(b.loc) && b.last && bucket(b.from) == null)
-          missed.push({d, b});
     missed.sort((a, b) => a.b.from - b.b.from);
     return {label: v.label, at: v.at, windows: wins, chances, by, missed};
   });
@@ -479,7 +504,11 @@ function analyse(all, fleet, cfg){
      running past midnight lands in "after midnight", not the morning. */
   const arrivals = work.map(d => {
     const e = endsAt(d);
-    return {d, loc: e.loc, t: e.t, last: true, start: startsAt(d)};
+    /* timed from when the unit first reaches the place, not from the last
+       internal shunt - see arrivedAt() */
+    const t = arrivedAt(d);
+    return {d, loc: e.loc, t: t != null ? t : e.t, last: true,
+            start: startsAt(d)};
   });
   const when = t => t == null ? "?" : t < 720 ? "AM" : t < 1440 ? "PM" : "NIGHT";
   const bucket = f => {
@@ -741,7 +770,7 @@ function moWeek(all, fleet, monday){
 }
 
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
-              placeName, places, isShunt, groupOf,
+              placeName, places, isShunt, groupOf, arrivedAt,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,

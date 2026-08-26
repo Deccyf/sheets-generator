@@ -453,6 +453,32 @@ test("place codes are spelt out, and an unknown road is not guessed at", () => {
     "an unnamed road must still show its code");
 });
 
+test("an arrival is timed from reaching the place, not the last shunt", () => {
+  /* RM046's shape: into Ramsgate platform 19.14, shunt via the reception
+     road, put away in the depot 19+46. The unit is at Ramsgate from 19.14
+     and the arrival must say so - timing it off the final shunt pushed a
+     before-eight arrival past eight. Real Ramsgate codes, so groupOf sees
+     one place. */
+  const d = F.roll(FP.parsePrints([
+    "Diagram:\tRM\t46\tFSX", "Fleet:\t375/6", "From:\t01/06/2026",
+    "\t\tC St\t16.46\t17.11\t1G87\t\t90.0\t",
+    "\t\tRam\t19.14\t19.22\t5G87\t\t172.0\t",
+    "\t\tRM DRW\t19.26\t19.35\t5G87\t\t172.5\t",
+    "\t\tRam Depot\t19.46\t\t\t\t\t",
+    "Total miles:\t172.5",
+  ])[0]);
+  assert.equal(F.arrivedAt(d), 19 * 60 + 14, "at Ramsgate from 19:14");
+  /* A diagram that never leaves one place has no arrival to time. */
+  const still = F.roll(FP.parsePrints([
+    "Diagram:\tRM\t99\tFSX", "Fleet:\t375/6", "From:\t01/06/2026",
+    "\t\tRam Depot\t\t05.00\t5A01\t\t0.5\t",
+    "\t\tRam\t05.10\t22.00\t5A02\t\t1.0\t",
+    "\t\tRam Depot\t22.10\t\t\t\t\t",
+  ])[0]);
+  assert.equal(F.arrivedAt(still), null,
+    "one-place diagrams fall back to the final time");
+});
+
 test("a signal or a shunt neck is never counted as somewhere a unit berths", () => {
   /* The berthing sheets leave these out of the books - a unit draws up to a
      signal, reverses in a headshunt, waits in a loop, and goes on. Counting

@@ -1359,6 +1359,14 @@ diagram** and nothing else; RM307, at Ramsgate from 12:18 but away again at
 attendable-stands section is where such a call belongs, and is the one
 place it is counted.
 
+The arrival is **timed from the unit first reaching the place**, not from
+its last internal shunt — `arrivedAt()` walks back through the diagram's
+closing run of rows within one group. RM046 is into the Ramsgate platform
+at 19.14 and put away in the depot at 19+46: it arrives at 19:14. Timing
+off the shunt pushed before-eight arrivals past eight, and hid diagrams
+like RM001 (platform 19.43, depot 20+16) from the before-20:00 list
+altogether. The same rule times the handover finishers at Victoria.
+
 ### A home depot the prints never mention
 
 Not every fleet comes home under its own power. The 377s are owned by
