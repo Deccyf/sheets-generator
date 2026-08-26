@@ -599,8 +599,8 @@ have picked:
 
 | Section | What it tells you |
 | --- | --- |
-| **Arrivals into &lt;depot&gt;** | How many diagrams bring a unit home, split morning, afternoon and after midnight — and how many stands are nowhere near a depot that can repair the fleet |
-| **Home before 20:00** | Which diagrams **finish** early enough to be worked on the same evening — counted apart from the ones that call in and go out again, which is a window rather than a homecoming. Every row says which it is and where the diagram really ends |
+| **Arrivals into &lt;depot&gt;** | How many diagrams **finish** at the home depot, split morning, afternoon and after midnight. Platform, sidings and depot all count as the one place — the exact road is on the hover |
+| **Home before 20:00** | Which diagrams **finish** at the home depot early enough to be worked on that evening. A unit that calls in and goes out again the same day does not count — a long call shows under attendable stands instead |
 | **Diagrams a restricted unit can work** | The diagrams that stay coupled the whole day — the only ones you can put an **MO** unit on |
 | **How long back to &lt;depot&gt;** | A unit is standing at West Marina — how many days before the diagrams get it back to Ramsgate for its exam? One line per place a unit can be left, with the run of diagrams that gets it home. Each is measured from the nights the plan actually leaves a unit there, and those nights are shown. The old week-by-week balance is a drill-down underneath |
 | **Mileage per unit** | What one *unit* covers a day, a week and a year — split by sub-fleet, because a 375/6 works harder than a 375/3. Also the units the plan needs, and the whole-fleet annual total |

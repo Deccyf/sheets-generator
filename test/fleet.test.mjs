@@ -179,28 +179,27 @@ test("a place with no coupled diagram out of it cannot contain a restriction", (
   assert.ok(home.ok > 0, "Home Dep has a coupled diagram and should say so");
 });
 
-test("calling in is not the same as being finished with", () => {
-  /* A diagram that stands at the home depot for hours and then goes out
-     again has not brought the unit home for the evening. Counting it as a
-     homecoming is what made RM307 - in at 12:18, away at 14:05, finishing
-     the day at Faversham - read as back for the night. */
+test("a unit that goes back out the same day is not an arrival at all", () => {
+  /* XX101 stands at Home Dep 10:30-16:00 and finishes there at 23:40. Only
+     the finish is an arrival - a unit that leaves again was passing
+     through, however long it stood. */
+  const a = F.analyse(DS, "375", { monday: MONDAY });
+  assert.equal(a.arrivals.length, a.work.length,
+    "exactly one arrival per working diagram - its end");
+  for (const x of a.arrivals)
+    assert.equal(x.last, true, x.d.key + ": an arrival must be a finish");
+  const x101 = a.arrivals.find(x => x.d.key === "XX101");
+  assert.equal(x101.t, 23 * 60 + 40, "XX101 arrives when it finishes, 23:40");
+  /* The mid-day stand still shows under attendable stands, where a window
+     belongs. */
+  assert.ok(a.attend.some(x => x.d.key === "XX101" && x.b.from === 10 * 60 + 30),
+    "the 10:30-16:00 stand still counts as attendable");
+  /* And no report row anywhere says "out again" any more. */
   const rep = R.build(DS, "375", { monday: MONDAY });
-  const early = rep.secs.find(x => x.id === "early");
-  const then = early.head.indexOf("What happens next");
-  const ends = early.head.indexOf("Ends the day at");
-  assert.ok(then > -1 && ends > -1, "the section must say what happens next");
-  for (const r of early.rows){
-    if (/^out again /.test(r[then]))
-      assert.notEqual(r[ends], r[3],
-        "a unit that goes out again cannot end the day where it called");
-    else
-      assert.equal(r[then], "stays for the night");
-  }
-  /* The two are counted apart rather than added together. */
-  const labels = early.stat.map(x => x[0]);
-  assert.ok(labels.some(l => /Finish here for the day/.test(l)));
-  assert.ok(labels.some(l => /Call in and go out again/.test(l)));
-  assert.equal(early.stat[0][1] + early.stat[1][1], early.rows.length);
+  for (const sec of rep.secs)
+    for (const r of sec.rows)
+      assert.ok(!r.some(cell => /out again/.test(String(cell))),
+        sec.id + " row claims a same-day visit: " + r.join(" | "));
 });
 
 test("XX101 calls at its depot mid-day and is not counted as home for it", () => {

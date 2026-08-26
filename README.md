@@ -12,7 +12,12 @@ in and the house drafting conventions applied automatically.
   [Genius and Integrale are not interchangeable](#genius-and-integrale-are-not-interchangeable).
 * **Weekend sheets (Sat & Sun)** are built from the weekend **diagram prints**
   Word document (`.docx` or legacy `.doc`, or the same text saved out or
-  pasted in), with automatic merging of reissued prints.
+  pasted in), with automatic merging of reissued prints. The prints panel
+  builds the books the depot's base sheets are: **RAM_SHEETS** (Ramsgate on
+  its own) beside **SHEETS** (the outstations), plus the Metro and High
+  Speed books — the same split the weekday panel has always made. The
+  engine's `opts.splitRamsgate` does it; without the flag the one combined
+  book comes out exactly as the golden tests hold it to.
 
 Everything runs inside the one file, in the browser, on the local machine. No
 report, print or sheet ever leaves the computer, and the page works without an
@@ -1291,8 +1296,8 @@ what the plan means for **looking after** the units:
 
 | Question | What it reports |
 | --- | --- |
-| Arrivals home | How many diagrams put a unit into the home depot, split morning / afternoon / after midnight, and how many stands are nowhere near a depot that can repair the fleet |
-| Home before 20:00 | The diagrams that **finish** in the home area between noon and 20:00, counted apart from those that call in and go out again — and where each of them started |
+| Arrivals home | How many diagrams **finish** at the home depot, split morning / afternoon / after midnight. A unit that calls in and goes out again the same day is not an arrival and appears only under attendable stands |
+| Home before 20:00 | The diagrams that **finish** at the home depot between noon and 20:00 — same-day visitors do not count |
 | Restricted units | The diagrams coupled on *every* leg — the only ones an **MO** unit can take — with where each starts and ends |
 | How long back to &lt;depot&gt; | For every place a unit can be left, how many days the diagrams take to put it back at a repair depot, with the route. The week-joins balance is a drill-down |
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
@@ -1333,20 +1338,26 @@ Both are real and both matter, so the tool never prints `MO` bare:
 
 Day codes are always shown spelt out (`Mon only`, `Mon–Thu`) for this reason.
 
+### Places are grouped the way the books group them
+
+The report speaks in the berthing sheets' own sections: Ramsgate platform,
+the depot and the New Sidings are all **Ramsgate**; St Leonards shed is
+**West Marina**; Hastings and its Park Sidings are one place. The groups
+are read from the same section tables in `src/data.js` that head the books
+— `groupOf(code)` — so the two tools can never disagree about what belongs
+where. Faversham Back Road is the one deliberate exception, spoken of
+apart from Faversham because the depot speaks of it apart. The exact road
+survives on the hover and in the place-codes section; the days-back walk,
+the containment table and the stands all work group by group.
+
 ### Calling in is not the same as being finished with
 
-An arrival counts any stand of an hour or more, not only the end of a
-diagram — a unit standing at the depot for four hours is reachable whether
-or not it is done for the day. But the two are **not** the same thing, and
-adding them together makes the report claim something untrue: RM307 is at
-Ramsgate Depot from 12:18, away again at 14:05, and finishes the day at
-Faversham Back Road. It was being counted as home for the evening.
-
-So every arrival row says which it is — *stays for the night* or *out again
-at 14:05* — and carries the place the diagram actually **ends**, and the two
-are counted separately rather than summed. On the MAY26 books four 375
-diagrams finish in the Ramsgate area between noon and 20:00 and four more
-only call in.
+A unit that goes back out the same day has not arrived — it is passing
+through, however long it stands. An arrival is therefore the **end of a
+diagram** and nothing else; RM307, at Ramsgate from 12:18 but away again at
+14:05 to finish at Faversham Back Road, appears in no arrivals count. The
+attendable-stands section is where such a call belongs, and is the one
+place it is counted.
 
 ### A home depot the prints never mention
 

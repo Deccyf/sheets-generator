@@ -878,16 +878,34 @@ function run(input, unzipFn, zipFn, opts){
     const n = Object.values(secs).reduce((a,v) => a + v.length, 0);
     if (n === 0){ books.push({label:prof.label, road:prof.road, skipped:true}); continue; }
     const tag = prof.tag ? "_" + prof.tag : "";
-    const name = "SHEETS" + tag + "_" + stamp + ".xlsx";
-    const layout = layoutBook(secs, gen.order, prof.headcode_sections, dateStr,
-                              !!allHeadcodes[prof.road]);
-    const xlsx = buildBook(layout, zipFn);
-    const nSecs = Object.keys(secs).length;
-    books.push({label:prof.label, road:prof.road, name, xlsx, layout,
-                reportName: name.replace(/\.xlsx$/, ".report.txt"),
-                report: buildReport(name, n, nSecs, warn),
-                entries:n, sections:nSecs, reviews:warn.length,
-                sectionCounts: Object.keys(secs).map(s => [s, secs[s].length])});
+    /* The depot's own base sheets keep Ramsgate as a book of its own -
+       RAM_SHEETS beside SHEETS - and the weekday panel has always split it
+       the same way. opts.splitRamsgate does it here too; without the flag
+       the one combined book comes out exactly as it always has, which is
+       what the golden tests hold the engine to. */
+    const parts = (opts && opts.splitRamsgate && !prof.tag &&
+                   secs.RAMSGATE && secs.RAMSGATE.length &&
+                   Object.keys(secs).length > 1)
+      ? [{file: "RAM_SHEETS_", label: "Ramsgate", road: "RAM SHEETS",
+          secs: {RAMSGATE: secs.RAMSGATE}},
+         {file: "SHEETS_", label: prof.label, road: prof.road,
+          secs: Object.fromEntries(Object.entries(secs)
+            .filter(function(e){ return e[0] !== "RAMSGATE"; }))}]
+      : [{file: "SHEETS" + tag + "_", label: prof.label, road: prof.road,
+          secs: secs}];
+    for (const part of parts){
+      const pn = Object.values(part.secs).reduce(function(a, v){ return a + v.length; }, 0);
+      const name = part.file + stamp + ".xlsx";
+      const layout = layoutBook(part.secs, gen.order, prof.headcode_sections,
+                                dateStr, !!allHeadcodes[prof.road]);
+      const xlsx = buildBook(layout, zipFn);
+      const nSecs = Object.keys(part.secs).length;
+      books.push({label: part.label, road: part.road, name, xlsx, layout,
+                  reportName: name.replace(/\.xlsx$/, ".report.txt"),
+                  report: buildReport(name, pn, nSecs, warn),
+                  entries: pn, sections: nSecs, reviews: warn.length,
+                  sectionCounts: Object.keys(part.secs).map(s => [s, part.secs[s].length])});
+    }
   }
   return {date: dateStr, banner, stamp, diagrams: diags.size, books,
           merge: mg.reissues.length

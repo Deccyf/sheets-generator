@@ -1250,7 +1250,9 @@ function reviewPane(items) {
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b),
       f => fflate.zipSync(f, { level: 6 }),
-      { allHeadcodes });
+      /* Ramsgate as a book of its own, the way the depot's base sheets and
+         the weekday panel have it - RAM_SHEETS beside SHEETS. */
+      { allHeadcodes, splitRamsgate: true });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");

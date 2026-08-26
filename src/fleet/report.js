@@ -5,6 +5,7 @@
 ;(function(root){
 "use strict";
 const F = FLEET;
+const gp = F.groupOf;
 
 const n0 = x => Math.round(x).toLocaleString("en-GB");
 const one = x => (Math.round(x * 10) / 10).toLocaleString("en-GB");
@@ -46,15 +47,13 @@ function build(all, fleet, cfg){
   const startOf = d => F.startsAt(d), endOf = d => F.endsAt(d);
 
   /* ---- 1. home depot arrivals, AM and PM ---- */
+  /* Only the end of a diagram counts. A unit that calls in and goes out
+     again the same day has not arrived - see analyse(). */
   const arrRows = [];
   for (const k of ["AM", "PM", "NIGHT"])
     for (const x of a.home[k])
       arrRows.push([x.d.key, F.daysLabel(x.d.days), bucketLabel(x.t), at(x.t),
-                    x.loc,
-                    x.last ? "stays for the night"
-                           : "out again " + at(x.t + x.mins),
-                    x.last ? x.loc : endOf(x.d).loc,
-                    startOf(x.d).loc, at(startOf(x.d).t)]);
+                    x.loc, gp(startOf(x.d).loc), at(startOf(x.d).t)]);
   secs.push({
     id: "arrivals",
     tab: "Arrivals home",
@@ -64,66 +63,47 @@ function build(all, fleet, cfg){
         `calls there, so nothing below can bring a unit home — the counts are ` +
         `zero because of where the depot is, not because of the plan. See ` +
         `<em>Getting units to ${c.home}</em> for what the plan can say. `
-      : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> diagrams put a ` +
-        `unit into ${c.home} in the morning, <b>${a.home.PM.length}</b> in the ` +
-        `afternoon or evening and <b>${a.home.NIGHT.length}</b> after midnight. ` +
-        `<b>${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length}</b> ` +
-        `stands are nowhere near a depot that can repair this fleet.`),
-    how: `An arrival is a diagram either finishing somewhere or standing there ` +
-      `an hour or more — a unit parked for four hours can be reached whether or ` +
-      `not it is done for the day. The two are counted apart, and every row says ` +
-      `which it is, because a unit that goes out again has not come home.`,
-    stat: [["Into " + c.home + " — AM", a.home.AM.length],
-           ["Into " + c.home + " — PM", a.home.PM.length],
-           ["Into " + c.home + " — after midnight", a.home.NIGHT.length],
-           ["Of those, finish there for the day",
-            ["AM", "PM", "NIGHT"].reduce((t, k) =>
-              t + a.home[k].filter(x => x.last).length, 0)],
-           ["Into any repair depot",
+      : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> diagrams finish ` +
+        `at ${c.home} in the morning, <b>${a.home.PM.length}</b> in the ` +
+        `afternoon or evening and <b>${a.home.NIGHT.length}</b> after ` +
+        `midnight. <b>${a.away.AM.length + a.away.PM.length + a.away.NIGHT.length}</b> ` +
+        `finish nowhere near a depot that can repair this fleet.`),
+    how: `An arrival is a diagram <em>ending</em> at ${c.home} — platform, ` +
+      `sidings or depot, they are all ${c.home} here, with the exact road on ` +
+      `the hover. A diagram that calls in and goes out again the same day is ` +
+      `not counted anywhere in this section; a long call shows up under ` +
+      `<em>attendable stands</em> instead, which is where a window belongs.`,
+    stat: [["Finish at " + c.home + " — AM", a.home.AM.length],
+           ["PM", a.home.PM.length],
+           ["After midnight", a.home.NIGHT.length],
+           ["At any repair depot",
             a.repair.AM.length + a.repair.PM.length + a.repair.NIGHT.length],
            ["Away from any repair depot",
             a.away.AM.length + a.away.PM.length + a.away.NIGHT.length]],
-    head: ["Diagram", "Runs", "Part of day", "Gets in", "Where",
-           "What happens next", "Ends the day at", "Out from", "Left at"],
+    head: ["Diagram", "Runs", "Part of day", "Gets in", "Where exactly",
+           "Out from", "Left at"],
     rows: arrRows,
   });
 
-  /* ---- 2. the early evening arrivals, and where they came from ---- */
-  /* Coming into the depot is not the same as being FINISHED with. A diagram
-     that calls for two hours at midday and goes out again has not brought
-     the unit home for the evening, and counting it as though it had was
-     the whole trouble with this section: RM307 stands at Ramsgate from
-     12:18 and is away again at 14:05, finishing the day at Faversham. The
-     two are now counted apart and every row says which it is. */
+  /* ---- 2. finished at home before the evening ---- */
   const early = a.arrivals
     .filter(x => a.inHome(x.loc) && x.t != null && x.t >= 720 && x.t < 1200)
     .sort((p, q) => p.t - q.t);
-  const stay = early.filter(x => x.last), visit = early.filter(x => !x.last);
   secs.push({
     id: "early",
     tab: "Home before 8pm",
     title: "Home before 20:00",
-    lede: (stay.length
-      ? `<b>${stay.length}</b> diagram${stay.length === 1 ? "" : "s"} finish` +
-        `${stay.length === 1 ? "es" : ""} in the ${c.home} area between noon and ` +
-        `20:00, so the unit is free for that evening. `
-      : `Nothing finishes in the ${c.home} area between noon and 20:00. `) +
-      (visit.length
-        ? `<b>${visit.length}</b> more call in and go out again — a window to ` +
-          `catch a unit, not a homecoming.`
-        : ""),
-    how: `"Finishes" means the diagram ends there and the unit is handed over. ` +
-      `A diagram that calls in at midday and leaves at 14:05 takes the unit with ` +
-      `it, so it is counted separately and the row shows where it really ends up.`,
-    stat: [["Finish here for the day", stay.length],
-           ["Call in and go out again", visit.length]],
-    head: ["Diagram", "Runs", "Gets in", "Where", "What happens next",
-           "Ends the day at", "Out from", "Left at"],
+    lede: early.length
+      ? `<b>${early.length}</b> diagram${early.length === 1 ? "" : "s"} finish` +
+        `${early.length === 1 ? "es" : ""} at ${c.home} between noon and ` +
+        `20:00, so the unit is free for that evening.`
+      : `Nothing finishes at ${c.home} between noon and 20:00.`,
+    how: `Only a diagram that <em>ends</em> at ${c.home} counts — one that ` +
+      `calls in and goes out again the same day is passing through, however ` +
+      `long it stands, and is not in this section.`,
+    head: ["Diagram", "Runs", "Gets in", "Where exactly", "Out from", "Left at"],
     rows: early.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.t), x.loc,
-                          x.last ? "stays for the night"
-                                 : "out again " + at(x.t + x.mins),
-                          x.last ? x.loc : endOf(x.d).loc,
-                          startOf(x.d).loc, at(startOf(x.d).t)]),
+                          gp(startOf(x.d).loc), at(startOf(x.d).t)]),
   });
 
   /* ---- 3. diagrams a restricted unit can take ---- */
@@ -134,7 +114,7 @@ function build(all, fleet, cfg){
   const okRows = a.moOk.map(x => {
     const s = startOf(x.d), e = endOf(x.d);
     return [x.d.key, F.daysLabel(x.d.days), x.c.legs, x.c.partners.join(" "),
-            s.loc, at(s.t), e.loc, at(e.t), x.d.totalMiles || 0];
+            gp(s.loc), at(s.t), gp(e.loc), at(e.t), x.d.totalMiles || 0];
   }).sort((p, q) => p[4] < q[4] ? -1 : p[4] > q[4] ? 1 : 0);
   secs.push({
     id: "mo",
@@ -153,10 +133,7 @@ function build(all, fleet, cfg){
           `stay on this work without being moved.`),
     how: `Every leg of a diagram carries a formation showing the units in the ` +
       `train. A leg with none is a unit running alone, so a diagram counts here ` +
-      `only if every one of its legs is formed with somebody else. ` +
-      `<b>Note:</b> this has nothing to do with <b>MO</b> as a day code on the ` +
-      `print, where it means Mondays Only — the tool always writes day codes ` +
-      `out in full to keep the two apart.`,
+      `only if every one of its legs is formed with somebody else.`,
     stat: [["Coupled every leg", a.moOk.length],
            ["Run alone at some point", a.work.length - a.moOk.length],
            ["Of the working diagrams", a.work.length],
@@ -175,7 +152,7 @@ function build(all, fleet, cfg){
              "Carry over in place", "Left stranded", "Stranded at"],
       rows: moWk.map(x => [x.from + " \u2192 " + x.to, x.b.today, x.b.next,
         x.b.carries, x.b.stranded,
-        x.b.at.slice(0, 6).map(y => y.loc + " +" + y.n).join(", ")]),
+        x.b.at.slice(0, 6).map(y => gp(y.loc) + " +" + y.n).join(", ")]),
     }],
   });
 
@@ -312,8 +289,9 @@ function build(all, fleet, cfg){
   /* ---- 6. stands long enough to be attended ---- */
   const byLoc = new Map();
   for (const x of a.attend){
-    if (!byLoc.has(x.b.loc)) byLoc.set(x.b.loc, []);
-    byLoc.get(x.b.loc).push(x);
+    const g = gp(x.b.loc);
+    if (!byLoc.has(g)) byLoc.set(g, []);
+    byLoc.get(g).push(x);
   }
   const standRows = Array.from(byLoc.entries())
     .map(([loc, xs]) => {
@@ -321,7 +299,7 @@ function build(all, fleet, cfg){
       const am = xs.filter(x => x.b.from != null && x.b.from < 720).length;
       return [loc, xs.length, am, xs.length - am,
               mins.length ? dur(mins[Math.floor(mins.length / 2)]) : "all day",
-              a.atRepair(loc) ? "repair depot" : a.inHome(loc) ? "home area" : "outstation",
+              a.atRepair(xs[0].b.loc) ? "repair depot" : "outstation",
               xs.slice(0, 8).map(x => x.d.key).join(" ")];
     })
     .sort((p, q) => q[1] - p[1]);
@@ -335,9 +313,10 @@ function build(all, fleet, cfg){
       `reach. <b>${a.attend.length}</b> on a ${longDay(a.monday)}, ` +
       `<b>${amStands}</b> of them starting before noon.`,
     how: `A stand of ${F.ATTENDABLE / 60} hours or more that is not the ` +
-      `overnight one, plus any diagram that never moves all day. Signals, ` +
-      `headshunts and turnbacks are left out: a unit draws up to one and goes ` +
-      `on, so it is not standing there to be worked on.`,
+      `overnight one, plus any diagram that never moves all day. This is the ` +
+      `one section where calling in DOES count — the unit is sitting there ` +
+      `either way. Signals, headshunts and turnbacks are left out: a unit ` +
+      `draws up to one and goes on.`,
     head: ["Place", "Units standing", "Starting before noon", "Starting after",
            "Typical stand", "Kind of place", "Diagrams"],
     rows: standRows,
@@ -354,7 +333,8 @@ function build(all, fleet, cfg){
       stat.push([`Parked units, ${w.name}`, g.stand.length]);
       for (const kind of ["finisher", "stand"])
         for (const x of g[kind])
-          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, at(x.b.from), x.b.loc,
+          rows.push([x.d.key, F.daysLabel(x.d.days), w.name, at(x.b.from),
+            x.b.loc,
             kind === "finisher" ? "finished for the day" : "parked mid-diagram",
             kind === "finisher" ? "nothing — its work is done"
               : `the rest of ${x.d.key}, which works again at ${at(x.b.to)}`]);
@@ -388,7 +368,8 @@ function build(all, fleet, cfg){
         title: "Finish at " + v.label + " too late for either window",
         head: ["Diagram", "Runs", "Gets in", "Where", "How late"],
         rows: v.missed.map(x => [x.d.key, F.daysLabel(x.d.days), at(x.b.from),
-          x.b.loc, dur(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
+          x.b.loc,
+          dur(x.b.from - v.windows[v.windows.length - 1].by) + " past the cut-off"]),
       } : null,
     });
   }
@@ -430,18 +411,18 @@ function build(all, fleet, cfg){
            ["Depot roads and sidings", roads.length],
            ["Signals and shunt points", shunts.length],
            ["Still without a name", unnamed.length]],
-    head: ["Code", "What it is", "Station", "Kind of place",
+    head: ["Code", "What it is", "Grouped under", "Kind of place",
            "Lines in the prints"],
     rows: berths.map(p => [p.code,
-      p.named ? p.name : "— not named yet —", p.station || "",
+      p.named ? p.name : "— not named yet —", gp(p.code),
       p.kind === "road" ? "depot road or siding" : "station", p.n]),
     extra: shunts.length ? {
       tab: "Shunt points",
       title: "Signals and shunt points — passed through, never berthed",
-      head: ["Code", "What it is", "Station", "Kind of place",
+      head: ["Code", "What it is", "Grouped under", "Kind of place",
              "Lines in the prints"],
       rows: shunts.map(p => [p.code,
-        p.named ? p.name : "— not named yet —", p.station || "",
+        p.named ? p.name : "— not named yet —", gp(p.code),
         p.kind === "signal" ? "signal" : "headshunt, turnback or loop", p.n]),
     } : null,
   });
@@ -477,7 +458,7 @@ function build(all, fleet, cfg){
       title: "Where diagrams actually come apart",
       head: ["Place", "Splits", "Diagrams", "Kind"],
       rows: a.splits.map(s => [s.loc, s.n, s.ds.size,
-        a.atRepair(s.loc) ? "repair depot" : a.inHome(s.loc) ? "home area" : "outstation"]),
+        a.atRepair(s.loc) ? "repair depot" : "outstation"]),
     },
   });
 

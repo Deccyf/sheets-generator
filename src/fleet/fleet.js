@@ -144,6 +144,36 @@ const isRoad = code => {
    counts where a unit is stabled, or shunting reads as berthing. */
 const isShunt = code => D.NON_BERTH_PRINTS.has(code);
 
+/* ---- one name per place ------------------------------------------------
+   The roads at a station are one place to the person reading: a unit at
+   Ramsgate platform, the depot or the New Sidings is "at Ramsgate", and
+   the berthing sheets already group exactly this way - their section
+   tables list every road under its heading. So the group IS the section,
+   read from the same tables, and the report talks in groups everywhere
+   with the road kept to a hover.
+
+   The one carve-out is the depot's own: Faversham Back Road is spoken of
+   apart from Faversham, so it stays its own place.                       */
+const GROUP_APART = {"Fav Bk Rd": "Faversham Back Road"};
+const groupCache = new Map();
+function groupOf(code){
+  if (groupCache.has(code)) return groupCache.get(code);
+  let g = GROUP_APART[code];
+  if (!g){
+    for (const prof of D.PROFILES){
+      for (const sec of Object.keys(prof.sections))
+        if (prof.sections[sec].indexOf(code) !== -1){ g = titled(sec); break; }
+      if (g) break;
+    }
+  }
+  if (!g){
+    const p = placeName(code);
+    g = p.station || p.name || code;
+  }
+  groupCache.set(code, g);
+  return g;
+}
+
 function placeName(code){
   const explicit = D.PLACE_NAMES[code];
   const st = stationOf(code);
@@ -428,30 +458,29 @@ function analyse(all, fleet, cfg){
   const c = Object.assign({}, FLEETS[fleet], cfg && cfg[fleet]);
   const monday = (cfg && cfg.monday) || referenceMonday(all);
   const mine = all.filter(d => fleetOf(d) === fleet);
+  /* Home and repair are judged at the GROUP: a unit at Ramsgate platform,
+     the depot or the New Sidings is at Ramsgate. */
+  const repairGroups = new Set(c.repair);
+  const atRepair = l => repairGroups.has(groupOf(l));
+  const inHome = l => groupOf(l) === c.home;
+  const atHome = inHome;
   const roads = depotSet(c.repair, "roads");
-  const homeRoads = depotSet([c.home], "roads");
-  const homeArea = depotSet([c.home], "area");
-  const atRepair = l => roads.has(l);
-  const atHome = l => homeRoads.has(l);
-  const inHome = l => homeArea.has(l);
 
   /* one weekday, so the counts read as "on a typical Monday" */
   const day = mine.filter(d => runsOn(d, monday)).map(roll);
   const work = day.filter(d => !d.stabled);
   const still = day.filter(d => d.stabled);
 
-  /* Every arrival: the end of a diagram, plus any stand long enough to
-     matter on the way. Bucketed on the rolled clock, so a diagram running
-     past midnight lands in "after midnight" and not in the morning. */
-  const arrivals = [];
-  for (const d of work){
-    const bs = berthsOf(d);
-    for (const b of bs){
-      if (!b.last && !(b.mins >= 60)) continue;
-      arrivals.push({d, loc: b.loc, t: b.from, mins: b.mins, last: b.last,
-                     start: startsAt(d)});
-    }
-  }
+  /* An arrival is the END of a diagram and nothing else. A unit that
+     calls somewhere and goes out again the same day has not arrived - it
+     is passing through, however long it stands - so mid-day berths are no
+     part of this. They still feed the attendable stands below, which is
+     where a window belongs. Bucketed on the rolled clock, so a diagram
+     running past midnight lands in "after midnight", not the morning. */
+  const arrivals = work.map(d => {
+    const e = endsAt(d);
+    return {d, loc: e.loc, t: e.t, last: true, start: startsAt(d)};
+  });
   const when = t => t == null ? "?" : t < 720 ? "AM" : t < 1440 ? "PM" : "NIGHT";
   const bucket = f => {
     const b = {AM: [], PM: [], NIGHT: []};
@@ -476,7 +505,7 @@ function analyse(all, fleet, cfg){
   const moOk = mo.filter(x => x.c.moCapable);
   const byStart = new Map();
   for (const x of mo){
-    const l = startsAt(x.d).loc;
+    const l = groupOf(startsAt(x.d).loc);
     if (!byStart.has(l)) byStart.set(l, {loc: l, n: 0, ok: 0, okD: [], badD: []});
     const r = byStart.get(l);
     r.n++;
@@ -488,8 +517,9 @@ function analyse(all, fleet, cfg){
   const splitAt = new Map();
   for (const d of work)
     for (const s of splitsOf(d)){
-      if (!splitAt.has(s.loc)) splitAt.set(s.loc, {loc: s.loc, n: 0, ds: new Set()});
-      const r = splitAt.get(s.loc);
+      const g = groupOf(s.loc);
+      if (!splitAt.has(g)) splitAt.set(g, {loc: g, n: 0, ds: new Set()});
+      const r = splitAt.get(g);
       r.n++;
       r.ds.add(d.key);
     }
@@ -511,11 +541,13 @@ function analyse(all, fleet, cfg){
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
   const miles = mileage(all, fleet, monday);
   const deliver = deliveries(work, c.home, c.windows);
-  /* Where a unit has to reach to be worked on. For a home depot off this
-     network there is nothing in the prints to aim at, so the handover
-     point stands in for it - that is as far as the plan can take a unit. */
-  const target = roads.size ? roads
-    : new Set((deliver || []).reduce((t, v) => t.concat(v.at), []));
+  /* Where a unit has to reach to be worked on - the home GROUP, or for a
+     depot off this network the handover point, which is as far as the
+     plan can take a unit. */
+  const target = a0offNetwork(c)
+    ? new Set((deliver || []).reduce((t, v) =>
+        t.concat(v.at.map(groupOf)), []))
+    : new Set([c.home]);
   const back = daysHome(all, fleet, monday, target);
 
   return {
@@ -553,6 +585,7 @@ function analyse(all, fleet, cfg){
    the unit away again, and counting it would repeat the mistake the
    arrivals section had.                                                  */
 const REACH_CAP = 14;          // a fortnight is already a failed answer
+const a0offNetwork = c => !!(DEPOTS[c.home] || {}).offNetwork;
 
 function daysHome(all, fleet, monday, target){
   const w = weekFrom(monday);
@@ -561,7 +594,8 @@ function daysHome(all, fleet, monday, target){
     const m = new Map();
     for (const d of all){
       if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
-      const r = roll(d), from = startsAt(r).loc, to = endsAt(r).loc;
+      const r = roll(d);
+      const from = groupOf(startsAt(r).loc), to = groupOf(endsAt(r).loc);
       if (!m.has(from)) m.set(from, []);
       m.get(from).push({key: r.key, to});
     }
@@ -577,7 +611,7 @@ function daysHome(all, fleet, monday, target){
   w.forEach((ms, i) => {
     for (const d of all){
       if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
-      const to = endsAt(roll(d)).loc;
+      const to = groupOf(endsAt(roll(d)).loc);
       if (!leftOn.has(to)) leftOn.set(to, new Set());
       leftOn.get(to).add(i);
     }
@@ -707,7 +741,7 @@ function moWeek(all, fleet, monday){
 }
 
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
-              placeName, places, isShunt,
+              placeName, places, isShunt, groupOf,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
