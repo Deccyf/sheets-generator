@@ -718,8 +718,10 @@ const children = [
      ["Does the week close on itself?",
       "Whether the plan runs itself or units have to be moved at the end of " +
       "a day. One line per join, Monday through Sunday."],
-     ["Mileage",
-      "Annual and average daily miles for the fleet, and the miles each day."],
+     ["Mileage per unit",
+      "What one UNIT covers a day, a week and a year — split by sub-fleet, " +
+      "because a 375/6 works harder than a 375/3. Also the units the plan " +
+      "needs, and the whole-fleet annual total."],
      ["Where a unit stands long enough to be attended",
       "Every place a unit sits still for two hours or more during the day — " +
       "where MSE or MIST can actually get to it."],

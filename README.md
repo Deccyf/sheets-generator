@@ -1295,7 +1295,7 @@ what the plan means for **looking after** the units:
 | Home before 20:00 | The diagrams back in the home area between noon and 20:00, and where each of them started |
 | Restricted units | The diagrams coupled on *every* leg — the only ones an **MO** unit can take — with where each starts and ends |
 | Week joins | Whether the plan closes on itself, day by day, and how many units must be repositioned at each join |
-| Mileage | Annual and average daily miles, measured over one full week of the timetable |
+| Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
 | Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
 | Cannot contain | The places a restricted unit has no diagram to take, because everything starting there leaves it on its own |
 
@@ -1329,6 +1329,29 @@ The defaults are Ramsgate for the 375s, Gillingham for the 376s (also repaired
 at Ramsgate and Slade Green), Ashford for the 395s and Slade Green for the
 Metro classes. **The 377 default, Ashford, is worked out from the prints
 rather than given**, and the page says so on the card.
+
+### Mileage is per unit, and per sub-fleet
+
+Exams fall due on a **unit's** clock, not the fleet's, so the mileage section
+reports what one unit covers rather than what the fleet racks up between them.
+
+A diagram is worked by one unit, and the diagram's `Total miles` is the
+distance that unit covers — two units running coupled are two diagrams, each
+carrying the whole distance — so **miles per diagram is miles per unit**, with
+no allowance needed for the formation. Each day's miles are divided by the
+diagrams in force that day, and those daily averages are added across a week:
+a unit works one diagram a day, so that sum is a unit's week, and annualising
+it gives what a unit accrues in a year.
+
+Sub-fleets are measured separately because they are not worked alike — on the
+MAY26 books a 375/6 covers about 148,000 miles a year against about 121,000
+for a 375/3. Diagrams that stand still all day are counted as units doing zero
+miles, which is what they are; that is why a 466 shows a full week's units and
+only four days' mileage.
+
+**Units** is what the *plan* needs on its busiest day. A diagram book carries
+no spare or exam float, so the fleet as owned is always larger — and the real
+per-unit mileage correspondingly lower.
 
 ### Why every total is measured on a date
 

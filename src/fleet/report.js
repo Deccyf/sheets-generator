@@ -156,22 +156,60 @@ function build(all, fleet, cfg){
   });
 
   /* ---- 5. mileage ---- */
+  /* What a UNIT does, not what the fleet racks up between them: exams fall
+     due on a unit's clock. Split by sub-fleet, because they are not worked
+     alike - see mileage() in fleet.js for why miles per diagram is miles
+     per unit. */
+  const M = a.miles;
+  const mRow = r => [r.sub, r.units, Math.round(r.dailyPerUnit),
+                     Math.round(r.weeklyPerUnit), Math.round(r.annualPerUnit),
+                     Math.round(r.annualTotal)];
+  const spread = M.rows.length > 1
+    ? M.rows.slice().sort((x, y) => y.annualPerUnit - x.annualPerUnit) : [];
   secs.push({
     id: "miles",
     tab: "Mileage",
-    title: "Mileage",
-    lede: `Measured over one full week of the timetable and annualised. ` +
-      `Counting every printed diagram instead would count a re-issued one twice — ` +
-      `a diagram is printed once per validity period.` +
-      (a.dupes.length ? ` <b>${a.dupes.length} duplicate${a.dupes.length === 1 ? "" : "s"} ` +
-        `still seen on the reference week</b>, which needs looking at.` : ""),
-    stat: [["Annual miles", n0(a.annual)],
-           ["Average per day", n0(a.daily)],
-           ["One week", n0(a.weekly)],
-           ["Diagrams in the week", F.DAYS.reduce((t, d) => t + a.perDay[d].diagrams, 0)]],
-    head: ["Day", "Diagrams", "Miles", "Miles per diagram"],
-    rows: F.DAYS.map(d => [d, a.perDay[d].diagrams, Math.round(a.perDay[d].miles),
-      a.perDay[d].diagrams ? one(a.perDay[d].miles / a.perDay[d].diagrams) : ""]),
+    title: "Mileage per unit",
+    lede: `A diagram is worked by one unit and its <em>Total miles</em> is the ` +
+      `distance that unit covers — two units coupled are two diagrams, each ` +
+      `carrying the whole distance — so miles per diagram is miles per unit. ` +
+      `Each day's miles are divided by the diagrams in force that day and the ` +
+      `daily averages added across a week, which is what one unit covers in a ` +
+      `week. On these diagrams a ${c.label} unit averages ` +
+      `<b>${n0(M.total.dailyPerUnit)} miles a day</b> and ` +
+      `<b>${n0(M.total.annualPerUnit)} a year</b>.` +
+      (spread.length > 1
+        ? ` The sub-fleets are not worked alike: a <b>${spread[0].sub}</b> covers ` +
+          `${n0(spread[0].annualPerUnit)} a year against ` +
+          `${n0(spread[spread.length - 1].annualPerUnit)} for a ` +
+          `<b>${spread[spread.length - 1].sub}</b>.` : "") +
+      `<span class="aside">Units is what the <em>plan</em> needs on its busiest ` +
+      `day. A diagram book carries no spare or exam float, so the fleet as owned ` +
+      `is always larger — and the per-unit mileage correspondingly lower.</span>`,
+    stat: [["Miles per unit per day", n0(M.total.dailyPerUnit)],
+           ["Miles per unit per year", n0(M.total.annualPerUnit)],
+           ["Units the plan needs", M.total.units],
+           ["Whole fleet per year", n0(M.total.annualTotal)]],
+    head: ["Sub-fleet", "Units", "Per unit / day", "Per unit / week",
+           "Per unit / year", "Sub-fleet / year"],
+    rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
+    detail: [{
+      tab: "Mileage by day",
+      title: "Day by day, per sub-fleet",
+      head: ["Sub-fleet", "Day", "Diagrams", "Standing all day", "Miles",
+             "Miles per unit"],
+      rows: M.rows.concat(M.rows.length > 1 ? [M.total] : []).reduce((out, r) => {
+        for (const d of r.perDay)
+          out.push([r.sub, d.day, d.diagrams, d.idle, Math.round(d.miles),
+                    Math.round(d.perUnit)]);
+        return out;
+      }, []),
+    }].concat(a.dupes.length ? [{
+      tab: "Mileage duplicates",
+      title: "Counted more than once on the reference week — check these",
+      head: ["Duplicate"],
+      rows: a.dupes.map(x => [x]),
+    }] : []),
   });
 
   /* ---- 6. stands long enough to be attended ---- */

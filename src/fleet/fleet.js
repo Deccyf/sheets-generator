@@ -230,8 +230,51 @@ function referenceMonday(all){
   return ms;
 }
 
-/* ---- the day's picture for one fleet ---------------------------------- */
+/* ---- mileage, per unit and per sub-fleet -------------------------------
+   A diagram is worked by ONE unit, and the diagram's Total miles is the
+   distance that unit covers. Two units running coupled are two diagrams,
+   each carrying the whole distance - so miles per diagram IS miles per
+   unit, and no allowance has to be made for the formation.
+
+   What the depot needs is the mileage a UNIT does, not what the fleet
+   racks up between them: exams fall due on a unit's clock. So each day's
+   miles are divided by the diagrams in force that day, and those daily
+   averages are added across a week. A unit works one diagram a day, so the
+   week's figure is what one unit covers in a week, and annualising it
+   gives the mileage a unit accrues in a year.
+
+   Sub-fleet matters because they are not worked alike - within the 375s
+   the /6s do a fifth more than the /3s and /9s.                          */
 const WEEKS = 365.25 / 7;
+
+function mileage(all, fleet, monday){
+  const mine = all.filter(d => fleetOf(d) === fleet);
+  const week = weekFrom(monday);
+  const subs = Array.from(new Set(mine.map(d => d.fleet))).sort();
+
+  const measure = (label, pick) => {
+    const perDay = week.map((ms, i) => {
+      const ds = mine.filter(d => pick(d) && runsOn(d, ms));
+      const miles = ds.reduce((t, d) => t + (d.totalMiles || 0), 0);
+      const idle = ds.filter(d => d.stabled).length;
+      return {day: DAYS[i], diagrams: ds.length, idle, miles,
+              perUnit: ds.length ? miles / ds.length : 0};
+    });
+    const weeklyPerUnit = perDay.reduce((t, x) => t + x.perUnit, 0);
+    const weeklyTotal = perDay.reduce((t, x) => t + x.miles, 0);
+    /* The units the PLAN needs, which is the busiest day's diagram count.
+       It is not the fleet as owned - there is no spare or exam float in a
+       diagram book, so the real fleet is always larger. */
+    const units = perDay.reduce((m, x) => Math.max(m, x.diagrams), 0);
+    return {sub: label, perDay, units,
+            dailyPerUnit: weeklyPerUnit / 7, weeklyPerUnit,
+            annualPerUnit: weeklyPerUnit * WEEKS,
+            weeklyTotal, annualTotal: weeklyTotal * WEEKS};
+  };
+
+  return {rows: subs.map(s => measure(s, d => d.fleet === s)),
+          total: measure("All " + fleet, () => true)};
+}
 
 function analyse(all, fleet, cfg){
   const c = Object.assign({}, FLEETS[fleet], cfg && cfg[fleet]);
@@ -318,6 +361,7 @@ function analyse(all, fleet, cfg){
     for (const e of seen) if (e[1] > 1) dupes.push(nm + " " + e[0] + " ×" + e[1]);
   }
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
+  const miles = mileage(all, fleet, monday);
 
   return {
     fleet, cfg: c, monday, all: mine, day, work, still,
@@ -326,6 +370,7 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
+    miles,
     dupes, atHome, inHome, atRepair,
   };
 }
@@ -400,5 +445,6 @@ function moWeek(all, fleet, monday){
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
-              weekFrom, referenceMonday, analyse, balance, week, moBalance, moWeek};
+              weekFrom, referenceMonday, mileage, analyse, balance, week, moBalance,
+              moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);

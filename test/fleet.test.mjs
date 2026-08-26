@@ -126,6 +126,50 @@ test("mileage is measured over a week, so a re-issue cannot count twice", () => 
   assert.equal(Math.round(a.annual), Math.round(a.weekly * 365.25 / 7));
 });
 
+test("mileage is per UNIT, and split by sub-fleet", () => {
+  /* The fixture's 375 work is all 375/6 on the reference Monday. A unit
+     works one diagram a day, so the day's miles divided by the day's
+     diagrams is what one unit covers - not the fleet total. */
+  const m = F.mileage(DS, "375", MONDAY);
+  assert.deepEqual(arr(m.rows.map(r => r.sub)), ["375/6"]);
+  const mon = m.total.perDay[0];
+  assert.equal(mon.day, "Mon");
+  /* Monday: 101 + 102 + 103 + 104 running, 106 standing = 5 diagrams,
+     490 miles between them. */
+  assert.equal(mon.diagrams, 5);
+  assert.equal(mon.idle, 1, "the diagram that never moves is still a unit");
+  assert.equal(mon.miles, 490);
+  assert.equal(mon.perUnit, 98);
+  /* A week of those daily averages is one unit's week. Adding the fleet's
+     miles instead would give seven times too much. */
+  const expect = [490 / 5, 420 / 4, 420 / 4, 470 / 5, 0, 0, 0];
+  assert.equal(Math.round(m.total.weeklyPerUnit),
+               Math.round(expect.reduce((t, x) => t + x, 0)));
+  assert.equal(Math.round(m.total.annualPerUnit),
+               Math.round(m.total.weeklyPerUnit * 365.25 / 7));
+  /* Units is the busiest day's diagram count, not the fleet as owned. */
+  assert.equal(m.total.units, 5);
+  /* And the fleet total is still the fleet total. */
+  assert.equal(m.total.weeklyTotal, 490 + 420 + 420 + 470);
+});
+
+test("each sub-fleet is measured on its own", () => {
+  /* Give 103 a different sub-class and it must be counted apart, with the
+     others' per-unit figure rising because one diagram left their pool. */
+  const split = DS.map(d => d.key === "XX103"
+    ? Object.assign({}, d, {fleet: "375/3"}) : d);
+  const m = F.mileage(split, "375", MONDAY);
+  assert.deepEqual(arr(m.rows.map(r => r.sub)), ["375/3", "375/6"]);
+  const three = m.rows[0], six = m.rows[1];
+  assert.equal(three.units, 1);
+  assert.equal(three.perDay[0].perUnit, 90);
+  /* 375/6 keeps 101, 102, 104 and the stabled 106: 400 miles over 4. */
+  assert.equal(six.perDay[0].diagrams, 4);
+  assert.equal(six.perDay[0].perUnit, 100);
+  /* The total row still measures the lot together. */
+  assert.equal(m.total.perDay[0].perUnit, 98);
+});
+
 test("a place with no coupled diagram out of it cannot contain a restriction", () => {
   const a = F.analyse(DS, "375", { monday: MONDAY });
   const out = a.containment.find(r => r.loc === "Out Sdg");

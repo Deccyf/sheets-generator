@@ -210,11 +210,16 @@ function table(head, rows){
   for (const r of rows){
     const row = el("tr");
     r.forEach((v, i) => {
-      const td = el("td", null, v === "" || v == null ? "" : String(v));
+      /* Grouped on screen so a six-figure mileage can be read at a glance.
+         The cell handed to the workbook is still the bare number, or Excel
+         would take "120,837" for text and refuse to add it up. */
+      const shown = typeof v === "number" ? v.toLocaleString("en-GB")
+        : v === "" || v == null ? "" : String(v);
+      const td = el("td", null, shown);
       if (typeof v === "number") td.className = "num";
-      else if (/^NO —/.test(String(v))) td.className = "no";
-      else if (/^yes/.test(String(v))) td.className = "yes";
-      else if (String(v).length > 24) td.className = "wide";
+      else if (/^NO —/.test(shown)) td.className = "no";
+      else if (/^yes/.test(shown)) td.className = "yes";
+      else if (shown.length > 24) td.className = "wide";
       row.appendChild(td);
     });
     tb.appendChild(row);
