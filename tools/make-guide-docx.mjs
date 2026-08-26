@@ -717,9 +717,13 @@ const children = [
      ["Diagrams a restricted unit can work",
       "The diagrams that stay coupled all day — the only ones you can put " +
       "an MO unit on — and whether that work carries over to the next day."],
-     ["Does the week close on itself?",
-      "Whether the plan runs itself or units have to be moved at the end of " +
-      "a day. One line per join, Monday through Sunday."],
+     ["How long back to <depot>",
+      "A unit is standing at West Marina — how many days before the " +
+      "diagrams get it back to Ramsgate for its exam? One line per place a " +
+      "unit can be left, with the run of diagrams that gets it home. Each " +
+      "is measured from the nights the plan actually leaves a unit there, " +
+      "and those nights are shown. The week-by-week balance is a drill-down " +
+      "underneath."],
      ["Mileage per unit",
       "What one UNIT covers a day, a week and a year — split by sub-fleet, " +
       "because a 375/6 works harder than a 375/3. Also the units the plan " +

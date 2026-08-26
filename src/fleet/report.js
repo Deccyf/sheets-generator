@@ -170,33 +170,76 @@ function build(all, fleet, cfg){
     }],
   });
 
-  /* ---- 4. does the plan close on itself? ---- */
+  /* ---- 4. how long back to the depot? ---- */
+  /* The question the depot actually asks: a unit is standing at West
+     Marina - how many days before the diagrams put it back at Ramsgate?
+     A unit can only take a diagram that STARTS where it is, and a diagram
+     is a day, so this is a shortest walk over (place, day of week). */
   const wk = F.week(all, fleet, a.monday);
   const clean = wk.filter(x => x.b.moved === 0).length;
+  const back = a.back;
+  const reachable = back.filter(r => r.days != null);
+  const worst = reachable.reduce((m, r) => Math.max(m, r.days), 0);
+  const sameDay = back.filter(r => r.days === 1).length;
+  const never = back.filter(r => r.never);
+  const aim = a.offNetwork
+    ? "the handover point at " + (a.deliver && a.deliver[0] ? a.deliver[0].label : "?")
+    : c.home;
   secs.push({
-    id: "cycle",
-    tab: "Week joins",
-    title: "Does the week close on itself?",
-    lede: `A unit can only take up a diagram that starts where its last one ` +
-      `finished. Where the places diagrams END do not match the places the next ` +
-      `day's diagrams START, somebody has to move a unit. ` +
-      (clean === 7
-        ? `Every join balances: the ${c.label} plan is self-contained all week.`
-        : `${clean} of the 7 joins balance` +
-          (wk.slice(0, 4).every(x => x.b.moved === 0)
-            ? `, and the four weekday joins are among them — the plan runs itself ` +
-              `Monday to Thursday and only breaks over the weekend.` : `.`)),
-    head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
-           "Places", "Units to move"],
-    rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
-                       x.b.matched, x.b.locations, x.b.moved]),
-    detail: wk.filter(x => x.b.moved > 0).map(x => ({
+    id: "back",
+    tab: "Days back to depot",
+    title: "How long back to " + (a.offNetwork ? aim : c.home) + "?",
+    lede: `A unit can only take a diagram that <em>starts</em> where it is ` +
+      `standing, and a diagram is a day's work — so this is the shortest way ` +
+      `home through the plan itself, a day for each diagram and a day for ` +
+      `standing where nothing leaves. Each place is measured from the morning ` +
+      `after the plan actually leaves a unit there, not from an arbitrary ` +
+      `Monday: the only night a 375 is left at Tonbridge is a Saturday, and ` +
+      `asking from a Monday would answer a question that never comes up. ` +
+      `The furthest any place is from <b>${aim}</b> is <b>${worst} day` +
+      `${worst === 1 ? "" : "s"}</b>, and <b>${sameDay}</b> of ${back.length} ` +
+      `are one diagram away. ` +
+      (never.length
+        ? `<b>${never.length}</b> can never get there on the diagrams at all: ` +
+          `${never.map(r => r.loc).join(", ")}. `
+        : "") +
+      `<span class="aside">A unit counts as back when a diagram <em>ends</em> ` +
+      `there. One that only calls in on its way past takes the unit away ` +
+      `again — those are in the arrivals section, not this one.</span>`,
+    stat: [["Worst case", worst + (worst === 1 ? " day" : " days")],
+           ["One diagram away", sameDay],
+           ["Places a unit is left", back.filter(r => r.everLeft).length],
+           ["No way back on the diagrams", never.length]],
+    head: ["Standing at", "Days back", "Worst", "Left here on", "First move",
+           "The way back"],
+    rows: back.map(r => [
+      r.loc,
+      r.never ? "never" : r.days,
+      r.worst == null ? "—" : r.worst,
+      r.everLeft ? r.leftOn.join(", ") : "the plan never leaves one here",
+      r.never ? "nothing reaches " + aim
+        : r.stuck ? "nothing starts here that day — it waits"
+        : r.path && r.path[0] ? r.path[0].key : "already there",
+      !r.path || !r.path.length ? "already there"
+        : r.path.map(p => p.key ? p.key + " (" + p.day + ")"
+                                : "wait over " + p.day).join(" → "),
+    ]),
+    detail: [{
+      tab: "Week joins",
+      title: "Does each day's set hand over to the next? — " +
+        (clean === 7 ? "every join balances"
+                     : clean + " of the 7 joins balance"),
+      head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
+             "Places", "Units to move"],
+      rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
+                         x.b.matched, x.b.locations, x.b.moved]),
+    }].concat(wk.filter(x => x.b.moved > 0).map(x => ({
       tab: "Move " + x.from + "-" + x.to,
       title: x.from + " → " + x.to + ": " + x.b.moved + " to move",
       head: ["Place", "Ends there", "Starts there", "Spare (+) / short (−)"],
       rows: x.b.rows.filter(r => r.diff !== 0)
         .map(r => [r.loc, r.ends, r.starts, r.diff > 0 ? "+" + r.diff : r.diff]),
-    })),
+    }))),
   });
 
   /* ---- 5. mileage ---- */

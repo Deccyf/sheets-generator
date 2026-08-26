@@ -228,6 +228,45 @@ test("the week's joins say where units have to be moved", () => {
   assert.equal(wk[4].b.today, 0);
 });
 
+test("how many days back to the depot, walking the diagrams", () => {
+  /* Home Dep is the depot. 103 starts at Out Sdg and ends there, so a unit
+     left at Out Sdg can never reach the depot on the diagrams; 102 runs
+     Home Dep -> Out Sdg, which is the way out but not the way back. */
+  const target = F.depotSet(["Ramsgate"], "roads");
+  const home = new Set(["Home Dep"]);
+  const rows = F.daysHome(DS.map(d => d), "375", MONDAY, home);
+  const at = l => rows.find(r => r.loc === l);
+  assert.equal(at("Home Dep").days, 0, "already there is nought days");
+  /* 103 is the only thing out of Out Sdg and it comes back to Out Sdg. */
+  const out = at("Out Sdg");
+  assert.ok(out, "Out Sdg is a place a unit can be left");
+  assert.equal(out.never, true, "nothing on the diagrams gets back from Out Sdg");
+  assert.equal(out.days, null);
+  /* Far Stn is a stop in the middle of 102, not the end of anything, so it
+     is not a place a unit can be left standing and does not appear. */
+  assert.equal(at("Far Stn"), undefined);
+  /* Every row carries the walk that produced it. */
+  for (const r of rows)
+    if (r.days != null && r.days > 0)
+      assert.equal(r.path.length, r.days, r.loc + ": the walk must be as long as the count");
+  /* Every place says which nights the plan actually leaves a unit there,
+     so a figure measured from a day that never happens cannot mislead. */
+  assert.deepEqual(arr(at("Home Dep").leftOn).sort(),
+    ["Mon", "Thu", "Tue", "Wed"], "101 finishes at the depot Mon-Thu");
+  assert.equal(at("Out Sdg").everLeft, true);
+});
+
+test("a unit is back only when a diagram ENDS at the depot", () => {
+  /* 101 calls at Home Dep from 10:30 to 16:00 and finishes there at 23:40.
+     Reaching home must mean the finish, not the call - otherwise every
+     diagram that passes the depot would read as a delivery. */
+  const home = new Set(["Home Dep"]);
+  const rows = F.daysHome(DS, "375", MONDAY, home);
+  /* Out Sdg is reached by 102 mid-week; from there nothing returns, which
+     is only true because the mid-day call at Home Dep does not count. */
+  assert.equal(rows.find(r => r.loc === "Out Sdg").never, true);
+});
+
 test("home, and everywhere the fleet can be repaired, are settings", () => {
   const base = F.analyse(DS, "375", { monday: MONDAY });
   assert.equal(base.cfg.home, "Ramsgate");
@@ -351,12 +390,12 @@ test("no rolled time reaches the page: 25:26 is shown as 01:26 (+1)", () => {
 test("the report answers every question and the workbook matches it", () => {
   const rep = R.build(DS, "375", { monday: MONDAY });
   assert.deepEqual(arr(rep.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "cycle", "miles", "stands", "places", "contain"]);
+    ["arrivals", "early", "mo", "back", "miles", "stands", "places", "contain"]);
   /* A fleet handed over off-network gets one more again. */
   const off = R.build(DS, "377", { monday: MONDAY,
     "377": { home: "Selhurst", repair: ["Selhurst"] } });
   assert.deepEqual(arr(off.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "cycle", "miles", "stands", "deliver", "places",
+    ["arrivals", "early", "mo", "back", "miles", "stands", "deliver", "places",
      "contain"]);
   for (const s of rep.secs){
     assert.ok(s.tab && s.tab.length <= 31, s.id + " needs a short tab name");
@@ -378,10 +417,10 @@ test("the report answers every question and the workbook matches it", () => {
 test("place codes are spelt out, and an unknown road is not guessed at", () => {
   /* Several codes for one place is what makes the prints look duplicated. */
   assert.equal(F.placeName("Ram").name, "Ramsgate Platform");
-  assert.equal(F.placeName("Ram Depot").name, "Ramsgate Depot");
+  assert.equal(F.placeName("Ram Depot").name, "Ramsgate EMU Depot");
   assert.equal(F.placeName("RamsNewSd").name, "Ramsgate New Sidings");
   assert.equal(F.placeName("Dover PSd").name, "Dover Priory Sidings");
-  assert.equal(F.placeName("Ashfd EBS").name, "Ashford East Sidings");
+  assert.equal(F.placeName("Ashfd EBS").name, "Ashford East Berthing Sidings");
   assert.equal(F.placeName("Ash Up Sd").name, "Ashford Up Sidings");
   for (const c of ["Ram", "Ram Depot", "RamsNewSd"])
     assert.equal(F.placeName(c).named, true);
@@ -393,13 +432,21 @@ test("place codes are spelt out, and an unknown road is not guessed at", () => {
   /* Even one on the transit list, if it IS a station. */
   assert.equal(F.placeName("New Cross").kind, "station");
 
+  /* A code ending in a number is a SIGNAL, not a road - a unit stands at
+     one while it shunts and is not berthed there. */
+  const sig = F.placeName("RM EK4985");
+  assert.equal(sig.kind, "signal");
+  assert.equal(sig.name, "Ramsgate signal EK4985");
+  assert.equal(F.placeName("Dover621").kind, "signal");
+  assert.equal(F.placeName("Dover621").name, "Dover signal YE 621");
+  assert.equal(F.placeName("Hast 70").kind, "signal");
+
   /* A road with no entry keeps its code and says so, rather than being
      given a name that would read as fact. */
-  const road = F.placeName("RM EK4985");
+  const road = F.placeName("Made Up Sd");
   assert.equal(road.kind, "road");
   assert.equal(road.named, false);
-  assert.equal(road.station, "Ramsgate");
-  assert.ok(road.name.indexOf("RM EK4985") !== -1,
+  assert.ok(road.name.indexOf("Made Up Sd") !== -1,
     "an unnamed road must still show its code");
 });
 

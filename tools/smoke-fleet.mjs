@@ -48,7 +48,7 @@ for (const s of secs) console.log("   -", s);
    is not, and that path is covered by the unit tests. */
 if (secs.length !== 8) die("expected eight sections, got " + secs.length);
 for (const want of [/restricted unit can work/i, /place codes mean/i,
-                    /Mileage per unit/i])
+                    /Mileage per unit/i, /How long back to/i])
   if (!secs.some(s => want.test(s))) die("a section is missing: " + want);
 
 const rows = await page.locator("#report table.rep tbody tr").count();

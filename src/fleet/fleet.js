@@ -135,9 +135,14 @@ const isRoad = code => {
 function placeName(code){
   const explicit = D.PLACE_NAMES[code];
   const st = stationOf(code);
-  if (explicit)
-    return {code, name: explicit, station: st, kind: isRoad(code) ? "road" : "station",
-            named: true};
+  if (explicit){
+    /* A code ending in a number is a signal, not a road. A unit stands at
+       one while it shunts and is not berthed there, so counting it as a
+       berthing point would invent stabling that does not exist. */
+    const kind = /signal/i.test(explicit) ? "signal"
+      : isRoad(code) ? "road" : "station";
+    return {code, name: explicit, station: st, kind, named: true};
+  }
   if (isRoad(code))
     return {code, name: st ? st + " — " + code : code, station: st,
             kind: "road", named: false};
@@ -490,6 +495,12 @@ function analyse(all, fleet, cfg){
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
   const miles = mileage(all, fleet, monday);
   const deliver = deliveries(work, c.home, c.windows);
+  /* Where a unit has to reach to be worked on. For a home depot off this
+     network there is nothing in the prints to aim at, so the handover
+     point stands in for it - that is as far as the plan can take a unit. */
+  const target = roads.size ? roads
+    : new Set((deliver || []).reduce((t, v) => t.concat(v.at), []));
+  const back = daysHome(all, fleet, monday, target);
 
   return {
     fleet, cfg: c, monday, all: mine, day, work, still,
@@ -498,10 +509,118 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
-    miles, deliver, offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
+    miles, deliver, back, target,
+    offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     places: places(day),
     dupes, atHome, inHome, atRepair,
   };
+}
+
+/* ---- how long back to the depot? ---------------------------------------
+   The question a maintenance planner actually asks: a unit is standing at
+   West Marina - how many days before the diagrams put it back at Ramsgate
+   for its exam?
+
+   A unit can only take a diagram that STARTS where it is standing, and a
+   diagram occupies a day. So the plan is a graph: each place is a node,
+   each diagram an edge from where it starts to where it ends, costing one
+   day. Standing still is an edge too - it costs a day and moves nothing,
+   which is what happens when nothing starts from that place that day.
+
+   The set of diagrams differs by weekday, so the walk is over (place, day
+   of week) rather than place alone: leaving Tonbridge on a Sunday is not
+   the same problem as leaving it on a Tuesday. The week repeats, so the
+   day wraps at seven.
+
+   A unit counts as home when a diagram ENDS at a repair depot - that is
+   when it is handed over. A diagram that merely calls there mid-day takes
+   the unit away again, and counting it would repeat the mistake the
+   arrivals section had.                                                  */
+const REACH_CAP = 14;          // a fortnight is already a failed answer
+
+function daysHome(all, fleet, monday, target){
+  const w = weekFrom(monday);
+  /* what leaves each place on each day, and what is LEFT at each place */
+  const byDay = w.map(ms => {
+    const m = new Map();
+    for (const d of all){
+      if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
+      const r = roll(d), from = startsAt(r).loc, to = endsAt(r).loc;
+      if (!m.has(from)) m.set(from, []);
+      m.get(from).push({key: r.key, to});
+    }
+    return m;
+  });
+  /* The day a diagram ENDS somewhere is the night the unit stands there, so
+     it is available to be taken up the NEXT day. Asking "how long from
+     Tonbridge starting Monday" is a fair question but not the real one:
+     the plan only ever leaves a unit at Tonbridge on a Saturday, and the
+     answer from a Monday - eight days of standing about - describes a
+     situation that never arises. */
+  const leftOn = new Map();
+  w.forEach((ms, i) => {
+    for (const d of all){
+      if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
+      const to = endsAt(roll(d)).loc;
+      if (!leftOn.has(to)) leftOn.set(to, new Set());
+      leftOn.get(to).add(i);
+    }
+  });
+
+  const locs = new Set();
+  for (const m of byDay)
+    for (const e of m){ locs.add(e[0]); for (const x of e[1]) locs.add(x.to); }
+
+  const walk = (start, day0) => {
+    if (target.has(start)) return {days: 0, path: []};
+    const seen = new Set([start + "|" + day0]);
+    let q = [{loc: start, day: day0, n: 0, path: []}];
+    while (q.length){
+      const cur = q.shift();
+      if (cur.n >= REACH_CAP) continue;
+      for (const o of byDay[cur.day].get(cur.loc) || []){
+        const path = cur.path.concat([{day: DAYS[cur.day], key: o.key, to: o.to}]);
+        if (target.has(o.to)) return {days: cur.n + 1, path};
+        const k = o.to + "|" + ((cur.day + 1) % 7);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        q.push({loc: o.to, day: (cur.day + 1) % 7, n: cur.n + 1, path});
+      }
+      /* nothing taken: the unit is still there tomorrow */
+      const k = cur.loc + "|" + ((cur.day + 1) % 7);
+      if (!seen.has(k)){
+        seen.add(k);
+        q.push({loc: cur.loc, day: (cur.day + 1) % 7, n: cur.n + 1,
+                path: cur.path.concat([{day: DAYS[cur.day], key: null, to: cur.loc}])});
+      }
+    }
+    return null;
+  };
+
+  return Array.from(locs).sort().map(loc => {
+    /* the days a unit is actually standing here: the morning after it was
+       left, for every night the plan leaves one */
+    const nights = Array.from(leftOn.get(loc) || []).sort();
+    const mornings = nights.map(i => (i + 1) % 7);
+    const from = (mornings.length ? mornings : DAYS.map((_, i) => i))
+      .map(i => ({day: i, r: walk(loc, i)}));
+    const got = from.filter(x => x.r).map(x => x.r.days);
+    const best = got.length ? Math.min.apply(null, got) : null;
+    const pick = from.filter(x => x.r).sort((a, b) => a.r.days - b.r.days)[0];
+    return {
+      loc,
+      /* the nights the plan leaves a unit here, spelt out */
+      leftOn: nights.map(i => DAYS[i]),
+      everLeft: nights.length > 0,
+      days: best,
+      worst: got.length ? Math.max.apply(null, got) : null,
+      path: pick ? pick.r.path : null,
+      startDay: pick ? DAYS[pick.day] : null,
+      stuck: pick && pick.r.path.length > 0 && pick.r.path[0].key === null,
+      never: got.length === 0,
+    };
+  }).sort((a, b) => (b.days == null ? 99 : b.days) - (a.days == null ? 99 : a.days) ||
+                    (a.loc < b.loc ? -1 : 1));
 }
 
 /* ---- does the plan close on itself? ------------------------------------
@@ -575,6 +694,7 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               placeName, places,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
-              weekFrom, referenceMonday, mileage, deliveries, analyse, balance, week,
+              weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
+              balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);

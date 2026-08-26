@@ -1294,7 +1294,7 @@ what the plan means for **looking after** the units:
 | Arrivals home | How many diagrams put a unit into the home depot, split morning / afternoon / after midnight, and how many stands are nowhere near a depot that can repair the fleet |
 | Home before 20:00 | The diagrams that **finish** in the home area between noon and 20:00, counted apart from those that call in and go out again — and where each of them started |
 | Restricted units | The diagrams coupled on *every* leg — the only ones an **MO** unit can take — with where each starts and ends |
-| Week joins | Whether the plan closes on itself, day by day, and how many units must be repositioned at each join |
+| How long back to &lt;depot&gt; | For every place a unit can be left, how many days the diagrams take to put it back at a repair depot, with the route. The week-joins balance is a drill-down |
 | Mileage per unit | What one **unit** covers a day, a week and a year, split by sub-fleet — plus the units the plan needs and the whole-fleet annual total |
 | Attendable stands | Every stand of two hours or more that is not the overnight one, by place — what MSE or MIST can actually reach |
 | Getting units to &lt;depot&gt; | Only when the home depot is off this network: when a unit is standing at the handover point in time for a trip |
@@ -1381,6 +1381,35 @@ The defaults are Ramsgate for the 375s, Gillingham for the 376s (also repaired
 at Ramsgate and Slade Green), Selhurst for the 377s (off this network — see
 above), Ashford for the 395s and Slade Green for the Metro classes.
 
+### How long back to the depot
+
+The question a maintenance planner actually asks is not whether the plan
+balances, it is: *a unit is standing at West Marina — how many days before
+the diagrams get it back to Ramsgate for its exam?*
+
+A unit can only take a diagram that **starts** where it is standing, and a
+diagram is a day's work. So the plan is a graph: each place a node, each
+diagram an edge from where it starts to where it ends, costing one day.
+Standing still is an edge too — it costs a day and moves nothing, which is
+what happens when nothing leaves that place that day. The set of diagrams
+differs by weekday, so the walk is over *(place, day of week)* rather than
+place alone, and the day wraps at seven because the week repeats.
+
+Two things keep the answer honest:
+
+* **A unit is back only when a diagram ENDS at a repair depot.** One that
+  calls there mid-day takes the unit away again — the same distinction the
+  arrivals section needs.
+* **Each place is measured from the morning after the plan actually leaves
+  a unit there**, not from an arbitrary Monday. The only night a 375 is
+  left at Tonbridge is a Saturday; asking from a Monday gives eight days of
+  standing about, describing a situation that never arises. Every row shows
+  which nights a unit is left there, so the figure can be checked against
+  the case it answers.
+
+On the MAY26 books nothing in the 375 fleet is more than **3 days** from
+Ramsgate, and 12 of the 20 places a unit can be left are one diagram away.
+
 ### Place codes, and why one station looks like five
 
 The prints have nine characters for a place name, so a station arrives as
@@ -1403,6 +1432,21 @@ something to be inferred from an abbreviation, so an unknown one is left
 visible and listed rather than guessed at — a guess would read as fact. The
 *What the place codes mean* section counts them, which is how they get
 asked about and added.
+
+The names themselves are not invented either: every one is the long name
+**Genius** uses, taken from `BERTH_SHEETS` at the top of `src/data.js`.
+`RAMSGATE E.M.U.D` is the prints' `Ram Depot`; `ST. LEONARDS W.M. C.S.D` is
+`St L Shed`. That table also settles the conventions the two vocabularies
+share:
+
+* **A code ending in a number is a signal, not a road** — `Dover621` is
+  Dover signal YE 621, `RM EK4985` is Ramsgate signal EK4985, `Hast 70` is
+  Hastings signal 70. A unit stands at one while it shunts and is not
+  berthed there, which is why they are all in `NON_BERTH_VISIT`. They get
+  their own `kind`, so they can never be counted as stabling.
+* `Dep` / `EMUD` / `CSD` / `TRSMD` is the depot proper; `Sd` / `Sdg` / `CHS`
+  a siding; `Hs` / `ShNk` a headshunt or shunt neck; `Bk Rd` / `WRd` a named
+  road; `TB` / `TR` a turnback or train road.
 
 A code is treated as a road when it is in `BASE_STABLING` or `TRANSIT`, or
 ends in a siding word — except where the code is itself a station name, so

@@ -670,7 +670,7 @@ table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>1.1.2</b> &middot; 26 August 2026</p>
+    <p class="small">Version <b>1.2.0</b> &middot; 26 August 2026</p>
   </footer>
 </div>
 <script>
@@ -1295,48 +1295,94 @@ const NOTE_FROM_BERTH = {
  "Dart USd":"UPS","Dart DSd":"DN",
  "Ash Up Sd":"Up Sidings","Ashfd EBS":"East Sidings",
 };
-/* Plain English for the codes the prints use for depot roads, sidings and
-   yards. Several codes belong to one place - Ashford alone arrives as five
-   - and read as duplicates until they are spelt out.
+/* Plain English for the codes the prints use. The prints have nine
+   characters for a place, so one station arrives as several codes -
+   Ashford as five, Ramsgate as nine - and they read as duplication until
+   they are spelt out.
 
-   Only names that are KNOWN go in here. A code with no entry is shown as
-   its station plus the raw code rather than a guess, and listed as unnamed
-   so it can be asked about and added. Inventing a road name would be worse
-   than leaving it blank: it would read as fact.
+   These are NOT invented. Every one is the long name Genius itself uses,
+   from BERTH_SHEETS at the top of this file: "RAMSGATE E.M.U.D" is the
+   Ram Depot of the prints, "ST. LEONARDS W.M. C.S.D" is St L Shed, and so
+   on. Written here in running case because these are read in sentences
+   rather than shouted as headings.
 
-   Sources: the depot (Dover Priory Sidings, Ashford East and Up Sidings,
-   Ramsgate Platform and New Sidings); the road names already in
-   NOTE_FROM_BERTH above; MANUAL_LOC; and the Folkestone East Train Roads
-   named in the rules. */
+   The naming conventions the two vocabularies share:
+     - a code ending in a NUMBER is a SIGNAL, not a road: Dover621 is
+       Dover signal YE 621, RM EK4985 is Ramsgate signal EK4985. A unit
+       stands at one while it shunts and is not berthed there, which is
+       why they are all in NON_BERTH_VISIT above.
+     - "Dep"/"EMUD"/"CSD"/"TRSMD" is the depot proper; "Sd"/"Sdg"/"CHS" a
+       siding; "Hs"/"ShNk" a headshunt or shunt neck; "Bk Rd"/"WRd" a
+       named road; "TB"/"TR" a turnback or train road.
+
+   A code with no entry is still not guessed at: it is shown as its
+   station plus the raw code and reported as unnamed, because an invented
+   road name would read as fact. */
 const PLACE_NAMES = {
+ /* --- Ramsgate --- */
  "Ram":         "Ramsgate Platform",
- "Ram Depot":   "Ramsgate Depot",
+ "Ram Depot":   "Ramsgate EMU Depot",
+ "RM DRW":      "Ramsgate Depot Reception West",
  "RamsNewSd":   "Ramsgate New Sidings",
+ "RMUSW":       "Ramsgate Up Siding West",
+ "RM EK4981":   "Ramsgate signal EK4981",
+ "RM EK4985":   "Ramsgate signal EK4985",
+ "RM EK5143":   "Ramsgate signal EK5143",
+ "RM EK5145":   "Ramsgate signal EK5145",
+ /* --- Ashford --- */
  "Ashford I":   "Ashford International",
- "Ashfd EBS":   "Ashford East Sidings",
+ "Ashfrd DS":   "Ashford Down Sidings",
+ "AshfDYWRd":   "Ashford Down Washer Road",
+ "Ashfd EBS":   "Ashford East Berthing Sidings",
  "Ash Up Sd":   "Ashford Up Sidings",
+ "SevngtnLp":   "Sevington Loop",
+ /* --- Dover Priory --- */
  "Dover P":     "Dover Priory Platform",
  "Dover PSd":   "Dover Priory Sidings",
+ "Dover621":    "Dover signal YE 621",
+ "Dover623":    "Dover signal YE 623",
+ /* --- Faversham --- */
+ "Fav":         "Faversham Platform",
  "Fav Up Sd":   "Faversham Up Sidings",
  "Fav Bk Rd":   "Faversham Back Road",
- "Gill Dep":    "Gillingham Depot",
+ "FV EK4327":   "Faversham signal EK4327",
+ /* --- Gillingham --- */
+ "Gill":        "Gillingham Platform",
+ "Gill Dep":    "Gillingham EMU Depot",
+ "Gill ReRd":   "Gillingham Reception Road",
  "Gill US":     "Gillingham Up Sidings",
- "G Pk Dep":    "Grove Park Depot",
- "G Pk DnSd":   "Grove Park Down Sidings",
- "G Pk UpSd":   "Grove Park Up Sidings",
- "S Gn Dep":    "Slade Green Depot",
- "S Gn U Sd":   "Slade Green Up Sidings",
+ /* --- Grove Park --- */
+ "G Pk Dep":    "Grove Park Carriage Servicing Depot",
+ "G Pk DnSd":   "Grove Park Down Carriage Holding Sidings",
+ "G Pk UpSd":   "Grove Park Up Carriage Holding Sidings",
+ "Gvpuphs":     "Grove Park Up Headshunt",
+ "GrPkDCtEE":   "Grove Park Depot Country End Extension",
+ /* --- Slade Green --- */
+ "S Gn":        "Slade Green Platform",
+ "S Gn Dep":    "Slade Green Traction & Rolling Stock Maintenance Depot",
+ "S Gn U Sd":   "Slade Green Up Carriage Holding Sidings",
+ "SldGrDEHs":   "Slade Green Depot East Headshunt",
+ /* --- Tonbridge and Tunbridge Wells --- */
+ "Ton DMS":     "Tonbridge DM Siding",
+ "TonbJubS":    "Tonbridge Jubilee Sidings",
+ "Tonbdg160":   "Tonbridge signal AD160",
+ "TunWellTB":   "Tunbridge Wells Turnback",
+ /* --- Hastings and West Marina --- */
+ "Hast Pk S":   "Hastings Park Sidings",
+ "Hast 70":     "Hastings signal 70",
+ "St L Shed":   "St Leonards West Marina Carriage Servicing Depot",
+ "St L ShNk":   "St Leonards Shunt Neck",
+ "Ore Up Sd":   "Ore Up Siding",
+ /* --- the rest --- */
  "Dart USd":    "Dartford Up Sidings",
  "Dart DSd":    "Dartford Down Sidings",
  "Orp Dn Sd":   "Orpington Down Sidings",
- "Hast Pk S":   "Hastings Park Sidings",
- "TonbJubS":    "Tonbridge Jubilee Sidings",
- "St L Shed":   "St Leonards Shed",
  "Folk E TR":   "Folkestone East Train Roads",
- "Plum Sdg":    "Plumstead Sidings",
- "Bell Sd":     "Bellingham Sidings",
- "Ore Up Sd":   "Ore Up Sidings",
- "VictGroSh":   "Victoria Grosvenor Carriage Shed",
+ "Plum Sdg":    "Plumstead Carriage Holding Sidings",
+ "Bell Sd":     "Bellingham Siding",
+ "Strood625":   "Strood shunt signal",
+ "Strood630":   "Strood shunt signal NK1630",
+ "VictGroSh":   "Victoria Grosvenor Shed",
  "Vic (E)":     "London Victoria, Eastern side",
 };
 /* Sections with a station platform the unit may call at on its way out. The
@@ -2010,9 +2056,14 @@ const isRoad = code => {
 function placeName(code){
   const explicit = D.PLACE_NAMES[code];
   const st = stationOf(code);
-  if (explicit)
-    return {code, name: explicit, station: st, kind: isRoad(code) ? "road" : "station",
-            named: true};
+  if (explicit){
+    /* A code ending in a number is a signal, not a road. A unit stands at
+       one while it shunts and is not berthed there, so counting it as a
+       berthing point would invent stabling that does not exist. */
+    const kind = /signal/i.test(explicit) ? "signal"
+      : isRoad(code) ? "road" : "station";
+    return {code, name: explicit, station: st, kind, named: true};
+  }
   if (isRoad(code))
     return {code, name: st ? st + " — " + code : code, station: st,
             kind: "road", named: false};
@@ -2365,6 +2416,12 @@ function analyse(all, fleet, cfg){
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
   const miles = mileage(all, fleet, monday);
   const deliver = deliveries(work, c.home, c.windows);
+  /* Where a unit has to reach to be worked on. For a home depot off this
+     network there is nothing in the prints to aim at, so the handover
+     point stands in for it - that is as far as the plan can take a unit. */
+  const target = roads.size ? roads
+    : new Set((deliver || []).reduce((t, v) => t.concat(v.at), []));
+  const back = daysHome(all, fleet, monday, target);
 
   return {
     fleet, cfg: c, monday, all: mine, day, work, still,
@@ -2373,10 +2430,118 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
-    miles, deliver, offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
+    miles, deliver, back, target,
+    offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     places: places(day),
     dupes, atHome, inHome, atRepair,
   };
+}
+
+/* ---- how long back to the depot? ---------------------------------------
+   The question a maintenance planner actually asks: a unit is standing at
+   West Marina - how many days before the diagrams put it back at Ramsgate
+   for its exam?
+
+   A unit can only take a diagram that STARTS where it is standing, and a
+   diagram occupies a day. So the plan is a graph: each place is a node,
+   each diagram an edge from where it starts to where it ends, costing one
+   day. Standing still is an edge too - it costs a day and moves nothing,
+   which is what happens when nothing starts from that place that day.
+
+   The set of diagrams differs by weekday, so the walk is over (place, day
+   of week) rather than place alone: leaving Tonbridge on a Sunday is not
+   the same problem as leaving it on a Tuesday. The week repeats, so the
+   day wraps at seven.
+
+   A unit counts as home when a diagram ENDS at a repair depot - that is
+   when it is handed over. A diagram that merely calls there mid-day takes
+   the unit away again, and counting it would repeat the mistake the
+   arrivals section had.                                                  */
+const REACH_CAP = 14;          // a fortnight is already a failed answer
+
+function daysHome(all, fleet, monday, target){
+  const w = weekFrom(monday);
+  /* what leaves each place on each day, and what is LEFT at each place */
+  const byDay = w.map(ms => {
+    const m = new Map();
+    for (const d of all){
+      if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
+      const r = roll(d), from = startsAt(r).loc, to = endsAt(r).loc;
+      if (!m.has(from)) m.set(from, []);
+      m.get(from).push({key: r.key, to});
+    }
+    return m;
+  });
+  /* The day a diagram ENDS somewhere is the night the unit stands there, so
+     it is available to be taken up the NEXT day. Asking "how long from
+     Tonbridge starting Monday" is a fair question but not the real one:
+     the plan only ever leaves a unit at Tonbridge on a Saturday, and the
+     answer from a Monday - eight days of standing about - describes a
+     situation that never arises. */
+  const leftOn = new Map();
+  w.forEach((ms, i) => {
+    for (const d of all){
+      if (fleetOf(d) !== fleet || !runsOn(d, ms) || d.stabled) continue;
+      const to = endsAt(roll(d)).loc;
+      if (!leftOn.has(to)) leftOn.set(to, new Set());
+      leftOn.get(to).add(i);
+    }
+  });
+
+  const locs = new Set();
+  for (const m of byDay)
+    for (const e of m){ locs.add(e[0]); for (const x of e[1]) locs.add(x.to); }
+
+  const walk = (start, day0) => {
+    if (target.has(start)) return {days: 0, path: []};
+    const seen = new Set([start + "|" + day0]);
+    let q = [{loc: start, day: day0, n: 0, path: []}];
+    while (q.length){
+      const cur = q.shift();
+      if (cur.n >= REACH_CAP) continue;
+      for (const o of byDay[cur.day].get(cur.loc) || []){
+        const path = cur.path.concat([{day: DAYS[cur.day], key: o.key, to: o.to}]);
+        if (target.has(o.to)) return {days: cur.n + 1, path};
+        const k = o.to + "|" + ((cur.day + 1) % 7);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        q.push({loc: o.to, day: (cur.day + 1) % 7, n: cur.n + 1, path});
+      }
+      /* nothing taken: the unit is still there tomorrow */
+      const k = cur.loc + "|" + ((cur.day + 1) % 7);
+      if (!seen.has(k)){
+        seen.add(k);
+        q.push({loc: cur.loc, day: (cur.day + 1) % 7, n: cur.n + 1,
+                path: cur.path.concat([{day: DAYS[cur.day], key: null, to: cur.loc}])});
+      }
+    }
+    return null;
+  };
+
+  return Array.from(locs).sort().map(loc => {
+    /* the days a unit is actually standing here: the morning after it was
+       left, for every night the plan leaves one */
+    const nights = Array.from(leftOn.get(loc) || []).sort();
+    const mornings = nights.map(i => (i + 1) % 7);
+    const from = (mornings.length ? mornings : DAYS.map((_, i) => i))
+      .map(i => ({day: i, r: walk(loc, i)}));
+    const got = from.filter(x => x.r).map(x => x.r.days);
+    const best = got.length ? Math.min.apply(null, got) : null;
+    const pick = from.filter(x => x.r).sort((a, b) => a.r.days - b.r.days)[0];
+    return {
+      loc,
+      /* the nights the plan leaves a unit here, spelt out */
+      leftOn: nights.map(i => DAYS[i]),
+      everLeft: nights.length > 0,
+      days: best,
+      worst: got.length ? Math.max.apply(null, got) : null,
+      path: pick ? pick.r.path : null,
+      startDay: pick ? DAYS[pick.day] : null,
+      stuck: pick && pick.r.path.length > 0 && pick.r.path[0].key === null,
+      never: got.length === 0,
+    };
+  }).sort((a, b) => (b.days == null ? 99 : b.days) - (a.days == null ? 99 : a.days) ||
+                    (a.loc < b.loc ? -1 : 1));
 }
 
 /* ---- does the plan close on itself? ------------------------------------
@@ -2450,7 +2615,8 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               placeName, places,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
               coupling, moCapable, splitsOf, dayName, validOn, runsOn,
-              weekFrom, referenceMonday, mileage, deliveries, analyse, balance, week,
+              weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
+              balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
@@ -2627,33 +2793,76 @@ function build(all, fleet, cfg){
     }],
   });
 
-  /* ---- 4. does the plan close on itself? ---- */
+  /* ---- 4. how long back to the depot? ---- */
+  /* The question the depot actually asks: a unit is standing at West
+     Marina - how many days before the diagrams put it back at Ramsgate?
+     A unit can only take a diagram that STARTS where it is, and a diagram
+     is a day, so this is a shortest walk over (place, day of week). */
   const wk = F.week(all, fleet, a.monday);
   const clean = wk.filter(x => x.b.moved === 0).length;
+  const back = a.back;
+  const reachable = back.filter(r => r.days != null);
+  const worst = reachable.reduce((m, r) => Math.max(m, r.days), 0);
+  const sameDay = back.filter(r => r.days === 1).length;
+  const never = back.filter(r => r.never);
+  const aim = a.offNetwork
+    ? "the handover point at " + (a.deliver && a.deliver[0] ? a.deliver[0].label : "?")
+    : c.home;
   secs.push({
-    id: "cycle",
-    tab: "Week joins",
-    title: "Does the week close on itself?",
-    lede: `A unit can only take up a diagram that starts where its last one ` +
-      `finished. Where the places diagrams END do not match the places the next ` +
-      `day's diagrams START, somebody has to move a unit. ` +
-      (clean === 7
-        ? `Every join balances: the ${c.label} plan is self-contained all week.`
-        : `${clean} of the 7 joins balance` +
-          (wk.slice(0, 4).every(x => x.b.moved === 0)
-            ? `, and the four weekday joins are among them — the plan runs itself ` +
-              `Monday to Thursday and only breaks over the weekend.` : `.`)),
-    head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
-           "Places", "Units to move"],
-    rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
-                       x.b.matched, x.b.locations, x.b.moved]),
-    detail: wk.filter(x => x.b.moved > 0).map(x => ({
+    id: "back",
+    tab: "Days back to depot",
+    title: "How long back to " + (a.offNetwork ? aim : c.home) + "?",
+    lede: `A unit can only take a diagram that <em>starts</em> where it is ` +
+      `standing, and a diagram is a day's work — so this is the shortest way ` +
+      `home through the plan itself, a day for each diagram and a day for ` +
+      `standing where nothing leaves. Each place is measured from the morning ` +
+      `after the plan actually leaves a unit there, not from an arbitrary ` +
+      `Monday: the only night a 375 is left at Tonbridge is a Saturday, and ` +
+      `asking from a Monday would answer a question that never comes up. ` +
+      `The furthest any place is from <b>${aim}</b> is <b>${worst} day` +
+      `${worst === 1 ? "" : "s"}</b>, and <b>${sameDay}</b> of ${back.length} ` +
+      `are one diagram away. ` +
+      (never.length
+        ? `<b>${never.length}</b> can never get there on the diagrams at all: ` +
+          `${never.map(r => r.loc).join(", ")}. `
+        : "") +
+      `<span class="aside">A unit counts as back when a diagram <em>ends</em> ` +
+      `there. One that only calls in on its way past takes the unit away ` +
+      `again — those are in the arrivals section, not this one.</span>`,
+    stat: [["Worst case", worst + (worst === 1 ? " day" : " days")],
+           ["One diagram away", sameDay],
+           ["Places a unit is left", back.filter(r => r.everLeft).length],
+           ["No way back on the diagrams", never.length]],
+    head: ["Standing at", "Days back", "Worst", "Left here on", "First move",
+           "The way back"],
+    rows: back.map(r => [
+      r.loc,
+      r.never ? "never" : r.days,
+      r.worst == null ? "—" : r.worst,
+      r.everLeft ? r.leftOn.join(", ") : "the plan never leaves one here",
+      r.never ? "nothing reaches " + aim
+        : r.stuck ? "nothing starts here that day — it waits"
+        : r.path && r.path[0] ? r.path[0].key : "already there",
+      !r.path || !r.path.length ? "already there"
+        : r.path.map(p => p.key ? p.key + " (" + p.day + ")"
+                                : "wait over " + p.day).join(" → "),
+    ]),
+    detail: [{
+      tab: "Week joins",
+      title: "Does each day's set hand over to the next? — " +
+        (clean === 7 ? "every join balances"
+                     : clean + " of the 7 joins balance"),
+      head: ["Join", "Diagrams today", "Diagrams tomorrow", "Places that match",
+             "Places", "Units to move"],
+      rows: wk.map(x => [x.from + " → " + x.to, x.b.today, x.b.next,
+                         x.b.matched, x.b.locations, x.b.moved]),
+    }].concat(wk.filter(x => x.b.moved > 0).map(x => ({
       tab: "Move " + x.from + "-" + x.to,
       title: x.from + " → " + x.to + ": " + x.b.moved + " to move",
       head: ["Place", "Ends there", "Starts there", "Spare (+) / short (−)"],
       rows: x.b.rows.filter(r => r.diff !== 0)
         .map(r => [r.loc, r.ends, r.starts, r.diff > 0 ? "+" + r.diff : r.diff]),
-    })),
+    }))),
   });
 
   /* ---- 5. mileage ---- */

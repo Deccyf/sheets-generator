@@ -613,48 +613,94 @@ const NOTE_FROM_BERTH = {
  "Dart USd":"UPS","Dart DSd":"DN",
  "Ash Up Sd":"Up Sidings","Ashfd EBS":"East Sidings",
 };
-/* Plain English for the codes the prints use for depot roads, sidings and
-   yards. Several codes belong to one place - Ashford alone arrives as five
-   - and read as duplicates until they are spelt out.
+/* Plain English for the codes the prints use. The prints have nine
+   characters for a place, so one station arrives as several codes -
+   Ashford as five, Ramsgate as nine - and they read as duplication until
+   they are spelt out.
 
-   Only names that are KNOWN go in here. A code with no entry is shown as
-   its station plus the raw code rather than a guess, and listed as unnamed
-   so it can be asked about and added. Inventing a road name would be worse
-   than leaving it blank: it would read as fact.
+   These are NOT invented. Every one is the long name Genius itself uses,
+   from BERTH_SHEETS at the top of this file: "RAMSGATE E.M.U.D" is the
+   Ram Depot of the prints, "ST. LEONARDS W.M. C.S.D" is St L Shed, and so
+   on. Written here in running case because these are read in sentences
+   rather than shouted as headings.
 
-   Sources: the depot (Dover Priory Sidings, Ashford East and Up Sidings,
-   Ramsgate Platform and New Sidings); the road names already in
-   NOTE_FROM_BERTH above; MANUAL_LOC; and the Folkestone East Train Roads
-   named in the rules. */
+   The naming conventions the two vocabularies share:
+     - a code ending in a NUMBER is a SIGNAL, not a road: Dover621 is
+       Dover signal YE 621, RM EK4985 is Ramsgate signal EK4985. A unit
+       stands at one while it shunts and is not berthed there, which is
+       why they are all in NON_BERTH_VISIT above.
+     - "Dep"/"EMUD"/"CSD"/"TRSMD" is the depot proper; "Sd"/"Sdg"/"CHS" a
+       siding; "Hs"/"ShNk" a headshunt or shunt neck; "Bk Rd"/"WRd" a
+       named road; "TB"/"TR" a turnback or train road.
+
+   A code with no entry is still not guessed at: it is shown as its
+   station plus the raw code and reported as unnamed, because an invented
+   road name would read as fact. */
 const PLACE_NAMES = {
+ /* --- Ramsgate --- */
  "Ram":         "Ramsgate Platform",
- "Ram Depot":   "Ramsgate Depot",
+ "Ram Depot":   "Ramsgate EMU Depot",
+ "RM DRW":      "Ramsgate Depot Reception West",
  "RamsNewSd":   "Ramsgate New Sidings",
+ "RMUSW":       "Ramsgate Up Siding West",
+ "RM EK4981":   "Ramsgate signal EK4981",
+ "RM EK4985":   "Ramsgate signal EK4985",
+ "RM EK5143":   "Ramsgate signal EK5143",
+ "RM EK5145":   "Ramsgate signal EK5145",
+ /* --- Ashford --- */
  "Ashford I":   "Ashford International",
- "Ashfd EBS":   "Ashford East Sidings",
+ "Ashfrd DS":   "Ashford Down Sidings",
+ "AshfDYWRd":   "Ashford Down Washer Road",
+ "Ashfd EBS":   "Ashford East Berthing Sidings",
  "Ash Up Sd":   "Ashford Up Sidings",
+ "SevngtnLp":   "Sevington Loop",
+ /* --- Dover Priory --- */
  "Dover P":     "Dover Priory Platform",
  "Dover PSd":   "Dover Priory Sidings",
+ "Dover621":    "Dover signal YE 621",
+ "Dover623":    "Dover signal YE 623",
+ /* --- Faversham --- */
+ "Fav":         "Faversham Platform",
  "Fav Up Sd":   "Faversham Up Sidings",
  "Fav Bk Rd":   "Faversham Back Road",
- "Gill Dep":    "Gillingham Depot",
+ "FV EK4327":   "Faversham signal EK4327",
+ /* --- Gillingham --- */
+ "Gill":        "Gillingham Platform",
+ "Gill Dep":    "Gillingham EMU Depot",
+ "Gill ReRd":   "Gillingham Reception Road",
  "Gill US":     "Gillingham Up Sidings",
- "G Pk Dep":    "Grove Park Depot",
- "G Pk DnSd":   "Grove Park Down Sidings",
- "G Pk UpSd":   "Grove Park Up Sidings",
- "S Gn Dep":    "Slade Green Depot",
- "S Gn U Sd":   "Slade Green Up Sidings",
+ /* --- Grove Park --- */
+ "G Pk Dep":    "Grove Park Carriage Servicing Depot",
+ "G Pk DnSd":   "Grove Park Down Carriage Holding Sidings",
+ "G Pk UpSd":   "Grove Park Up Carriage Holding Sidings",
+ "Gvpuphs":     "Grove Park Up Headshunt",
+ "GrPkDCtEE":   "Grove Park Depot Country End Extension",
+ /* --- Slade Green --- */
+ "S Gn":        "Slade Green Platform",
+ "S Gn Dep":    "Slade Green Traction & Rolling Stock Maintenance Depot",
+ "S Gn U Sd":   "Slade Green Up Carriage Holding Sidings",
+ "SldGrDEHs":   "Slade Green Depot East Headshunt",
+ /* --- Tonbridge and Tunbridge Wells --- */
+ "Ton DMS":     "Tonbridge DM Siding",
+ "TonbJubS":    "Tonbridge Jubilee Sidings",
+ "Tonbdg160":   "Tonbridge signal AD160",
+ "TunWellTB":   "Tunbridge Wells Turnback",
+ /* --- Hastings and West Marina --- */
+ "Hast Pk S":   "Hastings Park Sidings",
+ "Hast 70":     "Hastings signal 70",
+ "St L Shed":   "St Leonards West Marina Carriage Servicing Depot",
+ "St L ShNk":   "St Leonards Shunt Neck",
+ "Ore Up Sd":   "Ore Up Siding",
+ /* --- the rest --- */
  "Dart USd":    "Dartford Up Sidings",
  "Dart DSd":    "Dartford Down Sidings",
  "Orp Dn Sd":   "Orpington Down Sidings",
- "Hast Pk S":   "Hastings Park Sidings",
- "TonbJubS":    "Tonbridge Jubilee Sidings",
- "St L Shed":   "St Leonards Shed",
  "Folk E TR":   "Folkestone East Train Roads",
- "Plum Sdg":    "Plumstead Sidings",
- "Bell Sd":     "Bellingham Sidings",
- "Ore Up Sd":   "Ore Up Sidings",
- "VictGroSh":   "Victoria Grosvenor Carriage Shed",
+ "Plum Sdg":    "Plumstead Carriage Holding Sidings",
+ "Bell Sd":     "Bellingham Siding",
+ "Strood625":   "Strood shunt signal",
+ "Strood630":   "Strood shunt signal NK1630",
+ "VictGroSh":   "Victoria Grosvenor Shed",
  "Vic (E)":     "London Victoria, Eastern side",
 };
 /* Sections with a station platform the unit may call at on its way out. The
