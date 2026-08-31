@@ -162,7 +162,8 @@ function printPlan(merges, rowHeights, maxRow, opts){
     }
     heads.sort(function(a,b){ return a-b; });
   }
-  const rowH = r => rowHeights.get(r) || 15;        // an untouched row is 15pt
+  // an untouched row is 15pt, unless the layout sets its own default
+  const rowH = r => rowHeights.get(r) || opts.defaultRowHeight || 15;
   const secs = heads.map(function(h, i){
     // up to the row before the next header: the blank spacers ride with the
     // section they follow, because that is where they take up the paper
@@ -173,9 +174,13 @@ function printPlan(merges, rowHeights, maxRow, opts){
   });
   // landscape turns the paper on its side, so the two swap over
   const land = !!opts.landscape;
+  /* A layout reproducing somebody else's document carries that document's
+     own margins - the stock form's 0.16" sides are the only reason its
+     29-character POSITION column fits the page. */
+  const M = opts.margins || MARGIN;
   const pw = land ? PAPER.h : PAPER.w, ph = land ? PAPER.w : PAPER.h;
-  const pageW = (pw - MARGIN.l - MARGIN.r) * 72;
-  const pageH = (ph - MARGIN.t - MARGIN.b) * 72;
+  const pageW = (pw - M.l - M.r) * 72;
+  const pageH = (ph - M.t - M.b) * 72;
   // Excel's character width -> pixels, and pixels -> points at 96dpi
   const contentW = (opts.widths || HOUSE_WIDTHS).reduce(function(t, w){
     return t + Math.round(w * 7) + 5;
@@ -189,7 +194,11 @@ function printPlan(merges, rowHeights, maxRow, opts){
     ? 0 : secs.reduce(function(t, s){ return Math.max(t, s.pts); }, 0);
   const fit = tallest ? Math.min(pageW / contentW, pageH / tallest)
                       : pageW / contentW;
-  const scale = Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
+  /* A document with a fixed print scale of its own (the blank stock form
+     is set at 83%) keeps it; the breaks are still planned at that scale,
+     in case the content runs past a page anyway. */
+  const scale = opts.scale ||
+    Math.max(MIN_SCALE, Math.min(100, Math.floor(100 * fit)));
   const budget = pageH * 100 / scale;
   const breaks = [];
   /* The title and column headings above the first block take up paper too,
@@ -210,6 +219,8 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
      setup come from the layout where it has an opinion. */
   opts = opts || {};
   const widths = opts.widths || HOUSE_WIDTHS;
+  // the house margins, unless the layout reproduces a document with its own
+  const M = opts.margins || MARGIN;
   let cols = '<cols>';
   widths.forEach(function(w, i){
     cols += '<col min="' + (i+1) + '" max="' + (i+1) +
@@ -277,10 +288,11 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
      : '') +
    '<dimension ref="A1:' + lastCol + Math.max(1, maxRow) + '"/>' +
    '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
-   '<sheetFormatPr defaultRowHeight="15"/>' +
+   '<sheetFormatPr defaultRowHeight="' + (opts.defaultRowHeight || 15) + '"/>' +
    (opts.colsXml || cols) + sd + mg + cf + (opts.dataValidations || "") +
-   '<pageMargins left="' + MARGIN.l + '" right="' + MARGIN.r + '" top="' +
-   MARGIN.t + '" bottom="' + MARGIN.b + '" header="0.3" footer="0.3"/>' +
+   '<pageMargins left="' + M.l + '" right="' + M.r + '" top="' +
+   M.t + '" bottom="' + M.b + '" header="' + (M.hd || 0.3) +
+   '" footer="' + (M.ft || 0.3) + '"/>' +
    (opts.noPageSetup ? '' :
     '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
     (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
@@ -500,8 +512,11 @@ function previewHtml(layout){
           if (LOOK_BOLD[look]) css += "font-weight:700;";
         }
       }
+      /* 0 is a value some documents print (the stock form's SEAT LOSS
+         cells carry a literal 0), not an empty cell */
       h += "<td" + (sp ? ' colspan="' + sp[0] + '" rowspan="' + sp[1] + '"' : "") +
-           ' style="' + css + '">' + esc(cell && cell.v ? cell.v : "") + "</td>";
+           ' style="' + css + '">' +
+           esc(cell && (cell.v || cell.v === 0) ? cell.v : "") + "</td>";
     }
     h += "</tr>";
   }

@@ -1303,6 +1303,14 @@ printed *KENT COAST STOCK REQUIREMENTS* heading with the date filled in
 rather than left as blanks to write on. `POSITION` and `SEAT LOSS` stay
 empty: they are the planner's judgement, not the plan's.
 
+Not a lookalike, either: the blank workbook's own styleSheet ships verbatim
+(the route the 395 allocation sheet takes through the writer), and every
+cell names the exact style record the blank gives that cell — the grey
+header band, the red SEAT LOSS figures, the mix of medium and thin rules,
+the blank's column widths, margins and fixed 83% print scale, even the two
+SEAT LOSS pairs the original never merged. The card's preview is drawn from
+those same records, so what is on screen is the printed form.
+
 **What is counted**: every diagram, once, at the location its day starts
 from — the simple check the depot actually makes, and the same figure a
 person gets by running a finger down a section's morning departures in the

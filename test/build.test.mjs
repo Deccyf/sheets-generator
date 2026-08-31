@@ -17,8 +17,12 @@ test("the built file is self-contained and lean", () => {
      and had only the coarse house look to draw with, so the sheet on screen
      looked nothing like the workbook it previews. A deliberate feature, and
      the ceiling moved once for it rather than being nudged each build. */
-  assert.ok(html.length < 600 * 1024,
-    "under 600 KB (was 1.2 MB); this build is " +
+  /* 660 KB since the stock requirements form began shipping the blank
+     workbook's own styleSheet verbatim (~21 KB), the same way the 395
+     skin ships its document's records - the price of the form being the
+     depot's own, cell for cell, rather than a lookalike. */
+  assert.ok(html.length < 660 * 1024,
+    "under 660 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

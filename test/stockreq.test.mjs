@@ -99,8 +99,42 @@ test("the form is the depot's own layout, filled in", () => {
   /* the printed heading carries the date, not blanks to write on */
   assert.match(lay.opts.headerXml, /KENT COAST STOCK REQUIREMENTS/);
   assert.match(lay.opts.headerXml, /MON 01\/09/);
-  /* and the page fits its width, the way the blank form is set */
-  assert.equal(lay.opts.fitToHeight, 0);
+});
+
+test("the form wears the blank workbook's own dress, cell for cell", () => {
+  const lay = SR.layout(new Map([["ASHFORD", new Map([["4 375", 3]])]]),
+                        "MON 01/09");
+  const at = new Map(lay.cells.map(c => [c.r + "," + c.c, c]));
+
+  /* the blank's styleSheet ships verbatim, and cells name its records:
+     the grey header band, the red SEAT LOSS figures */
+  assert.ok(lay.opts.stylesXml.includes("FFE3E3E3"), "the grey band's fill");
+  assert.ok(lay.opts.stylesXml.includes('numFmtId="166"'),
+    "the blank's own number formats ride along");
+  assert.equal(at.get("1,2").xf, 4, "375/9 sits on the blank's header record");
+  assert.equal(at.get("2,8").xf, 15, "Ashford's SEAT LOSS is the red record");
+
+  /* the blank's own print geometry: 0.16" sides, 83%, its heading room */
+  assert.equal(lay.opts.scale, 83);
+  assert.equal(lay.opts.margins.l, 0.157638888888889);
+  assert.equal(lay.opts.margins.hd, 0.270138888888889);
+  assert.equal(lay.opts.defaultRowHeight, 18);
+  assert.ok(lay.opts.colsXml.includes('width="29.41"'),
+    "POSITION keeps the blank's own width");
+
+  /* the blank never merged Orpington's and Strood's SEAT LOSS pairs -
+     their border records already draw one box - and neither does this */
+  assert.ok(!lay.merges.includes("H14:H15"), "Orpington's quirk, kept");
+  assert.ok(!lay.merges.includes("H18:H19"), "Strood's quirk, kept");
+  assert.ok(lay.merges.includes("H16:H17"), "Tonbridge's pair is merged");
+
+  /* one CSS record per style record, derived from that very styleSheet,
+     so the preview cannot drift from the file */
+  assert.equal(SR.XF_CSS.length,
+    +(/<cellXfs count="(\d+)"/.exec(lay.opts.stylesXml) || [])[1]);
+  assert.equal(lay.opts.xfCss, SR.XF_CSS);
+  assert.match(SR.XF_CSS[4], /background:#E3E3E3/);
+  assert.match(SR.XF_CSS[15], /color:#FF0000/);
 });
 
 test("the workbook has a tab per day and real formulas", () => {
@@ -116,6 +150,12 @@ test("the workbook has a tab per day and real formulas", () => {
   const s1 = N.fflate.strFromU8(files["xl/worksheets/sheet1.xml"]);
   assert.match(s1, /<f>SUM\(H2:H\d+\)<\/f>/);
   assert.match(s1, /KENT COAST STOCK REQUIREMENTS/);
+  /* the blank's own print page: fixed 83%, its margins, 18pt rows */
+  assert.match(s1, /<pageSetup[^>]*scale="83"/);
+  assert.match(s1, /<pageMargins left="0.157638888888889"/);
+  assert.match(s1, /<sheetFormatPr defaultRowHeight="18"\/>/);
+  const styles = N.fflate.strFromU8(files["xl/styles.xml"]);
+  assert.ok(styles.includes("FFE3E3E3"), "the blank's styleSheet ships");
 });
 
 test("an empty day writes nothing rather than an empty form", () => {
