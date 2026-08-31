@@ -351,7 +351,7 @@ const GENIUS = (() => {
     }
     return out;
   }
-  function buildDate(date, sumRows, details, prof, warn, fx) {
+  function buildDate(date, sumRows, details, prof, warn, fx, stockOut) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
     // The Genius summary carries one row per working, and a unit's Position
@@ -465,6 +465,29 @@ const GENIUS = (() => {
       if (details.has(diag) || !(srs[0].fleet in prof.fleets)) continue;
       warn.push({ sec: null, msg: date + " " + diag + ": in the summary but" +
         " missing from the detail report - its rows are NOT in this book" });
+    }
+    /* ---- stock requirements ----
+       Where must units be STANDING when this day opens? A diagram whose
+       first stint begins with no arrival time starts the day already on
+       its berth - the overnight stock. One that arrives, even at 04:00,
+       is brought by the day's own plan and is not a requirement on the
+       night before. Counted per section by the book's own fleet label
+       ("4 375", "3 375", "5 376"...) because those are the columns of the
+       depot's stock requirements form. Collected only when the caller
+       asks (the mainline book), and entirely additive: nothing the golden
+       suite compares carries it. */
+    if (stockOut) {
+      for (const [, m] of meta) {
+        const origin = m.stops[m.stints[0][0]];
+        if (origin.arr !== null) continue;
+        const sec = secOf(origin, true);
+        if (sec === null) continue;
+        const cls = prof.fleets[m.sum.fleet];
+        if (!cls) continue;
+        if (!stockOut.has(sec)) stockOut.set(sec, new Map());
+        const g = stockOut.get(sec);
+        g.set(cls, (g.get(cls) || 0) + 1);
+      }
     }
     const entries = new Map();
     for (const [diag, m] of meta) {
@@ -1204,6 +1227,7 @@ const GENIUS = (() => {
         " back so they can be baked in");
     }
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {}, built = {};
+    const stock = {};
     const dayDate = {};      // the full dd/mm/yy behind each label
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
@@ -1249,7 +1273,10 @@ const GENIUS = (() => {
             "them. Check the fleet code in the Summary export");
       }
       const warnMain = [], warnMetro = [], warnHs = [];
-      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx);
+      const stockDay = new Map();
+      secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx,
+                                stockDay);
+      stock[dk] = stockDay;
       metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
       hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
@@ -1284,6 +1311,7 @@ const GENIUS = (() => {
               " - the working may have moved; re-pin it or clear it");
     }
     return { secsByDay, metroSecs, hsSecs, labels, dates: dayDate, review, reviews,
+             stock,
              /* what this build actually ran with, for the Rules tab to
                 render - never a second copy of the tables read separately */
              rules: { orderFix: fixTable, edits, coupled: fx.coupled,

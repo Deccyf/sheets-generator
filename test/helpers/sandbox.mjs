@@ -60,7 +60,7 @@ export function loadSandbox(htmlPath) {
   // Top-level consts (GENIUS, …) are global lexical bindings, not properties
   // of globalThis — collect them with one last evaluation in the same scope.
   const names = ["SHEETS_CORE", "SHEETS_XLSX", "SHEETS_METRO", "SHEETS_HS", "SHEETS_HS_SKIN", "SHEETS_DATA",
-                 "SHEETS_RULEBOOK", "SHEETS_RULES", "SHEETS_PRINTS",
+                 "SHEETS_RULEBOOK", "SHEETS_RULES", "SHEETS_PRINTS", "SHEETS_STOCKREQ",
                  "GENIUS", "SheetsEngine", "ExcelJS", "fflate", "pako",
                  // the diagram analyser, which this same helper loads
                  "FLEET", "FLEET_PRINTS", "FLEET_REPORT", "FLEET_XLSX"];

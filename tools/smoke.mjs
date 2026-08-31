@@ -43,6 +43,29 @@ await page.locator("#roads .road .btn", { hasText: "Look at it" }).first().click
 await page.waitForSelector("#roads .road .view table.sheet");
 console.log("weekday preview table rendered ✓");
 
+// The stock requirements form is opt-in: tick it, expect its own card and
+// its own file, untick it, expect the card gone again.
+await page.locator("#stockreq").check();
+await page.waitForFunction(() =>
+  [...document.querySelectorAll("#roads .road")]
+    .some(r => r.dataset.road === "Stock requirements"), null, { timeout: 15000 });
+const srCard = page.locator('#roads .road[data-road="Stock requirements"]');
+console.log("stock card:", (await srCard.locator(".unit").innerText())
+  .replace(/\s+/g, " ").trim());
+const srDl = page.waitForEvent("download", { timeout: 10000 });
+await srCard.locator("button", { hasText: "Save form" }).click();
+const srFile = await srDl;
+console.log("stock form:", srFile.suggestedFilename());
+if (!/^STOCK_REQUIREMENTS.*\.xlsx$/.test(srFile.suggestedFilename())) {
+  console.error("FAIL: unexpected stock form name");
+  process.exitCode = 1;
+}
+await page.locator("#stockreq").uncheck();
+await page.waitForFunction(() =>
+  ![...document.querySelectorAll("#roads .road")]
+    .some(r => r.dataset.road === "Stock requirements"), null, { timeout: 15000 });
+console.log("stock card removed on untick ✓");
+
 // Weekend: prints then reissue in a second drop.
 await page.setInputFiles("#we_file", [prints]);
 await page.waitForFunction(() =>

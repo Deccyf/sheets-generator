@@ -19,6 +19,7 @@ const modules = [
   "src/core.js",
   "src/rulebook.js",
   "src/xlsx.js",
+  "src/stockreq.js",
   "src/metro.js",
   "src/hs-skin.js",
   "src/hs.js",

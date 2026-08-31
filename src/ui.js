@@ -589,6 +589,32 @@ function metroPane(sheets, what) {
   return wrap;
 }
 
+/* The stock requirements form, previewed the way it prints: locations
+   down the side, the five types across, Hastings folded into West Marina.
+   Same rows the workbook writes - both come from SHEETS_STOCKREQ.ROWS -
+   so the preview cannot drift from the file. */
+function stockPreviewHtml(stock, label) {
+  const SR = SHEETS_STOCKREQ;
+  const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  let h = '<div class="prevwrap"><table class="prev"><tr><th style="text-align:left">' +
+    esc(label || "") + "</th>" +
+    SR.TYPES.map(t => "<th>" + esc(t[1]) + "</th>").join("") + "</tr>";
+  const named = new Set();
+  for (const r of SR.ROWS) { named.add(r.sec); (r.also || []).forEach(x => named.add(x)); }
+  const rows = SR.ROWS.concat([...stock.keys()].filter(x => !named.has(x)).sort()
+    .map(sec => ({ sec, name: [sec] })));
+  for (const row of rows) {
+    const counts = new Map(stock.get(row.sec) || []);
+    for (const other of row.also || [])
+      for (const [cls, n] of stock.get(other) || [])
+        counts.set(cls, (counts.get(cls) || 0) + n);
+    h += '<tr><td style="text-align:left">' + esc(row.name.join(" ")) + "</td>" +
+      SR.TYPES.map(([cls]) => "<td style=\"text-align:center\">" +
+        (counts.get(cls) || "") + "</td>").join("") + "</tr>";
+  }
+  return h + "</table></div>";
+}
+
 function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, restore) {
   const art = document.createElement("article");
   art.className = "road";
@@ -657,7 +683,7 @@ function reviewPane(items) {
   const say = sayer($("#status"));
   const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
         dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2"),
-        opts3El = $("#opts3");
+        opts3El = $("#opts3"), opts4El = $("#opts4");
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -682,6 +708,7 @@ function reviewPane(items) {
     optsEl.hidden = true;
     opts2El.hidden = true;
     if (opts3El) opts3El.hidden = true;
+    if (opts4El) opts4El.hidden = true;
     allnote.textContent = "";
     built = null; lastRes = null; lastInputs = null;
     return had;
@@ -699,6 +726,8 @@ function reviewPane(items) {
   const platStand = $("#platstand");
   const milesCol = $("#milescol");
   const milesOn = () => !!(milesCol && milesCol.checked);
+  const stockBox = $("#stockreq");
+  const stockOn = () => !!(stockBox && stockBox.checked);
 
   /* A rule edit changes what the build does, so it re-runs the build - the
      order lookup is inside it. Serialised on the same queue the headcode
@@ -862,6 +891,33 @@ function reviewPane(items) {
       roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
         b.review.length, panes, acts, wasOpen.get(b.road)));
     });
+    /* ---- the stock requirements form, when asked for ----
+       Its own card and its own file: it is not a berthing book, it is the
+       depot's Kent Coast form with the counts filled in, and it rides in
+       the save-all zip with the rest. */
+    if (stockOn() && res.stock) {
+      const bytes = SHEETS_STOCKREQ.write(res.stock, res.labels,
+        f => fflate.zipSync(f, { level: 6 }));
+      if (bytes) {
+        const book = { road: "Stock requirements",
+                       name: "STOCK_REQUIREMENTS_" + res.tag + ".xlsx", bytes };
+        books.push(book);
+        const units = SHEETS_STOCKREQ.unitCount(res.stock);
+        const panes = Object.keys(res.stock)
+          .filter(dk => res.stock[dk] && res.stock[dk].size)
+          .map(dk => [X.DAY_SHEET[dk] || dk,
+                      () => stockPreviewHtml(res.stock[dk], res.labels[dk])]);
+        roadsEl.appendChild(roadCard(plan.length, "Stock requirements",
+          "Kent Coast form", "s375",
+          "<b>" + units + "</b> unit" + (units === 1 ? "" : "s") +
+          " standing at the start of day", 0, panes,
+          [["Save form", () => {
+            download(book.name, book.bytes, XLSX_MIME);
+            say("Saved " + book.name +
+                " — look in this computer's Downloads folder.", "go");
+          }]]));
+      }
+    }
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
     allbar.hidden = books.length === 0;
@@ -871,6 +927,7 @@ function reviewPane(items) {
     optsEl.hidden = books.length === 0;
     opts2El.hidden = books.length === 0;
     if (opts3El) opts3El.hidden = books.length === 0;
+    if (opts4El) opts4El.hidden = books.length === 0;
     allnote.textContent = Object.values(res.labels).join(", ");
     const n = res.review.length;
     const rv = n
@@ -1036,6 +1093,17 @@ function reviewPane(items) {
         ? "Books rebuilt with the mileage column — save them again if needed."
         : "Books rebuilt without the mileage column — save them again if needed.",
         "go");
+    });
+  });
+  /* The stock requirements form is a separate document built from counts
+     the run already made, so a toggle only re-renders as well. */
+  if (stockBox) stockBox.addEventListener("change", () => {
+    if (!lastRes) return;
+    queue = queue.then(async () => {
+      await renderBooks(lastRes);
+      say(stockBox.checked
+        ? "Stock requirements sheet added — it is on its own card below."
+        : "Stock requirements sheet removed.", "go");
     });
   });
   /* Platform stands change what the BUILD produces, not just how it is

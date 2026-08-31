@@ -18,6 +18,7 @@ No training needed — if you can find the reports, the page does the rest.
 9. [The review list — always read it](#9-the-review-list--always-read-it)
 10. [The headcode switches](#10-the-headcode-switches)
 10a. [Long platform stands](#10a-long-platform-stands)
+10b. [The stock requirements sheet](#10b-the-stock-requirements-sheet)
 11. [When something looks wrong](#11-when-something-looks-wrong)
 12. [Before the books go out](#12-before-the-books-go-out)
 13. [The diagram analyser — a separate tool](#13-the-diagram-analyser--a-separate-tool)
@@ -550,6 +551,26 @@ there. The tool handles it in three ways:
 
 Only places the books print a page for are considered — a unit standing at
 St Pancras or Swanley is not a berthing question.
+
+---
+
+## 10b. The stock requirements sheet
+
+Going into a Monday, or the day after a bank holiday, planning fills in the
+Kent Coast stock requirements form: how many of each unit type must be
+standing at each location when the morning opens. The tool can fill it in
+for you.
+
+Tick **Build the stock requirements sheet** under the books and it appears
+on its own card — the same form you keep as a blank, with the counts filled
+in from the day you have just built: a unit counts when its diagram starts
+the day already standing on a berth there. Hastings is folded into West
+Marina, exactly as the form prints it, and **POSITION** and **SEAT LOSS**
+are left for you — they are your call, not the plan's.
+
+**Save form** gives you `STOCK_REQUIREMENTS_<date>.xlsx`, and it also rides
+in the save-all zip. Leave the box unticked on a normal day and nothing
+changes at all.
 
 ---
 

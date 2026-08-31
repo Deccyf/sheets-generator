@@ -285,7 +285,12 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
     '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
     (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
     ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>') +
-   brk + (opts.hasComments ? '<legacyDrawing r:id="rId1"/>' : '') +
+   brk +
+   /* a printed page heading, for the one document that carries its title
+      there rather than in a grid row - absent everywhere else, so nothing
+      the golden suite reads changes shape */
+   (opts.headerXml || '') +
+   (opts.hasComments ? '<legacyDrawing r:id="rId1"/>' : '') +
    '</worksheet>';
 }
 

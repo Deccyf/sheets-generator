@@ -56,6 +56,7 @@ the maintenance planner's questions rather than the berthing sheet's — see
   - [Genius and Integrale are not interchangeable](#genius-and-integrale-are-not-interchangeable)
   - [Failing loudly](#failing-loudly)
   - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
+- [The stock requirements form](#the-stock-requirements-form)
 - [The diagram analyser](#the-diagram-analyser)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
 - [Requirements and privacy](#requirements-and-privacy)
@@ -642,6 +643,7 @@ test suite drives them.
 | `src/hs.js` | **`SHEETS_HS`** — the High Speed book as the depot's Class 395 Allocations Sheet: a worksheet per day, a block per depot, last night's arrivals beside today's allocations. Not a berthing sheet — see [The High Speed sheet](#the-high-speed-sheet). |
 | `src/metro.js` | **`SHEETS_METRO`** — the Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns, read by Position. Not a berthing sheet — see [The Metro sheets](#the-metro-sheets). |
 | `src/prints-read.js` | **`SHEETS_PRINTS`** — opening a set of diagram prints, whatever they arrive as: `.docx`, legacy `.doc` (OLE compound file and Word piece table, by hand), plain text, or a CSV save. **Both tools read the prints through this one module**, so a fix for an older Word or a new export quirk reaches both. It also owns `csvParse`, a plain CSV splitter with no berthing knowledge in it, which `SHEETS_CORE` re-exports for everything else that asks. |
+| `src/stockreq.js` | **`SHEETS_STOCKREQ`** — the Kent Coast stock requirements form, the depot's own blank workbook reproduced and filled from the day's plan. See [The stock requirements form](#the-stock-requirements-form). |
 | `src/engine.js` | **`SheetsEngine`** — the weekend pipeline, a JS port of `make_sheets.py`: diagram parsing, generation, reissue merge, report builder. Reading the file is `src/prints-read.js`. |
 | `src/genius.js` | **`GENIUS`** — the weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/ui.js` | Page wiring for both panels, the fleet sprites, and the tabbed previews. |
@@ -1283,6 +1285,42 @@ used until both were brought onto the one rule.
 
 There is likewise one preview renderer, and it draws the *same cell layout*
 the writer saves — so on both panels, what you look at is what you get.
+
+## The stock requirements form
+
+An optional extra on the weekday panel: **Build the stock requirements
+sheet** fills in the depot's own Kent Coast form — how many of each unit
+type must be standing at each location when the day opens. It is normally
+only wanted for a Monday built on a Sunday night, or for the day after a
+bank holiday, which is why it is a tick-box and not a fifth book.
+
+The form is the depot's `BLANK_STOCK_REQUIREMENTS` workbook reproduced cell
+for cell — the five type columns (`375/9`, `375`, `375/3`, `377`, `5 376`),
+thirteen two-row location blocks with Folkestone East and West Marina
+splitting their names over the pair, Hastings folded into West Marina as
+the form itself prints, the SEAT LOSS column summed at the foot, and the
+printed *KENT COAST STOCK REQUIREMENTS* heading with the date filled in
+rather than left as blanks to write on. `POSITION` and `SEAT LOSS` stay
+empty: they are the planner's judgement, not the plan's.
+
+**What counts as required stock**: a diagram whose first stint begins with
+no arrival time opens the day already standing on its berth — that unit
+must be there before the day starts. One that arrives, even at 04:00, is
+brought by the day's own plan and is no requirement on the night before.
+The counts are collected inside the mainline build (see the stock collector
+in `src/genius.js`), keyed by the book's own fleet labels, so the form can
+never disagree with the books built alongside it. A section holding stock
+that the form has no row for — a unit opening the day at Dartford, say —
+is appended as an extra block rather than dropped.
+
+The counts ride out of the build in a field of their own (`res.stock`), so
+nothing the golden suite compares changes shape; with the box unticked the
+build is byte-identical to before. The form is written by `src/stockreq.js`
+through the same workbook writer as the books, gets its own card with a
+per-day preview, its own `STOCK_REQUIREMENTS_<tag>.xlsx` download, and
+rides in the save-all zip with the rest.
+
+---
 
 ## The diagram analyser
 

@@ -643,6 +643,20 @@ const children = [
   p("Left unticked — how it starts — the sheets match the hand-built books, " +
     "which do not carry them."),
 
+  h2("10b. The stock requirements sheet"),
+  lead("The Kent Coast form, filled in from the day you built"),
+  p("Going into a Monday, or the day after a bank holiday, planning fills " +
+    "in the stock requirements form: how many of each unit type must be " +
+    "standing at each location when the morning opens. Tick **Build the " +
+    "stock requirements sheet** under the books and the tool fills it in " +
+    "for you — a unit counts when its diagram starts the day already " +
+    "standing on a berth there. Hastings is folded into West Marina, " +
+    "exactly as the form prints it, and POSITION and SEAT LOSS are left " +
+    "for you: they are your call, not the plan's. **Save form** gives you " +
+    "STOCK_REQUIREMENTS_<date>.xlsx, and it rides in the save-all zip too. " +
+    "Leave the box unticked on a normal day and nothing changes at all."),
+  gap(240),
+
   h2("11. If something looks wrong"),
   grid([4200, W - 4200],
     ["What you see", "What it means"],
