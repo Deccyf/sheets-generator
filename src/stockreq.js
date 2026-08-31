@@ -6,10 +6,12 @@
    before a bank holiday: how many of each type must be standing at each
    place when the next morning opens.
 
-   The plan already knows that number. A diagram whose first stint begins
-   with no arrival time opens the day standing on its berth, and counting
-   those per section by fleet type IS the form (see the stock collector in
-   genius.js). So this writes the depot's own form, cell for cell - same
+   The plan already knows that number: it is the diagrams starting the
+   day out of each location, counted per section by fleet type (see the
+   stock collector in genius.js) - the same figure a person gets running a
+   finger down a section's morning departures in the book, which is the
+   check the depot makes. So this writes the depot's own form, cell for
+   cell - same
    columns, same two-row blocks, same SEAT LOSS total, same printed
    header - with the counts filled in and POSITION and SEAT LOSS left for
    the planner, whose judgement they are.

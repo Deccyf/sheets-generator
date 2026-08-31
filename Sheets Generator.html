@@ -701,9 +701,8 @@
     <fieldset class="opts" id="opts4" hidden>
       <legend>Stock requirements</legend>
       <p class="opts-hint">Also fills in the Kent Coast stock requirements
-        form &mdash; how many of each unit type must be standing at each
-        location when this day opens, counted from the diagrams that start
-        the day on a berth there. Normally only wanted for a Monday built on
+        form &mdash; every diagram counted at the location it starts the day
+        from, by unit type. Normally only wanted for a Monday built on
         a Sunday night, or the day after a bank holiday. POSITION and SEAT
         LOSS stay blank: they are the planner's call, not the plan's.</p>
       <label><input type="checkbox" id="stockreq"> Build the stock requirements sheet</label>
@@ -932,7 +931,7 @@
     <!-- Once this file is emailed round, synced and put on SharePoint there
          is no other way to tell which copy somebody has open, and a fix
          reported as "still wrong" is usually an old one. -->
-    <p class="smallprint buildstamp">Version <b>2.7.0</b> &middot;
+    <p class="smallprint buildstamp">Version <b>2.7.1</b> &middot;
       31 August 2026<span class="bsnote">If something looks wrong, check this
       against the newest version you were sent before reporting it — an old
       copy of this file keeps working, and keeps its old mistakes.</span></p>
@@ -3803,10 +3802,12 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
    before a bank holiday: how many of each type must be standing at each
    place when the next morning opens.
 
-   The plan already knows that number. A diagram whose first stint begins
-   with no arrival time opens the day standing on its berth, and counting
-   those per section by fleet type IS the form (see the stock collector in
-   genius.js). So this writes the depot's own form, cell for cell - same
+   The plan already knows that number: it is the diagrams starting the
+   day out of each location, counted per section by fleet type (see the
+   stock collector in genius.js) - the same figure a person gets running a
+   finger down a section's morning departures in the book, which is the
+   check the depot makes. So this writes the depot's own form, cell for
+   cell - same
    columns, same two-row blocks, same SEAT LOSS total, same printed
    header - with the counts filled in and POSITION and SEAT LOSS left for
    the planner, whose judgement they are.
@@ -7317,19 +7318,18 @@ const GENIUS = (() => {
         " missing from the detail report - its rows are NOT in this book" });
     }
     /* ---- stock requirements ----
-       Where must units be STANDING when this day opens? A diagram whose
-       first stint begins with no arrival time starts the day already on
-       its berth - the overnight stock. One that arrives, even at 04:00,
-       is brought by the day's own plan and is not a requirement on the
-       night before. Counted per section by the book's own fleet label
-       ("4 375", "3 375", "5 376"...) because those are the columns of the
-       depot's stock requirements form. Collected only when the caller
-       asks (the mainline book), and entirely additive: nothing the golden
-       suite compares carries it. */
+       How many diagrams start the day out of each location? Every diagram
+       is counted once, at its first stint's origin - the simple check the
+       depot actually makes against the form, and the same number a person
+       gets by running a finger down a section's morning departures.
+       Counted per section by the book's own fleet label ("4 375",
+       "3 375", "5 376"...) because those are the columns of the depot's
+       stock requirements form. Collected only when the caller asks (the
+       mainline book), and entirely additive: nothing the golden suite
+       compares carries it. */
     if (stockOut) {
       for (const [, m] of meta) {
         const origin = m.stops[m.stints[0][0]];
-        if (origin.arr !== null) continue;
         const sec = secOf(origin, true);
         if (sec === null) continue;
         const cls = prof.fleets[m.sum.fleet];

@@ -12,7 +12,7 @@ const res = await N.GENIUS.build(
   [makePdf(SUMMARY_LINES, N.fflate), makePdf(DETAIL_LINES, N.fflate)]);
 const SR = N.SHEETS_STOCKREQ;
 
-test("the build carries stock counts, and only for day-opening berths", () => {
+test("the build counts every diagram at the place it starts the day", () => {
   assert.ok(res.stock, "res.stock is missing");
   const days = Object.keys(res.stock);
   assert.ok(days.length, "no day has stock counts");
@@ -32,9 +32,8 @@ test("the build carries stock counts, and only for day-opening berths", () => {
 });
 
 test("the counts agree with the summary's own diagram totals", () => {
-  /* Every diagram in the fixture opens standing on a berth (the synthetic
-     detail starts each itinerary without an arrival), so the form's total
-     equals the number of diagrams the mainline book owns. */
+  /* Every diagram is counted exactly once, at its first stint's origin,
+     so the form's total is simply the diagrams the mainline book owns. */
   let formTotal = 0;
   for (const dk of Object.keys(res.stock))
     for (const g of res.stock[dk].values())

@@ -649,8 +649,8 @@ const children = [
     "in the stock requirements form: how many of each unit type must be " +
     "standing at each location when the morning opens. Tick **Build the " +
     "stock requirements sheet** under the books and the tool fills it in " +
-    "for you — a unit counts when its diagram starts the day already " +
-    "standing on a berth there. Hastings is folded into West Marina, " +
+    "for you — every diagram is counted at the location it starts the day " +
+    "from. Hastings is folded into West Marina, " +
     "exactly as the form prints it, and POSITION and SEAT LOSS are left " +
     "for you: they are your call, not the plan's. **Save form** gives you " +
     "STOCK_REQUIREMENTS_<date>.xlsx, and it rides in the save-all zip too. " +

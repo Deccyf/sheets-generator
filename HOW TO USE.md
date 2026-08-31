@@ -563,8 +563,8 @@ for you.
 
 Tick **Build the stock requirements sheet** under the books and it appears
 on its own card — the same form you keep as a blank, with the counts filled
-in from the day you have just built: a unit counts when its diagram starts
-the day already standing on a berth there. Hastings is folded into West
+in from the day you have just built: every diagram is counted at the
+location it starts the day from. Hastings is folded into West
 Marina, exactly as the form prints it, and **POSITION** and **SEAT LOSS**
 are left for you — they are your call, not the plan's.
 

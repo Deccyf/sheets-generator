@@ -467,19 +467,18 @@ const GENIUS = (() => {
         " missing from the detail report - its rows are NOT in this book" });
     }
     /* ---- stock requirements ----
-       Where must units be STANDING when this day opens? A diagram whose
-       first stint begins with no arrival time starts the day already on
-       its berth - the overnight stock. One that arrives, even at 04:00,
-       is brought by the day's own plan and is not a requirement on the
-       night before. Counted per section by the book's own fleet label
-       ("4 375", "3 375", "5 376"...) because those are the columns of the
-       depot's stock requirements form. Collected only when the caller
-       asks (the mainline book), and entirely additive: nothing the golden
-       suite compares carries it. */
+       How many diagrams start the day out of each location? Every diagram
+       is counted once, at its first stint's origin - the simple check the
+       depot actually makes against the form, and the same number a person
+       gets by running a finger down a section's morning departures.
+       Counted per section by the book's own fleet label ("4 375",
+       "3 375", "5 376"...) because those are the columns of the depot's
+       stock requirements form. Collected only when the caller asks (the
+       mainline book), and entirely additive: nothing the golden suite
+       compares carries it. */
     if (stockOut) {
       for (const [, m] of meta) {
         const origin = m.stops[m.stints[0][0]];
-        if (origin.arr !== null) continue;
         const sec = secOf(origin, true);
         if (sec === null) continue;
         const cls = prof.fleets[m.sum.fleet];

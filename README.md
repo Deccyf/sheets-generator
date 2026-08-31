@@ -1303,15 +1303,14 @@ printed *KENT COAST STOCK REQUIREMENTS* heading with the date filled in
 rather than left as blanks to write on. `POSITION` and `SEAT LOSS` stay
 empty: they are the planner's judgement, not the plan's.
 
-**What counts as required stock**: a diagram whose first stint begins with
-no arrival time opens the day already standing on its berth — that unit
-must be there before the day starts. One that arrives, even at 04:00, is
-brought by the day's own plan and is no requirement on the night before.
-The counts are collected inside the mainline build (see the stock collector
-in `src/genius.js`), keyed by the book's own fleet labels, so the form can
-never disagree with the books built alongside it. A section holding stock
-that the form has no row for — a unit opening the day at Dartford, say —
-is appended as an extra block rather than dropped.
+**What is counted**: every diagram, once, at the location its day starts
+from — the simple check the depot actually makes, and the same figure a
+person gets by running a finger down a section's morning departures in the
+book. The counts are collected inside the mainline build (see the stock
+collector in `src/genius.js`), keyed by the book's own fleet labels, so
+the form can never disagree with the books built alongside it. A section
+holding stock that the form has no row for — a diagram starting the day at
+Dartford, say — is appended as an extra block rather than dropped.
 
 The counts ride out of the build in a field of their own (`res.stock`), so
 nothing the golden suite compares changes shape; with the box unticked the
