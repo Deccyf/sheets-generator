@@ -6,18 +6,20 @@
 <title>Diagram analyser — what the prints say about looking after the units</title>
 <style>
   :root{
+    /* the apron: a concrete grey with a little green in it, never a flat mid-grey */
     --apron:#D5D7D0; --apron-dk:#C4C7BF; --steel:#262E33; --paper:#FAF9F5;
     --signal:#0E7C42; --amber:#9C5C10; --chalk:#525A62; --rail:#5A6169;
-    /* --rule was used by the Rules tables and never declared, so their
-       header borders and the note rail simply did not draw */
     --rule:#C4C7BF;
-    /* the warning colour: --amber only reaches 3.67:1 on the apron */
-    --warn:#7A470C;
-    /* the double-check notice is the one thing on the page that is about a
-       sheet going out wrong, so it is signal red rather than amber. Measured
-       6.96:1 on --paper and 5.05:1 on the apron, so it clears AA for the
-       small uppercase label as well as the body text. */
-    --danger:#A81E17;
+    /* the livery: Southeastern's dark blue and the yellow warning end, taken
+       from the sprites so the page and its trains are one palette */
+    --navy:#24346E; --navy-dk:#18244F; --flag:#F5C400;
+    /* text colours, each measured against the ground it sits on:
+       --signal-ink is the green for TEXT on the apron (the plain --signal
+       reaches only 3.6:1 there); --warn is the amber that clears AA */
+    --signal-ink:#0A6236; --warn:#7A470C; --danger:#A81E17;
+    /* the departure board: near-black, with lamp colours that all clear 7:1 */
+    --board:#1B2226; --board-ink:#EDEFE9; --board-dim:#A9B1B7;
+    --board-go:#5FD08A; --board-warn:#F5C400; --board-err:#FF8A80;
     --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
     --sans: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   }
@@ -27,114 +29,266 @@
     background:var(--apron); color:var(--steel); font-family:var(--sans);
     font-size:15px; line-height:1.5;
   }
-  .wrap{max-width:700px; margin:0 auto; padding:38px 20px 64px}
+  .wrap{max-width:720px; margin:0 auto; padding:26px 20px 64px}
+  [hidden]{display:none !important}
+  /* visually hidden, still read out */
+  .vh{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);
+    white-space:nowrap}
+  :focus-visible{outline:2px solid var(--signal); outline-offset:2px}
 
-  /* ---------- header ---------- */
+  /* ---------- masthead: a signage band with the livery's warning end ----------
+     The plain <header> stays unstyled so the analyser, which shares this
+     sheet, keeps its own quieter head. */
   .eyebrow{
     font-family:var(--mono); font-size:11px; letter-spacing:.20em;
     text-transform:uppercase; color:var(--chalk); margin:0 0 10px;
   }
   h1{
-    font-family:var(--mono); font-weight:600; font-size:clamp(28px,6vw,42px);
-    letter-spacing:-.01em; margin:0; line-height:1.05;
+    font-weight:700; font-size:clamp(28px,5vw,38px); letter-spacing:-.01em;
+    margin:0; line-height:1.08;
   }
-  h1 .sub{display:block; color:var(--chalk); font-weight:400; font-size:.45em;
-    letter-spacing:.16em; text-transform:uppercase; margin-top:12px}
-  .lede{max-width:52ch; margin:18px 0 0; color:#3C464D}
+  h1 .sub{display:block; color:var(--chalk); font-weight:400; font-size:.42em;
+    font-family:var(--mono); letter-spacing:.14em; text-transform:uppercase; margin-top:10px}
+  .lede{max-width:56ch; margin:14px 0 0; color:#3C464D}
+  .mast{
+    position:relative; background:var(--navy); color:var(--paper);
+    padding:22px 26px 20px 30px; display:flex; flex-wrap:wrap; gap:18px 32px;
+    align-items:center;
+  }
+  .mast::before{content:""; position:absolute; left:0; top:0; bottom:0; width:9px;
+    background:var(--flag)}
+  .mast .eyebrow, .mast .lede{color:var(--paper); opacity:.86}
+  .mast .lede{margin-top:10px; font-size:14.5px; max-width:52ch}
+  .mast-text{flex:1 1 360px; min-width:0}
+  .mast-meta{
+    flex:0 0 100%; display:flex; flex-wrap:wrap; gap:8px 22px; align-items:center;
+    font-family:var(--mono); font-size:12px; letter-spacing:.04em; opacity:.9;
+  }
+  .mast-meta .ver b{font-weight:600}
+  .mast .linkish{color:var(--paper)}
+  .mast .linkish:hover{color:var(--flag)}
+  .mast .linkish:focus-visible{outline-color:var(--flag)}
 
-  /* ---------- drop zone: a berth road ---------- */
+  /* ---------- the fleet, drawn up along the masthead ---------- */
+  .lineup{display:flex; gap:26px; align-items:flex-end; flex-wrap:wrap; flex:0 1 auto}
+  .lineup figure{margin:0}
+  .lineup svg{height:30px; width:auto; display:block}
+  .lineup figcaption{font-family:var(--mono); font-size:10px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--paper); opacity:.8; margin-top:6px}
+  .road-sprite{margin-left:auto; align-self:center}
+  .road-sprite svg{height:20px; width:auto; display:block}
+  .unit svg{height:16px; width:auto; display:block}
+
+  /* ---------- how to use, folded under the masthead ---------- */
+  details.howto{margin:12px 0 0; background:var(--paper); border:1px solid var(--apron-dk)}
+  details.howto > summary{
+    cursor:pointer; padding:11px 16px; font-family:var(--mono); font-size:12.5px;
+    letter-spacing:.06em; color:var(--steel); list-style:none; user-select:none;
+  }
+  details.howto > summary::-webkit-details-marker{display:none}
+  details.howto > summary::before{content:"+"; display:inline-block; width:18px;
+    color:var(--signal); font-weight:600}
+  details.howto[open] > summary::before{content:"\2212"}
+  details.howto > summary:focus-visible{outline-offset:-2px}
+  .howto-body{padding:4px 18px 18px; font-size:14px; color:#3C464D}
+  .howto-body h2{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--chalk); margin:18px 0 8px; font-weight:600}
+  .howto-body h2:first-child{margin-top:6px}
+  .howto-body p{margin:0 0 10px; max-width:66ch}
+  .steps{margin:0; padding:0; list-style:none; counter-reset:step}
+  .steps > li{position:relative; padding:0 0 10px 38px; counter-increment:step; max-width:70ch}
+  .steps > li::before{
+    content:counter(step); position:absolute; left:0; top:1px; width:24px; height:24px;
+    background:var(--steel); color:var(--paper); font-family:var(--mono); font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .steps > li:last-child{padding-bottom:0}
+  .books{margin:0 0 12px; padding:0; list-style:none; display:grid; gap:8px}
+  .books li{background:#fff; border:1px solid var(--apron-dk); padding:9px 13px; font-size:13.5px}
+  .books b{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em}
+  .howto-body dl{margin:0}
+  .howto-body dt{font-family:var(--mono); font-size:12px; letter-spacing:.05em;
+    margin:10px 0 3px; color:var(--steel)}
+  .howto-body dd{margin:0 0 4px; max-width:62ch}
+  details.hint{display:block; position:relative; margin-top:6px}
+  details.hint summary{
+    display:inline; cursor:pointer; list-style:none; font-size:13px;
+    color:var(--signal-ink); text-decoration:underline dotted; user-select:none;
+  }
+  details.hint summary::-webkit-details-marker{display:none}
+  details.hint .pop{
+    display:block; margin:10px 0 4px; padding:10px; background:#fff;
+    border:1px solid var(--apron-dk); box-shadow:0 4px 14px rgba(38,46,51,.18);
+    max-width:280px;
+  }
+  details.hint .pop img{display:block; width:100%; height:auto; border:1px solid var(--apron-dk)}
+  details.hint .pop span{display:block; margin-top:7px; font-size:12px; color:var(--chalk)}
+  details.hint.wide .pop{max-width:520px}
+  details.hint .pop .how-h{
+    display:block; font-family:var(--mono); font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--steel); margin:1px 0 6px;
+  }
+  details.hint .pop ol.how{margin:0 0 12px; padding:0 0 0 18px; font-size:12.5px;
+    line-height:1.5; color:#3C464D}
+  details.hint .pop ol.how li{margin:0 0 5px}
+  details.hint .pop ol.how img{margin:6px 0 2px}
+
+  /* ---------- the mode switch: weekday or weekend, one at a time ---------- */
+  .modes{display:flex; gap:6px; margin:22px 0 0; flex-wrap:wrap}
+  .mode{
+    font-family:var(--mono); font-size:11.5px; letter-spacing:.16em; text-transform:uppercase;
+    padding:9px 14px; border:1px solid var(--steel); background:var(--paper);
+    color:var(--steel); cursor:pointer;
+  }
+  .mode[aria-selected="true"]{background:var(--steel); color:var(--paper)}
+  .mode:hover{border-color:var(--signal)}
+
+  /* ---------- a platform: one panel ---------- */
+  .platform{margin:0; padding-top:18px}
+  .platform > .whatfor{margin:0; color:#3C464D; max-width:62ch; font-size:14px}
+
+  /* ---------- drop zone: a berth road with a buffer stop ---------- */
   .berth{
-    margin:30px 0 0; padding:0; border:0; background:none; width:100%;
+    margin:16px 0 0; padding:0; border:0; background:none; width:100%;
     display:block; cursor:pointer; font:inherit; color:inherit; text-align:left;
   }
   .berth-inner{
     border:2px dashed var(--rail); background:var(--paper);
-    padding:30px 26px; display:flex; gap:20px; align-items:center;
+    padding:24px 24px; display:flex; gap:20px; align-items:center;
     transition:border-color .15s, background .15s, box-shadow .15s;
   }
-  .berth:hover .berth-inner, .berth:focus-visible .berth-inner{
-    border-color:var(--signal); box-shadow:0 0 0 3px rgba(14,124,66,.14);
-  }
-  /* A real ring, not the hover treatment recoloured. Keyboard focus was a
-     2px dashed border going from grey to green - 1.22:1 against the
-     unfocused state, where 3:1 is wanted, and indistinguishable from hover.
-     Every other control on the page already carries a proper ring. */
+  .berth:hover .berth-inner{border-color:var(--signal); box-shadow:0 0 0 3px rgba(14,124,66,.14)}
   .berth:focus-visible{outline:3px solid var(--steel); outline-offset:3px}
-  .berth.dragover .berth-inner{
-    border-style:solid; border-color:var(--signal); background:#F2F7F3;
-  }
+  .berth.dragover .berth-inner{border-style:solid; border-color:var(--signal); background:#F2F7F3}
   .buffer{flex:0 0 auto; width:44px; height:44px; position:relative}
-  .buffer::before{
-    content:""; position:absolute; inset:auto 0 12px 0; height:2px; background:var(--rail);
-  }
-  .buffer::after{
-    content:""; position:absolute; right:0; bottom:4px; width:8px; height:18px;
-    background:var(--rail);
-  }
-  .berth-txt strong{display:block; font-family:var(--mono); font-size:16px;
-    letter-spacing:.01em}
-  .berth-txt span{display:block; color:var(--chalk); font-size:13px; margin-top:4px}
+  .buffer::before{content:""; position:absolute; inset:auto 0 12px 0; height:2px; background:var(--rail)}
+  .buffer::after{content:""; position:absolute; right:0; bottom:4px; width:8px; height:18px;
+    background:var(--rail)}
+  .berth-txt strong{display:block; font-size:16px; font-weight:600}
+  .berth-txt span{display:block; color:var(--chalk); font-size:13px; margin-top:3px}
 
-  /* ---------- status ---------- */
-  .status{
-    margin:18px 0 0; font-family:var(--mono); font-size:13px; letter-spacing:.04em;
-    min-height:20px; color:var(--chalk);
+  /* the one setting that decides what the reports contain */
+  .mustdo{
+    display:block; margin:10px 0 0; padding:9px 12px; font-size:13px; line-height:1.5;
+    color:#3C464D; background:#FFF6E8; border-left:3px solid var(--amber); max-width:none;
   }
-  .status.err{color:#9B2226}
-  .status.go{color:var(--signal)}
-  /* The build asked for this and it did not exist, so the one message that
-     says something needs a human eye fell back to the faintest grey on the
-     page while "nothing needed a human eye" got the green. */
-  .status.warn{color:var(--warn)}
+  .mustdo b{color:var(--warn); font-family:var(--mono); font-size:11px;
+    letter-spacing:.08em; text-transform:uppercase; margin-right:8px}
+  .mustdo code{font-family:var(--mono); font-size:12px; background:#fff;
+    border:1px solid #E8CFA6; padding:1px 4px}
 
-  /* ---------- roads ---------- */
-  .roads{margin:34px 0 0; display:flex; flex-direction:column; gap:26px}
-  /* before anything is built the panel left 88px of nothing between the
-     headcode box and the notes below it, which reads as a broken page */
-  .roads:empty{margin:0}
-  .road{background:var(--paper); padding:20px 22px 18px; border-top:3px solid var(--steel)}
-  /* The Metro sheet is fourteen columns across, which will not sit inside the
-     page's own column. This one card steps outside it. */
-  /* Every road card is the same width as every other, and as the rest of the
-     page. The Metro and 395 cards used to step outside the column to fit
-     their wider sheets, and a populated one then sat half again as wide as
-     the card above it - an empty road never took the break-out at all, so
-     the same page could show both. A sheet wider than the card scrolls
-     inside its own preview instead, which is where the scrollbar belongs. */
-  .pickbar{
-    display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 11px;
-  }
-  .pickbar label{
-    font-family:var(--mono); font-size:11px; letter-spacing:.1em;
-    text-transform:uppercase; color:var(--chalk); display:flex; gap:8px;
-    align-items:center;
-  }
-  .pickbar select{
+  /* ---------- paste the reports in instead of dropping files ---------- */
+  .orpaste{margin:10px 0 0}
+  .linkish{
     font-family:var(--mono); font-size:12px; letter-spacing:.04em;
-    padding:6px 9px; border:1px solid var(--apron-dk); background:#fff;
-    color:var(--steel); text-transform:none;
+    color:var(--rail); background:none; border:0; padding:0; cursor:pointer;
+    text-decoration:underline; text-underline-offset:3px;
   }
-  .pickbar .picknote{font-family:var(--mono); font-size:11px; color:var(--chalk)}
-  .metro-view{overflow:auto}
-  .road-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  .linkish:hover{color:var(--signal-ink)}
+  .linkish::before{content:"+ "; text-decoration:none}
+  [aria-expanded="true"].linkish::before{content:"\2212 "}
+  .pastebox{margin:12px 0 0; padding:14px; border:1px solid var(--apron-dk); background:var(--paper)}
+  .paste-hint{margin:0 0 12px; font-size:12.5px; line-height:1.45; color:var(--chalk); max-width:70ch}
+  .paste-hint b{color:var(--steel)}
+  .paste-pair{display:flex; gap:14px; flex-wrap:wrap}
+  .paste-fld{flex:1 1 260px; display:flex; flex-direction:column; gap:5px}
+  .paste-fld > span{
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--steel); font-weight:700;
+  }
+  .paste-fld em{
+    display:block; font-family:var(--sans); font-size:11.5px; font-style:normal;
+    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400; margin-top:2px;
+  }
+  .paste-fld textarea{
+    flex:1 1 auto; font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
+    border:1px solid var(--apron-dk); background:#fff; color:var(--steel);
+    resize:vertical; min-height:96px; width:100%;
+  }
+  .paste-fld textarea:focus-visible{outline-offset:-1px}
+  .paste-fld textarea.dragover{border:2px dashed var(--signal); background:#FFFDF5}
+  .paste-fld textarea.filled{border-color:var(--signal); box-shadow:inset 3px 0 0 var(--signal)}
+  .paste-acts{margin:12px 0 0; display:flex; gap:10px; flex-wrap:wrap}
+  .paste-say{margin:10px 0 0; font-family:var(--mono); font-size:12px;
+    letter-spacing:.04em; color:var(--chalk); min-height:18px}
+  .paste-say.err{color:#9B2226}
+  .paste-say.go{color:var(--signal-ink)}
+
+  /* ---------- the departure board: what the build did, and the two big buttons ----------
+     Sticks to the top of the window once the cards scroll under it, so the
+     result of the build and the way to save it never leave the screen. */
+  .board{
+    position:sticky; top:0; z-index:5; margin:16px 0 0; background:var(--board);
+    color:var(--board-ink); padding:9px 14px; display:flex; flex-wrap:wrap;
+    gap:8px 16px; align-items:center; box-shadow:0 2px 0 rgba(0,0,0,.25);
+  }
+  .board::before{content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--flag)}
+  .board .status{
+    flex:1 1 320px; margin:0; font-family:var(--mono); font-size:12.5px; letter-spacing:.05em;
+    line-height:1.45; color:var(--board-ink); min-height:18px;
+  }
+  .status.err{color:var(--board-err)}
+  .status.go{color:var(--board-go)}
+  .status.warn{color:var(--board-warn)}
+  .board-acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .board-acts .note{font-family:var(--mono); font-size:11px; color:var(--board-dim);
+    letter-spacing:.05em; flex:1 1 100%}
+  /* the analyser's status line sits on the apron, not on a board */
+  .statusrow .status{color:var(--chalk)}
+  .statusrow .status.err{color:#9B2226}
+  .statusrow .status.go{color:var(--signal-ink)}
+  .statusrow .status.warn{color:var(--warn)}
+
+  /* ---------- buttons: signage ---------- */
+  .btn{
+    font-family:var(--mono); font-size:12px; letter-spacing:.09em; text-transform:uppercase;
+    padding:9px 14px; border:1.5px solid var(--steel); background:var(--steel);
+    color:var(--paper); cursor:pointer;
+  }
+  .btn.ghost{background:none; color:var(--steel)}
+  .btn:hover{background:var(--signal); border-color:var(--signal); color:#fff}
+  .btn.light{background:var(--paper); color:var(--board); border-color:var(--paper)}
+  .btn.ghost.light{background:none; color:var(--board-ink); border-color:var(--board-dim)}
+  .btn.light:hover, .btn.ghost.light:hover{background:var(--flag); border-color:var(--flag); color:var(--board)}
+  .btn.small{padding:6px 10px; font-size:11px}
+
+  /* ---------- options: one row, six words each, the whys behind a link ---------- */
+  .opts-row{
+    margin:12px 0 0; padding:9px 14px; background:var(--paper); border:1px solid var(--apron-dk);
+    display:flex; gap:8px 20px; align-items:center; flex-wrap:wrap;
+  }
+  .opts-label{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--chalk); font-weight:700}
+  .opts-row label{display:flex; gap:7px; align-items:center; font-size:13.5px; cursor:pointer}
+  .opts-row input[type="checkbox"]{accent-color:var(--signal); width:15px; height:15px; margin:0}
+  .opts-row .linkish{margin-left:auto}
+  .opts-hints{margin:0; padding:12px 16px; background:var(--paper); border:1px solid var(--apron-dk);
+    border-top:0; font-size:13px; color:#3C464D}
+  .opts-hints p{margin:0 0 7px; max-width:74ch}
+  .opts-hints p:last-child{margin:0}
+  .opts-hints b{color:var(--steel)}
+  .opts-hint{font-size:12.5px; line-height:1.45; color:var(--chalk); margin:10px 0 0}
+
+  /* ---------- roads: the book cards ---------- */
+  .roads{margin:16px 0 0; display:grid; gap:18px}
+  .roads:empty{margin:0}
+  .road{background:var(--paper); padding:16px 18px 16px; border-top:3px solid var(--steel); min-width:0}
+  .road-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
   .road-no{
-    font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
     color:#fff; background:var(--steel); padding:3px 7px;
   }
-  .road-name{font-family:var(--mono); font-size:19px; margin:0; font-weight:600}
-  .road-fleet{font-family:var(--mono); font-size:12px; color:var(--chalk);
-    letter-spacing:.08em; margin-left:auto}
-
+  .road-name{font-size:18px; margin:0; font-weight:600}
+  .road-fleet{font-family:var(--mono); font-size:11.5px; color:var(--chalk); letter-spacing:.06em}
   .track{
-    position:relative; height:46px; margin:16px 0 14px;
+    position:relative; height:44px; margin:12px 0 10px;
     border-top:2px solid var(--rail); border-bottom:2px solid var(--rail);
-    background-image:repeating-linear-gradient(90deg,
-      var(--apron-dk) 0 3px, transparent 3px 14px);
+    background-image:repeating-linear-gradient(90deg, var(--apron-dk) 0 3px, transparent 3px 14px);
   }
   .unit{
-    position:absolute; top:6px; left:8px; height:30px; display:flex; align-items:center;
+    position:absolute; top:6px; left:8px; height:28px; display:flex; align-items:center;
     gap:9px; padding:0 12px; background:var(--steel); color:var(--paper);
-    font-family:var(--mono); font-size:12px; letter-spacing:.08em;
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; white-space:nowrap;
     animation:roll .45s cubic-bezier(.22,.61,.36,1) both;
   }
   .unit b{font-size:14px; font-weight:600}
@@ -144,360 +298,124 @@
     border-top:4px solid transparent; border-bottom:4px solid transparent;
   }
   @keyframes roll{from{transform:translateX(-40px); opacity:0} to{transform:none; opacity:1}}
-
-  .nothing{margin:14px 0 0; font-size:13.5px; color:var(--chalk)}
-  .reviewline{
-    font-family:var(--mono); font-size:12px; color:var(--amber); letter-spacing:.03em;
-    margin:0 0 13px;
+  @media (prefers-reduced-motion: reduce){ .unit{animation:none} }
+  .nothing{margin:12px 0 0; font-size:13.5px; color:var(--chalk)}
+  .chips{display:flex; gap:6px 10px; flex-wrap:wrap; align-items:center; margin:0 0 12px;
+    font-size:12.5px; color:var(--chalk)}
+  .chip{
+    display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; padding:3px 8px; background:#E9ECE6; color:var(--steel);
   }
-  .reviewline.clean{color:var(--signal)}
-  .panel{margin:15px 0 0; border-top:1px solid var(--apron-dk); padding-top:13px}
-  .tabs{display:flex; gap:7px; margin:0 0 11px}
+  .chip.review{background:#F6E1DF; color:var(--danger)}
+  .chip.clean{background:#E4F2E9; color:var(--signal-ink)}
+  .chip.moved{background:#FFF0D6; color:var(--warn)}
+  .acts{display:flex; gap:9px; flex-wrap:wrap}
+  .panel{margin:13px 0 0; border-top:1px solid var(--apron-dk); padding-top:12px}
+  .tabs{display:flex; gap:6px; margin:0 0 10px; flex-wrap:wrap}
   .tab{
     font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
-    padding:6px 11px; border:1px solid var(--apron-dk); background:none; cursor:pointer;
+    padding:6px 10px; border:1px solid var(--apron-dk); background:none; cursor:pointer;
     color:var(--chalk);
   }
   .tab[aria-selected="true"]{background:var(--steel); color:var(--paper); border-color:var(--steel)}
-  .tab:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
   .view{max-height:58vh; overflow:auto; background:#fff; border:1px solid var(--apron-dk)}
-  table.sheet{
-    border-collapse:collapse; table-layout:fixed;
-    font-family:Arial, Helvetica, sans-serif; color:#000;
-  }
-  /* the 395 sheet is set in Calibri throughout, so it is said once here
-     rather than on every one of its hundred-odd style records */
+  .pickbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 10px}
+  .pickbar label{font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--chalk); display:flex; gap:8px; align-items:center}
+  .pickbar select{font-family:var(--mono); font-size:12px; letter-spacing:.04em;
+    padding:6px 9px; border:1px solid var(--apron-dk); background:#fff; color:var(--steel)}
+  .pickbar .picknote{font-family:var(--mono); font-size:11px; color:var(--chalk)}
+  .metro-view{overflow:auto}
+
+  /* ---------- the sheet preview: what gets saved, drawn from the same cells ---------- */
+  table.sheet{border-collapse:collapse; table-layout:fixed;
+    font-family:Arial, Helvetica, sans-serif; color:#000}
+  /* the 395 sheet is set in Calibri throughout, so it is said once here */
   table.sheet.calibri{font-family:Calibri, Carlito, Arial, sans-serif}
-  /* Excel lets a long value spill across the empty cells beside it, and the
-     395 sheet's headings depend on that - clipped to their own column they
-     read TRAI…, ARRI…, CET…, so the check on screen was less legible than
-     the workbook it previews. A filled cell paints over its neighbour, the
-     way the spreadsheet does; an empty one stays out of the way. */
-  table.sheet td{
-    padding:1px 3px; height:23px; vertical-align:middle;
-    white-space:nowrap; overflow:visible;
-  }
+  /* Excel lets a long value spill across the empty cells beside it and the
+     395 sheet's headings depend on that: a filled cell paints over its
+     neighbour, an empty one stays out of the way */
+  table.sheet td{padding:1px 3px; height:23px; vertical-align:middle;
+    white-space:nowrap; overflow:visible}
   table.sheet td:not(:empty){position:relative; z-index:1; background:#fff}
   /* where the paper falls when the book is printed */
   table.sheet tr.pbrk td{
-    border-top:2px dashed #7A8A94; height:18px; padding:2px 3px 0;
+    border-top:2px dashed var(--chalk); height:18px; padding:2px 3px 0;
     font-family:var(--mono); font-size:10px; letter-spacing:.1em;
-    text-transform:uppercase; color:#7A8A94; text-align:left;
+    text-transform:uppercase; color:var(--chalk); text-align:left;
   }
-  /* The stock requirements card shows the page the depot prints, so the
-     workbook's printed heading sits above the grid, set the way the
-     header record sets it: Arial 14 bold italic, underlined, centred. */
+  /* the stock requirements form shows the page the depot prints, heading and all */
   .stockpage{display:inline-block; background:#fff; padding:12px 16px 16px}
   .stockpage .stockhead{
     font-family:Arial, Helvetica, sans-serif; font-weight:700; font-style:italic;
-    font-size:14pt; color:#000; text-decoration:underline; text-align:center;
-    margin:0 0 10px;
+    font-size:14pt; color:#000; text-decoration:underline; text-align:center; margin:0 0 10px;
   }
-  ul.reviews{margin:0; padding:14px 16px 14px 32px; font-size:13.5px; color:#3C464D}
-  ul.reviews li{margin:0 0 6px}
-  ul.reviews li:last-child{margin:0}
+
+  /* ---------- the review tab: grouped by what kind of thing it is ---------- */
+  .reviews{padding:12px 16px 14px; font-size:13.5px; color:#3C464D}
+  .revgroup{margin:0 0 14px}
+  .revgroup:last-child{margin:0}
+  .revgroup h4{margin:0 0 6px; font-size:13px; display:flex; align-items:center; gap:8px}
+  .revgroup h4 .chip{text-transform:none; letter-spacing:.04em; font-size:11px}
+  .revgroup ul{margin:0; padding:0 0 0 20px}
+  .revgroup li{margin:0 0 5px; max-width:90ch}
+  .revgroup li:last-child{margin:0}
   .noreviews{margin:0; padding:16px; font-size:13.5px; color:var(--chalk)}
-  .acts{display:flex; gap:9px; flex-wrap:wrap}
-  .btn{
-    font-family:var(--mono); font-size:12px; letter-spacing:.09em; text-transform:uppercase;
-    padding:9px 14px; border:1.5px solid var(--steel); background:var(--steel);
-    color:var(--paper); cursor:pointer;
-  }
-  .btn.ghost{background:none; color:var(--steel)}
-  .btn:hover{background:var(--signal); border-color:var(--signal); color:#fff}
-  .btn:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
 
-
-  .allbar{margin:28px 0 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-  .allbar .note{font-family:var(--mono); font-size:11.5px; color:var(--chalk);
-    letter-spacing:.05em}
-
-  footer{
-    margin:46px 0 0; padding-top:18px; border-top:1px solid var(--apron-dk);
-    font-size:13.5px; color:#4A545B; max-width:56ch;
-  }
-  footer h2{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
-    text-transform:uppercase; color:var(--chalk); margin:0 0 8px; font-weight:400}
-  footer p{margin:0 0 10px}
-  @media (prefers-reduced-motion: reduce){ .unit{animation:none} }
-
-  /* ---------- page structure: platforms & explainers ---------- */
-  [hidden]{display:none !important}
-  .ink{color:#3C464D}
-  .quick{
-    margin:26px 0 0; background:var(--paper); border-left:4px solid var(--signal);
-    padding:16px 20px 14px;
-  }
-  .quick h2{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
-    text-transform:uppercase; color:var(--chalk); margin:0 0 10px; font-weight:400}
-  .steps{margin:0; padding:0; list-style:none; counter-reset:step}
-  .steps > li{
-    position:relative; padding:0 0 8px 40px; counter-increment:step; font-size:14px;
-  }
-  .steps > li:last-child{padding-bottom:0}
-  /* One setting decides whether the reports carry the unit order at all, so
-     it gets a rule down the side rather than another grey sentence. */
-  .mustdo{
-    display:block; margin:8px 0 0; padding:8px 12px; font-size:13px;
-    line-height:1.5; color:#3C464D; background:#FFF6E8;
-    border-left:3px solid var(--amber);
-  }
-  .mustdo b{color:var(--amber); font-family:var(--mono); font-size:11px;
-    letter-spacing:.08em; text-transform:uppercase; display:block;
-    margin-bottom:3px}
-  .mustdo code{font-family:var(--mono); font-size:12px; background:#fff;
-    border:1px solid #E8CFA6; padding:1px 4px}
-  .steps > li::before{
-    content:counter(step); position:absolute; left:0; top:1px; width:24px; height:24px;
-    background:var(--steel); color:var(--paper); font-family:var(--mono); font-size:12px;
-    display:flex; align-items:center; justify-content:center;
-  }
-  details.hint{display:block; position:relative; margin-top:5px}
-  details.hint summary{
-    display:inline; cursor:pointer; list-style:none; font-size:13px;
-    color:var(--signal); text-decoration:underline dotted; user-select:none;
-  }
-  details.hint summary::-webkit-details-marker{display:none}
-  details.hint summary:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
-  details.hint .pop{
-    display:block; margin:10px 0 4px; padding:10px; background:var(--paper);
-    border:1px solid var(--apron-dk); box-shadow:0 4px 14px rgba(38,46,51,.18);
-    max-width:280px;
-  }
-  details.hint .pop img{display:block; width:100%; height:auto;
-    border:1px solid var(--apron-dk)}
-  details.hint .pop span{display:block; margin-top:7px; font-size:12px;
-    color:var(--chalk)}
-  details.hint.wide .pop{max-width:520px}
-  details.hint .pop .how-h{
-    display:block; font-family:var(--mono); font-size:11px; letter-spacing:.12em;
-    text-transform:uppercase; color:var(--steel); margin:1px 0 6px;
-  }
-  details.hint .pop ol.how{
-    margin:0 0 12px; padding:0 0 0 18px; font-size:12.5px; line-height:1.5;
-    color:#3C464D;
-  }
-  details.hint .pop ol.how li{margin:0 0 5px}
-  details.hint .pop ol.how img{margin:6px 0 2px}
-  .platform{margin:44px 0 0; padding-top:26px; border-top:2px solid var(--steel)}
-  .sign{
-    display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:.18em;
-    text-transform:uppercase; color:#fff; background:var(--steel); padding:4px 9px;
-  }
-  .platform h2{
-    font-family:var(--mono); font-size:21px; font-weight:600; margin:12px 0 0;
-    letter-spacing:0;
-  }
-  .platform > .whatfor{margin:8px 0 0; color:#3C464D; max-width:58ch; font-size:14px}
-  details.explain{
-    margin:16px 0 0; background:var(--paper); border:1px solid var(--apron-dk);
-  }
-  details.explain summary{
-    cursor:pointer; padding:11px 16px; font-family:var(--mono); font-size:12.5px;
-    letter-spacing:.06em; color:var(--steel); list-style:none; user-select:none;
-  }
-  details.explain summary::-webkit-details-marker{display:none}
-  details.explain summary::before{content:"+"; display:inline-block; width:18px;
-    color:var(--signal); font-weight:600}
-  details.explain[open] summary::before{content:"\2212"}
-  details.explain summary:focus-visible{outline:2px solid var(--signal); outline-offset:-2px}
-  .explain-body{padding:2px 18px 15px; font-size:13.5px; color:#3C464D}
-  .explain-body p{margin:0 0 10px; max-width:60ch}
-  .explain-body p:last-child{margin-bottom:0}
-  .explain-body dt{font-family:var(--mono); font-size:12px; letter-spacing:.05em;
-    margin:12px 0 3px; color:var(--steel)}
-  .explain-body dd{margin:0 0 4px; max-width:58ch}
-  .books{margin:14px 0 0; padding:0; list-style:none; display:grid; gap:8px}
-  .books li{background:var(--paper); border:1px solid var(--apron-dk); padding:10px 14px;
-    font-size:13.5px}
-  .books b{font-family:var(--mono); font-size:12.5px; letter-spacing:.04em}
-  .checknote{
-    margin:14px 0 0; padding:13px 16px; background:var(--paper);
-    border-left:5px solid var(--danger); font-size:14px; line-height:1.55;
-    color:#333B41; font-weight:500; max-width:60ch;
-  }
-  .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
-    text-transform:uppercase; color:var(--danger); font-weight:700;
-    display:block; margin-bottom:5px}
-  .smallprint{margin:46px 0 0; padding-top:16px; border-top:1px solid var(--apron-dk);
-    font-size:12.5px; color:var(--chalk); max-width:60ch}
-  /* the build stamp sits under the small print, tighter to it than to the
-     paragraph above, because it is a label on the file rather than prose */
-  .buildstamp{margin-top:14px; padding-top:0; border-top:0}
-  .buildstamp .bsnote{display:block; margin-top:4px; opacity:.72}
-
-  /* ---------- fleet sprites ---------- */
-  .lineup{display:flex; gap:32px; align-items:flex-end; margin:26px 0 0; flex-wrap:wrap}
-  .lineup figure{margin:0}
-  .lineup svg{height:32px; width:auto; display:block}
-  .lineup figcaption{font-family:var(--mono); font-size:10.5px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--chalk); margin-top:7px}
-  .road-sprite{margin-left:14px; align-self:center}
-  .road-sprite svg{height:20px; width:auto; display:block}
-  .unit svg{height:16px; width:auto; display:block}
-
-
-  /* ---------- paste the reports in instead of dropping files ----------
-     Some machines will not let the reports be saved anywhere the browser can
-     reach. The panel stays shut until it is wanted, so the ordinary route
-     still reads as the ordinary route. */
-  .orpaste{margin:14px 0 0}
-  .linkish{
-    font-family:var(--mono); font-size:12px; letter-spacing:.04em;
-    color:var(--rail); background:none; border:0; padding:0; cursor:pointer;
-    text-decoration:underline; text-underline-offset:3px;
-  }
-  .linkish:hover{color:var(--signal)}
-  .linkish:focus-visible{outline:2px solid var(--signal); outline-offset:3px}
-  .linkish::before{content:"+ "; text-decoration:none}
-  [aria-expanded="true"].linkish::before{content:"\2212 "}
-  .pastebox{
-    margin:12px 0 0; padding:14px; border:1px solid var(--apron-dk);
-    background:var(--paper);
-  }
-  .paste-hint{margin:0 0 12px; font-size:12.5px; line-height:1.45;
-    color:var(--chalk)}
-  .paste-hint em{font-style:normal; color:var(--steel)}
-  .paste-pair{display:flex; gap:14px; flex-wrap:wrap}
-  /* stretch so the two boxes line up at the bottom whatever their labels do */
-  .paste-fld{flex:1 1 260px; display:flex; flex-direction:column; gap:5px}
-  .paste-fld textarea{flex:1 1 auto}
-  .paste-fld > span{
-    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--steel); font-weight:700;
-  }
-  .paste-fld em{
-    display:block; font-family:var(--sans); font-size:11.5px; font-style:normal;
-    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400;
-    margin-top:2px;
-  }
-  .paste-fld textarea{
-    font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
-    border:1px solid var(--apron-dk); background:#fff; color:var(--steel);
-    resize:vertical; min-height:96px; width:100%;
-  }
-  .paste-fld textarea:focus-visible{outline:2px solid var(--signal);
-    outline-offset:-1px}
-  /* a file being dragged into the box, for a machine that will not paste */
-  .paste-fld textarea.dragover{
-    border:2px dashed var(--signal); background:#FFFDF5;
-  }
-  /* a box with something in it should look answered at a glance */
-  .paste-fld textarea.filled{border-color:var(--signal);
-    box-shadow:inset 3px 0 0 var(--signal)}
-  .paste-acts{margin:12px 0 0; display:flex; gap:10px; flex-wrap:wrap}
-  .paste-say{margin:10px 0 0; font-family:var(--mono); font-size:12px;
-    letter-spacing:.04em; color:var(--chalk); min-height:18px}
-  .paste-say.err{color:#9B2226}
-  .paste-say.go{color:var(--signal)}
-
-  /* ---------- per-book options ---------- */
-  .opts{
-    margin:14px 0 0; padding:9px 14px 11px; border:1px solid var(--apron-dk);
-    background:var(--paper); display:flex; gap:9px 18px; align-items:center;
-    flex-wrap:wrap;
-  }
-  /* the legend sits on the border, so it stays short enough never to wrap */
-  .opts legend{
-    font-family:var(--mono); font-size:10.5px; letter-spacing:.1em;
-    text-transform:uppercase; color:var(--chalk); padding:0 6px;
-    font-weight:700; white-space:nowrap;
-  }
-  .opts .opts-hint{
-    flex:0 0 100%; margin:0; font-size:12.5px; line-height:1.45;
-    color:var(--chalk);
-  }
-  .opts label{
-    font-family:var(--mono); font-size:12px; letter-spacing:.05em;
-    color:var(--steel); display:flex; gap:6px; align-items:center;
-    cursor:pointer;
-  }
-  .opts input[type="checkbox"]{accent-color:var(--signal); width:14px; height:14px}
-
-  /* ---------- Rules tab ---------- */
-  .rules h3{font-size:11px; letter-spacing:.09em; text-transform:uppercase;
-    color:var(--steel); margin:14px 0 6px}
+  /* ---------- Rules and Unit order tabs ---------- */
+  .rules{padding:12px 16px}
+  .rules h3{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--steel); margin:14px 0 6px}
   .rules h3:first-of-type{margin-top:4px}
-  /* keep the rules pane to a readable measure whatever the card is doing */
   .rules p{font-size:12.5px; line-height:1.55; margin:0 0 8px; max-width:74ch}
-  .rules code{font-family:var(--mono); font-size:11.5px}
-  .rules-t{border-collapse:collapse; width:100%; margin:0 0 10px;
-    font-size:12px}
-  .rules-t th{text-align:left; font-size:10.5px; letter-spacing:.08em;
-    text-transform:uppercase; color:var(--chalk); font-weight:400;
-    border-bottom:1px solid var(--rule); padding:3px 8px 3px 0}
-  .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron);
-    vertical-align:top}
-  .rules-t .tag-local{color:var(--amber); font-weight:700}
-  /* a formation you turned round yourself, so it is obvious which rows are
-     yours and which came with the tool */
+  .rules p.sa-src{color:var(--chalk)}
+  .rules-t{border-collapse:collapse; width:100%; margin:0 0 10px; font-size:12px}
+  .rules-t th{text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--chalk); font-weight:400; border-bottom:1px solid var(--rule); padding:3px 8px 3px 0}
+  .rules-t td{padding:3px 8px 3px 0; border-bottom:1px solid var(--apron); vertical-align:top}
   .rules-t tr.flipped td{background:#FFF6E8; border-bottom-color:#E8CFA6}
   .rules-t tr.flipped td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
   .flag-you{font-family:var(--mono); font-size:10px; letter-spacing:.06em;
-    text-transform:uppercase; color:var(--amber); white-space:nowrap}
+    text-transform:uppercase; color:var(--warn); white-space:nowrap}
   .rule-sec{margin:0 0 18px}
   .rule-sec + .rule-sec{border-top:1px solid var(--apron); padding-top:12px}
   .rules ul{margin:0 0 10px; padding-left:18px}
   .rules li{font-size:12.5px; line-height:1.55; margin:0 0 5px}
-  .rules .rule-note{border-left:2px solid var(--rule); padding-left:10px;
-    color:var(--steel)}
-  .editline{color:var(--amber); font-size:12px; margin:0 0 8px}
+  .rules .rule-note{border-left:2px solid var(--rule); padding-left:10px; color:var(--steel)}
 
-  /* ---------- wide screens ----------
-     The page was laid out as one 700px column, which is right on a laptop
-     lid and looks stranded on a depot monitor: the previews and road cards
-     are wide tables squeezed into half the glass while the prose hugs the
-     left edge. Everything below only applies from 1000px up, so the narrow
-     layout is untouched wherever the window really is narrow.
+  /* ---------- footer ---------- */
+  footer{margin:40px 0 0; padding-top:16px; border-top:1px solid var(--apron-dk);
+    font-size:13.5px; color:#4A545B}
+  .checknote{
+    margin:0; padding:12px 16px; background:var(--paper); border-left:5px solid var(--danger);
+    font-size:14px; line-height:1.55; color:#333B41; max-width:70ch;
+  }
+  .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--danger); font-weight:700; display:block; margin-bottom:4px}
+  .smallprint{margin:16px 0 0; font-size:12.5px; color:var(--chalk); max-width:70ch}
+  footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px}
 
-     The width goes to the things that can use it - the drop panels, the road
-     cards, the previews, and the lists that become grids. Running text keeps
-     a readable measure whatever the window does: a 1100px line of prose is
-     harder to read than a 700px one, not easier. */
+  /* ---------- wide screens: the width goes to the cards, the prose keeps its measure ---------- */
   @media (min-width: 1000px){
-    .wrap{max-width:1120px; padding-left:32px; padding-right:32px}
-    /* the masthead reads as one band: what this is on the left, the fleets
-       it covers on the right, instead of the sprites sitting in a gap */
-    header{display:grid; grid-template-columns:minmax(0,1fr) auto;
-      grid-template-areas:"eyebrow lineup" "title lineup" "lede lineup"
-                          "quick quick"; column-gap:48px; align-items:start}
-    header .eyebrow{grid-area:eyebrow}
-    header h1{grid-area:title}
-    header .lede{grid-area:lede; max-width:58ch}
-    header .lineup{grid-area:lineup; margin:6px 0 0; align-self:center;
-      flex-direction:column; align-items:flex-start; gap:14px}
-    header .quick{grid-area:quick}
-    /* Two columns, not three. Step 1 carries the export-setting box and runs
-       about as long as steps 2 and 3 together, so across three columns it
-       left two of them half empty. Spanning it down the left instead puts
-       the three roughly level and still reads 1, 2, 3. */
-    .steps{display:grid; grid-template-columns:repeat(2, minmax(0,1fr));
-      grid-template-rows:auto auto 1fr;
-      column-gap:40px; row-gap:20px; align-items:start}
+    .wrap{max-width:1160px; padding-left:32px; padding-right:32px}
+    .mast{padding:26px 34px 22px 38px}
+    .roads{grid-template-columns:repeat(2, minmax(0,1fr))}
+    /* the depot's own documents are wide sheets, so their cards take the row */
+    .road.wide, .road.empty-wide{grid-column:1 / -1}
+    .books{grid-template-columns:repeat(2, minmax(0,1fr))}
+    .steps{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px 28px}
     .steps > li{padding-bottom:0}
-    /* Steps 2 and 3 size rows 1 and 2; the empty third row takes whatever
-       step 1 is taller by. Spanning step 1 across only the two filled rows
-       inflated both of them and left a hole between 2 and 3. Placed by
-       number because there are three steps and they are a fixed sequence -
-       a fourth would need a line here. */
-    .steps > li:nth-child(1){grid-area:1 / 1 / 4 / 2}
-    .steps > li:nth-child(2){grid-area:1 / 2 / 2 / 3}
-    .steps > li:nth-child(3){grid-area:2 / 2 / 3 / 3}
-    .books{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px}
-    /* the last book spans so a row of two never leaves one card stranded */
-    .books li:last-child:nth-child(odd){grid-column:1 / -1}
-    /* the closing note reads as a pair: what to check, and the warning.
-       The base rule caps the footer at 56ch, which is right in one column and
-       here would squeeze both halves into the left third of the page. */
-    footer{max-width:none;
-      display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
-      column-gap:48px; align-items:start}
-    footer h2{grid-column:1 / -1}
-    footer > p:first-of-type{margin-top:0}
-    footer .checknote{margin-top:0; max-width:none; align-self:stretch}
-    footer .smallprint{grid-column:1 / -1}
-    footer .buildstamp{grid-column:1 / -1}
-    .smallprint{max-width:78ch}
+  }
+
+  /* ---------- print: the open preview, as a check copy, and nothing else ---------- */
+  @media print{
+    body{background:#fff; color:#000}
+    .mast, .modes, .berth, .orpaste, .pastebox, .board, .opts-row, .opts-hints,
+    details.howto, .track, .acts, .tabs, .chips, footer, .whatfor, .mustdo{display:none !important}
+    .wrap{max-width:none; padding:0}
+    .roads{display:block}
+    .road{border:0; padding:0; page-break-inside:avoid; margin:0 0 18px}
+    .panel{border:0; padding:0; margin:0}
+    .view{max-height:none; overflow:visible; border:0}
   }
 
 /* The analyser's own furniture. The shared stylesheet gives the page its
@@ -729,7 +647,7 @@ details.setup .depots{padding:0 16px}
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>1.4.3</b> &middot; 26 August 2026</p>
+    <p class="small">Version <b>1.4.4</b> &middot; 2 September 2026</p>
   </footer>
 </div>
 <script>
@@ -950,7 +868,6 @@ const SIDING_CLASS_RE = new RegExp(
   // rule set).
   const GROUP_EXTRA = {
     "WEST MARINA": new Set(["STLNSHN", "STLNCET"]),
-    // Folkestone East times come from the Train Roads, not the station
   };
   // Sidings, depots and sheds only. Stations are working locations, not
   // berths (the Maidstone West rule) - they qualify only as the overnight
@@ -991,38 +908,32 @@ const SIDING_CLASS_RE = new RegExp(
      Key: the section, optionally a space and the entry's own time, then "|"
      and the diagram numbers as the sheet prints them, sorted. The timed form
      is looked up first. Give a time only when the same formation reads one
-     way earlier in the day and the other way later - GT101/GT102 leave
-     Ashford 102 first at 05 05 and 101 first at 15+43, and GT127/GT128 leave
-     Victoria 128 first at 05+50 and 127 first at 17 14. Everything else
+     way earlier in the day and the other way later (GT101/GT102 leave
+     Ashford 102 first at 05 05 and 101 first at 15+43). Everything else
      holds all day and is better named without a time, so it still applies
      when the timetable moves the working by a few minutes.
 
-     The mainline entries are taken from the hand-written book for 12/08. The
-     Metro ones are corrections marked on a book this tool produced for 10/08
-     and then put right by hand: six formations, each moved the same way
-     everywhere it appears, which is what an orientation correction looks
-     like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
-     ones, so the shared section names are safe. */
+     The mainline entries are from the hand-written 12/08 book, the Metro
+     ones from a 10/08 book marked up by hand. Metro diagram numbers (2xx,
+     4xx) do not collide with the mainline ones, so the shared section names
+     are safe. */
   /* ---- turning round in the platform ----
      A unit that comes off its berth, runs into the platform and then leaves
      is standing the other way up by the time it goes: it backed in one end
      and pulls out the other. The Summary's Position is the order it left the
-     BERTH in, so for those workings the sheet has to print the formation
-     reversed - which is what the depot means by "the position from the
-     platform is the right one".
+     BERTH in, so for those workings the sheet prints the formation reversed
+     - which is what the depot means by "the position from the platform is
+     the right one".
 
      Whether it turns depends on which side of the station it arrives from
      and which side it leaves towards. Same side, it reversed; opposite
      sides, it ran straight through and the order stands.
 
-     The sides below are read off the workings themselves rather than a track
-     plan, and they account for every Ramsgate formation anybody has checked:
-     the five that were pinned by hand off the 12/08 book, the four reported
-     wrong off the 21/08 book, and 054/055/056, which comes out of the same
-     New Sidings as 052/053 but leaves towards Minster instead of Margate and
-     is right the way it already prints. A location that is not named here
-     leaves the order alone and puts a line on the review list, because
-     guessing which way a train faces is the one thing this must not do. */
+     The sides are read off the workings themselves rather than a track plan,
+     and hold for every Ramsgate formation checked against a real book. A
+     location that is not named here leaves the order alone and puts a line
+     on the review list, because guessing which way a train faces is the one
+     thing this must not do. */
   const PLATFORM_TURN = {
     RAMSGATE: {
       platform: "RAMSGTE",
@@ -1126,32 +1037,18 @@ const SIDING_CLASS_RE = new RegExp(
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
 
-    /* Ramsgate's five backwards formations used to be pinned here, one key
-       per formation. They are gone: PLATFORM_TURN above derives all five,
-       because every one of them is a working that backs into the platform
-       and pulls out the same end it came in. Pinning them by formation was
-       always brittle - the key names an exact set of diagrams, so when
-       043/044 ran as a pair on 21/08 instead of the trio 043/044/910 the pin
-       stopped matching and the sheet went back to printing it the wrong way
-       round. That is the fault this rule replaces. */
-    /* No section: this formation reads the same way wherever it turns up.
-       RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
-       and again in the mainline book off Grove Park at 16+13 - the same three
-       units, the same way round, hours apart.
-
-       This line is kept for GROVE PARK only. The Ramsgate half is now derived
-       by PLATFORM_TURN, so the pin is dormant there: with the pin removed
-       12/08 Ramsgate still prints 913 first, and with PLATFORM_TURN removed
-       as well it flips to 046 first. Grove Park is the opposite - the rule
-       does not reach it, and on 12/08 the Position numbers give the right
-       order unaided, so the pin is dormant there too. It earns its place on
-       the later day a tester found Grove Park the other way round, when the
-       Position field had moved under it.
-
-       Do not narrow this to a GROVE PARK key to say so. The lookup warns when
-       a formation has an order recorded somewhere and no key fires here, so a
-       section key would put a false review note on every Ramsgate appearance
-       of the trio - about an order the tool now gets right by itself.
+    /* Ramsgate's backwards formations are not pinned here: PLATFORM_TURN
+       above derives them, and a pin keyed on an exact set of diagrams stops
+       matching the day the formation runs a unit short (043/044/910 running
+       as 043/044). */
+    /* No section: this formation reads the same way wherever it turns up -
+       913 first at Ramsgate 07 02 and off Grove Park at 16+13 alike. It is
+       kept for GROVE PARK, where the Position field has been known to move
+       under it; at Ramsgate PLATFORM_TURN gives the same order unaided. Not
+       narrowed to a GROVE PARK key on purpose: the lookup warns whenever a
+       formation has an order recorded somewhere and no key fires, so a
+       section key would put a false review note on every Ramsgate
+       appearance of the trio.
 
        Only use a bare key where the order really is the same everywhere:
        RM043/RM044 read one way at Grove Park and the other at West Marina,
@@ -1198,15 +1095,11 @@ const SIDING_CLASS_RE = new RegExp(
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      /* Ramsgate IS on the posAsc list below, and has to stay there. Six of
+      /* Ramsgate IS on the posAsc list below, and has to stay there: six of
          its coupled formations read lowest Position first and five read
-         highest first, so turning the whole section round swapped which five
-         came out wrong rather than fixing anything - that was tried and
-         measured against the real 12/08 Ramsgate book. The five are named in
-         ORDER_FIX instead, where the same tester's mark-up put them.
-         This note used to say the opposite, and it was wrong: anyone who
-         "corrected" the code to match it would quietly reverse the six
-         formations that are already right. */
+         highest first (measured against the real 12/08 Ramsgate book), so
+         turning the whole section round only swaps which five come out
+         wrong. The five are the platform turns PLATFORM_TURN derives. */
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),
@@ -1394,7 +1287,6 @@ const PLACE_NAMES = {
  "AshfDYWRd":   "Ashford Down Washer Road",
  "Ashfd EBS":   "Ashford East Berthing Sidings",
  "Ash Up Sd":   "Ashford Up Sidings",
- "SevngtnLp":   "Sevington Loop",
  /* --- Dover Priory --- */
  "Dover P":     "Dover Priory Platform",
  "Dover PSd":   "Dover Priory Sidings",
@@ -1635,11 +1527,32 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
             .replace(/&#(\d+);/g,(m,d)=>String.fromCodePoint(parseInt(d,10)))
             .replace(/&amp;/g,"&");
   }
+  /* The one paragraph pattern, walked here for the text and by the reissue
+     splice for the character spans. A paragraph need not carry attributes:
+     an earlier pattern required a space after "w:p", so every plain <w:p>
+     in a Word document was invisible to it - the splice found no
+     paragraphs, the reissue merge replaced nothing, and the "updated
+     prints" the panel saved were byte-identical to the superseded original
+     with no warning anywhere. */
+  const PARA_SRC = "<w:p(?:\\s[^>]*)?\\/>|<w:p(?:\\s[^>]*)?>([\\s\\S]*?)<\\/w:p>";
+  const paraRe = () => new RegExp(PARA_SRC, "g");
+  /* A .docx is a zip, and a zip opens with the PK local-file signature. */
+  function isDocxBytes(b){
+    return !!b && b[0] === 0x50 && b[1] === 0x4B && b[2] === 0x03 && b[3] === 0x04;
+  }
+  /* [start, end) character spans of every paragraph in a document.xml, in
+     document order - the units the reissue splice cuts and pastes by. */
+  function docParaSpans(xml){
+    const out = [], re = paraRe();
+    let m;
+    while ((m = re.exec(xml)) !== null) out.push([m.index, m.index + m[0].length]);
+    return out;
+  }
   /* paragraph text exactly as python-docx builds it: run text, <w:tab/> -> \t,
      <w:br/> and <w:cr/> -> \n */
   function docxParagraphs(documentXml){
     const paras = [];
-    const re = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>([\s\S]*?)<\/w:p>/g;
+    const re = paraRe();
     let m;
     while ((m = re.exec(documentXml)) !== null){
       const inner = m[1];
@@ -1676,29 +1589,48 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
      "WordDocument" stream and a table stream. The text is not one run - the
      table stream holds a piece table saying where each run of characters lives
      and whether it is 1-byte or 2-byte encoded. This walks both.            */
+  /* The compound-file header, [MS-CFB] 2.2 - every field little-endian. */
+  const HDR_SECTOR_SHIFT  = 0x1E;   // log2 of the sector size (512 or 4096)
+  const HDR_MINI_SHIFT    = 0x20;   // log2 of the mini-sector size (64)
+  const HDR_DIR_START     = 0x30;   // first sector of the directory chain
+  const HDR_MINI_CUTOFF   = 0x38;   // a stream smaller than this lives in the mini stream
+  const HDR_MINIFAT_START = 0x3C;   // first sector of the mini-FAT chain
+  const HDR_DIFAT_START   = 0x44;   // first sector of the DIFAT chain (beyond the header's 109)
+  const HDR_DIFAT_COUNT   = 0x48;   // how many DIFAT sectors that chain holds
+  const HDR_DIFAT         = 0x4C;   // the first 109 FAT sector numbers, in the header itself
+  const HDR_DIFAT_N       = 109;
+  const SECTOR_SENTINEL   = 0xFFFFFFFA; // numbers from here up mark end-of-chain / free / FAT, not sectors
+  /* A directory entry is 128 bytes: a UTF-16 name, its byte length at 64
+     (terminator included), the entry type at 66, first sector at 116, size
+     at 120. */
+  const DIR_ENTRY = 128, DIR_NAME_LEN = 64, DIR_TYPE = 66, DIR_START = 116, DIR_SIZE = 120;
+  const TYPE_STREAM = 2, TYPE_ROOT = 5;
   function readCfb(bytes){
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const u16 = function(o){ return dv.getUint16(o, true); };
     const u32 = function(o){ return dv.getUint32(o, true); };
-    const ssz = 1 << u16(0x1E), msz = 1 << u16(0x20);
-    const dirStart = u32(0x30), cutoff = u32(0x38);
-    const miniStart = u32(0x3C), difatStart = u32(0x44), nDifat = u32(0x48);
+    const ssz = 1 << u16(HDR_SECTOR_SHIFT), msz = 1 << u16(HDR_MINI_SHIFT);
+    const dirStart = u32(HDR_DIR_START), cutoff = u32(HDR_MINI_CUTOFF);
+    const miniStart = u32(HDR_MINIFAT_START), difatStart = u32(HDR_DIFAT_START);
+    const nDifat = u32(HDR_DIFAT_COUNT);
+    // sector 0 starts one sector in: the header takes the first
     const sector = function(n){
       const off = (n + 1) * ssz;
       return bytes.subarray(off, off + ssz);
     };
     const fatSectors = [];
-    for (let i = 0; i < 109; i++){
-      const v = u32(0x4C + 4 * i);
-      if (v < 0xFFFFFFFA) fatSectors.push(v);
+    for (let i = 0; i < HDR_DIFAT_N; i++){
+      const v = u32(HDR_DIFAT + 4 * i);
+      if (v < SECTOR_SENTINEL) fatSectors.push(v);
     }
     let nxt = difatStart, guard = 0;
-    while (nxt < 0xFFFFFFFA && guard < nDifat + 8){
+    while (nxt < SECTOR_SENTINEL && guard < nDifat + 8){
       const blk = sector(nxt);
       const bv = new DataView(blk.buffer, blk.byteOffset, blk.byteLength);
+      // the last slot of a DIFAT sector points at the next one
       for (let i = 0; i < ssz / 4 - 1; i++){
         const v = bv.getUint32(4 * i, true);
-        if (v < 0xFFFFFFFA) fatSectors.push(v);
+        if (v < SECTOR_SENTINEL) fatSectors.push(v);
       }
       nxt = bv.getUint32(ssz - 4, true); guard++;
     }
@@ -1710,7 +1642,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
     }
     const chain = function(start){
       const out = []; let cur = start;
-      while (cur < 0xFFFFFFFA && out.length < (1 << 22)){
+      while (cur < SECTOR_SENTINEL && out.length < (1 << 22)){
         out.push(cur);
         cur = cur < fat.length ? fat[cur] : 0xFFFFFFFE;
       }
@@ -1724,7 +1656,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
     }
     const miniChain = function(start){
       const out = []; let cur = start;
-      while (cur < 0xFFFFFFFA && out.length < (1 << 20)){
+      while (cur < SECTOR_SENTINEL && out.length < (1 << 20)){
         out.push(cur);
         cur = cur < miniFat.length ? miniFat[cur] : 0xFFFFFFFE;
       }
@@ -1740,23 +1672,24 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
     const entries = [];
     for (const s of chain(dirStart)){
       const blk = sector(s);
-      for (let i = 0; i + 128 <= blk.length; i += 128){
-        const e = blk.subarray(i, i + 128);
+      for (let i = 0; i + DIR_ENTRY <= blk.length; i += DIR_ENTRY){
+        const e = blk.subarray(i, i + DIR_ENTRY);
         const ev = new DataView(e.buffer, e.byteOffset, e.byteLength);
-        const nlen = ev.getUint16(64, true);
+        const nlen = ev.getUint16(DIR_NAME_LEN, true);
         let name = "";
         for (let k = 0; k + 1 < Math.max(0, nlen - 2); k += 2)
           name += String.fromCharCode(ev.getUint16(k, true));
-        entries.push({name: name, type: e[66],
-                      start: ev.getUint32(116, true), size: ev.getUint32(120, true)});
+        entries.push({name: name, type: e[DIR_TYPE],
+                      start: ev.getUint32(DIR_START, true),
+                      size: ev.getUint32(DIR_SIZE, true)});
       }
     }
-    const root = entries.find(function(e){ return e.type === 5; });
+    const root = entries.find(function(e){ return e.type === TYPE_ROOT; });
     const miniStream = root
       ? join(chain(root.start).map(sector)) : new Uint8Array(0);
     const out = {};
     for (const e of entries){
-      if (e.type !== 2 || !e.name) continue;
+      if (e.type !== TYPE_STREAM || !e.name) continue;
       out[e.name] = e.size < cutoff
         ? join(miniChain(e.start).map(function(n){
             return miniStream.subarray(n * msz, (n + 1) * msz); }), e.size)
@@ -1764,46 +1697,64 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
     }
     return out;
   }
+  /* The File Information Block at the head of the WordDocument stream,
+     [MS-DOC] 2.5. Only what the walk to the piece table needs. */
+  const FIB_MAGIC       = 0xA5EC;  // wIdent: the first word of every Word binary file
+  const FIB_FLAGS       = 0x0A;    // the flag word …
+  const FIB_WHICH_TABLE = 0x0200;  // … whose fWhichTblStm bit says the table stream is 1Table
+  const FIB_CSW         = 0x20;    // count of 16-bit words in the FibRgW that follows it
+  const FIB_RGW         = 0x22;    // where the FibRgW starts; cslw and the FibRgLw come after it
+  const FCLCB_CLX       = 33;      // the Clx is the 33rd fc/lcb pair of the FibRgFcLcb
+  const FCLCB_SIZE      = 8;       // an fc/lcb pair: two uint32s
+  const CLX_PRC = 1, CLX_PCDT = 2; // Clx block tags: a property run (skipped), the piece table
+  const PCD_SIZE        = 8;       // one piece descriptor
+  const FC_COMPRESSED   = 0x40000000; // the piece is 8-bit text, at fc >> 1
+  const FC_MASK         = 0x3FFFFFFF;
+  /* One message for every way a .doc can defeat the reader. Which internal
+     structure was missing is no use to the person at the drop zone; what
+     they can do about it is. */
+  const DOC_FAIL = "That .doc file couldn't be read. Open it in Word, save it " +
+                   "as .docx, and drop the new file.";
   function readDoc(bytes){
     let streams;
     try { streams = readCfb(bytes); }
-    catch (e){ throw new Error("That .doc file could not be read. Try opening it " +
-                               "in Word and saving it again."); }
+    catch (e){ throw new Error(DOC_FAIL); }
     const wd = streams["WordDocument"];
-    if (!wd) throw new Error("That doesn't look like a Word file — no document body inside.");
+    if (!wd) throw new Error(DOC_FAIL);
     const wv = new DataView(wd.buffer, wd.byteOffset, wd.byteLength);
-    if (wv.getUint16(0, true) !== 0xA5EC)
-      throw new Error("Unrecognised Word document header.");
-    const which = (wv.getUint16(0x0A, true) & 0x0200) ? "1Table" : "0Table";
+    if (wv.getUint16(0, true) !== FIB_MAGIC) throw new Error(DOC_FAIL);
+    const which = (wv.getUint16(FIB_FLAGS, true) & FIB_WHICH_TABLE) ? "1Table" : "0Table";
     const tbl = streams[which] || streams["1Table"] || streams["0Table"];
-    if (!tbl) throw new Error("That Word file is missing its table stream.");
+    if (!tbl) throw new Error(DOC_FAIL);
     const tv = new DataView(tbl.buffer, tbl.byteOffset, tbl.byteLength);
-    // walk the FIB to the Clx pointer rather than trusting a fixed offset
-    const csw = wv.getUint16(0x20, true);
-    const cslw = wv.getUint16(0x22 + csw * 2, true);
-    const base = 0x22 + csw * 2 + 2 + cslw * 4 + 2;
-    const fcClx = wv.getUint32(base + 33 * 8, true);
-    const lcbClx = wv.getUint32(base + 33 * 8 + 4, true);
+    // walk the FIB to the Clx pointer rather than trusting a fixed offset:
+    // FibRgW (csw words), cslw, FibRgLw (cslw longs), cbRgFcLcb, FibRgFcLcb
+    const csw = wv.getUint16(FIB_CSW, true);
+    const cslw = wv.getUint16(FIB_RGW + csw * 2, true);
+    const rgFcLcb = FIB_RGW + csw * 2 + 2 + cslw * 4 + 2;
+    const fcClx = wv.getUint32(rgFcLcb + FCLCB_CLX * FCLCB_SIZE, true);
+    const lcbClx = wv.getUint32(rgFcLcb + FCLCB_CLX * FCLCB_SIZE + 4, true);
     let i = fcClx, pcdtAt = -1, pcdtLen = 0;
     const end = fcClx + lcbClx;
     while (i < end){
-      if (tbl[i] === 1) i += 3 + tv.getUint16(i + 1, true);
-      else if (tbl[i] === 2){
+      if (tbl[i] === CLX_PRC) i += 3 + tv.getUint16(i + 1, true);
+      else if (tbl[i] === CLX_PCDT){
         pcdtLen = tv.getUint32(i + 1, true); pcdtAt = i + 5; break;
       } else break;
     }
-    if (pcdtAt < 0) throw new Error("That Word file has no piece table.");
-    const n = Math.floor((pcdtLen - 4) / 12);
+    if (pcdtAt < 0) throw new Error(DOC_FAIL);
+    // n pieces: n+1 character positions, then n descriptors
+    const n = Math.floor((pcdtLen - 4) / (4 + PCD_SIZE));
     const cps = [];
     for (let k = 0; k <= n; k++) cps.push(tv.getUint32(pcdtAt + 4 * k, true));
     const dec1 = new TextDecoder("windows-1252");
     const dec2 = new TextDecoder("utf-16le");
     let body = "";
     for (let k = 0; k < n; k++){
-      const p = pcdtAt + 4 * (n + 1) + 8 * k;
+      const p = pcdtAt + 4 * (n + 1) + PCD_SIZE * k;
       const fc = tv.getUint32(p + 2, true);
-      const compressed = (fc & 0x40000000) !== 0;
-      const off = compressed ? (fc & 0x3FFFFFFF) >>> 1 : (fc & 0x3FFFFFFF);
+      const compressed = (fc & FC_COMPRESSED) !== 0;
+      const off = compressed ? (fc & FC_MASK) >>> 1 : (fc & FC_MASK);
       const chars = cps[k + 1] - cps[k];
       body += compressed ? dec1.decode(wd.subarray(off, off + chars))
                          : dec2.decode(wd.subarray(off, off + chars * 2));
@@ -1822,15 +1773,21 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
   function looksLikePrints(text){
     return /(^|\n)\s*Diagram:\t/.test(text) || /\bDiagram:\t\w+\t\d+/.test(text);
   }
-  /* The extension is only a hint; what matters is the first few bytes. */
+  /* The prints as a list of lines, from any of the four shapes they arrive
+     in. The extension is only a hint; what matters is the first few bytes.
+     Throws a message meant for the person at the drop zone. */
   function readPrints(bytes, unzip){
     const b = bytes;
-    if (b[0] === 0x50 && b[1] === 0x4B && b[2] === 0x03 && b[3] === 0x04)
-      return readDocx(bytes, unzip);
+    if (isDocxBytes(b)) return readDocx(bytes, unzip);
     if (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0 &&
         b[4] === 0xA1 && b[5] === 0xB1 && b[6] === 0x1A && b[7] === 0xE1)
       return readDoc(bytes);
-    const dec = new TextDecoder("utf-8", {fatal:false});
+    /* Notepad's "Unicode" saves: a byte-order mark and two bytes to the
+       character. Read as UTF-8 that is one letter between NULs, which looked
+       like nothing at all and was refused as "not the prints". */
+    const utf16 = (b[0] === 0xFF && b[1] === 0xFE) ? "utf-16le"
+                : (b[0] === 0xFE && b[1] === 0xFF) ? "utf-16be" : null;
+    const dec = new TextDecoder(utf16 || "utf-8", {fatal:false});
     const head = dec.decode(bytes.subarray(0, 16)).trimStart();
     if (head.slice(0, 5) === "{\\rtf")
       throw new Error("That file is Rich Text, not Word. Open it in Word and save " +
@@ -1843,6 +1800,9 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
                     "save it as plain text or as a CSV — the diagram lines " +
                     "have to keep their columns.");
   }
+  /* One CSV reader for the whole tool: rows of fields. Quoted fields,
+     doubled quotes inside them, CRLF or LF, and a leading byte-order mark.
+     Both weekday report exports and the CSV save of the prints go through it. */
   function csvParse(text) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     const rows = [];
@@ -1879,7 +1839,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
 
      Only a file that turns out to BE the prints is taken - a Diagram Summary
      export is a CSV too, and it has to keep being refused rather than
-     half-read into an empty book. */
+     half-read into an empty book. Returns the lines, or null. */
   function printsFromCsv(text){
     if (text.indexOf(",") < 0) return null;
     const rows = csvParse(text);
@@ -1893,8 +1853,8 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_DATA = SHEETS_DATA;
   }
 
 
-root.SHEETS_PRINTS = {readPrints, readDoc, readDocx, readCfb, docxParagraphs,
-                      looksLikePrints, printsFromCsv, xmlUnescape, csvParse};
+root.SHEETS_PRINTS = {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
+                      looksLikePrints, printsFromCsv, csvParse};
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
 <script>

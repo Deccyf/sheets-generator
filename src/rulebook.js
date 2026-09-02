@@ -4,9 +4,11 @@
 "use strict";
 const SHEETS_RULEBOOK = (() => {
   const DAY_ROLL = 180;      // times below this have wrapped past midnight
-  const AM_CUTOFF = 14 * 60; // an entry after this is an afternoon one (the
-                             // prints engine keeps its own copy, since it is
-                             // loaded before this module)
+  // an entry at or after this is an afternoon one. Defined once, in
+  // src/core.js (the berth AM/PM rule owns it, and core loads before this
+  // module, so the copy can only go this way round); carried here so the
+  // engines can take every day-shape constant from one place.
+  const AM_CUTOFF = SHEETS_CORE.AM_CUTOFF;
   const PM_BREAK = 20 * 60;  // a berth still occupied this late is the PM end
   const RUN_ROUND = 60;      // out and straight back inside this, nothing
                              // worked, is a run-round not a departure

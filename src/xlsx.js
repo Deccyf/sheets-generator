@@ -20,9 +20,10 @@ const MILES_WIDTHS = HOUSE_WIDTHS.concat([6.2]);
    ruled in it, and the hour after which a second one is drawn - see
    sectionRows for which breaks qualify. */
 const BREAK_GAP = 180;
-const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
+const { PM_BREAK, DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* ==== generic writer (ex weekend engine) ==== */
+/* A cell value made safe for XML text and attributes. */
 function esc(s){
   /* A control character anywhere in a cell makes the WHOLE workbook
      unreadable, not just that cell, so they come out before anything else
@@ -37,13 +38,12 @@ function colName(n){         // 1 -> A
     n = (n - r - 1) / 26; }
   return s;
 }
-/* Looks: [fontId, horizontal alignment, wrap?, fillId]. Fonts are indexed
-   into FONTS below. Looks 7-9 are the allocation sheets' own dress - bold
-   Calibri 9, the block titles in the operator's green, headers wrapped, and
-   a white fill where their sheet fills a cell rather than leaving it clear. */
+/* Looks: [fontId, horizontal alignment]. Fonts are indexed into FONTS
+   below. These are the house books' own dress; a book built to look like
+   somebody else's document (the 395 sheet, the stock form) ships that
+   document's styleSheet instead and never comes through here. */
 const LOOKS = {1:[1,"center"], 2:[2,"right"], 3:[3,"center"],
-               4:[4,"center"], 5:[4,"right"], 6:[5,"center"],
-               7:[6,"center",1], 8:[7,"center",1], 9:[6,"center",0,1]};
+               4:[4,"center"], 5:[4,"right"], 6:[5,"center"]};
 /* No theme colours here. These books ship no theme part, and Excel has no
    way to resolve a theme reference without one - that was the first cause of
    the dotted haze on the 395 sheet, where the skin was taught to resolve
@@ -55,17 +55,13 @@ const FONTS_XML =
 '<font><sz val="14"/><name val="Arial"/><family val="2"/></font>' +
 '<font><b/><sz val="11"/><name val="Arial"/><family val="2"/></font>' +
 '<font><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
-'<font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>' +
-'<font><b/><sz val="9"/><color rgb="FF000000"/><name val="Calibri"/><family val="2"/></font>' +
-'<font><b/><sz val="9"/><color rgb="FF00B050"/><name val="Calibri"/><family val="2"/></font>';
-const FONT_COUNT = 8;
-/* fill 0 none, 1 gray125 (Excel reserves both), 2 solid white */
+'<font><b/><sz val="10"/><name val="Arial"/><family val="2"/></font>';
+const FONT_COUNT = 6;
+/* fill 0 none, 1 gray125 - Excel reserves both */
 const FILLS_XML =
 '<fill><patternFill patternType="none"/></fill>' +
-'<fill><patternFill patternType="gray125"/></fill>' +
-'<fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/>' +
-'<bgColor indexed="64"/></patternFill></fill>';
-const FILL_COUNT = 3;
+'<fill><patternFill patternType="gray125"/></fill>';
+const FILL_COUNT = 2;
 
 /* Styles are registered as they are needed, so any mix of look and border
    gets its own entry rather than being hard-coded up front. */
@@ -104,13 +100,10 @@ StyleBook.prototype.xml = function(){
   let x = '<cellXfs count="' + this.xfs.length + '">';
   for (const f of this.xfs){
     const L = LOOKS[f.look];
-    const fill = (L && L[3]) ? 2 : 0;
-    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="' + fill +
+    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="0' +
          '" borderId="' + f.border + '" xfId="0" applyFont="1" applyBorder="1"' +
-         (fill ? ' applyFill="1"' : "") +
          (L ? ' applyAlignment="1">' + '<alignment horizontal="' + L[1] +
-              '" vertical="center"' + (L[2] ? ' wrapText="1"' : "") +
-              '/></xf>' : "/>");
+              '" vertical="center"/></xf>' : "/>");
   }
   x += "</cellXfs>";
   return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -246,9 +239,12 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
         sd += '<c r="' + ref + '" s="' + c.s + '"/>';
       /* A number written as inline text is invisible to cellIs rules - the
          allocation sheet's MG colours never fired on "143". A cell marked
-         num ships as a real number, the way the operator's own K cells do. */
-      else if (c.num) sd += '<c r="' + ref + '" s="' + c.s + '"><v>' +
-                            esc(c.v) + '</v></c>';
+         num ships as a real number, the way the operator's own K cells do.
+         Only a real one: <v>NaN</v> is a workbook Excel repairs on opening,
+         so a figure that is not a number is an empty ruled cell instead. */
+      else if (c.num) sd += Number.isFinite(+c.v)
+        ? '<c r="' + ref + '" s="' + c.s + '"><v>' + esc(c.v) + '</v></c>'
+        : '<c r="' + ref + '" s="' + c.s + '"/>';
       else sd += '<c r="' + ref + '" s="' + c.s + '" t="inlineStr"><is>' +
                  '<t xml:space="preserve">' + esc(c.v) + '</t></is></c>';
     }
@@ -424,15 +420,10 @@ function writeWorkbook(sheets, zipFn){
 
 /* ==== unified preview (ex weekend engine) ==== */
 /* ---- on-screen preview, rendered from that same layout ------------------ */
-const PREVIEW_PX = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6].map(function(w){
-  return Math.round(w * 7 + 5);
-});
-/* Looks 7-9 are the allocation sheets' own dress and had no entry here, so
-   the 395 preview emitted "font-size:undefined" and the browser dropped the
-   declaration. Bold Calibri 9, as the workbook has them. */
-const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt",
-                   7:"9pt", 8:"9pt", 9:"9pt"};
-const LOOK_BOLD = {1:true, 3:true, 6:true, 7:true, 8:true, 9:true};
+// Excel's character width -> pixels, the same sum printPlan makes
+const PREVIEW_PX = HOUSE_WIDTHS.map(function(w){ return Math.round(w * 7 + 5); });
+const LOOK_SIZE = {1:"12pt", 2:"14pt", 3:"11pt", 4:"10pt", 5:"10pt", 6:"10pt"};
+const LOOK_BOLD = {1:true, 3:true, 6:true};
 function colNum(s){
   let n = 0;
   for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
@@ -541,11 +532,7 @@ function previewHtml(layout){
     const n = e.units.length;
     for (let i = 0; i < n; i++) {
       const u = e.units[i];
-      let a = i === 0 ? timeA : "";
-      if (i === 1 && e.sub) a = " " + e.sub;
-      if (section === "FOLKESTONE EAST" && i === 1 && e.pub.pl) {
-        a = `Road ${e.pub.pl}`;
-      }
+      const a = i === 0 ? timeA : "";
       const notes = [];
       if (i === 0) {
         if (hc) notes.push(hc);
@@ -593,42 +580,26 @@ function previewHtml(layout){
   const V_EDGES_M = Object.assign({}, V_EDGES,
     { 8: [null, null], 9: ["thin", "medium"] });
 
+  // the day's order: a time before DAY_ROLL belongs to the small hours
+  const tkey = e => {
+    const t = e.time % 1440;
+    return t < DAY_ROLL ? t + 1440 : t;
+  };
   function orderEntries(entries) {
-    return entries.slice().sort((a, b) => {
-      const ka = (a.time % 1440) < 180 ? (a.time % 1440) + 1440 : a.time % 1440;
-      const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
-      return ka - kb;
-    });
+    return entries.slice().sort((a, b) => tkey(a) - tkey(b));
   }
 
   function sectionRows(rows, name, dateLbl, entries, allHc) {
     rows.push({ kind: "hdr", name, date: dateLbl, merge: true });
     const flat = [];
-    const tkey = e => {
-      const t = e.time % 1440;
-      return t < 180 ? t + 1440 : t;
-    };
     /* A double line rules off a break in the day's work: the FIRST break of
-       at least BREAK_GAP, and any later one whose work resumes after 20 00.
-       So a location can carry two - the 12/08 book rules Slade Green under
-       06+36 and again under 18+04, which no single-line rule can draw - but
-       a mid-afternoon lull draws nothing.
-
-       Every double line in the operator's own TUE 18/08 book is one or the
-       other: Ashford under 08 28 and again under 16 00 (22+53 next), Dover
-       under 07 45, Slade Green under 06+31, Tonbridge under 06 16, Victoria
-       under 06 55 and again under 17 40 (23 40 next), West Marina under
-       07+24 (23+07 next). The one break of 180 minutes or more they leave
-       unruled is Tonbridge's 11+32 to 14+40 - neither the first of the day
-       nor the way into the night - and ruling it was what put a line on that
-       page that does not belong there.
-
-       Earlier readings all tried to find THE one break - the biggest gap (a
-       long evening lull outbids the real one, Ashford's 16 00 to 22+53), the
-       gap containing midday (a section that works through the middle of the
-       day breaks earlier), the biggest gap starting before midday (right six
-       times out of seven, and structurally unable to draw Slade Green's
-       second). All were measured against the real books' own border styles.
+       at least BREAK_GAP, and any later one whose work resumes after
+       PM_BREAK. So a location can carry two - the 12/08 book rules Slade
+       Green under 06+36 and again under 18+04 - while a mid-afternoon lull
+       draws nothing: the operator's TUE 18/08 leaves Tonbridge's 11+32 to
+       14+40 unruled, neither the first break of the day nor the way into the
+       night. Every double line in the real books is one or the other, and
+       no single-line reading can draw Slade Green's second.
 
        Grove Park is never ruled: neither real book rules it, and the
        mainline book's two-table layout already does the job. */
@@ -677,6 +648,9 @@ function previewHtml(layout){
     rows.push({ kind: "gap" });
   }
 
+  /* One day's berthing sheet as writer rows (hdr / data / gap), section by
+     section in fullOrder. ram: the Ramsgate book, which is that one
+     section on its own. */
   function layoutSheet(secs, dateLbl, ram, fullOrder, allHc, gpSplit) {
     /* Only the mainline books split Grove Park, and the caller says so.
        Testing the order array by identity never worked: bookOrder returns a
@@ -779,19 +753,24 @@ function rowsToLayout(rowsIn, miles) {
            opts: miles ? { widths: MILES_WIDTHS } : undefined };
 }
 
+/* The section order for a book: the base list with every section the
+   days' entries add slotted in alphabetically (Ramsgate left out where it
+   has a book of its own). secsByDay: day key -> Map(section -> entries). */
 function bookOrder(secsByDay, base, splitRamsgate) {
   const present = new Set();
   for (const d of Object.keys(secsByDay)) {
     const sd = secsByDay[d];
     if (!sd) continue;
-    const names = typeof sd.get === "function" ? Array.from(sd.keys()) : Object.keys(sd);
-    for (const s of names) present.add(s);
+    for (const s of sd.keys()) present.add(s);
   }
   const extras = Array.from(present)
     .filter(s => !base.includes(s) && (!splitRamsgate || s !== "RAMSGATE"));
   return mergeAlpha(base, extras);
 }
 
+/* A weekday berthing book as xlsx bytes: one worksheet per day the labels
+   carry. opts: baseOrder, splitRamsgate, gpSplit, allHeadcodes, miles,
+   zipFn. */
 function writeBooks(secsByDay, dateLabels, ram, opts) {
   opts = opts || {};
   const base = opts.baseOrder || MAIN_ORDER;
@@ -809,13 +788,15 @@ function writeBooks(secsByDay, dateLabels, ram, opts) {
   return writeWorkbook(sheets, opts.zipFn || (f => fflate.zipSync(f, { level: 6 })));
 }
 
+/* The on-screen preview of one weekday sheet - the same layout writeBooks
+   saves for that day. */
 function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
   return previewHtml(rowsToLayout(
     layoutSheet(secs, label, ram, order, allHc, gpSplit), !!miles));
 }
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
-         previewHtml, dayPreviewHtml, StyleBook, buildSheetXml, esc, colName,
+         previewHtml, dayPreviewHtml, esc,
          DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;

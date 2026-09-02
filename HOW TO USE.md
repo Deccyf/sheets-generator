@@ -7,671 +7,511 @@ No training needed — if you can find the reports, the page does the rest.
 
 ## Contents
 
-1. [What this is](#1-what-this-is)
-2. [The two-minute version](#2-the-two-minute-version)
-3. [Opening the page](#3-opening-the-page)
-4. [Getting the paperwork](#4-getting-the-paperwork)
-5. [Building the weekday books](#5-building-the-weekday-books-mon--fri)
-6. [Building the weekend sheets](#6-building-the-weekend-sheets-sat--sun)
-7. [What you get](#7-what-you-get)
-8. [Reading a sheet](#8-reading-a-sheet)
-9. [The review list — always read it](#9-the-review-list--always-read-it)
-10. [The headcode switches](#10-the-headcode-switches)
-10a. [Long platform stands](#10a-long-platform-stands)
-10b. [The stock requirements sheet](#10b-the-stock-requirements-sheet)
-11. [When something looks wrong](#11-when-something-looks-wrong)
-12. [Before the books go out](#12-before-the-books-go-out)
-13. [The diagram analyser — a separate tool](#13-the-diagram-analyser--a-separate-tool)
+- [What this is](#what-this-is)
+- [The two-minute version](#the-two-minute-version)
+- [Opening the page](#opening-the-page)
+- [Getting the paperwork](#getting-the-paperwork)
+- [Building the weekday books](#building-the-weekday-books)
+- [Building the weekend books](#building-the-weekend-books)
+- [What comes back](#what-comes-back)
+- [The options](#the-options)
+- [Looking a book over](#looking-a-book-over)
+- [Saving, and starting again](#saving-and-starting-again)
+- [When something looks wrong](#when-something-looks-wrong)
+- [Before the books go out](#before-the-books-go-out)
+- [The Diagram Analyser](#the-diagram-analyser)
 
 ---
 
-## 1. What this is
+## What this is
 
-`Sheets Generator.html` is one file that turns the planning paperwork into the
-**unit berthing books** — the SHEETS — with every diagram number, AM/PM column,
-flag and note filled in the way the hand-built books do them.
+`Sheets Generator.html` is one file that turns the planning paperwork into
+the **unit berthing books** — the SHEETS — with every diagram number, AM and
+PM column, flag and note filled in the way the hand-built books do them.
 
 You give it:
 
-* **Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports for
-  the date: from Genius as PDFs or CSVs, or from Integrale as its two CSVs.
-* **Saturday and Sunday** — the weekend *diagram prints* Word document, plus any
-  reissues.
+* **Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports
+  for the date: from Genius as PDFs or CSVs, or from Integrale as its two
+  CSVs.
+* **Saturday and Sunday** — the weekend *diagram prints* Word document, plus
+  any reissues.
 
 You get finished Excel workbooks, ready to check and send out.
 
-**Nothing leaves your computer.** The page does all the work in the browser on
-your own machine. No internet connection, no login, no upload, nothing
+A **book** is one of those files. A **sheet** is a page inside it — the
+Monday page of the Mainline book, say. The page uses those two words the
+same way everywhere, and so does this guide.
+
+**Nothing leaves your computer.** The page does all the work in the browser
+on your own machine — no internet connection, no login, no upload, nothing
 installed. You can use it on a train with no signal.
 
 ---
 
-## 2. The two-minute version
+## The two-minute version
 
 1. Double-click **`Sheets Generator.html`**.
-2. Drop the **two weekday reports** on the top panel (or the **weekend prints**
-   on the bottom one). Can't get the files onto the machine? Either panel will
-   take the paperwork pasted in instead — sections
-   [5](#5-building-the-weekday-books-mon--fri) and
-   [6](#6-building-the-weekend-sheets-sat--sun).
-3. The books appear straight away. Click **Look at it** on each and read the
-   **Review** tab.
-4. Click **Save book** on each, or **Save all books (.zip)** for the lot.
+2. Pick **Weekday · Mon – Fri** or **Weekend · Sat & Sun** at the top.
+3. Drop the two weekday reports, or the weekend prints, on the drop zone.
+4. The books appear straight away with their sheets open on screen. Read
+   each book's **Review** tab.
+5. Click **Save book** on each, or **Save all books (.zip)** for the lot.
 
-That's the whole job. The rest of this guide is detail for when you want it.
+That is the whole job. The rest of this guide is detail for when you want it.
 
 ---
 
-## 3. Opening the page
+## Opening the page
 
 Double-click the file. It opens in your browser like any web page.
 
-* Use **Edge, Chrome or Firefox**. If it opens in something older and says the
-  browser is too old, right-click the file → **Open with** → pick Edge.
-* Keep the file wherever suits you — desktop, a network drive, a memory stick.
+* Use **Edge, Chrome or Firefox**. If it opens in something older the page
+  says so — *"This browser is too old to build the books. Right-click the
+  file, choose Open with, and pick Edge, Chrome or Firefox."* — so do that.
+* Keep the file wherever suits you — desktop, network drive, memory stick.
   It works the same from any of them.
-* There is nothing to install and nothing to sign into. If you have been sent a
-  newer copy of the file, just use that instead; there is no update to run.
+* There is nothing to install and nothing to sign into. Sent a newer copy?
+  Just use that one; there is no update to run. The version is in the top
+  right corner and again at the foot of the page — quote it if you report
+  something.
 
-The page has **two panels**, one above the other:
+From the top down, the page has:
 
-| Panel | Sign at the top | What it takes |
-|---|---|---|
-| Top | **Weekdays · Mon – Fri** | the two Diagram reports — Genius (.pdf or .csv) or Integrale (.csv) |
-| Bottom | **Weekend · Sat & Sun** | the weekend diagram prints (.docx / .doc, or the same thing as .txt or .csv) |
+* **How to use this page** — a fold with the quick start, where to find the
+  reports in Genius, how to get the CSVs out of Integrale (with
+  screenshots), what comes back, and what to do if a build looks wrong.
+* The **mode switch** — **Weekday · Mon – Fri** and **Weekend · Sat & Sun**.
+  One panel shows at a time, and the page remembers which you used last.
+* The **drop zone** for that mode, with a *paste instead* link under it for
+  machines that will not let you save the files.
+* The black **status board**, which says what the page has just done and,
+  once books are built, carries **Save all books (.zip)** and **Start over**.
+* The **Options** row (weekday) or the **Headcodes on every line** boxes
+  (weekend).
+* The **book cards** — one per book, each with its sheet open on it.
 
-Drop your files on the matching one. If you put weekend prints on the weekday
-panel by mistake it will tell you, politely, and point you downstairs.
-
-**The two Diagram reports never build a weekend.** Saturday and Sunday books
-come from the prints and nothing else — the CSVs go on the top panel, and a
-weekend-dated pair dropped there says so and points you down here.
+Drop a file on the wrong panel and it is sent to the right one for you:
+*"“WEEKEND PRINTS.docx” is weekend diagram prints — sent to the Weekend
+panel."*
 
 ---
 
-## 4. Getting the paperwork
+## Getting the paperwork
 
-### From Genius (PDF or CSV)
+### From Genius
 
-> ### ⚠ Check this one setting first
+> **Check this one setting first**
 >
-> **File → Session Settings** → make sure **"Show diagram sections on the
-> diagram summary report"** is **ticked**.
->
-> **Without it you only get the AM unit positions. It needs to be ticked to
-> get the PM positions as well.**
->
-> A "diagram section" is a working. With that box unticked, the Diagram Summary
-> gives you one line per diagram instead of one line per working — and the only
-> unit position it carries is where each unit stood at the *start of the day*.
->
-> The books still build. But every formation that comes together later in the
-> day gets printed in its morning order, which is usually not the order the
-> units are standing in. **Grove Park in the afternoon** is the worst of it,
-> because units are re-formed there all day. On 17/08 it put four formations
-> the wrong way round — the 15 12, the 16 41, the 16 50 and the 17 09.
->
-> It can't be fixed afterwards. The Detail report has no Position column at
-> all, so once the Summary has been exported without it, the order is simply
-> gone. The review list will tell you it happened, but it can't tell you the
+> **File › Session Settings** › tick **"Show diagram sections on the diagram
+> summary report"**. It is the one setting that decides what the reports
+> contain. Without it the Summary carries only where each unit stood at the
+> start of the day, so every formation made up later prints in its morning
+> order — Grove Park in the afternoon worst of all — and it cannot be put
+> right afterwards. The Review tab says if it happened; it cannot say the
 > right answer.
->
-> With the box ticked it's right — against the real 12/08 book, 13 out of 13.
 
-1. Make sure a **Control Cycle** exists for the date. If you want the Metro and
-   High Speed books as well, Control Cycles must exist for those fleets too —
-   this is the usual reason a book comes up empty.
-2. Run **Diagrams → Summary Report…** and save it as a **PDF** or a **CSV**.
-3. Run **Diagrams → Detail Report…** and save that the same way.
+1. Make sure a **Control Cycle** exists for the date — and for the Metro and
+   High Speed fleets too, if you want those books. A missing Control Cycle is
+   the usual reason a book comes up empty.
+2. Run **Diagrams › Summary Report…** and save it as a **PDF** or a **CSV**.
+3. Run **Diagrams › Detail Report…** and save that the same way.
 
-Either format is read, and you can mix them — a PDF summary with a CSV detail
+Either format is read, and you can mix them — a PDF Summary with a CSV Detail
 builds fine. Save both from Genius itself; a scan or a photo of a printout
-can't be read.
+cannot be read.
 
-### From Integrale (CSVs)
+### From Integrale
 
 **The Diagram Summary file**
 
 1. Open the **Stock Diagrams** list and click **[GO→]** without selecting a
    filter.
 2. Click **[Export To Excel]**.
-3. Save it in a sensible folder under a sensible name, with **File Type** set to
-   **.csv**, and click **[Save]**.
+3. Save it in a sensible folder under a sensible name, with **File Type** set
+   to **.csv**, and click **[Save]**.
 
-**The Diagram Detail file**
+**The Diagram Detail file** (Integrale calls it *Diagrams*)
 
-1. Open the **Stock Diagrams** list and click **[GO→]** again, still without a
-   filter.
+1. Open the **Stock Diagrams** list and click **[GO→]** again, still without
+   a filter.
 2. Click **Stock Diagram Detail Report** on the toolbar.
-3. The dialog opens at the bottom of the screen — click **[…]** under **Output
-   Path**.
+3. The dialog opens at the bottom of the screen — click **[…]** under
+   **Output Path**.
 4. Pick the same folder as the Summary, give it a sensible name, **File Type
    .csv** again, then **[Save]**.
-5. Click **[OK]** — you may have to scroll down to see it. It takes a minute or
-   so, then tells you it's done.
+5. Click **[OK]** — you may have to scroll down to see it. It takes a minute
+   or so, then tells you it is done.
 
-The same steps, with screenshots, are inside the page itself: look for
-*Getting the two CSVs out of Integrale* in the quick start at the top.
+The same steps, with screenshots, are inside the page: open **How to use
+this page** and look for *Getting the two CSVs out of Integrale*.
 
-> **If you have the choice, use Genius.** Both build, but they are not equal.
-> Integrale gives one position per **diagram**, so any formation that comes
-> together later in the day prints in its morning order — against the real
-> 12/08 book that is 13 formations right out of 13 from Genius, and 0 out of 13
-> from Integrale. What Integrale has over Genius is that it names the allocated
-> units. So: **Genius for the order, Integrale for the unit numbers.** What you
-> can't do is mix the two systems — a Genius Summary with an Integrale Detail
-> won't build, and the page will say so. Mixing a Genius PDF with a Genius CSV
-> is fine.
+### Genius or Integrale?
+
+Both build, but they are not equal. Genius gives a unit's position for each
+working, so afternoon formations come out the right way round; Integrale
+gives one position per diagram, so they print in their morning order. What
+Integrale has over Genius is that it names the allocated units. So: **Genius
+for the order, Integrale for the unit numbers.**
+
+You cannot mix the two systems in one pair. The page says *"The Summary is
+from Genius but the Detail is from Integrale — drop a matching pair: both
+from Genius, or both from Integrale."* A Genius PDF with a Genius CSV is
+fine.
 
 ### The weekend prints
 
-Get the weekend **diagram prints** Word document — `.docx`, or an older `.doc`.
-If **reissued** prints have come out, get those too. Any file with *reissue* or
-*re-issue* in its name is treated as a reissue.
+Get the weekend **diagram prints** Word document — `.docx`, or an older
+`.doc`. If reissued prints have come out, get those too: any file with
+*reissue* or *re-issue* in its name is treated as a reissue.
 
-The panel reads the prints by what is **inside** the file, not by what it is
-called, so the prints saved out of Word work just as well — as plain text
-(`.txt`) or as a **`.csv`**, where the commas are the columns. What it cannot
-read is a Diagram Summary or Diagram Detail export: those are the weekday
-reports and belong on the top panel.
+The page reads the prints by what is inside the file, not what it is called,
+so the prints saved out of Word as plain text (`.txt`) or as a `.csv` work
+just as well. What it cannot read as prints is a Diagram Summary or Diagram
+Detail export — those are weekday reports, and they are sent to the Weekday
+panel.
 
 ---
 
-## 5. Building the weekday books (Mon – Fri)
+## Building the weekday books
 
-1. **Drop both reports** on the top panel — together, or one and then the other.
-   You can also click the panel to browse for them.
-2. The page works out which report is which by reading it, so the order doesn't
-   matter. Drop one and it tells you what it's still waiting for — *"Genius
-   Summary loaded ✓ — now drop the Diagram Detail report."* — and the drop zone
-   itself changes to match.
-3. As soon as it has the pair, the books are built. You'll see
-   *"Books built — look them over below, then save."*
-4. **Look them over.** Click **Look at it** on a book to see the finished sheet
-   on screen, day by day, exactly as it will print. Tabs across the top are the
-   days (MON, TUE…) plus **Review**.
-5. **Save.** Either **Save book** on each one, or **Save all books (.zip)** at
-   the bottom for everything in a single zip.
+1. Pick **Weekday · Mon – Fri** and **drop both reports** on the zone —
+   together, or one and then the other. You can also click the zone to browse
+   for them.
+2. The page works out which report is which by reading it, so the order does
+   not matter. Drop one and it tells you what it is still waiting for —
+   *"Genius Summary loaded ✓ — now drop the Diagram Detail report."* — and
+   the drop zone changes to match.
+3. As soon as it has the pair, the books are built. The status board says
+   *"Books built for MON 03/08 — look them over below, then save."* followed
+   by how much there is to review.
+4. **Look them over.** Every card shows its sheet, open, exactly as it will
+   print. Read the **Review** tab on each.
+5. **Save.** **Save book** on each card, or **Save all books (.zip)** on the
+   status board.
 
-**Several dates at once.** If the reports cover a whole week, you get one tab
-per date inside each workbook — MON to FRI. Dates that fall on a weekend are
-skipped, with a note telling you to use the weekend panel.
+**Several dates at once.** If the reports cover a whole week you get one
+sheet per date inside each book, MON to FRI. A date that falls on a weekend
+is skipped with a note — *"… falls on a weekend — use the weekend prints
+panel"*. Two dates on the same weekday cannot both be built: the second is
+named on the Review tab and left out, so build one week at a time.
 
-**A book with nothing in it** says so — *"No Metro diagrams in these reports —
-nothing to sheet"* — instead of giving you an empty workbook. (The berthing
-books say *"nothing to berth"*.) For Metro and High Speed it reminds you to
-check the Control Cycle.
+**A book with nothing in it** says so instead of giving you an empty
+workbook: *"No Metro diagrams in these reports — nothing to build. (A Metro
+Control Cycle must exist in Genius for its diagrams to appear.)"*
 
-### If you can't get the files onto the machine
+### Pasting the reports instead
 
-Some machines won't let you save the reports anywhere the browser can reach.
-Under the drop zone there's a link — **"Can't get the files onto this machine?
-Paste the data instead"** — which opens two boxes:
+Some machines will not let you save the reports anywhere the browser can
+reach. Click **Can't get the files onto this machine? Paste the reports
+instead**, under the drop zone, and two boxes open.
 
-1. Open the **Diagram Summary** CSV. Notepad or Excel, either reads it.
-2. **Select all** (Ctrl+A), **copy** (Ctrl+C).
-3. Paste it into the **Diagram Summary** box.
-4. Same again with the other report, into the **Diagram Detail** box.
-5. Click **Build from the pasted data**.
+1. Open the **Diagram Summary** CSV in Notepad or Excel.
+2. Select all (**Ctrl+A**), copy (**Ctrl+C**), and paste into the **Diagram
+   Summary** box.
+3. Same again with the other report, into the **Diagram Detail** box.
+4. Click **Build the books from the pasted reports**.
 
 From there it is exactly the same as dropping the files — same checks, same
-books.
+books. Worth knowing:
 
-Worth knowing:
-
-* **You don't have to paste both.** The Diagram Detail is far the bigger of the
-  two — megabytes against a couple of hundred kilobytes — so it's the one a
-  locked-down machine is most likely to baulk at. **Drop that one on the panel
-  as a file and paste the Summary**, or the other way round: whichever report
-  is already loaded gets used, and the page tells you it did. Only a report
-  that is nowhere at all is refused, and it says which one by name.
-* **If the machine won't let you paste at all.** Some block Ctrl+V into a
-  browser, and right-click → Paste with it. Two ways round it, neither of
-  which goes near the clipboard:
-  * **Drag the selection.** Highlight the rows in Excel or Notepad and drag
-    them straight into the box.
-  * **Drag the file.** Drag the CSV itself out of the folder and into the box,
-    and it is read in — you don't even have to open it.
-* **CSV exports only on this panel.** A PDF has no text in it to copy, so the
-  Genius PDFs still have to be dropped as files. (The weekend prints *can* be
-  pasted — see [section 6](#6-building-the-weekend-sheets-sat--sun).)
-* **Excel is fine.** Copying cells out of Excel puts them on the clipboard
-  separated by tabs rather than commas. The page spots that and converts it,
-  so you don't have to think about which program you opened the file in.
-* **The boxes aren't fussy about which is which.** It reads each box to see
-  what's in it. Paste them the wrong way round and it builds anyway, and tells
-  you — *"Read the boxes the other way round"*.
-* **Both boxes, both for the same date.** One on its own gets you *"Paste the
-  Diagram Detail into its box as well"*.
-* **Clear both** empties them.
+* **CSVs only.** A PDF has no text to copy, so Genius PDFs have to be dropped
+  as files.
+* **One at a time is fine.** The Detail is far the bigger file, so drop it on
+  the zone and paste the Summary, or the other way round — *"Built with the
+  Diagram Detail already loaded."* Only a report that is nowhere at all is
+  refused: *"Still needs the Diagram Detail — paste it into the other box, or
+  drop the file on the panel above. Either way round works."*
+* **Can't paste at all?** Drag the selected rows out of Excel or Notepad
+  straight into the box, or drag the CSV file itself into the box — it is
+  read in without being opened.
+* **Excel is fine.** Cells copied out of Excel come across separated by tabs;
+  the page converts them.
+* **The boxes are not fussy about which is which.** Paste them the wrong way
+  round and it builds anyway: *"Read the boxes the other way round — the
+  Summary was in the Detail box."*
+* **Copy from the very top.** A copy that starts part way down gets *"The
+  Diagram Summary box holds a report, but the copy starts part way through a
+  line — select from the very top of the file, first line and all, and copy
+  again."*
+* **Clear both boxes** empties them.
 
 ---
 
-## 6. Building the weekend sheets (Sat & Sun)
+## Building the weekend books
 
-1. **Drop the prints** on the bottom panel.
-2. **Drop the reissues too**, if there are any — with the prints, or in a later
-   drop once you've already built. Reissued diagrams **replace** their originals
-   and new ones are added, then everything is rebuilt. The status line tells you
-   how many were replaced.
-3. **Look each sheet over** and save it, the same as the weekday books.
-4. If a reissue was merged and the prints were a `.docx`, you also get **Save
-   updated prints (.docx)** — the original prints document with the reissued
-   diagrams spliced in, so there is one clean copy to circulate.
+1. Pick **Weekend · Sat & Sun** and **drop the prints** on the zone.
+2. **Drop the reissues too**, if there are any — with the prints, or later
+   once you have already built. Reissued diagrams replace their originals,
+   new ones are added, and everything is rebuilt. The status board says
+   *"Books built for SUN 16/08 — 111 entries. Look them over below, then
+   save. Reissue applied: 3 diagrams replaced, 1 added."*
+3. **Look each book over** and save it, the same as the weekday books.
+4. If a reissue was merged, **Save updated prints (.docx)** appears on the
+   status board — the original prints with the reissued diagrams spliced in,
+   so there is one clean copy to circulate. It is only produced when **both**
+   the prints and the reissue are Word documents. Otherwise the Review tab
+   says *"updated prints document not produced"* and why, and the books still
+   use the merged prints.
 5. **Start over** clears everything and lets you begin again.
 
-A reissue dropped on its own won't build — the page needs the full prints with
-it (or first), and says so. A reissue for a different date is refused too.
+A reissue dropped on its own will not build: *"That looks like a reissue on
+its own — drop the full weekend prints with it (or first) so there is
+something to update."* A reissue for another date is refused too: *"… that
+reissue belongs to a different day."*
 
-### If you can't get the prints onto the machine
+### Pasting the prints instead
 
-Same idea as the weekday panel. Under the weekend drop zone there's **"Can't
-get the prints onto this machine? Paste them instead"**:
+Click **Can't get the prints onto this machine? Paste them instead**:
 
-1. Open the prints in **Word**.
-2. **Ctrl+A**, then **Ctrl+C**.
-3. Paste into the **Diagram prints** box.
-4. If some diagrams have been reissued, paste those into the second box.
-   Otherwise leave it empty.
-5. Click **Build from the pasted prints**.
+1. Open the prints in **Word**, press **Ctrl+A** then **Ctrl+C**.
+2. Paste into the **Diagram prints** box.
+3. If some diagrams were reissued, paste those into the **Reissued prints**
+   box. Otherwise leave it empty.
+4. Click **Build the books from the pasted prints**.
 
-Worth knowing:
+**Paste it as it comes.** The diagram lines are held together by tabs, so do
+not tidy the text or run it through anything that strips them. If the tabs
+are gone the page says so: *"That does not read as the diagram prints — no
+“Diagram:” line with its columns intact. Copy the whole document out of Word,
+and paste it as it comes."*
 
-* **Paste it as it comes.** The diagram lines are held together by **tabs** —
-  `Diagram:` then a tab, then the code. Don't tidy the text up or run it
-  through anything that strips them. If the tabs are gone the page says so
-  rather than building something half-read.
-* **It's the same reader.** The Word file is only a wrapper; the text inside is
-  what the page actually reads. Checked on a real Sunday's prints both ways —
-  dropped as the `.docx` and pasted as text — and every line of every sheet
-  came out the same.
-* **A `.txt` works too**, if it's easier to save the prints out as plain text
-  than to copy them. Drop it like any other file.
-* **No updated prints document from a paste.** That one splices the reissued
-  diagrams back into the original Word file, and a paste hasn't got one. The
-  sheets are still built from the merged prints, and the review list says the
-  updated document wasn't produced.
-* **Start over** empties the boxes as well.
+Dragging the selection, or the file itself, into the box works here too. A
+paste cannot produce the updated prints document — there is no Word file to
+splice the reissue into.
 
 ---
 
-## 7. What you get
+## What comes back
 
-### Weekdays — four roads
+### Weekdays
 
-| Road | File | What's in it |
+| Card | File | What is in it |
 |---|---|---|
-| **SHEETS** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
-| **RAM SHEETS** | `RAM_SHEETS_…xlsx` | Ramsgate's own book, cut from the same day's work |
-| **METRO SHEETS** | `METRO_SHEETS_…xlsx` | The metro book — 465s, 466s, 707s. **Not a berthing sheet** — see below |
-| **HIGH SPEED ALLOCATION SHEETS** | `HS_SHEETS_…xlsx` | The High Speed book — 395s. **Not a berthing sheet** — see below |
+| **Mainline** | `SHEETS_MON-03-08.xlsx` | The mainline book — 375s, 376s, 377s — every section from Ashford to West Marina, with Ramsgate cut out |
+| **Ramsgate** | `RAM_SHEETS_….xlsx` | Ramsgate's own book, cut from the same day's work |
+| **Metro** | `METRO_SHEETS_….xlsx` | The Metro book — 465s, 466s, 707s. **Not a berthing sheet** — see below |
+| **High Speed** | `HS_SHEETS_….xlsx` | The High Speed book — 395s. **Not a berthing sheet** — see below |
+| **Stock requirements** | `STOCK_REQUIREMENTS_….xlsx` | The Kent Coast form, only when that option is ticked |
 
-### Weekends — three books
+### Weekends
 
-### The Metro book is a different document
+**Mainline**, **Ramsgate**, **Metro** and **High Speed** — one book per
+fleet for the day (`SHEETS_SAT_02_AUG.xlsx`, `RAM_SHEETS_SAT_02_AUG.xlsx`,
+`SHEETS_465_466_707_SAT_02_AUG.xlsx`, `SHEETS_395_SAT_02_AUG.xlsx`) — plus
+the updated prints document when a reissue was merged. All four weekend
+books are berthing sheets.
 
-The Metro sheets are the depot's own format, not a berthing sheet, and the tool
-builds them that way:
+File names carry the date, so nothing gets mixed up in a folder.
 
-* **A tab per location** rather than a tab per day, **landscape**, running down
-  as many pages as it needs. Grove Park and Slade Green get an **AM** tab and a
-  **PM** tab.
-* Fourteen columns: `TRAIN I.D.`, `SIDINGS`, `STATION` (or `SIGNAL`),
-  `DESTINATION`, `POS`, `DIAG`, `FORMATION`, `ROAD` (or `PLATFORM` at a
-  terminus), `COMMENTS`, `S`, `R/T`, `L/S`, `ENDS`, `MILES`.
-* The reports fill eight of them. **Six are ruled and left empty** for you to
-  write in — the timing point, the road, comments, S, R/T and L/S — the same
-  ones that are hand-kept in your own workbook.
-* It reads **by Position, lowest first** — 1, 2, 3 straight down each
-  formation. That is not the berthing books' order and is not meant to be.
-* `MILES` is the diagram's own total for the day, off the Detail export. A PDF
-  report carries no mileage, so the column stays blank.
-* `ENDS` is where the diagram finishes and in which half of the day — `GP PM`,
-  `SG AM`.
-* Each sheet ends with **DATED**, **NAME** and **SIGNATURE**, and the
-  *"please e-mail sheets to…"* line, the same as your own.
-* Columns widen to fit what's in them, so nothing clips.
-* On screen it has one **Sheet** tab with a **Location** picker — pick the
-  location you want rather than hunting fourteen tabs. The card is the same
-  size as the others; the sheet is wider than the card, so it scrolls inside
-  its own box. Its
-  **Rules** tab describes this sheet rather than a berthing one. There is no
-  **Unit order** tab on it — that turns a formation round, and this sheet
-  reads by Position — and the **Metro** headcode tick box has gone, because
-  every line of it carries its headcode already.
+### Two weekday books are the depot's own documents
 
-### The High Speed book is the allocations sheet
+On weekdays the Metro and High Speed books are not berthing sheets at all.
+They are the documents the depot already keeps, filled in from the reports:
 
-Same idea as Metro — the 395 book is your own **Class 395 Allocations Sheet**,
-not a berthing sheet:
+* The **Metro** book is a sheet per location rather than per day, landscape,
+  fourteen columns, reading by Position — 1, 2, 3 straight down each
+  formation. The reports fill eight columns; the other six (the timing
+  point, the road, comments, S, R/T and L/S) are ruled and left empty for
+  you to write in. On screen it has one **Sheet** tab with a **Location**
+  picker.
+* The **High Speed** book is your **Class 395 Allocations Sheet**: a sheet
+  per day, a block per depot (Ashford, Faversham, Margate, Ramsgate) with
+  last night's arrivals on the left and today's allocations on the right,
+  your berth codes (`ASH`, `RAM`, `FAV`), your drop-downs, the mileage
+  column coloured green under 500 miles and red at 500 and over, and the
+  route notes on the diagram cells. The arrivals side fills from the day
+  before, so a Monday-to-Friday pair has it on every day but the Monday. On
+  screen it has one **Allocations** tab with a **Day** picker.
 
-* **A tab per day**, named the way yours are — `Tue 18 08` — landscape.
-* A **block per depot** down it (Ashford, Faversham, Margate, Ramsgate), with
-  **last night's arrivals on the left** and **today's allocations on the
-  right**. A depot with nothing that day is left off, the same as yours.
-* The arrivals side fills from the day before, so drop a **Monday-to-Friday**
-  pair and every day but the Monday has it. Drop one day on its own and the
-  heading says *"no previous day loaded"* rather than leaving you guessing.
-* Timed off the **first move**, as yours is, and using **your** berth codes —
-  `ASH`, `RAM`, `FAV`.
-* `N/M M/O`, `FP/RP`, `CET DUE`, `ARRIVES` and the notes are ruled and empty
-  for you to fill in.
-* `MG` is the miles **that working** runs, not the diagram's total for the
-  day — so a diagram that comes out twice has a figure for each time. It is
-  written as a number, so your own colouring works on it: **green under 500
-  miles, red at 500 and over**, and it re-colours if you type a different
-  figure in.
-* The **drop-downs** are there on the cells that had them — the fleet list on
-  both unit columns, 6 or 12, the CET mark, and FP/RP.
-* The **DIAGRAM cells carry the route notes** as comments, same as yours —
-  hover to read one. *"Not over high level"* is worked out from the diagram
-  itself: a working that runs **between Ebbsfleet and Gravesend**, either way
-  round, goes over the high level, and one that does not gets the note. It is
-  per working, so a diagram can position out over the high level first thing
-  and still be marked on its later workings, which is how your own sheet has
-  it. *"Avoids North Kent"* is not something the reports can show, so it
-  comes from a standing list of the workings that carry it.
-* On screen it has one **Allocations** tab with a **Day** picker, no **Unit
-  order** tab, and its **Rules** tab describes this sheet rather than a
-  berthing one.
-
-One workbook per fleet for the day: **Mainline**, **Metro**, **High Speed**,
-plus the updated prints document when a reissue has been merged.
-
-The file names carry the date, so `SHEETS_MON-03-08.xlsx` and
-`SHEETS_SAT_02_AUG.xlsx` never get mixed up in a folder.
+Both are timed off the first time the unit moves, as your own copies are.
+Neither has a **Unit order** tab — there is no formation order on them to
+turn round — and each one's **Rules** tab describes that document rather
+than a berthing sheet.
 
 ---
 
-## 8. Reading a sheet
+## The options
 
-Each section — ASHFORD, GILLINGHAM, SLADE GREEN and so on — is a ruled box with
-the section name and the date at the top. Inside it, one **entry** per
-departure, and one row per unit.
+On the weekday panel an **Options** row sits under the status board once
+books are built, with a **What each does** link beside it. Every option
+rebuilds the books as you tick it — *"Books rebuilt with the mileage column
+— save them again if needed."* — and all of them are remembered on the
+computer you ticked them on.
 
-Which unit is listed first comes from the diagram's **Position** in the
-Summary. Broadly the mainline book puts the lowest Position first and the metro
-and High Speed books the highest — but that isn't a rule without exceptions. A
-few sections and some individual sidings run the other way, and known formations
-can be pinned outright. Those are all written down in the tables rather than
-worked out on the fly, so they don't drift. Where two units share a Position —
-they started the day in different formations — the reports genuinely can't say
-which way round they go, and the entry is named on the review list for you to
-check.
+**Headcodes on every line.** Only Gillingham, Victoria and Grove Park carry a
+headcode as standard. Ticked, every line of the Mainline and Ramsgate books
+gets one — empty moves and platform starters alike. Metro and High Speed
+already carry theirs.
 
-**If an order comes out wrong, say so.** A formation can be pinned for one
-departure, for a whole section, or wherever it appears in the week, so the same
-correction only has to be made once. Report the section, the time and the
-diagram numbers.
+**Count long platform stands.** A unit that sits in a platform for an hour
+or more has arguably berthed there. If the report shunts it on the spot it
+always gets a line. If not, it is named on the Review tab under *Platform
+stands* and left off — tick this to put those on the sheets too. Only places
+the books print a page for are considered; a unit standing at St Pancras is
+not a berthing question.
 
-| Column | What it says | Example |
-|---|---|---|
-| **A** | Time and where it's going | `06 45 CHX` |
-| **B** | What the unit is — cars and class | `4 375` |
-| **C** | The three-digit diagram number | `117` |
-| **D** | **AM** — the unit's next berth during the day | `DFU` |
-| **E** | **PM** — where it stands at the end of its work | `SG` |
-| **F** | Unit number, where the report names one — otherwise ruled and empty for you to write in | `465012` |
-| **G** | Flag — `SPLITS` or `SPLITS PM` | |
-| **H** | Notes — sidings, attachments, end markers, headcodes | `EAST SIDINGS` |
+**Mileage column.** Adds MILES to the Mainline and Ramsgate books: the miles
+a unit runs from that departure until it next berths, the figure the 395
+sheet calls MG. It is blank on a build from PDFs, which carry no mileage.
 
-**Times.** A plain space is a passenger working: `06 45`. A **`+`** means empty
-stock: `05+32`. That's the usual house convention.
+**Stock requirements form.** Going into a Monday, or the day after a bank
+holiday, planning fills in the Kent Coast stock requirements form: how many
+of each unit type must be standing at each location when the morning opens.
+Ticked, the form appears on its own card — *"Stock requirements form added —
+it is on its own card below."* — with every diagram counted at the location
+it starts the day from. Hastings is folded into West Marina, as the form
+itself prints it, and POSITION and SEAT LOSS are left for you. **Save form**
+gives you `STOCK_REQUIREMENTS_….xlsx`, and it rides in the save-all zip too.
 
-**Reading a row.** `06 45 CHX │ 4 375 │ 117 │ DFU │ SG` says: the 06:45 to
-Charing Cross, a four-car 375 on diagram 117, which goes to Dartford Up Sidings
-next and finishes the day at Slade Green.
-
-A diagram that goes out a **third** time has two PM berths, and the column
-means a different one on each row: the rows before its last journey read the
-berth it is sitting on, and the row for that journey reads where it finishes.
-Diagram 103 works out of Grove Park, stands at Ashford east sidings from 20 03,
-then runs empty to the Folkestone train roads — so its Ashford 05 42 and Grove
-Park 16+04 rows read `AFE`, and only its 22+53 row reads `FKE`.
-
-**SPLITS** means the units on this departure part company during the day.
-**SPLITS PM** means they only part in the evening — the AM and PM columns tell
-you who ends up where.
-
-**Notes** carry the house annotations: which siding a unit comes off
-(`EAST SIDINGS`, `UP SIDINGS`, `JUB`…), `ATTACHMENT` when another unit joins the
-departure, the end markers where the ends of a train are named for the way out
-(`FKE END` / `CBE END` at Dover Priory, and so on), and the headcode in the
-sections that quote it.
-
-**A few things are left off on purpose.** Empty moves into a berth with no
-passenger work afterwards aren't listed — the same as the hand-built sheets. So
-is a unit that stands somewhere for the last time in the day and then runs
-empty to a depot without ever being shunted where it stood: that is a wait on
-the way home, and the line belongs to the depot it is going to. Any that are
-left off are **named on the review list**, so nothing disappears quietly.
-
-**Metro and High Speed timings.** Both are timed off the **first time the unit
-moves**, because both of those sheets are written that way. A unit that runs
-empty out of the sidings at 05+52 to form the 06 00 off the platform is listed
-at **05+52**, with the empty move's headcode, still showing where the service
-it forms is going. A train that starts in the platform keeps its platform time,
-because that *is* its first move. The Mainline book is timed off the booked departure
-— except at **Grove Park** and **Slade Green**, where it too is the moment the
-unit first moves off the berth. The **weekend** High Speed book keeps the
-platform time; it is a berthing sheet rather than the allocations sheet.
-
-**Double lines** rule off the breaks in the day's work: the **first** break of
-**three hours or more**, and any later one where the work picks up **after
-20:00**. So a page can carry two — Slade Green is ruled under its 06+36 and
-again under its 18+04 — but a lull in the middle of the afternoon draws
-nothing: Tonbridge stands from 11+32 to 14+40 and is left unruled. A page that
-is busy right through gets none, and Grove Park is never ruled. The weekend
-sheets follow the same rule.
-
-**Printing.** The books come out ready to print — A4 portrait, scaled so all
-eight columns land on one page across, with a page break before any section
-that would otherwise be split in half. Open **Page Break Preview** in Excel if
-you want to see where the pages fall before you send it to the printer.
+On the weekend panel the row is **Headcodes on every line** with a box per
+book — **Mainline & Ramsgate**, **Metro**, **High Speed** — because all four
+weekend books are berthing sheets.
 
 ---
 
-## 9. The review list — always read it
+## Looking a book over
 
-Every build produces a **review list**: everything the rules had to decide for
-themselves, named openly rather than quietly guessed at. It's the **Review** tab
-on each book, and each book only shows its own fleet's items.
+Each card is a road: **Road 1 Mainline**, **Road 2 Ramsgate**, and so on.
+Under the name it says how much is in the book — *132 entries · 13
+sections* — then a row of chips summarising the Review tab: *Nothing to
+review*, or *9 to review · 4 left off · 3 order checks*. Then the buttons —
+**Close preview** and **Save book** — and the preview itself, open on its
+first tab.
 
-The status line tells you how many there are, and the line above the buttons on
-each road says either *"Nothing flagged for review"* or *"3 review items — read
-before the sheets go out"*.
+The tabs are the days (**MON**, **TUE**…) for a berthing book, or **Sheet**
+and **Allocations** for the two depot documents, then **Review**, **Unit
+order** and **Rules**. Weekend cards have **Sheet** and **Review**. Close a
+preview and it stays closed through a rebuild; the page keeps your place.
 
-Typical items:
+### The Review tab
 
-* **A location the section list doesn't know.** It gets its own heading in
-  alphabetical order and a note. Check it's in the right place — and say if it
-  ought to live under an existing section, so the tables can be corrected.
-* **Empty moves left off.** Each suppressed move is named with its diagram
-  number, so you can confirm it should be off. Only moves that stay inside the
-  section are dropped — an empty run that takes a unit to another depot for the
-  night is printed, because the section it leaves has to show it going.
-* **A unit order pinned somewhere but not here.** Where a formation's order has
-  been written down for one departure and this one isn't covered, it says so and
-  tells you where the order *is* recorded. Worth a look: it usually means either
-  this one needs pinning too, or the working has moved and the existing pin no
-  longer reaches it.
-* **A diagram whose page didn't read cleanly**, or a date with no matching
-  detail report.
-* **An end marker with no rule to fit.** Rather than guess which end leads, the
-  tool says so and leaves it for you.
-* **The Folkestone East Train Roads arrivals**, worked out last-in-first-out
-  from tonight's arrivals. Always double-check these against the ACWN.
-A clean review list is normal on a straightforward day. A long one isn't a
-fault — it's the tool showing its working.
+Every build produces a review list: everything the rules had to decide for
+themselves, named openly rather than quietly guessed at. Each book shows
+only its own items, grouped by kind:
 
----
+* **Plan changed since the book was saved** — see below.
+* **Left off the sheet** — empty moves into a berth with no passenger work
+  afterwards are left off, the same as the hand-built sheets, and so is a
+  wait on the way home to a depot. Each one is named with its diagram
+  number: *"Left off — ASHFORD 05+32 (116): …"*.
+* **Platform stands** — the long stands in a platform that were, or were
+  not, counted as a berthing.
+* **Reissue** — what a reissue replaced and added (weekends).
+* **Order to check** — formations the reports cannot settle: two units on
+  one Position, a formation pinned somewhere but not here, an end marker with
+  no rule to fit, and the Folkestone East Train Roads arrivals worked out
+  from tonight's arrivals — always check those against the ACWN.
+* **Locations and codes** — a place the section list does not know (it gets
+  its own heading, in alphabetical order) or a name the page had to read as
+  something else.
+* **Notes** — everything else: a diagram in one report but not the other, a
+  Summary exported without the Genius setting, a date left out.
 
-## 10. The headcode switches
+A clean list is normal on a straightforward day. A long one is not a fault —
+it is the page showing its working.
 
-Once a panel has built something, a box marked **HEADCODES** appears with it.
-It only shows up alongside books, because ticking one rebuilds them.
+### The Unit order tab
 
-* On the **weekday** panel there is one tick-box, **Mainline**, which covers
-  the mainline and Ramsgate books. The Metro and High Speed sheets are not on
-  it: every line of both carries its headcode already, so a tick-box for
-  either would change nothing.
-* On the **weekend** panel there are three — **Mainline**, **Metro** and
-  **High Speed** — because all three of those are berthing sheets.
+Berthing books only. It lists every formation of two or more units the book
+printed, in the order it printed them, and says what decided it — *the
+position numbers in the report*, *the corrections list*, or *you, on this
+computer*. Hold it against the real book. If one is the wrong way round,
+press **Reverse**: the formation turns round and the books rebuild straight
+away — *"Books rebuilt with your order correction — save them again if
+needed."* **Undo** puts it back, and **Undo all my corrections** clears the
+lot.
 
-* **Left off** (how they start) each book follows the house rules — headcodes
-  appear only in the sections that have always quoted them: Gillingham, Victoria
-  and Grove Park.
-* **Ticked**, that book puts **every** headcode in the notes column — empty moves
-  and platform starters alike.
+Corrections are kept on this computer only, and stay in force for every book
+built here until you undo them. A second table on the tab, **Order
+corrections made on this computer**, lists them in words — location, time,
+the diagrams running together, the order they print. **Tell us what it
+says**, and the correction is built into the tool for everybody.
 
-On the weekend panel they're per book, so you can have all the headcodes on
-the Metro sheets and the usual rules on the Mainline.
+### The Rules tab
 
-**You can change your mind after building.** Tick or untick and the books are
-rebuilt on the spot — you don't have to drop the files again. Just remember to
-save them again afterwards; it'll remind you.
+Every rule the book was built with, written out in plain English from the
+tables that ran: which movements get a line, which unit prints first, how
+times and the double lines across the page work, end markers, routes,
+headcodes, the words in the notes column, and what the tool will not decide
+for you. Change an option and rebuild, and the tab changes with it. The same
+rulebook, for circulating, is **BERTHING SHEET RULES.html** beside the tool.
 
----
+### "The plan has changed since the book was saved"
 
-## 10a. Long platform stands
-
-Under the **HEADCODES** box, once a panel has built something, there is a
-second box: **Platform stands**.
-
-A unit that sits in a platform for an hour or more has arguably berthed
-there. The tool handles it in three ways:
-
-* If the report **shunts the unit on the spot** while it stands, that is the
-  planners saying it was put away — it gets a line, always. (London Victoria
-  22 40 on Sunday 17/08 is one: the unit stands an hour and goes at 23 40 to
-  Meopham.)
-* If not, the stand is **named on the review list** and left off the sheet.
-* Tick **Count long platform stands** to put those on the sheets too. The
-  books rebuild on the spot; save them again afterwards.
-
-Only places the books print a page for are considered — a unit standing at
-St Pancras or Swanley is not a berthing question.
+When you save a book the page remembers what was in it — on this computer;
+nothing leaves it. Build the same date again later and anything that no
+longer matches is listed first on the Review tab: a working gone from the
+plan, a new one, a formation or berth changed. The status board says so too
+— *"The plan has changed since a book for this date was saved on this
+computer — the changes are listed first on each Review tab."* An unchanged
+re-export stays quiet. The last eight saved dates are kept.
 
 ---
 
-## 10b. The stock requirements sheet
+## Saving, and starting again
 
-Going into a Monday, or the day after a bank holiday, planning fills in the
-Kent Coast stock requirements form: how many of each unit type must be
-standing at each location when the morning opens. The tool can fill it in
-for you.
+* **Save book** on a card saves that one book: *"Saved SHEETS_MON-03-08.xlsx
+  — look in this computer's Downloads folder."*
+* **Save all books (.zip)** on the status board saves every book that was
+  built, in one zip file — a folder squashed into a single file; double-click
+  it and the books are inside. *"Saved SHEETS_BOOKS_MON-03-08.zip — 4 books
+  in it, in this computer's Downloads folder."*
+* **Save updated prints (.docx)** — weekends, after a reissue — saves the
+  spliced prints.
+* **Start over** clears the books, the loaded files and the paste boxes:
+  *"Cleared — drop this day's two reports to start again."* Your options and
+  order corrections are kept.
 
-Tick **Build the stock requirements sheet** under the books and it appears
-on its own card — the same form you keep as a blank, with the counts filled
-in from the day you have just built: every diagram is counted at the
-location it starts the day from. Hastings is folded into West
-Marina, exactly as the form prints it, and **POSITION** and **SEAT LOSS**
-are left for you — they are your call, not the plan's.
-
-**Save form** gives you `STOCK_REQUIREMENTS_<date>.xlsx`, and it also rides
-in the save-all zip. Leave the box unticked on a normal day and nothing
-changes at all.
+If you tick an option or press Reverse after saving, save again — the status
+board reminds you.
 
 ---
 
-## 11. When something looks wrong
+## When something looks wrong
 
 | What you see | What it means |
 |---|---|
-| *"No Diagram Summary rows found"* / *"No Detail itineraries found"* | One of the two reports is missing or is the wrong kind. Both are needed, for the same date. |
-| *"The Summary is from Genius but the Detail is from Integrale"* | The pair have to come from the same system. Two PDFs, or two CSVs. |
-| *"…doesn't look like a Genius report"* | The PDF's text couldn't be read — make sure it was saved from Genius, not scanned or photographed. |
-| *"…doesn't look like an Integrale export"* | The CSV isn't one of the two Integrale exports. Check you exported the Stock Diagrams list and the Stock Diagram Detail Report. |
-| A road says *"nothing to berth"* or *"nothing to sheet"* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
-| A location has its own heading | A unit berthed somewhere the section list has never heard of. It's on the review list; check where it should live. |
-| A train seems to be missing | Read the review list first — empty moves into a berth are left off deliberately and each one is named. If it isn't there, note the diagram number and report it. |
-| Two units are the wrong way round | Check the review list for *"AM unit positions only"* first — if it's there, the Summary was exported without **File → Session Settings → "Show diagram sections on the diagram summary report"**, and every afternoon formation is in its morning order. Re-export with it ticked. Otherwise: if the review list flagged that entry, the reports couldn't settle it; if it didn't, the order came from the tables and is wrong there — report the section, time and diagram numbers and it can be pinned. |
-| *"This Diagram Summary carries the AM unit positions only"* | The Genius setting above wasn't ticked. The books are built, but the afternoon unit order can't be trusted and can't be recovered from what was exported. |
-| *"That file is damaged or isn't a Word document"* | Open the prints in Word and re-save as `.docx`, then drop the new file. |
-| *"That looks like a reissue on its own"* | Drop the full weekly prints with it, or first. |
-| *"…belongs to a different day"* | The reissue's date doesn't match the prints it was dropped with. |
-| The page says the browser is too old | Right-click the file → **Open with** → Edge, Chrome or Firefox. |
-| Nothing happens when you drop a file | Click the panel instead and browse for the file — some setups block drag-and-drop. |
+| *"No Diagram Summary rows found — drop the Genius Diagram Summary report as well."* or *"No Diagram Detail itineraries found — …"* | One of the two reports is missing or is the wrong kind. Both are needed, for the same date. |
+| *"The Summary is from Genius but the Detail is from Integrale — …"* | The pair must come from the same system. |
+| *"The two reports are for different dates — …"* | The Summary and the Detail were run for different days. |
+| *"… doesn't look like a Genius report — …"* or *"… couldn't be read as a PDF — …"* | The PDF's text could not be read. Save it again from Genius — not a scan or a photo. |
+| *"That CSV doesn't look like the Integrale Diagram Summary export. It is missing the … column"* | An Integrale export run without a column the page needs. Add the named columns and export again. |
+| *"This panel doesn't read spreadsheets. …"* | An Excel file was dropped. Export the reports as CSV or PDF instead. |
+| A card says *"No … diagrams in these reports — nothing to build."* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
+| *"This Diagram Summary was exported without “Show diagram sections” ticked …"* on the Review tab | The Genius setting was off. The books are built, but afternoon formations may be the wrong way round and this export cannot say which. Re-export with it ticked, or put them right with Reverse. |
+| Two units are the wrong way round | Look for the note above first. Otherwise, if the entry is under *Order to check*, the reports could not settle it; if it is not, the order came from the tables. Either way, press **Reverse** on the Unit order tab and tell us. |
+| A location has its own heading | A unit berthed somewhere the section list has never heard of. It is under *Locations and codes* — check where it should live. |
+| A train seems to be missing | Read *Left off the sheet* first. If it is not there, note the diagram number and report it. |
+| *"That file is damaged or isn't a Word document. Try re-saving the prints from Word as .docx."* | Open the prints in Word, save as .docx, drop the new file. |
+| *"That isn't the diagram prints. …"* | A text or CSV save whose columns were lost. Save it again, or paste it from Word. |
+| *"That looks like a reissue on its own — …"* | Drop the full weekend prints with it, or first. |
+| *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
+| *"Build failed: … Check the files and drop them again."* | Something in the files could not be read. Books from an earlier drop are cleared, so nothing is saved by mistake. |
+| *"This browser blocks local storage, …"* | The page still builds, but corrections, options and the saved-book memory will not survive closing it. |
+| Nothing happens when you drop a file | Click the zone and browse for the file instead — some setups block drag-and-drop. |
 
 ---
 
-## 12. Before the books go out
+## Before the books go out
 
-* **Read the review list.** Every time. It exists to be read.
-* **Check the sheets against the ACWNs** — especially the Folkestone East Train
-  Roads notes, which are worked out from last night's arrivals and flagged for
-  exactly this reason.
-* **Check the date on the tab** matches the day you meant to build.
-* Remember this is a **drafting tool**. It applies the house rules faithfully and
-  tells you where it had to make a call — but the books are yours, and a human
-  signs them off.
+* **Read the Review tab.** Every time. It exists to be read.
+* **Check the sheets against the ACWNs** — especially the Folkestone East
+  Train Roads notes, which are worked out from last night's arrivals and
+  flagged for exactly this reason.
+* **Check the date on the sheet** matches the day you meant to build.
+* Remember this is a **drafting tool**. It applies the house rules faithfully
+  and tells you where it had to make a call — but the books are yours, and a
+  human signs them off.
 
 ---
 
-## 13. The diagram analyser — a separate tool
+## The Diagram Analyser
 
-`Diagram Analyser.html` is a **second page**, opened the same way as this one.
-It reads the *same* diagram print books, but instead of building berthing
-sheets it answers the questions maintenance planning keeps asking.
-
-Drop **all** the print books on it at once — FSX, FO, SO and Sun together.
-Each fleet gets a tab across the top. What comes back, for whichever fleet you
-have picked:
-
-| Section | What it tells you |
-| --- | --- |
-| **Arrivals into &lt;depot&gt;** | How many diagrams **finish** at the home depot, split morning, afternoon and after midnight. Platform, sidings and depot all count as the one place — the exact road is on the hover |
-| **Home before 20:00** | Which diagrams **finish** at the home depot early enough to be worked on that evening. A unit that calls in and goes out again the same day does not count — a long call shows under attendable stands instead |
-| **Diagrams a restricted unit can work** | The diagrams that stay coupled the whole day — the only ones you can put an **MO** unit on |
-| **How long back to &lt;depot&gt;** | A unit is standing at West Marina — how many days before the diagrams get it back to Ramsgate for its exam? One line per place a unit can be left, with the run of diagrams that gets it home. Each is measured from the nights the plan actually leaves a unit there, and those nights are shown. The old week-by-week balance is a drill-down underneath |
-| **Mileage per unit** | What one *unit* covers a day, a week and a year — split by sub-fleet, because a 375/6 works harder than a 375/3. Also the units the plan needs, and the whole-fleet annual total |
-| **Where a unit stands long enough to be attended** | Every place a unit sits still for two hours or more during the day — where MSE or MIST can actually get to it |
-| **Getting units to &lt;depot&gt;** | Only shows when the home depot is off this network, like Selhurst. When a unit is standing at the handover point — Victoria — in time for a trip, split into the ones that have finished for the day (free to take) and the ones parked mid-diagram (taking one leaves the rest of its diagram to cover) |
-| **What the place codes mean** | Every place code the fleet touches, spelt out — `Ram` is Ramsgate Platform, `RamsNewSd` is Ramsgate New Sidings, `Dover PSd` is Dover Priory Sidings. The prints only have nine characters for a name, which is why one station turns up as several codes. Signals and shunt points are listed separately, since a unit only draws up to one on its way somewhere else. Any road the tool has no name for yet is shown as such — tell us and it gets added |
-| **Where a restricted unit cannot be contained** | The places where every diagram leaves a unit on its own at some point, so a restricted unit standing there has nothing it can work |
-
-Place codes in the tables carry their full name on a hover, so you do not
-have to keep the list open.
-
-Every section leads with the answer; **How this is worked out** underneath it
-opens up the reasoning if you want it. The row of buttons under the fleet tabs
-jumps straight to a section.
-
-**Save this fleet as a spreadsheet** puts the lot into Excel, one tab per
-section, with the filters already on. **Save every fleet** does all of them in
-one workbook. **Start over**, next to the message under the drop panel, clears
-the prints and the report so you can begin again with a different set of
-books — your depot settings are kept.
-
-### A word about "MO"
-
-**MO means two different things**, and the tool keeps them apart:
-
-* On the print, **MO** is a *day code* — **Mondays Only**. The tool always
-  writes day codes out in full (`Mon only`, `Mon–Thu`) so this can never be
-  misread.
-* In the depot, an **MO unit** is a *restricted* unit that can't run on its
-  own. Everywhere the analyser says "restricted unit", that is what it means.
-
-### Set your depots first
-
-The prints don't say which depot owns a fleet, so the **Depots** panel near
-the top lets you set it: a home depot, plus everywhere else the fleet can be
-repaired. Tick Ramsgate and Slade Green for the 376s, for instance, and both
-count as somewhere a 376 can be worked on. Your choices are remembered on that
-computer, and everything below redraws as soon as you change one.
-
-**If the home depot is off this network** — Selhurst for the 377s — the card
-also asks when a unit has to be at the handover point for a trip to be made.
-The 377s default to Victoria, morning by 11:00 and evening by 21:00; change
-either and everything redraws.
-
-> As with the sheets, nothing leaves the computer. It reads the prints in the
-> page and writes the spreadsheet in the page.
-
-This page has its own version number in its footer, separate from the Sheets
-Generator's — they are two different files. If you report something, say
-which one and quote the version off the bottom of the page.
+`Diagram Analyser.html` is a separate tool: it reads the same diagram prints
+but answers maintenance planning's questions — arrivals home, mileage per
+unit, how long back to the depot — rather than building berthing books, and
+it carries its own version number in its footer.
 
 ---
 

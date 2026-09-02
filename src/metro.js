@@ -19,9 +19,9 @@
 "use strict";
 const SHEETS_METRO = (() => {
 const X = SHEETS_XLSX;
-const { norm } = SHEETS_CORE;
+const { fmtTime } = SHEETS_CORE;
 const { DEST_TLC } = SHEETS_DATA;
-const PM_BREAK = SHEETS_RULEBOOK.PM_BREAK;
+const { PM_BREAK, DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* Column widths, and the two headings that change with the location: a
    terminus has PLATFORMs where a depot has ROADs, and the two big depots
@@ -31,6 +31,7 @@ const WIDTHS = [11.3, 11, 16.3, 17.9, 8.1, 14, 14.9, 9.1, 16.1, 2.9, 2.9, 3.7, 1
 const SIGNAL_AT = new Set(["GROVE PARK", "SLADE GREEN"]);
 const PLATFORM_AT = new Set(["CANNON STREET", "CHARING CROSS", "VICTORIA",
                              "LONDON BRIDGE", "BLACKFRIARS"]);
+/* The fourteen column headings for a location, in the workbook's own order. */
 function headings(sec) {
   return ["TRAIN I.D.", "SIDINGS", SIGNAL_AT.has(sec) ? "SIGNAL" : "STATION",
           "DESTINATION", "POS", "DIAG", "FORMATION",
@@ -52,15 +53,12 @@ const NAME_OF = (() => {
 })();
 const destName = code => NAME_OF[String(code || "").toUpperCase()] || code || "";
 
-const hhmm = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
-  (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
-
 /* Which sheet an entry belongs on. Grove Park and Slade Green are split by
    the time of day, the way the real workbook splits them; everywhere else
    is one sheet. */
 function sheetFor(sec, e) {
   if (!SIGNAL_AT.has(sec)) return sec;
-  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < 180 ? " PM" : " AM");
+  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < DAY_ROLL ? " PM" : " AM");
 }
 
 /* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
@@ -69,6 +67,12 @@ const EMAIL_LINE =
   "PLEASE E-MAIL SHEETS TO .Engineering Stock Maintenance Controllers Metro";
 /* dd/mm/yy as the sheets write it: DATED 18.05.26 */
 const dated = d => String(d || "").replace(/\//g, ".");
+/* A figure the reports left blank, or could not read, is not a number:
+   NaN written into a number cell is a workbook Excel repairs on opening. */
+const finite = v => v != null && v !== "" && Number.isFinite(+v);
+/* One location's worksheet: the cell layout writeWorkbook and previewHtml
+   both read. name carries its AM/PM suffix; dateLbl is the banner ("MON
+   03/08"), dateFull the sign-off's dd/mm/yy. */
 function layoutSection(name, entries, dateLbl, dateFull) {
   const issued = dated(dateFull);
   const cells = [], merges = [], rowHeights = new Map();
@@ -95,8 +99,8 @@ function layoutSection(name, entries, dateLbl, dateFull) {
   rowHeights.set(r, 18); r++;
 
   const sorted = entries.slice().sort((a, b) => {
-    const ka = (a.time % 1440) < 180 ? (a.time % 1440) + 1440 : a.time % 1440;
-    const kb = (b.time % 1440) < 180 ? (b.time % 1440) + 1440 : b.time % 1440;
+    const ka = (a.time % 1440) < DAY_ROLL ? (a.time % 1440) + 1440 : a.time % 1440;
+    const kb = (b.time % 1440) < DAY_ROLL ? (b.time % 1440) + 1440 : b.time % 1440;
     return ka - kb;
   });
   const blockRows = [];
@@ -109,7 +113,7 @@ function layoutSection(name, entries, dateLbl, dateFull) {
        front one first. The operator's own workbook numbers the POS column
        1, 2, 3 straight down every formation on it. */
     const units = e.units.slice().sort((a, b) => {
-      const pa = a.pos == null ? 99 : a.pos, pb = b.pos == null ? 99 : b.pos;
+      const pa = finite(a.pos) ? +a.pos : 99, pb = finite(b.pos) ? +b.pos : 99;
       return pa - pb || (a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0);
     });
     units.forEach((u, i) => {
@@ -121,17 +125,17 @@ function layoutSection(name, entries, dateLbl, dateFull) {
             false, num);
       // written once, against the top row of the formation
       col(1, i === 0 ? (e.headcode || "") : "");
-      col(2, i === 0 ? hhmm(e) : "");
+      col(2, i === 0 ? fmtTime(e.time, e.time_kind) : "");
       col(3, "");                                   // STATION / SIGNAL: by hand
       col(4, i === 0 ? destName(e.dest) : "");
-      col(5, u.pos == null ? "" : u.pos, undefined, u.pos != null);
+      col(5, finite(u.pos) ? +u.pos : "", undefined, finite(u.pos));
       col(6, (u.code || "") + u.diag);
       col(7, u.unit || "");                         // the allocated unit
       col(8, "");                                   // ROAD / PLATFORM: by hand
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
       col(13, u.ends || "");
-      col(14, u.miles == null ? "" : Math.round(u.miles), 5, u.miles != null);
+      col(14, finite(u.miles) ? Math.round(+u.miles) : "", 5, finite(u.miles));
       rowHeights.set(r, 18);
       r++;
     });
@@ -181,40 +185,67 @@ function fitWidths(cells) {
 }
 
 /* One workbook, one worksheet per location, in the section order the book
-   already uses with the AM/PM splits slotted in where they fall. */
+   already uses with the AM/PM splits slotted in where they fall.
+
+   One day's reports give one sheet per location, named for the location.
+   A pair covering several days gives one per location PER DAY - "DARTFORD
+   MON", "DARTFORD TUE" - each dated its own day. Folding every day into
+   the one tab, dated day one, listed Tuesday's 05+00 under Monday's date
+   as if the unit left twice. The sheets array carries a `notes` list
+   saying so for the review list. */
 function sheetsFor(secsByDay, dateLabels, order, dates) {
   const bySheet = new Map();
-  const days = Object.keys(dateLabels);
+  const days = Object.keys(dateLabels).filter(d => secsByDay[d]);
+  const multi = days.length > 1;
+  const dayTag = day => {
+    const m = /^([A-Z]{3})\b/.exec(String(dateLabels[day] || ""));
+    return m ? m[1] : String(day);
+  };
   for (const day of days) {
-    const secs = secsByDay[day];
-    if (!secs) continue;
-    for (const [sec, list] of secs)
+    for (const [sec, list] of secsByDay[day])
       for (const e of list) {
         const name = sheetFor(sec, e);
-        if (!bySheet.has(name)) bySheet.set(name, { day, entries: [] });
-        bySheet.get(name).entries.push(e);
+        const key = multi ? name + " " + day : name;
+        if (!bySheet.has(key)) bySheet.set(key, { name, day, entries: [] });
+        bySheet.get(key).entries.push(e);
       }
   }
   const rank = new Map((order || []).map((s, i) => [s, i]));
-  const names = Array.from(bySheet.keys()).sort((a, b) => {
-    const ra = rank.has(a.replace(/ (AM|PM)$/, "")) ? rank.get(a.replace(/ (AM|PM)$/, "")) : 999;
-    const rb = rank.has(b.replace(/ (AM|PM)$/, "")) ? rank.get(b.replace(/ (AM|PM)$/, "")) : 999;
-    return ra - rb || (a < b ? -1 : a > b ? 1 : 0);
+  const dayRank = new Map(days.map((d, i) => [d, i]));
+  const secOf = n => n.replace(/ (AM|PM)$/, "");
+  const keys = Array.from(bySheet.keys()).sort((a, b) => {
+    const A = bySheet.get(a), B = bySheet.get(b);
+    const ra = rank.has(secOf(A.name)) ? rank.get(secOf(A.name)) : 999;
+    const rb = rank.has(secOf(B.name)) ? rank.get(secOf(B.name)) : 999;
+    return ra - rb || (A.name < B.name ? -1 : A.name > B.name ? 1 : 0)
+           || dayRank.get(A.day) - dayRank.get(B.day);
   });
-  return names.map(name => ({
-    // Excel will not take more than 31 characters in a tab name
-    name: name.slice(0, 31),
-    layout: layoutSection(name, bySheet.get(name).entries,
-                          dateLabels[bySheet.get(name).day] || "",
-                          (dates || {})[bySheet.get(name).day] || ""),
-  }));
+  const sheets = keys.map(key => {
+    const s = bySheet.get(key);
+    const tab = multi ? s.name + " " + dayTag(s.day) : s.name;
+    return {
+      // Excel will not take more than 31 characters in a tab name
+      name: tab.slice(0, 31),
+      layout: layoutSection(s.name, s.entries, dateLabels[s.day] || "",
+                            (dates || {})[s.day] || ""),
+    };
+  });
+  sheets.notes = multi
+    ? ["The reports cover " + days.map(d => dateLabels[d]).join(", ") +
+       " — the Metro book has a worksheet per location per day, named " +
+       days.map(dayTag).map(t => "“<LOCATION> " + t + "”").join(", ") +
+       ". Check each is the day it says."]
+    : [];
+  return sheets;
 }
+/* The whole Metro workbook as bytes, or null when no day has any Metro
+   entries. dates: day key -> dd/mm/yy, for the sign-off block. */
 function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates) {
   const sheets = sheetsFor(secsByDay, dateLabels, order, dates);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeMetroBook, sheetsFor, layoutSection, fitWidths, sheetFor, destName, headings, WIDTHS };
+return { writeMetroBook, sheetsFor, layoutSection, fitWidths, headings, WIDTHS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;

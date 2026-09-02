@@ -122,7 +122,7 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     dest: "STP", headcode: hc,
     units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
               mg: 250, miles: 500 }] }]]]) };
-  const lay = H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, one, null);
+  const lay = H.layoutDay("M", { M: "03/08/26" }, one, null);
   assert.equal(lay.comments.length, 1, "the note is raised for " + hc);
   assert.match(lay.comments[0].ref, /^I\d+$/, "on the DIAGRAM cell");
   assert.equal(lay.comments[0].text, notes[hc].join("\n"), "with its own words");
@@ -166,11 +166,14 @@ test("every depot the workbook lays out gets its block and its arrivals", () => 
       ends: berth + " PM", unit: "395001", miles: 500 }] }]]]);
     const got = H.arrivalsInto(depot, yday);
     assert.equal(got.length, 1, depot + " sees a unit that berthed there");
-    assert.equal(got[0].hc, "5X01", "with what it came in on");
+    assert.equal(got[0].unit, "395001", "by its unit number");
+    /* The reports say what the unit LEFT on, not what it arrived on: the
+       columns headed TRAIN ID and ARRIVAL TIME are the depot's to fill. */
+    assert.equal(got[0].hc, "", "no departure headcode under an arrival heading");
+    assert.equal(got[0].at, "", "and no departure time under ARRIVAL TIME");
   }
   // and a day carrying one of each writes a block for every one of them
-  const day = (secs) => H.layoutDay("T", { M: "MON 03/08", T: "TUE 04/08" },
-    { M: "03/08/26", T: "04/08/26" }, secs, "M");
+  const day = (secs) => H.layoutDay("T", { M: "03/08/26", T: "04/08/26" }, secs, "M");
   const entry = dest => [{ time: 500, time_kind: "ecs", dest,
     headcode: "5X02", units: [{ diag: "602", code: "AZ", am: "", pm: "AFK",
     ends: "AFK PM", miles: 400 }] }];
@@ -192,7 +195,7 @@ test("MG is a real number cell, so the mileage colours can fire", () => {
     dest: "STP", headcode: "5Z99",
     units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
               mg: 143, miles: 500 }] }]]]) };
-  const lay = H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, one, null);
+  const lay = H.layoutDay("M", { M: "03/08/26" }, one, null);
   const bytes = N.SHEETS_XLSX.writeWorkbook([{ name: "T", layout: lay }],
     f => N.fflate.zipSync(f, { level: 6 }));
   const xml = new TextDecoder().decode(
@@ -220,7 +223,7 @@ test("the high-level note reads the working itself, not the headcode", () => {
     dest: "STP", headcode: hc,
     units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
               mg: 250, miles: 500, hl }] }]]]) });
-  const day = s => H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, s, null);
+  const day = s => H.layoutDay("M", { M: "03/08/26" }, s, null);
   const over = day(mk(true)).comments;
   assert.equal(over.length, 1, "the North Kent note still rides for " + hc);
   assert.ok(!/high level/i.test(over[0].text),
@@ -316,7 +319,7 @@ test("the 395 preview is drawn in the workbook's own dress", () => {
     units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
               mg, miles: 500 }] }]]]) });
   const html = mg => N.SHEETS_XLSX.previewHtml(
-    H.layoutDay("M", { M: "MON 03/08" }, { M: "03/08/26" }, day(mg), null));
+    H.layoutDay("M", { M: "03/08/26" }, day(mg), null));
 
   const under = html(143);
   assert.match(under, /class="sheet calibri"/, "set in the sheet's own face");

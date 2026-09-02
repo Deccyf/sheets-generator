@@ -13,6 +13,7 @@ const det = f("diagdet.csv", geniusDetailCsv());
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 900, height: 1000 } });
 page.on("pageerror", e => { console.error("PAGE ERROR:", e.message); process.exitCode = 1; });
+page.on("console", m => { if (m.type() === "error") { console.error("CONSOLE:", m.text()); process.exitCode = 1; } });
 await page.goto(BUILT_URL);
 await page.setInputFiles("#file", [sum]);
 await page.waitForFunction(() =>
@@ -151,12 +152,11 @@ await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
 const movedStatus = await page.textContent("#status");
 console.log("plan moved after save    :", movedStatus.slice(0, 120));
-if (!/plan has MOVED/.test(movedStatus))
+if (!/plan has changed/.test(movedStatus))
   throw new Error("a changed re-export of a saved date must say the plan moved");
-await page.locator("#roads .road").first().locator("button:has-text('Look at it')").click();
 await page.locator("#roads .road").first().locator(".tab", { hasText: "Review" }).click();
 const review = await page.locator("#roads .road").first().locator(".view").textContent();
-if (!/since a MON 03\/08 book was saved/.test(review))
+if (!/MON 03\/08 book was saved/.test(review))
   throw new Error("the Review tab should open with what moved since the save");
 if (!/101/.test(review))
   throw new Error("the vanished diagram should be named in the differences");
@@ -168,7 +168,7 @@ await put("#paste_det", geniusDetailCsv());
 await page.locator("#paste_go").click();
 await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
-if (/plan has MOVED/.test(await page.textContent("#status")))
+if (/plan has changed/.test(await page.textContent("#status")))
   throw new Error("an unchanged re-export must not claim the plan moved");
 console.log("unchanged re-export      : quiet, as it should be");
 

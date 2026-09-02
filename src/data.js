@@ -209,7 +209,6 @@ const SIDING_CLASS_RE = new RegExp(
   // rule set).
   const GROUP_EXTRA = {
     "WEST MARINA": new Set(["STLNSHN", "STLNCET"]),
-    // Folkestone East times come from the Train Roads, not the station
   };
   // Sidings, depots and sheds only. Stations are working locations, not
   // berths (the Maidstone West rule) - they qualify only as the overnight
@@ -250,38 +249,32 @@ const SIDING_CLASS_RE = new RegExp(
      Key: the section, optionally a space and the entry's own time, then "|"
      and the diagram numbers as the sheet prints them, sorted. The timed form
      is looked up first. Give a time only when the same formation reads one
-     way earlier in the day and the other way later - GT101/GT102 leave
-     Ashford 102 first at 05 05 and 101 first at 15+43, and GT127/GT128 leave
-     Victoria 128 first at 05+50 and 127 first at 17 14. Everything else
+     way earlier in the day and the other way later (GT101/GT102 leave
+     Ashford 102 first at 05 05 and 101 first at 15+43). Everything else
      holds all day and is better named without a time, so it still applies
      when the timetable moves the working by a few minutes.
 
-     The mainline entries are taken from the hand-written book for 12/08. The
-     Metro ones are corrections marked on a book this tool produced for 10/08
-     and then put right by hand: six formations, each moved the same way
-     everywhere it appears, which is what an orientation correction looks
-     like. Metro diagram numbers (2xx, 4xx) do not collide with the mainline
-     ones, so the shared section names are safe. */
+     The mainline entries are from the hand-written 12/08 book, the Metro
+     ones from a 10/08 book marked up by hand. Metro diagram numbers (2xx,
+     4xx) do not collide with the mainline ones, so the shared section names
+     are safe. */
   /* ---- turning round in the platform ----
      A unit that comes off its berth, runs into the platform and then leaves
      is standing the other way up by the time it goes: it backed in one end
      and pulls out the other. The Summary's Position is the order it left the
-     BERTH in, so for those workings the sheet has to print the formation
-     reversed - which is what the depot means by "the position from the
-     platform is the right one".
+     BERTH in, so for those workings the sheet prints the formation reversed
+     - which is what the depot means by "the position from the platform is
+     the right one".
 
      Whether it turns depends on which side of the station it arrives from
      and which side it leaves towards. Same side, it reversed; opposite
      sides, it ran straight through and the order stands.
 
-     The sides below are read off the workings themselves rather than a track
-     plan, and they account for every Ramsgate formation anybody has checked:
-     the five that were pinned by hand off the 12/08 book, the four reported
-     wrong off the 21/08 book, and 054/055/056, which comes out of the same
-     New Sidings as 052/053 but leaves towards Minster instead of Margate and
-     is right the way it already prints. A location that is not named here
-     leaves the order alone and puts a line on the review list, because
-     guessing which way a train faces is the one thing this must not do. */
+     The sides are read off the workings themselves rather than a track plan,
+     and hold for every Ramsgate formation checked against a real book. A
+     location that is not named here leaves the order alone and puts a line
+     on the review list, because guessing which way a train faces is the one
+     thing this must not do. */
   const PLATFORM_TURN = {
     RAMSGATE: {
       platform: "RAMSGTE",
@@ -385,32 +378,18 @@ const SIDING_CLASS_RE = new RegExp(
        if 5S07 ever runs with a third unit this stops matching. */
     "GROVE PARK|805,806": ["806", "805"],
 
-    /* Ramsgate's five backwards formations used to be pinned here, one key
-       per formation. They are gone: PLATFORM_TURN above derives all five,
-       because every one of them is a working that backs into the platform
-       and pulls out the same end it came in. Pinning them by formation was
-       always brittle - the key names an exact set of diagrams, so when
-       043/044 ran as a pair on 21/08 instead of the trio 043/044/910 the pin
-       stopped matching and the sheet went back to printing it the wrong way
-       round. That is the fault this rule replaces. */
-    /* No section: this formation reads the same way wherever it turns up.
-       RM046/RM047/RM913 print 913 first in the 12/08 Ramsgate book at 07 02
-       and again in the mainline book off Grove Park at 16+13 - the same three
-       units, the same way round, hours apart.
-
-       This line is kept for GROVE PARK only. The Ramsgate half is now derived
-       by PLATFORM_TURN, so the pin is dormant there: with the pin removed
-       12/08 Ramsgate still prints 913 first, and with PLATFORM_TURN removed
-       as well it flips to 046 first. Grove Park is the opposite - the rule
-       does not reach it, and on 12/08 the Position numbers give the right
-       order unaided, so the pin is dormant there too. It earns its place on
-       the later day a tester found Grove Park the other way round, when the
-       Position field had moved under it.
-
-       Do not narrow this to a GROVE PARK key to say so. The lookup warns when
-       a formation has an order recorded somewhere and no key fires here, so a
-       section key would put a false review note on every Ramsgate appearance
-       of the trio - about an order the tool now gets right by itself.
+    /* Ramsgate's backwards formations are not pinned here: PLATFORM_TURN
+       above derives them, and a pin keyed on an exact set of diagrams stops
+       matching the day the formation runs a unit short (043/044/910 running
+       as 043/044). */
+    /* No section: this formation reads the same way wherever it turns up -
+       913 first at Ramsgate 07 02 and off Grove Park at 16+13 alike. It is
+       kept for GROVE PARK, where the Position field has been known to move
+       under it; at Ramsgate PLATFORM_TURN gives the same order unaided. Not
+       narrowed to a GROVE PARK key on purpose: the lookup warns whenever a
+       formation has an order recorded somewhere and no key fires, so a
+       section key would put a false review note on every Ramsgate
+       appearance of the trio.
 
        Only use a bare key where the order really is the same everywhere:
        RM043/RM044 read one way at Grove Park and the other at West Marina,
@@ -457,15 +436,11 @@ const SIDING_CLASS_RE = new RegExp(
   const PROFILES_G = [
     { bucket: "main", fleets: { "375/6": "4 375", "375/9": "4 375-9",
         "375/3": "3 375", "377/5": "4 377", "376/0": "5 376" },
-      /* Ramsgate IS on the posAsc list below, and has to stay there. Six of
+      /* Ramsgate IS on the posAsc list below, and has to stay there: six of
          its coupled formations read lowest Position first and five read
-         highest first, so turning the whole section round swapped which five
-         came out wrong rather than fixing anything - that was tried and
-         measured against the real 12/08 Ramsgate book. The five are named in
-         ORDER_FIX instead, where the same tester's mark-up put them.
-         This note used to say the opposite, and it was wrong: anyone who
-         "corrected" the code to match it would quietly reverse the six
-         formations that are already right. */
+         highest first (measured against the real 12/08 Ramsgate book), so
+         turning the whole section round only swaps which five come out
+         wrong. The five are the platform turns PLATFORM_TURN derives. */
       posAsc: new Set(["DOVER PRIORY", "FAVERSHAM", "FOLKESTONE EAST",
         "GILLINGHAM", "GROVE PARK", "HASTINGS", "RAMSGATE", "SLADE GREEN"]),
       roadPosAsc: new Map([["ASHFORD UP SIDINGS", true]]),
@@ -653,7 +628,6 @@ const PLACE_NAMES = {
  "AshfDYWRd":   "Ashford Down Washer Road",
  "Ashfd EBS":   "Ashford East Berthing Sidings",
  "Ash Up Sd":   "Ashford Up Sidings",
- "SevngtnLp":   "Sevington Loop",
  /* --- Dover Priory --- */
  "Dover P":     "Dover Priory Platform",
  "Dover PSd":   "Dover Priory Sidings",

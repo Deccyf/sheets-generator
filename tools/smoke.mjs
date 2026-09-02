@@ -19,7 +19,7 @@ const reissue = f("WEEKEND PRINTS reissue.docx", makeDocx(REISSUE_LINES, ctx.ffl
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 860, height: 1100 } });
 page.on("pageerror", e => { console.error("PAGE ERROR:", e.message); process.exitCode = 1; });
-page.on("console", m => { if (m.type() === "error") console.error("CONSOLE:", m.text()); });
+page.on("console", m => { if (m.type() === "error") { console.error("CONSOLE:", m.text()); process.exitCode = 1; } });
 await page.goto(BUILT_URL);
 
 // Weekday: Summary first — the drop zone should start guiding.
@@ -39,7 +39,7 @@ console.log("weekday roads:", await page.locator("#roads .road").count());
 const dl = page.waitForEvent("download", { timeout: 10000 });
 await page.locator("#dlall").click();
 console.log("save-all zip:", (await dl).suggestedFilename());
-await page.locator("#roads .road .btn", { hasText: "Look at it" }).first().click();
+// previews are open by default: the first card shows its sheet without a click
 await page.waitForSelector("#roads .road .view table.sheet");
 console.log("weekday preview table rendered ✓");
 
@@ -69,19 +69,20 @@ console.log("stock card removed on untick ✓");
 // Weekend: prints then reissue in a second drop.
 await page.setInputFiles("#we_file", [prints]);
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Berthed"), null, { timeout: 20000 });
+  document.querySelector("#we_status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("mode after a weekend drop:", await page.$eval("#mode_we", e => e.getAttribute("aria-selected")));
 await page.setInputFiles("#we_file", [reissue]);
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Reissue cross-referenced"), null, { timeout: 20000 });
+  document.querySelector("#we_status").textContent.includes("Reissue applied"), null, { timeout: 20000 });
 console.log("weekend status:", await page.textContent("#we_status"));
 console.log("updated-prints button hidden:", await page.locator("#we_dlupd").isHidden());
-await page.locator("#we_roads .road .btn", { hasText: "Look at it" }).first().click();
 await page.waitForSelector("#we_roads .road .view table.sheet");
 console.log("weekend preview table rendered ✓");
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
 
 /* ---- the weekend prints pasted in instead of dropped ---- */
 await page.reload();
+await page.locator("#mode_we").click();
 const wePut = (sel, text) => page.evaluate(([s, v]) => {
   const el = document.querySelector(s);
   el.value = v;
@@ -106,7 +107,7 @@ if (!/does not read as the diagram prints/.test(await weSay()))
 await wePut("#we_paste_main", PRINTS_LINES.join("\n"));
 await page.locator("#we_paste_go").click();
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Berthed"),
+  document.querySelector("#we_status").textContent.includes("Books built"),
   null, { timeout: 20000 });
 console.log("pasted      :", await page.textContent("#we_status"));
 console.log("paste note  :", (await weSay()).trim());
@@ -118,7 +119,7 @@ if (!wePasted) throw new Error("a pasted prints document built no roads");
 await wePut("#we_paste_re", REISSUE_LINES.join("\n"));
 await page.locator("#we_paste_go").click();
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Reissue cross-referenced"),
+  document.querySelector("#we_status").textContent.includes("Reissue applied"),
   null, { timeout: 20000 });
 console.log("with reissue:", await page.textContent("#we_status"));
 // there is no base .docx to splice into, so no updated-prints download
@@ -130,10 +131,9 @@ if (await page.$eval("#we_paste_main", e => e.value) !== "")
   throw new Error("Start over should clear the pasted text too");
 
 await page.screenshot({ path: "tools/smoke-top.png", clip: { x: 0, y: 0, width: 860, height: 900 } });
-await page.locator("#roads").scrollIntoViewIfNeeded();
-await page.screenshot({ path: "tools/smoke-weekday.png" });
-await page.locator("#we_roads").scrollIntoViewIfNeeded();
 await page.screenshot({ path: "tools/smoke-weekend.png" });
+await page.locator("#mode_wk").click();
+await page.screenshot({ path: "tools/smoke-weekday.png" });
 /* ---- the prints saved as a CSV, dropped and pasted ---- */
 const asCsv = PRINTS_LINES.map(l => l.split("\t")
   .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
@@ -141,7 +141,7 @@ const asCsv = PRINTS_LINES.map(l => l.split("\t")
 await page.reload();
 await page.setInputFiles("#we_file", [f("WEEKEND PRINTS.csv", Buffer.from(asCsv, "utf8"))]);
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Berthed"), null, { timeout: 20000 });
+  document.querySelector("#we_status").textContent.includes("Books built"), null, { timeout: 20000 });
 console.log("csv dropped :", await page.textContent("#we_status"));
 await page.locator("#we_pastetoggle").click();
 await page.evaluate(v => {
@@ -150,7 +150,7 @@ await page.evaluate(v => {
 }, asCsv);
 await page.locator("#we_paste_go").click();
 await page.waitForFunction(() =>
-  document.querySelector("#we_status").textContent.includes("Berthed"), null, { timeout: 20000 });
+  document.querySelector("#we_status").textContent.includes("Books built"), null, { timeout: 20000 });
 console.log("csv pasted  :", await page.textContent("#we_paste_say"));
 
 await browser.close();

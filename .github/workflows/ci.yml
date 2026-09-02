@@ -4,19 +4,36 @@ on:
     branches: ["**"]
   pull_request:
 
+# A push to a branch with an open PR fires BOTH triggers, and the two runs
+# did identical work. The group is the branch NAME - head_ref on a
+# pull_request, the pushed ref's name otherwise - so both events land in one
+# group and the later start cancels the earlier: one run per branch, whichever
+# event started it. Both triggers stay, so a branch without a PR still builds.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # A build, the node tests and three browser smokes: well under five
+    # minutes. Without a cap a hung headless browser holds the runner for the
+    # six-hour default.
+    timeout-minutes: 15
     env:
       # tools/browser.mjs looks both of these up; point them at what this
       # runner installs rather than the sandbox defaults
       PLAYWRIGHT_NODE_MODULES: ${{ github.workspace }}/node_modules/playwright/
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+      # One pin for the package, the browser build it downloads, and the cache
+      # key below - bump it here and the cache misses once, as it should.
+      PLAYWRIGHT_VERSION: 1.56.1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       # `docx` builds the Word guide; without it the build quietly skips that
       # document and the freshness check below could never see it drift.
       - name: Install dependencies
@@ -52,10 +69,26 @@ jobs:
       # page completely dead and every test still green. Only a real browser
       # catches that, so the smokes are part of CI rather than a thing to
       # remember to run.
+      #
+      # Chromium is ~150 MB a run; it is kept between runs, keyed on the
+      # Playwright version so a bump fetches the build that version wants.
+      - name: Cache Chromium for the browser smokes
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-chromium-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+
       - name: Install Chromium for the browser smokes
         run: |
-          npm i --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npm i --no-save "playwright@$PLAYWRIGHT_VERSION"
+          # The apt packages Chromium needs live on the runner, not in the
+          # cache, and every run gets a fresh runner - so they go on every
+          # time. The browser itself only when the cache had nothing.
+          npx playwright install-deps chromium
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install chromium
+          fi
 
       - name: Browser smoke — weekend prints and pasted reports
         run: node tools/smoke.mjs

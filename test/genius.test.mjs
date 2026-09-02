@@ -131,13 +131,15 @@ test("GENIUS.build output is identical to the legacy build", async () => {
   /* The review list has moved on from the frozen build in two ways: it
      raises a kind of note that build never had, and it says the rest in
      plainer words - "Left off —" rather than "suppressed:", diagram numbers
-     as the sheet prints them, and no "Position" or "pinned". Compare the
+     as the sheet prints them, no "Position" or "pinned", and an em dash
+     wherever the frozen build broke a sentence with " - ". Compare the
      kinds both builds raise, in the shape this one uses. */
   const SINCE_LEGACY =
-    /has a corrected order recorded at|as a berthing —|AM unit positions only|runs through the platform from a road|loses its correction/;
+    /has a corrected order recorded at|as a berthing —|Show diagram sections|runs through the platform from a road|a correction exists for/;
   const asNow = m => m
     .replace(/^suppressed: /, "Left off — ")
     .replace(/\) - /, "): ")
+    .replace(/ - /g, " — ")
     .replace(/\b([A-Z]{2})(\d{3})/g, "$2");
   assert.deepEqual(norm(resN.review.filter(m => !SINCE_LEGACY.test(m))),
                    norm(resL.review.map(asNow)), "review list");
@@ -219,7 +221,7 @@ test("Integrale CSVs build the same books as the Genius PDFs", async () => {
      per diagram is what it exports - so the warning would be advice nobody
      can take. The books either source builds are identical, which is what
      the four assertions above check. */
-  const OWN = /AM unit positions only/;
+  const OWN = /Show diagram sections/;
   const drop = r => Object.fromEntries(Object.entries(r)
     .map(([k, v]) => [k, v.filter(x => !OWN.test(x.msg))]));
   assert.deepEqual(norm(drop(csvRes.reviews)), norm(drop(pdfRes.reviews)),
@@ -359,9 +361,9 @@ test("Integrale quirks: mangled headcodes, stable placeholders, uncovered note",
   const res = N.GENIUS.buildIntegrale([INTEGRALE_QUIRKS_SUMMARY, INTEGRALE_QUIRKS_DETAIL]);
   assert.ok(res.review.some(m => /1 stable-all-day.*QQ902/.test(m)),
     "stable placeholder dropped with a note");
-  assert.ok(res.review.some(m => /1 headcode\(s\) recovered.*2E05/.test(m)),
+  assert.ok(res.review.some(m => /1 headcode recovered.*2E05/.test(m)),
     "mangled headcode noted");
-  assert.ok(res.review.some(m => /1 of 3 diagrams are marked Uncovered/.test(m)),
+  assert.ok(res.review.some(m => /1 of 3 diagrams is marked Uncovered/.test(m)),
     "uncovered count noted");
   const ash = res.secsByDay.M.get("ASHFORD");
   assert.ok(ash && ash.some(e => e.headcode === "2E05"),
@@ -881,13 +883,13 @@ test("a summary with the AM positions only says so", async () => {
      short day would fail a count. The synthetic summary is itself the thin
      shape, one row per diagram, so it is the fixture for the bad case and
      the good one is made by giving a diagram its second working. */
-  const said = r => r.review.filter(m => /AM unit positions only/.test(m));
+  const said = r => r.review.filter(m => /Show diagram sections/.test(m));
 
   const thin = await N.GENIUS.build([sum, det]);
   assert.equal(said(thin).length, 1, "one row per diagram is called out");
-  assert.match(said(thin)[0], /not the PM ones/, "in the terms a reader cares about");
-  assert.match(said(thin)[0], /start of the day/, "says what is missing");
-  assert.match(said(thin)[0], /working more than once/, "and how it knows");
+  assert.match(said(thin)[0], /morning unit positions/, "in the terms a reader cares about");
+  assert.match(said(thin)[0], /wrong way round/, "says what it costs");
+  assert.match(said(thin)[0], /File › Session Settings/, "and which setting it was");
   assert.match(said(thin)[0], /Reverse/, "and what to do about it");
 
   // the same day with any diagram listed per working instead of once
@@ -917,12 +919,12 @@ test("a report with the right name and the wrong columns says which", async () =
   const det = integraleDetailCsv();
   assert.throws(
     () => N.GENIUS.buildIntegrale([drop(integraleSummaryCsv(), "Position"), det]),
-    /missing the Position column - add it to the export/,
+    /missing the Position column — add it to the export/,
     "one missing column is named, in the singular");
   assert.throws(
     () => N.GENIUS.buildIntegrale(
       [drop(drop(integraleSummaryCsv(), "Position"), "Cov"), det]),
-    /missing the Cov, Position columns - add them/,
+    /missing the Cov, Position columns — add them/,
     "two are named, in the plural");
   // and a complete export is still built without complaint
   const ok = N.GENIUS.buildIntegrale([integraleSummaryCsv(), det]);
@@ -1008,8 +1010,13 @@ test("a diagram out a third time reads its last berth until the last journey", a
     "the fixture built something to look at");
   assert.deepEqual(pmOf("201"), ["ASHFORD=RE", "RAMSGATE=GI"],
     "the berth until the last journey, then where that journey finishes");
-  assert.deepEqual(pmOf("202"), ["ASHFORD=FKE", "ASHFORD=FKE"],
-    "an empty final run out of the area is the unit going home, all rows");
+  /* One row, not two. Until 3.0.0 the stint walk ran one stop past the end
+     of each stint, so the 08 01 positioning shunt inside East Sidings came
+     out as a second Ashford line stamped with the NEXT stint's departure -
+     "20+40 FKE" - and this test held it as "all rows". The unit leaves the
+     Ashford area once, at 21 00 off the platform, and that is the line. */
+  assert.deepEqual(pmOf("202"), ["ASHFORD=FKE"],
+    "an empty final run out of the area is the unit going home");
 });
 
 test("a Summary row is read whether or not the UNITS column is filled", () => {
@@ -1257,7 +1264,7 @@ test("a formation that has lost a unit is told its pin no longer covers it", asy
     await import("./helpers/synth.mjs");
   /* the review list mixes plain strings with {sec, msg} objects */
   const text = r => typeof r === "string" ? r : (r.msg || "");
-  const near = res => res.review.map(text).filter(m => /loses its correction/.test(m));
+  const near = res => res.review.map(text).filter(m => /a correction exists for/.test(m));
 
   /* no pin for these units at all: nothing to say */
   const clean = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL]);
@@ -1269,7 +1276,7 @@ test("a formation that has lost a unit is told its pin no longer covers it", asy
   const hits = near(res);
   assert.equal(hits.length, 1, "exactly one formation is short of its pin");
   assert.match(hits[0], /951/, "it names the units that did turn up");
-  assert.match(hits[0], /gains or loses a unit/,
+  assert.match(hits[0], /this formation is different/,
     "and says why the correction stopped applying");
   /* the exact-set pin still fires and still says nothing */
   const exact = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],

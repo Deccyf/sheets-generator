@@ -1,11 +1,20 @@
-/* Page wiring for both panels. The weekday panel drives GENIUS + the shared
-   xlsx writer; the weekend panel drives SheetsEngine. Previews on both
-   panels render the same cell layout that gets saved. */
+/* Page wiring: the mode switch, the two panels, and the book cards.
+
+   Inputs: the DOM in src/page.html (ids are the contract - the smokes and
+   this file share them), GENIUS / SheetsEngine for the builds, SHEETS_XLSX,
+   SHEETS_METRO, SHEETS_HS and SHEETS_STOCKREQ for the workbooks and their
+   previews. Output: cards on the page and files in the Downloads folder.
+
+   Two panels, one shape: makePanel() owns the status board, the paste box,
+   the drop zone, the cards container and the build queue, and the weekday
+   and weekend closures below only add what differs - which reports they
+   take and which books come back. Every sentence the page can say is in
+   MSG, so the two panels cannot drift apart in their wording. */
 "use strict";
 (function () {
 if (typeof document === "undefined" || !document.querySelector) return;
-/* The legacy build wired the panels while the parser was still mid-body and
-   crashed on the weekend elements; wire only once the DOM is complete. */
+/* wire only once the DOM is complete - the parser is mid-body when this
+   script block runs */
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {
@@ -15,38 +24,122 @@ function init() {
 const $ = s => document.querySelector(s);
 const METRO = SHEETS_METRO;
 const HS = SHEETS_HS;
+const X = SHEETS_XLSX;
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const zipFn = f => fflate.zipSync(f, { level: 6 });
+const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"));
+
+/* ---------------- what the page says ----------------
+   One vocabulary: a BOOK is a file, a SHEET is a page in it, the REVIEW tab
+   is where anything needing a human eye is named. */
+const MSG = {
+  idle: "Nothing built yet — drop the Diagram Summary and Diagram Detail above.",
+  weIdle: "Nothing built yet — drop the weekend prints above.",
+  reading: "Reading the reports …",
+  readingFiles: names => "Reading " + names.join(", ") + " …",
+  writing: "Writing the books …",
+  built: (labels, review, moved, edits) =>
+    "Books built for " + labels + " — look them over below, then save." +
+    (moved ? " The plan has changed since a book for this date was saved on " +
+             "this computer — the changes are listed first on each Review tab." : "") +
+    (review ? " " + review + " to review — see each book's Review tab."
+            : " Nothing to review.") +
+    (edits ? " " + plural(edits, "order correction") + " made on this computer " +
+             (edits === 1 ? "is" : "are") + " in force — see the Unit order tab." : ""),
+  weBuilt: (banner, entries, merge, docs) =>
+    "Books built for " + banner + " — " + plural(entries, "entry", "entries") +
+    ". Look them over below, then save." +
+    (merge ? " Reissue applied: " + plural(merge.replaced, "diagram") + " replaced" +
+             (merge.added ? ", " + merge.added + " added" : "") + "."
+           : (docs > 1 ? " (" + docs + " documents loaded.)" : "")),
+  rebuilt: what => "Books rebuilt " + what + " — save them again if needed.",
+  failed: e => "Build failed: " + (e && e.message || e) + ". Check the files and drop them again.",
+  readFailed: (name, e) => "Couldn't read “" + name + "”: " + (e && e.message || e) +
+    " — copy it to this computer's desktop and drop that.",
+  saved: name => "Saved " + name + " — look in this computer's Downloads folder.",
+  savedZip: (name, n) => "Saved " + name + " — " + plural(n, "book") +
+    " in it, in this computer's Downloads folder.",
+  savedUpdated: name => "Saved " + name + " — the prints with the reissue's diagrams spliced in.",
+  cleared: "Cleared — drop this day's two reports to start again.",
+  weCleared: "Cleared — drop this weekend's prints to start again.",
+  stockOn: "Stock requirements form added — it is on its own card below.",
+  stockOff: "Stock requirements form removed.",
+  half: (src, got, want, what, hadBooks) =>
+    src + " " + got + " loaded ✓ — now drop the " + want + " " + what + "." +
+    (hadBooks ? " The books on screen were the previous build, so they have been cleared." : ""),
+  zoneHalf: (src, got, want, what) => ["Diagram " + got + " loaded ✓ (" + src + ")",
+    "now drop the " + want + " " + what + " · or click to choose it"],
+  mixed: (sumSrc, detSrc) => "The Summary is from " + sumSrc + " but the Detail is from " +
+    detSrc + " — drop a matching pair: both from Genius, or both from Integrale.",
+  zoneMixed: ["Mixed sources loaded", "drop a matching pair — both from Genius, or both from Integrale"],
+  sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
+  sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
+  notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
+  notAReport: name => "“" + name + "” isn't a report this reads — it takes the Diagram Summary and Diagrams CSVs from Integrale, or the Diagram Summary and Detail reports from Genius saved as CSV.",
+  notThisPanel: "This panel takes the Diagram Summary and Diagram Detail reports (.pdf or .csv). Weekend prints go on the Weekend panel.",
+  notAGeniusPdf: name => "“" + name + "” doesn't look like a Genius report — save the Diagram Summary and Diagram Detail reports from Genius as PDFs and drop both here.",
+  pdfUnreadable: name => "“" + name + "” couldn't be read as a PDF — save it again from Genius and drop the new file.",
+  emptyBook: (fleet, cycle, prints) =>
+    "No " + fleet + " diagrams in " + (prints ? "this weekend's prints" : "these reports") +
+    " — nothing to build." +
+    (cycle ? " (A " + fleet + " Control Cycle must exist in Genius for its diagrams to appear.)" : ""),
+  noEntries: "No entries this day.",
+  nothingToReview: "Nothing to review.",
+  toReview: n => n + " to review",
+  storageOff: "This browser blocks local storage, so order corrections, the printed-book memory and the options will not be kept between visits.",
+  rulesDiscarded: "The order corrections stored on this computer could not be read and have been set aside — Reverse any that are still needed.",
+  editNotKept: "That correction is applied to these books, but this browser would not store it — it will be gone when the page is closed.",
+  weRebuildFailed: e => "Couldn't rebuild the books: " + (e && e.message || e) +
+    " — the books on screen are the previous ones.",
+  // the paste boxes
+  readIntoBox: name => "Read " + name + " into the box.",
+  boxReadFailed: name => "Couldn't read “" + name + "” — open it and paste the text instead.",
+  boxesCleared: "Both boxes cleared.",
+  pasteOne: "Paste a report into one of the boxes — both are needed, both for the same date.",
+  pasteSame: which => "Both boxes hold the " + which + " — put the other report in the other box.",
+  pasteNeeds: want => "Still needs the " + want + " — paste it into the other box, or drop the file on the panel above. Either way round works.",
+  pasteSwapped: "Read the boxes the other way round — the Summary was in the Detail box.",
+  pasteUsedLoaded: used => "Built with the " + used + " already loaded.",
+  pastePartial: label => "The " + label + " box holds a report, but the copy starts part way through a line — select from the very top of the file, first line and all, and copy again.",
+  pasteNotReport: label => "The " + label + " box does not read as one of the reports. Copy the whole file, first line and all — and paste a CSV export, not a PDF.",
+  pasteUnreadable: e => "Couldn't read that: " + (e && e.message || e),
+  wePasteEmpty: "Paste the weekend diagram prints into the first box.",
+  wePasteWeekday: "That is one of the weekday Diagram reports — it builds the Monday-to-Friday books, on the Weekday panel.",
+  wePasteFlat: "That does not read as the diagram prints — no “Diagram:” line with its columns intact. Copy the whole document out of Word, and paste it as it comes.",
+  wePasteReissue: "The reissue box does not read as diagram prints. Leave it empty if there is no reissue.",
+  wePasted: re => re ? "Built from the pasted prints and reissue." : "Built from the pasted prints.",
+  wePasteFailed: e => (e && e.message) || "That could not be read as diagram prints.",
+  weReadFailed: name => "Couldn't read " + name + ". Try copying it to the desktop first.",
+  weUnreadable: "That file couldn't be read as diagram prints.",
+};
 
 /* ---------------- shared helpers ---------------- */
-function sayer(el) {
-  return (msg, kind) => {
-    el.textContent = msg;
-    el.className = "status" + (kind ? " " + kind : "");
-  };
+function escHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 function download(name, data, mime) {
-  const blob = new Blob([data], { type: mime || XLSX_MIME });
+  const blob = new Blob([data], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
-function escHtml(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
-}
-/* One zip beats a burst of separate downloads the browser may block. */
+/* One zip beats a burst of separate downloads the browser may block. The
+   books inside are already deflated, so the bundle is stored, not squeezed
+   a second time. */
 function downloadZip(name, files) {
   const bag = {};
   for (const [n, bytes] of files) bag[n] = bytes;
-  download(name, fflate.zipSync(bag, { level: 6 }), "application/zip");
+  download(name, fflate.zipSync(bag, { level: 0 }), "application/zip");
 }
 const paint = () => new Promise(r => setTimeout(r, 30));
 
-/* Drag-and-drop + click wiring shared by both berths. */
+/* Drag-and-drop + click wiring shared by the drop zones. */
 function wireDrop(berth, fileIn, onFiles) {
   berth.addEventListener("click", () => fileIn.click());
   fileIn.addEventListener("change", () => {
@@ -69,10 +162,9 @@ function wireDrop(berth, fileIn, onFiles) {
   });
 }
 /* A file dropped anywhere but a drop zone must not navigate the page away
-   from itself, which is what this is for. It must NOT swallow a drop into a
-   text box, though, and it did: dragging a selection out of Excel or Notepad
-   is a different road from the clipboard, and where policy blocks Ctrl+V - as
-   it does on some depot machines - it is often the only road still open. */
+   from itself. A TEXT drop into a text box is the browser's own business:
+   dragging a selection out of Excel is often the only road open where policy
+   blocks Ctrl+V. */
 const carriesFiles = e => {
   const dt = e.dataTransfer;
   if (!dt) return false;
@@ -84,14 +176,12 @@ const isTextBox = t => !!t && (t.tagName === "TEXTAREA" ||
   (t.tagName === "INPUT" && /^(text|search|url|tel|email)$/i.test(t.type || "")));
 ["dragover", "drop"].forEach(ev =>
   document.addEventListener(ev, e => {
-    // text into a text box is the browser's own business; everything else,
-    // including a FILE dropped on a text box, would take the page with it
     if (isTextBox(e.target) && !carriesFiles(e)) return;
     e.preventDefault();
   }));
 
-/* And the file itself dropped straight into a box. A machine that will not
-   paste will usually still drag, and this saves opening the CSV at all. */
+/* The file itself dropped straight into a paste box. after(name, err) is
+   told what happened either way. */
 function wireBoxDrop(el, after) {
   if (!el) return;
   for (const evn of ["dragenter", "dragover"])
@@ -106,27 +196,32 @@ function wireBoxDrop(el, after) {
     if (!f || !f.length) return;          // a text drop: leave it to the browser
     e.preventDefault();
     const fr = new FileReader();
+    fr.onerror = () => { if (after) after(f[0].name, fr.error || new Error("unreadable")); };
     fr.onload = () => {
       el.value = String(fr.result || "");
       el.dispatchEvent(new Event("input", { bubbles: true }));
-      if (after) after(f[0].name);
+      if (after) after(f[0].name, null);
     };
     fr.readAsText(f[0]);
   });
 }
 
 /* Tab strip with lazy panes and arrow-key navigation. */
+let tabSeq = 0;
 function tabbed(panes) {
+  const id = "tabs" + (++tabSeq);
   const tabs = document.createElement("div");
   tabs.className = "tabs"; tabs.setAttribute("role", "tablist");
   const view = document.createElement("div");
-  view.className = "view";
+  view.className = "view"; view.id = id + "-view";
   view.setAttribute("role", "tabpanel");
   const cache = {};
   const btns = panes.map(([name, htmlFn], ix) => {
     const tb = document.createElement("button");
     tb.type = "button"; tb.className = "tab"; tb.textContent = name;
+    tb.id = id + "-" + ix;
     tb.setAttribute("role", "tab");
+    tb.setAttribute("aria-controls", view.id);
     tb.tabIndex = ix === 0 ? 0 : -1;
     tb.addEventListener("click", () => select(ix));
     tabs.appendChild(tb);
@@ -139,6 +234,7 @@ function tabbed(panes) {
     const pane = cache[ix];
     if (pane && pane.nodeType) { view.textContent = ""; view.appendChild(pane); }
     else view.innerHTML = pane;
+    view.setAttribute("aria-labelledby", btns[ix].tb.id);
     view.scrollTop = 0; view.scrollLeft = 0;
     btns.forEach((b, j) => {
       b.tb.setAttribute("aria-selected", j === ix ? "true" : "false");
@@ -159,49 +255,63 @@ function tabbed(panes) {
   return { tabs, view, select, current: () => sel };
 }
 
-/* ---------------- local rule edits ----------------
-   The tool ships one order table; a tester can overlay it here to see a
-   correction take effect straight away. The overlay lives on this machine
-   only, and a correction is not finished until it is baked into the tool
-   for everyone - so the Unit order tab lists what has been changed, in
-   words, for somebody to read out. Everything below is built so that state
-   cannot go quiet - see the banner and the review notes. */
-const RULES_LS_KEY = "sheetsRules.v1";
-const rulesStore = (() => {
+/* ---------------- this computer's memory ----------------
+   Three things live in the browser's storage, all optional: the order
+   corrections made with Reverse, a fingerprint of every book saved (so a
+   later export of the same date can say what moved), and the option boxes.
+   Every read copes with the store being blocked or the blob being corrupt. */
+const store = (() => {
   try { return window.localStorage; } catch (e) { return null; }
 })();
+const RULES_LS_KEY = "sheetsRules.v1";
+const PRINTED_LS_KEY = "sheetsPrinted.v1";
+const OPTS_LS_KEY = "sheetsOpts.v1";
+let rulesDiscarded = false;
 let ruleEdits = (() => {
-  if (!rulesStore) return {};
-  const parsed = SHEETS_RULES.parse(rulesStore.getItem(RULES_LS_KEY) || "");
+  if (!store) return {};
+  const raw = store.getItem(RULES_LS_KEY) || "";
+  const parsed = SHEETS_RULES.parse(raw);
+  if (raw && !parsed) rulesDiscarded = true;
   return parsed ? parsed.orderFix : {};
 })();
 const editCount = () => Object.keys(ruleEdits).length;
 function persistEdits() {
-  if (!rulesStore) return false;
+  if (!store) return false;
   try {
-    rulesStore.setItem(RULES_LS_KEY,
+    store.setItem(RULES_LS_KEY,
       SHEETS_RULES.serialize(ruleEdits, new Date().toISOString()));
     return true;
   } catch (e) { return false; }
 }
-
-
-/* ---------------- the printed book's memory ----------------
-   The plan moves after the book is printed - a working cancelled overnight,
-   a formation re-made, a berth changed - and the sheet on the wall stays as
-   it was. So the tool remembers a fingerprint of every book at the moment it
-   is SAVED (saving is what precedes printing), and when a later export of
-   the same date is built it says, at the top of the Review tab, exactly
-   which entries no longer match the book that went out. Free, offline, and
-   the only data source that always knows the current plan: the plan.
-   Lives in this browser's storage, so the comparison works on the machine
-   the book was saved on. */
-const PRINTED_LS_KEY = "sheetsPrinted.v1";
-function loadPrinted() {
-  if (!rulesStore) return {};
-  try { return JSON.parse(rulesStore.getItem(PRINTED_LS_KEY) || "{}") || {}; }
+function loadJson(key) {
+  if (!store) return {};
+  try { return JSON.parse(store.getItem(key) || "{}") || {}; }
   catch (e) { return {}; }
 }
+function saveJson(key, obj) {
+  if (!store) return;
+  try { store.setItem(key, JSON.stringify(obj)); } catch (e) { /* full or blocked */ }
+}
+
+/* the option boxes and the mode, restored on the next visit */
+const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq",
+                 "we_hc_main", "we_hc_metro", "we_hc_hs"];
+const savedOpts = loadJson(OPTS_LS_KEY);
+for (const id of OPT_IDS) {
+  const el = document.getElementById(id);
+  if (el && typeof savedOpts[id] === "boolean") el.checked = savedOpts[id];
+}
+function rememberOpts(extra) {
+  const o = {};
+  for (const id of OPT_IDS) { const el = document.getElementById(id); if (el) o[id] = !!el.checked; }
+  o.mode = (extra && extra.mode) || currentMode();
+  saveJson(OPTS_LS_KEY, o);
+}
+
+/* ---- the printed book's memory ----
+   A fingerprint of every book at the moment it is SAVED (saving precedes
+   printing); a later build of the same date label says what no longer
+   matches, at the top of the Review tab. Newest eight labels kept. */
 function bookFingerprint(secs, day) {
   const out = [];
   const m = secs && secs[day];
@@ -211,14 +321,12 @@ function bookFingerprint(secs, day) {
       out.push([sec, e.time, e.time_kind || "",
         (e.units || []).map(u =>
           u.diag + ":" + (u.am || "") + "/" + (u.pm || "")).join(","),
-        e.dest || ""].join("\u0001"));
+        e.dest || ""].join(""));
   return out.sort();
 }
-/* Saved under the date LABEL ("MON 24/08"), because that is the identity a
-   re-export of the same day shares. Newest eight labels kept. */
 function storePrinted(res) {
-  if (!rulesStore || !res) return;
-  const all = loadPrinted();
+  if (!store || !res) return;
+  const all = loadJson(PRINTED_LS_KEY);
   for (const day of Object.keys(res.labels)) {
     all[res.labels[day]] = {
       saved: new Date().toISOString(),
@@ -230,15 +338,13 @@ function storePrinted(res) {
   const labels = Object.keys(all)
     .sort((a, b) => String(all[b].saved).localeCompare(String(all[a].saved)));
   for (const l of labels.slice(8)) delete all[l];
-  try { rulesStore.setItem(PRINTED_LS_KEY, JSON.stringify(all)); }
-  catch (e) { /* storage full or blocked: the feature just stays quiet */ }
+  saveJson(PRINTED_LS_KEY, all);
 }
-/* What moved between the saved book and this build, as review items. Entries
-   pair on section + time; a pair with different units or berths is
+/* Entries pair on section + time; a pair with different units or berths is
    "changed", the rest are gone or new. */
 function printedDiff(oldFp, newFp) {
   const fmtT = (t, k) => SHEETS_CORE.fmtTime(Number(t), k || "pax");
-  const key = l => l.split("\u0001").slice(0, 3).join("\u0001");
+  const key = l => l.split("").slice(0, 3).join("");
   const byKey = list => {
     const m = new Map();
     for (const l of list) { const k = key(l);
@@ -246,54 +352,50 @@ function printedDiff(oldFp, newFp) {
     return m;
   };
   const A = byKey(oldFp), B = byKey(newFp), out = [];
-  const units = l => (l.split("\u0001")[3] || "")
+  const units = l => (l.split("")[3] || "")
     .split(",").filter(Boolean).map(x => x.split(":")[0]).join(",");
   for (const [k, was] of A) {
     const now = B.get(k);
-    const [sec, t, kind] = k.split("\u0001");
+    const [sec, t, kind] = k.split("");
     const at = sec + " " + fmtT(t, kind);
     if (!now) { out.push({ sec, msg: at + " (" + units(was[0]) + "): in the " +
       "saved book, not in this plan" }); continue; }
-    if (was.join("\u0002") !== now.join("\u0002"))
+    if (was.join("") !== now.join(""))
       out.push({ sec, msg: at + ": the saved book has " + units(was[0]) +
-        " - this plan has " + units(now[0]) +
+        " — this plan has " + units(now[0]) +
         (units(was[0]) === units(now[0]) ? " with different berths" : "") });
   }
   for (const [k, now] of B) if (!A.has(k)) {
-    const [sec, t, kind] = k.split("\u0001");
+    const [sec, t, kind] = k.split("");
     out.push({ sec, msg: sec + " " + fmtT(t, kind) + " (" + units(now[0]) +
       "): not in the saved book" });
   }
   return out;
 }
-/* The review items for one bucket of one build, against whatever book was
-   saved for the same date label. Empty when nothing was saved or nothing
-   moved. Capped so a wholly different day cannot bury the real notes. */
+/* Capped so a wholly different day cannot bury the real notes. */
 function sinceSaved(res, secs, bucketKey) {
-  if (!rulesStore) return [];
-  const all = loadPrinted(), out = [];
+  if (!store) return [];
+  const all = loadJson(PRINTED_LS_KEY), out = [];
   for (const day of Object.keys(res.labels)) {
     const rec = all[res.labels[day]];
     if (!rec || !rec[bucketKey]) continue;
     const diffs = printedDiff(rec[bucketKey], bookFingerprint(secs, day));
     if (!diffs.length) continue;
-    const when = String(rec.saved).replace(/T/, " ").slice(0, 16);
-    out.push({ sec: null, msg: "The plan has moved since a " +
-      res.labels[day] + " book was saved here (" + when + "). Check the " +
-      "printed copy against these:" });
+    const when = String(rec.saved).replace(/T/, " at ").slice(0, 19);
+    out.push({ sec: null, msg: "A " + res.labels[day] + " book was saved on " +
+      "this computer on " + when + ". The plan has changed since — check " +
+      "the printed copy against these:" });
     out.push(...diffs.slice(0, 20));
     if (diffs.length > 20)
       out.push({ sec: null, msg: "…and " + (diffs.length - 20) +
-        " more entries differ." });
+        " more entries differ. Compare the whole book." });
   }
   return out;
 }
 
-/* The Rules pane. Everything it shows comes from the build that produced
-   these very books - res.rules is the table that ran, not the tables read
-   again at display time - so it cannot drift from what you are looking at.
-   Editing is unit order and nothing else: it is the table testers actually
-   correct, and it has a closed grammar that can be checked. */
+/* ---------------- the Rules and Unit order tabs ----------------
+   Everything shown comes from the build that produced these very books -
+   res.rules is the table that ran - so it cannot drift from the sheet. */
 function rulesEnv(b, res, secNames) {
   const isMain = b.hc === "main";
   const prof = SHEETS_DATA.PROFILES_G[isMain ? 0 : (b.hc === "metro" ? 1 : 2)];
@@ -304,8 +406,6 @@ function rulesEnv(b, res, secNames) {
     fleets: prof.fleets,
     posAsc: [...prof.posAsc],
     roadPosAsc: prof.roadPosAsc ? [...prof.roadPosAsc] : [],
-    // section-keyed, not profile-keyed: Ramsgate is a page in the High Speed
-    // book too, and the rule fires there the same way. inBook does the rest.
     platformTurn: Object.keys(SHEETS_DATA.PLATFORM_TURN),
     firstDep: [...(prof.firstDep || [])].sort(),
     firstDepAll: !!prof.firstDepAll,
@@ -315,53 +415,36 @@ function rulesEnv(b, res, secNames) {
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
     breakGap: SHEETS_XLSX.BREAK_GAP,
-    // the allocations sheet's own block list, so the rules page cannot name
-    // a set of depots the sheet does not lay out
     hsDepots: [...HS.DEPOTS],
     gpSplit: isMain,
     orderFix: res.rules.orderFix,
+    inTool: true,
   };
 }
 
-/* The reference half: every rule this build followed, in plain English.
-   Read-only on purpose - it is the thing a new starter opens, and nothing
-   on it can change a book. The order corrections live on the Unit order
-   tab instead, next to the buttons that write them. */
+/* The reference half: read-only, the thing a new starter opens. */
 function rulesPane(b, res, secNames, kind) {
   const el = document.createElement("div");
   el.className = "rules";
-  const h = [];
-  /* "metro" and "hs" are the depot's own documents; anything else is a
-     berthing book. Each gets the rulebook written for the sheet it is. */
   const notBerth = kind === "metro" || kind === "hs";
-  h.push('<p class="sa-src">Everything the tool followed to build this very ' +
-    'book, written out in plain English. It is what actually ran, not a ' +
-    'description of it — change a setting and rebuild, and this changes ' +
-    'with it.' + (notBerth ? '' : ' To put a formation right, use the Unit ' +
-    'order tab.') + '</p>');
   const env = rulesEnv(b, res, secNames);
   env.metro = kind === "metro";
   env.hs = kind === "hs";
-  /* Neither is a berthing sheet, so the parts of the rulebook that are about
-     one do not belong on their tabs: which unit prints first and the
-     corrected formations are both about an order they do not use. The
-     rulebook decides that, so this tab and the printed handout cannot come
-     to different answers. */
-  h.push(SHEETS_RULES.explainHtml(env, SHEETS_RULES.pickFor(kind, false)));
-  el.innerHTML = h.join("");
+  el.innerHTML = '<p class="sa-src">Every rule this book was built with, ' +
+    'written out in plain English from the tables that ran — change a ' +
+    'setting and rebuild, and this changes with it.' +
+    (notBerth ? "" : " To put a formation right, use the Unit order tab.") +
+    "</p>" + SHEETS_RULES.explainHtml(env, SHEETS_RULES.pickFor(kind, false));
   return el;
 }
 
 /* The working half: what this build printed coupled, and a button to turn
-   any of it round. */
-function orderPane(b, res, rebuild, secNames) {
+   any of it round. notify(msg, kind) reaches the panel's status board. */
+function orderPane(b, res, rebuild, secNames, notify) {
   const el = document.createElement("div");
   el.className = "rules";
   const R = res.rules;
   const isMain = b.hc === "main";
-  /* One list is built per fleet into the same array, so the book is picked
-     out by its bucket first and only then by the Ramsgate split. Listed
-     once each however many days were fed in. */
   const mine = c => c.bucket === b.hc &&
     (!isMain || b.ram === (c.sec === "RAMSGATE"));
   const seenRow = new Set();
@@ -374,54 +457,44 @@ function orderPane(b, res, rebuild, secNames) {
   });
   const h = [];
   const esc = escHtml;
-
-  /* Every coupled formation this build produced, so an order can be put
-     right from what is on the sheet rather than by writing anything. */
   h.push('<section class="rule-sec"><h3>Check the coupled formations in ' +
     "this build</h3>");
   if (!coupled.length)
     h.push('<p class="noreviews">Nothing in this book runs coupled, so there ' +
       "is no order to check.</p>");
   else {
-    h.push("<p>Every formation of two or more units the tool printed, and " +
-      "the order it printed them in. Hold it against the real book: if one " +
-      "is the wrong way round, press Reverse.</p>");
+    h.push("<p>Every formation of two or more units the tool printed, in the " +
+      "order it printed them. Hold it against the real book: if one is the " +
+      "wrong way round, press Reverse — it turns the formation round and " +
+      "rebuilds the books straight away. Undo puts it back.</p>");
     h.push('<table class="rules-t"><thead><tr><th>Where and when</th>' +
       "<th>Printed in this order</th><th>Decided by</th><th></th>" +
       "</tr></thead><tbody>");
     coupled.forEach((c, ix) => {
-      /* A row you turned round yourself, as opposed to one the shipped
-         corrections list already had: it is marked, and the button undoes
-         it rather than reversing it a second time. */
-      const mine = !!c.applied &&
+      const yours = !!c.applied &&
         Object.prototype.hasOwnProperty.call(R.edits, c.applied);
-      h.push('<tr class="' + (mine ? "flipped" : "") + '"><td>' +
-        esc(c.sec + " " + c.timeText) +
-        (mine ? ' <span class="flag-you">turned round by you</span>' : "") +
+      const at = c.sec + " " + c.timeText;
+      h.push('<tr class="' + (yours ? "flipped" : "") + '"><td>' + esc(at) +
+        (yours ? ' <span class="flag-you">turned round by you</span>' : "") +
         "</td><td>" + esc(c.units.join(", ")) + "</td><td>" +
-        (mine ? "you, on this computer"
-              : c.applied ? "the corrections list"
-                          : "the position numbers in the report") +
-        '</td><td><button type="button" class="btn ghost" ' +
-        (mine ? 'data-unflip="' + esc(c.applied) + '">Undo'
-              : 'data-flip="' + ix + '">Reverse') +
+        (yours ? "you, on this computer"
+               : c.applied ? "the corrections list"
+                           : "the position numbers in the report") +
+        '</td><td><button type="button" class="btn ghost small" ' +
+        (yours ? 'data-unflip="' + esc(c.applied) + '" aria-label="Undo ' +
+                 esc(c.units.join("+")) + " at " + esc(at) + '">Undo'
+               : 'data-flip="' + ix + '" aria-label="Reverse ' +
+                 esc(c.units.join("+")) + " at " + esc(at) + '">Reverse') +
         "</button></td></tr>");
     });
-    h.push("</tbody></table>");
-    h.push('<p class="opts-hint">Reverse turns that formation round and ' +
-      "rebuilds the books straight away so you can see it. Anything you have " +
-      "turned round is marked, and Undo puts it back. The changes stay on " +
-      "this computer only — tell us which formations you have turned round " +
-      "and they get built in for everybody.</p>");
-    h.push("</section>");
+    h.push("</tbody></table></section>");
   }
-
   if (editCount()) {
-    h.push('<section class="rule-sec"><h3>Changes you have made on this ' +
+    h.push('<section class="rule-sec"><h3>Order corrections made on this ' +
       "computer</h3>");
-    h.push("<p>These are in force for every book built here until you clear " +
-      "them. They are on this computer only — the table below is the whole " +
-      "of it, so read it out to us and they get built into the tool.</p>");
+    h.push("<p>In force for every book built here until you undo them, and " +
+      "on this computer only — read this table out to us and they get built " +
+      "into the tool for everybody.</p>");
     h.push('<table class="rules-t"><thead><tr><th>Location</th><th>When</th>' +
       "<th>Diagrams running together</th><th>Prints in this order</th>" +
       "</tr></thead><tbody>");
@@ -434,57 +507,43 @@ function orderPane(b, res, rebuild, secNames) {
                                : esc(row.prints)) + "</td></tr>");
     }
     h.push("</tbody></table>");
-    h.push('<p><button type="button" class="btn ghost" data-clear="1">' +
-      "Undo all my changes</button></p>");
-    h.push("</section>");
+    h.push('<p><button type="button" class="btn ghost small" data-clear="1">' +
+      "Undo all my corrections</button></p></section>");
   }
   h.push(SHEETS_RULES.explainHtml(rulesEnv(b, res, secNames),
                                   { only: ["corrections"] }));
   el.innerHTML = h.join("");
 
+  const keep = () => { if (!persistEdits() && notify) notify(MSG.editNotKept, "warn"); };
   el.addEventListener("click", ev => {
-    const flip = ev.target.getAttribute && ev.target.getAttribute("data-flip");
-    if (flip !== null && flip !== undefined) {
+    const t = ev.target;
+    if (!t.getAttribute) return;
+    const flip = t.getAttribute("data-flip");
+    if (flip !== null) {
       const c = coupled[Number(flip)];
-      /* Off the deduplicated list: the same formation on Monday and on
-         Tuesday is one working, not two, and must not be given a time it
-         does not need. Two DIFFERENT departures of it must. */
+      /* the same formation on Monday and on Tuesday is one working; two
+         DIFFERENT departures of it are two, and need a time in the key */
       const seen = coupled.filter(x => x.lookupDiags === c.lookupDiags).length > 1;
       const forms = SHEETS_RULES.keyForms(c.sec, c.timeText,
                                           c.lookupDiags.split(","));
       const key = SHEETS_RULES.chooseKey(forms, seen, false);
-      /* Reverse what is printed. The key is the one the lookup itself
-         recorded, so a pin can never be written against a key the build
-         would not consult. */
       const order = c.units.slice().reverse();
-      const bad = SHEETS_RULES.validEdit(key, order);
-      if (bad) return;
+      if (SHEETS_RULES.validEdit(key, order)) return;
       ruleEdits[key] = order;
-      persistEdits();
-      rebuild();
+      keep(); rebuild();
       return;
     }
-    const un = ev.target.getAttribute && ev.target.getAttribute("data-unflip");
-    if (un) {
-      // back to whatever the tool ships, which may be an order of its own
-      delete ruleEdits[un];
-      persistEdits();
-      rebuild();
-      return;
-    }
-    if (ev.target.getAttribute && ev.target.getAttribute("data-clear")) {
-      ruleEdits = {};
-      persistEdits();
-      rebuild();
-    }
+    const un = t.getAttribute("data-unflip");
+    if (un) { delete ruleEdits[un]; keep(); rebuild(); return; }
+    if (t.getAttribute("data-clear")) { ruleEdits = {}; keep(); rebuild(); }
   });
   return el;
 }
 
-/* ---------------- fleet sprites ---------------- */
-/* Stylised side profiles in the Southeastern manner: dark blue Electrostars
-   and Javelins with yellow ends, white Networker metro stock. Decorative
-   only — everything is inline SVG so the file stays offline. */
+/* ---------------- fleet sprites ----------------
+   Stylised side profiles in the Southeastern manner: dark blue Electrostars
+   and Javelins with yellow ends, white Networker metro stock. Inline SVG so
+   the file stays offline. */
 function sprite(cls) {
   const wheels =
     '<circle cx="20" cy="27" r="3" fill="#23282C"/>' +
@@ -514,7 +573,7 @@ function sprite(cls) {
       '<rect x="94" y="9" width="9" height="15" fill="#AEB4AE"/>' +
       wheels + rail + "</svg>";
   }
-  // 375 Electrostar — Southeastern's dark blue livery, yellow warning end
+  // 375 Electrostar - Southeastern's dark blue livery, yellow warning end
   return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 375 Electrostar">' +
     '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E"/>' +
     '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
@@ -531,7 +590,8 @@ if (lineupEl) {
       "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
       "</figcaption></figure>").join("");
 }
-/* The head of a road card, shared by the built and the empty ones. */
+
+/* ---------------- the cards ---------------- */
 function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
   head.className = "road-head";
@@ -541,13 +601,11 @@ function roadHead(i, road, fleetLabel, spriteCls) {
     '<span class="road-sprite" aria-hidden="true">' + sprite(spriteCls) + "</span>";
   return head;
 }
-
-/* A road with nothing on it: same head, one line saying why. Every book
-   with no diagrams gets this, so an empty Metro road reads like an empty
-   High Speed one rather than offering an empty workbook to save. */
-function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
+/* A road with nothing on it: same head, one line saying why. */
+function emptyRoadCard(i, road, fleetLabel, spriteCls, why, wide) {
   const art = document.createElement("article");
-  art.className = "road";
+  art.className = "road" + (wide ? " empty-wide" : "");
+  art.dataset.road = road;
   const p = document.createElement("p");
   p.className = "nothing";
   p.textContent = why;
@@ -555,9 +613,48 @@ function emptyRoadCard(i, road, fleetLabel, spriteCls, why) {
   return art;
 }
 
-/* A road card: header + animated unit + review line + actions + panel. */
-/* Fourteen locations is too many for a tab strip - they wrapped into three
-   rows and took the card over. One tab, and the location on a picker. */
+/* The Review tab, grouped by what kind of thing each item is, so a wall of
+   sentences reads as four short lists. The kinds are read off the wording
+   the pipelines use; anything unrecognised is a plain note. */
+const REVIEW_KINDS = [
+  ["Plan changed since the book was saved", "plan changes", "moved",
+    /plan has (moved|changed)|saved book|in this plan|entries differ/i],
+  ["Left off the sheet", "left off", "", /^left off/i],
+  ["Platform stands", "platform stands", "", /^(not counted as a berthing|taken as a berthing)/i],
+  ["Reissue", "reissue notes", "", /reissue/i],
+  ["Order to check", "order checks", "",
+    /order|which way round|which end leads|end marker|formation|correction|position/i],
+  ["Locations and codes", "look-ups", "",
+    /look-up|no code|read as|section list|new section|location/i],
+  ["Notes", "notes", "", /./],
+];
+function groupReviews(items) {
+  const groups = REVIEW_KINDS.map(k => ({ kind: k, items: [] }));
+  for (const it of items) {
+    const g = groups.find(x => x.kind[3].test(it));
+    (g || groups[groups.length - 1]).items.push(it);
+  }
+  return groups.filter(g => g.items.length);
+}
+function reviewPane(items) {
+  if (!items.length) return '<p class="noreviews">' + MSG.nothingToReview + "</p>";
+  return '<div class="reviews">' + groupReviews(items).map(g =>
+    '<div class="revgroup"><h4><span class="chip' + (g.kind[2] ? " " + g.kind[2] : "") +
+    '">' + escHtml(g.kind[0]) + " · " + g.items.length + "</span></h4><ul>" +
+    g.items.map(it => "<li>" + escHtml(it) + "</li>").join("") + "</ul></div>").join("") +
+    "</div>";
+}
+/* the chips on the card: the total, then the biggest three kinds */
+function reviewChips(items) {
+  if (!items.length) return [{ cls: "clean", text: MSG.nothingToReview }];
+  const out = [{ cls: "review", text: MSG.toReview(items.length) }];
+  for (const g of groupReviews(items).slice(0, 3))
+    out.push({ cls: g.kind[2], text: g.items.length + " " + g.kind[1] });
+  return out;
+}
+
+/* One worksheet per location (Metro) or per day (395): a picker, not a tab
+   strip - fourteen tabs took the card over. */
 function metroPane(sheets, what) {
   const wrap = document.createElement("div");
   const bar = document.createElement("div");
@@ -579,9 +676,7 @@ function metroPane(sheets, what) {
   bar.appendChild(note);
   const view = document.createElement("div");
   view.className = "metro-view";
-  const draw = () => {
-    view.innerHTML = SHEETS_XLSX.previewHtml(sheets[+sel.value].layout);
-  };
+  const draw = () => { view.innerHTML = X.previewHtml(sheets[+sel.value].layout); };
   sel.addEventListener("change", draw);
   draw();
   wrap.appendChild(bar);
@@ -589,9 +684,14 @@ function metroPane(sheets, what) {
   return wrap;
 }
 
-function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, saves, restore) {
+/* A road card: head, the unit rolling in with the counts, the review chips,
+   the actions, and the preview - open, on its first tab, unless the card
+   was closed before a rebuild. */
+function roadCard(spec) {
+  const { i, road, fleetLabel, spriteCls, unitHtml, chips, panes, saves,
+          restore, wide } = spec;
   const art = document.createElement("article");
-  art.className = "road";
+  art.className = "road" + (wide ? " wide" : "");
   art.dataset.road = road;
   const head = roadHead(i, road, fleetLabel, spriteCls);
   const track = document.createElement("div");
@@ -599,386 +699,352 @@ function roadCard(i, road, fleetLabel, spriteCls, unitHtml, reviewCount, panes, 
   const unit = document.createElement("div");
   unit.className = "unit";
   unit.style.animationDelay = (i * 90) + "ms";
-  unit.innerHTML = sprite(spriteCls) + unitHtml;
+  unit.innerHTML = '<span aria-hidden="true">' + sprite(spriteCls) + "</span>" + unitHtml;
   track.appendChild(unit);
-  const rline = document.createElement("p");
-  rline.className = "reviewline" + (reviewCount ? "" : " clean");
-  rline.textContent = reviewCount
-    ? reviewCount + " review item" + (reviewCount === 1 ? "" : "s") +
-      " — read before the sheets go out"
-    : "Nothing flagged for review.";
+  const chipRow = document.createElement("div");
+  chipRow.className = "chips";
+  chipRow.innerHTML = chips.map(c =>
+    '<span class="chip' + (c.cls ? " " + c.cls : "") + '">' + escHtml(c.text) + "</span>").join("");
   const acts = document.createElement("div");
   acts.className = "acts";
   const bp = document.createElement("button");
-  bp.type = "button"; bp.className = "btn"; bp.textContent = "Look at it";
+  bp.type = "button"; bp.className = "btn ghost";
   acts.appendChild(bp);
   for (const [label, fn] of saves) {
     const b = document.createElement("button");
-    b.type = "button"; b.className = "btn ghost"; b.textContent = label;
+    b.type = "button"; b.className = "btn"; b.textContent = label;
     b.addEventListener("click", fn);
     acts.appendChild(b);
   }
   const panel = document.createElement("div");
-  panel.className = "panel"; panel.hidden = true;
+  panel.className = "panel";
+  panel.id = "panel-" + (++tabSeq);
   const { tabs, view, select, current } = tabbed(panes);
   panel.append(tabs, view);
+  bp.setAttribute("aria-controls", panel.id);
   let opened = false;
-  bp.addEventListener("click", () => {
-    panel.hidden = !panel.hidden;
-    bp.textContent = panel.hidden ? "Look at it" : "Close";
-    if (!panel.hidden && !opened) { opened = true; select(0); }
-  });
-  /* Ticking a headcode box or pressing Reverse rebuilds every book, which
-     used to wipe the cards and shut the preview you were reading - after
-     telling you, on the button itself, that it rebuilds "so you can see it".
-     What was open is reopened, on the same tab, at the same scroll. */
-  if (restore) {
-    opened = true;
-    panel.hidden = false;
-    bp.textContent = "Close";
+  const show = open => {
+    panel.hidden = !open;
+    bp.textContent = open ? "Close preview" : "Open preview";
+    bp.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && !opened) { opened = true; select(0); }
+  };
+  bp.addEventListener("click", () => show(panel.hidden));
+  if (restore && restore.open === false) show(false);
+  else if (restore) {
+    show(true);
     select(Math.min(restore.tab || 0, panes.length - 1));
     view.scrollTop = restore.top || 0;
     view.scrollLeft = restore.left || 0;
-  }
+  } else show(true);
   art.openState = () => panel.hidden
-    ? null : { tab: current(), top: view.scrollTop, left: view.scrollLeft };
-  art.append(head, track, rline, acts, panel);
+    ? { open: false } : { open: true, tab: current(), top: view.scrollTop, left: view.scrollLeft };
+  art.append(head, track, chipRow, acts, panel);
   return art;
 }
-function reviewPane(items) {
-  return items.length
-    ? '<ul class="reviews">' +
-      items.map(it => "<li>" + escHtml(it) + "</li>").join("") + "</ul>"
-    : '<p class="noreviews">Nothing flagged for review.</p>';
+
+/* ---------------- the mode switch ---------------- */
+const MODES = { wk: { tab: $("#mode_wk"), panel: $("#wkPanel") },
+                we: { tab: $("#mode_we"), panel: $("#wePanel") } };
+function currentMode() {
+  return MODES.we.tab && MODES.we.tab.getAttribute("aria-selected") === "true" ? "we" : "wk";
+}
+function switchMode(m) {
+  for (const k of Object.keys(MODES)) {
+    const on = k === m;
+    if (MODES[k].tab) MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false");
+    if (MODES[k].panel) MODES[k].panel.hidden = !on;
+  }
+  rememberOpts({ mode: m });
+}
+for (const k of Object.keys(MODES))
+  if (MODES[k].tab) MODES[k].tab.addEventListener("click", () => switchMode(k));
+if (savedOpts.mode === "we") switchMode("we");
+
+/* ---------------- one panel: what both share ---------------- */
+function makePanel(ids) {
+  const statusEl = $(ids.status);
+  const say = (msg, kind) => {
+    statusEl.textContent = msg;
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  };
+  /* Every build, rebuild and paste goes through one queue so clicks cannot
+     overlap - and every job on it is caught, so a fault in one cannot leave
+     the queue rejected and swallow the next drop. */
+  let q = Promise.resolve();
+  const enqueue = fn => {
+    q = q.then(fn).catch(e => say(MSG.failed(e), "err"));
+    return q;
+  };
+  const roadsEl = $(ids.roads), allbar = $(ids.allbar), allnote = $(ids.allnote),
+        optsRow = $(ids.optsRow);
+  /* what was open, and what had focus, so a rebuild puts both back */
+  function captureOpen() {
+    const open = new Map();
+    for (const el of roadsEl.children)
+      if (el.openState) open.set(el.dataset.road, el.openState());
+    const a = document.activeElement;
+    const card = a && a.closest ? a.closest(".road") : null;
+    const focus = card && roadsEl.contains(card)
+      ? { road: card.dataset.road, text: a.textContent } : null;
+    return { open, focus };
+  }
+  function restoreFocus(state) {
+    if (!state || !state.focus) return;
+    for (const el of roadsEl.children) {
+      if (el.dataset.road !== state.focus.road) continue;
+      for (const b of el.querySelectorAll("button"))
+        if (b.textContent === state.focus.text) { b.focus({ preventScroll: true }); return; }
+    }
+  }
+  function showBars(on, labelText) {
+    allbar.hidden = !on;
+    if (optsRow) optsRow.hidden = !on;
+    allnote.textContent = on ? (labelText || "") : "";
+  }
+  /* the paste box: toggle, filled-marking, a file dragged into a box, clear */
+  const pw = $(ids.pasteWrap), pt = $(ids.pasteToggle), pSayEl = $(ids.pasteSay);
+  const boxes = ids.boxes.map(s => $(s)).filter(Boolean);
+  const pSay = (msg, cls) => {
+    if (!pSayEl) return;
+    pSayEl.textContent = msg || "";
+    pSayEl.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const markFilled = el => { if (el) el.classList.toggle("filled", !!el.value.trim()); };
+  if (pt && pw) pt.addEventListener("click", () => {
+    const open = pw.hidden;
+    pw.hidden = !open;
+    pt.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && boxes[0]) boxes[0].focus();
+  });
+  for (const el of boxes) {
+    el.addEventListener("input", () => { markFilled(el); pSay(""); });
+    wireBoxDrop(el, (name, err) =>
+      pSay(err ? MSG.boxReadFailed(name) : MSG.readIntoBox(name), err ? "err" : "go"));
+  }
+  const clearEl = $(ids.pasteClear);
+  if (clearEl) clearEl.addEventListener("click", () => {
+    for (const el of boxes) { el.value = ""; markFilled(el); }
+    pSay(MSG.boxesCleared);
+    if (boxes[0]) boxes[0].focus();
+  });
+  const clearBoxes = () => { for (const el of boxes) { el.value = ""; markFilled(el); } pSay(""); };
+  return { say, enqueue, roadsEl, allbar, allnote, showBars, captureOpen,
+           restoreFocus, pSay, boxes, clearBoxes };
 }
 
-/* ================= weekday panel: Genius reports ================= */
+const panels = {};
+
+/* ================= weekday panel: Genius / Integrale reports ================= */
 (function weekday() {
-  const say = sayer($("#status"));
-  const roadsEl = $("#roads"), allbar = $("#allbar"), allnote = $("#allnote"),
-        dlall = $("#dlall"), optsEl = $("#opts"), opts2El = $("#opts2"),
-        opts3El = $("#opts3"), opts4El = $("#opts4");
+  const P = makePanel({
+    status: "#status", roads: "#roads", allbar: "#allbar", allnote: "#allnote",
+    optsRow: "#optsrow", pasteWrap: "#pastebox", pasteToggle: "#pastetoggle",
+    pasteSay: "#paste_say", pasteClear: "#paste_clear",
+    boxes: ["#paste_sum", "#paste_det"],
+  });
+  const { say, enqueue, roadsEl } = P;
+  const [pasteSum, pasteDet] = P.boxes;
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
-  function zone(strong, sub) {
-    zoneStrong.textContent = strong;
-    zoneSub.textContent = sub;
-  }
+  const zone = (a, b) => { zoneStrong.textContent = a; zoneSub.textContent = b; };
+  const opt = id => { const el = document.getElementById(id); return !!(el && el.checked); };
+  const optsHelp = $("#optshelp"), optsHint = $("#optshint");
+  if (optsHelp && optsHint) optsHelp.addEventListener("click", () => {
+    const open = optsHint.hidden;
+    optsHint.hidden = !open;
+    optsHelp.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
   let built = null, zipName = "SHEETS_BOOKS.zip";
-  let lastRes = null;        // kept so the headcode toggles can rebuild
-  /* the dropped pair itself, kept so a rule edit can rebuild in place: the
-     order lookup happens inside the build, so re-rendering is not enough */
-  let lastInputs = null;
-  /* Take the books off the screen, and everything that acts on them. Books
-     on screen are one click from a Save button and only their file name says
-     which day they are, so they must not outlive the pair that built them -
-     not a failed build, and not a new report arriving on top of them.
-     Returns whether anything was actually showing. */
+  let lastRes = null;        // the last build, for the rebuilds and the toggles
+  let lastInputs = null;     // the pair itself, for the rebuilds that re-run the build
+  /* Books on screen are one click from a Save button and only their file
+     name says which day they are, so they must not outlive the pair that
+     built them. Returns whether anything was actually showing. */
   function clearBooks() {
     const had = !!(built && built.length);
     roadsEl.textContent = "";
-    allbar.hidden = true;
-    optsEl.hidden = true;
-    opts2El.hidden = true;
-    if (opts3El) opts3El.hidden = true;
-    if (opts4El) opts4El.hidden = true;
-    allnote.textContent = "";
+    P.showBars(false);
     built = null; lastRes = null; lastInputs = null;
     return had;
   }
   const have = {};           // sum / det, whichever has arrived
-  let queue = Promise.resolve();
-  /* No Metro or High Speed toggle on this panel: both of those sheets carry
-     every headcode already and neither is built through the berthing writer
-     that the option reaches, so a tick box for either changed nothing at
-     all. Only the berthing books can answer it. */
-  const hcToggles = {
-    main: $("#hc_main"),
-  };
-  const hcOn = k => !!(hcToggles[k] && hcToggles[k].checked);
-  const platStand = $("#platstand");
-  const milesCol = $("#milescol");
-  const milesOn = () => !!(milesCol && milesCol.checked);
-  const stockBox = $("#stockreq");
-  const stockOn = () => !!(stockBox && stockBox.checked);
+  let dropId = 0;
 
-  /* A rule edit changes what the build does, so it re-runs the build - the
-     order lookup is inside it. Serialised on the same queue the headcode
-     toggles use, so clicks cannot overlap. */
-  function rebuildForRules() {
-    if (!lastInputs) return;
-    queue = queue.then(async () => {
-      try {
-        await buildGenius();
-        say("Books rebuilt with your order correction — save them again if needed.");
-      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
-    });
-  }
   async function buildGenius() {
-    say("Reading the reports …"); await paint();
+    say(MSG.reading); await paint();
     if (have.sum && have.det)
       lastInputs = { csv: have.sum.fmt === "csv",
                      pair: have.sum.data.concat(have.det.data) };
-    const opts = { orderFix: ruleEdits,
-                   platformStands: !!(platStand && platStand.checked) };
+    const opts = { orderFix: ruleEdits, platformStands: opt("platstand") };
     const res = lastInputs.csv
       ? GENIUS.buildIntegrale(lastInputs.pair, opts)
       : await GENIUS.build(lastInputs.pair, opts);
     lastRes = res;
     await renderBooks(res);
   }
+  const rebuild = (msg, rerun) => enqueue(async () => {
+    if (!lastRes) return;
+    if (rerun) await buildGenius(); else await renderBooks(lastRes);
+    if (msg) say(msg, "go");
+  });
+
+  /* The books, one descriptor each: what to write, what to preview, which
+     review items are its own. The Ramsgate book is cut from the mainline
+     day, so it keeps the mainline items tagged RAMSGATE plus the general
+     ones. The depot's own documents (Metro, 395) are not berthing books. */
+  const BOOKS = [
+    { road: "Mainline", file: "SHEETS_", kind: "berthing", hc: "main", ram: false,
+      fleet: "Mainline", label: "375 / 376 / 377", sprite: "375",
+      secs: r => r.secsByDay, order: r => X.bookOrder(r.secsByDay, X.MAIN_ORDER, true),
+      rev: "main", opts: {} },
+    { road: "Ramsgate", file: "RAM_SHEETS_", kind: "berthing", hc: "main", ram: true,
+      fleet: "Ramsgate", label: "cut from the mainline day", sprite: "375",
+      secs: r => r.secsByDay, order: () => null, rev: "ram", opts: {} },
+    { road: "Metro", file: "METRO_SHEETS_", kind: "metro", hc: "metro", ram: false,
+      fleet: "Metro", label: "465 / 466 / 707", sprite: "465", cycle: true, wide: true,
+      secs: r => r.metroSecs, order: r => X.bookOrder(r.metroSecs, X.METRO_ORDER, false),
+      rev: "metro", opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
+    { road: "High Speed", file: "HS_SHEETS_", kind: "hs", hc: "hs", ram: false,
+      fleet: "High Speed", label: "395", sprite: "395", cycle: true, wide: true,
+      secs: r => r.hsSecs, order: r => X.bookOrder(r.hsSecs, X.HS_ORDER, false),
+      rev: "hs", opts: { baseOrder: [], splitRamsgate: false } },
+  ];
+  const WRITE = {
+    berthing: (b, res, opts) => X.writeBooks(b.secs(res), res.labels, b.ram, opts),
+    metro: (b, res) => METRO.writeMetroBook(b.secs(res), res.labels, b.order(res), zipFn, res.dates),
+    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn),
+  };
 
   async function renderBooks(res) {
-    say("Writing books …"); await paint();
-    const X = SHEETS_XLSX;
+    say(MSG.writing); await paint();
     const dayKeys = ["M", "T", "W", "TH", "F"].filter(k => k in res.labels);
-    const mainOrder = X.bookOrder(res.secsByDay, X.MAIN_ORDER, true);
-    const metroOrder = X.bookOrder(res.metroSecs, X.METRO_ORDER, false);
-    // Each book carries its own fleet's review items. The Ramsgate book is
-    // cut from the mainline build, so it keeps the mainline items tagged
-    // RAMSGATE plus the section-less general ones (unreadable diagrams,
-    // date notices, location look-ups).
     const msgs = list => list.map(x => x.msg);
-    /* what moved since a book for this date was saved on this machine -
-       these go FIRST, because a printed book that no longer matches the
-       plan beats every other kind of note */
+    /* what moved since a book for this date was saved here goes FIRST: a
+       printed book that no longer matches the plan beats every other note */
     const moved = {
       main: sinceSaved(res, res.secsByDay, "main"),
       metro: sinceSaved(res, res.metroSecs, "metro"),
       hs: sinceSaved(res, res.hsSecs, "hs"),
     };
+    const ramOnly = list => list.filter(x => !x.sec || x.sec === "RAMSGATE");
     const revs = {
       main: msgs(moved.main.concat(res.reviews.main)),
-      ram: msgs(moved.main.filter(x => !x.sec || x.sec === "RAMSGATE")
-        .concat(res.reviews.main.filter(x => !x.sec || x.sec === "RAMSGATE"))),
+      ram: msgs(ramOnly(moved.main).concat(ramOnly(res.reviews.main))),
       metro: msgs(moved.metro.concat(res.reviews.metro)),
       hs: msgs(moved.hs.concat(res.reviews.hs)),
     };
     const movedCount = moved.main.length + moved.metro.length + moved.hs.length;
-    // Every fleet gets a road whether or not the reports carry its diagrams.
-    // What it holds is decided below by the entry count, so an empty Metro
-    // road reads exactly like an empty High Speed one.
-    const plan = [
-      { road: "SHEETS", fleet: "Mainline", label: "Mainline 375/376/377",
-        spriteCls: "375", file: "SHEETS_", hc: "main",
-        secs: res.secsByDay, ram: false, order: mainOrder, review: revs.main,
-        opts: {} },
-      { road: "RAM SHEETS", fleet: "Ramsgate", label: "Ramsgate",
-        spriteCls: "375", file: "RAM_SHEETS_", hc: "main",
-        secs: res.secsByDay, ram: true, order: null, review: revs.ram,
-        opts: {} },
-      { road: "METRO SHEETS", fleet: "Metro", label: "Metro 465/466/707",
-        spriteCls: "465", file: "METRO_SHEETS_", hc: "metro", cycle: true,
-        secs: res.metroSecs, ram: false, order: metroOrder, review: revs.metro,
-        metro: true,
-        opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
-      { road: "HIGH SPEED ALLOCATION SHEETS", fleet: "High Speed",
-        label: "High Speed 395",
-        spriteCls: "395", file: "HS_SHEETS_", hc: "hs", cycle: true,
-        secs: res.hsSecs, ram: false, hsSheet: true,
-        order: X.bookOrder(res.hsSecs, X.HS_ORDER, false), review: revs.hs,
-        opts: { baseOrder: [], splitRamsgate: false } },
-    ];
-    /* What was open stays open across a rebuild - keyed by road, because a
-       rebuild can change which roads have anything in them. */
-    const wasOpen = new Map();
-    for (const el of roadsEl.children)
-      if (el.openState) { const st = el.openState(); if (st) wasOpen.set(el.dataset.road, st); }
+    const state = P.captureOpen();
     roadsEl.textContent = "";
     const books = [];
-    plan.forEach((b, i) => {
+    for (let i = 0; i < BOOKS.length; i++) {
+      const b = BOOKS[i];
+      const secs = b.secs(res);
       let entries = 0;
       const secNames = new Set();
-      const splitByRamsgate = b.secs === res.secsByDay;
-      for (const d of dayKeys) {
-        for (const [name, list] of (b.secs[d] || new Map())) {
+      const splitByRamsgate = b.kind === "berthing";
+      for (const d of dayKeys)
+        for (const [name, list] of (secs[d] || new Map())) {
           if (splitByRamsgate && b.ram !== (name === "RAMSGATE")) continue;
           if (list.length) { secNames.add(name); entries += list.length; }
         }
-      }
       if (!entries) {
-        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label, b.spriteCls,
-          "No " + b.fleet + " diagrams in these reports — nothing to " +
-          // neither of the depot's own documents berths anything
-          (b.metro || b.hsSheet ? "sheet." : "berth.") +
-          (b.cycle ? " (A " + b.fleet + " Control Cycle must exist in Genius" +
-                     " for its diagrams to appear.)" : "")));
-        return;
+        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label, b.sprite,
+          MSG.emptyBook(b.fleet, b.cycle, false), b.wide));
+        continue;
       }
-      const allHc = hcOn(b.hc);
-      /* Mileage is a berthing-book column: the mainline book and Ramsgate's
-         own, which is cut from the same day. The Metro book already has a
-         MILES column of its own and the 395 sheet its MG one. */
-      const wantMiles = milesOn() && b.hc === "main" && !b.metro && !b.hsSheet;
-      const opts = { allHeadcodes: allHc, miles: wantMiles };
-      for (const k of Object.keys(b.opts)) opts[k] = b.opts[k];
-      /* The Metro book is the depot's own document, not a berthing book:
-         a worksheet per location rather than per day, so its preview is per
-         location too. */
-      const metroSheets = b.metro
-        ? METRO.sheetsFor(b.secs, res.labels, b.order, res.dates)
-        : (b.hsSheet ? HS.sheetsFor(b.secs, res.labels, res.dates) : null);
+      const allHc = opt("hc_main") && b.hc === "main";
+      /* mileage is a berthing-book column; the Metro book has MILES of its
+         own and the 395 sheet its MG */
+      const wantMiles = opt("milescol") && b.kind === "berthing";
+      const opts = Object.assign({ allHeadcodes: allHc, miles: wantMiles }, b.opts);
+      const review = revs[b.rev];
+      /* the file is written when it is asked for - a toggle that changes one
+         book no longer writes four */
+      let bytes = null;
       const book = { road: b.road, name: b.file + res.tag + ".xlsx",
-        bytes: b.metro
-          ? METRO.writeMetroBook(b.secs, res.labels, b.order,
-                                 f => fflate.zipSync(f, { level: 6 }), res.dates)
-          : (b.hsSheet
-             ? HS.writeHsBook(b.secs, res.labels, res.dates,
-                              f => fflate.zipSync(f, { level: 6 }))
-             : X.writeBooks(b.secs, res.labels, b.ram, opts)) };
+                     bytes: () => bytes || (bytes = WRITE[b.kind](b, res, opts)) };
       books.push(book);
-      const panes = (b.metro || b.hsSheet)
-        ? [[b.metro ? "Sheet" : "Allocations",
-            () => metroPane(metroSheets, b.metro ? "Location" : "Day")]]
-        : dayKeys.map(d => [X.DAY_SHEET[d], () => {
-            const secs = b.secs[d];
-            if (!secs || !secs.size) return '<p class="noreviews">No entries this day.</p>';
-            return X.dayPreviewHtml(secs, res.labels[d], b.ram, b.order, allHc,
-                                    b.hc === "main", wantMiles);
-          }]);
-      panes.push(["Review" + (b.review.length ? " (" + b.review.length + ")" : ""),
-                  () => reviewPane(b.review)]);
-      /* No Unit order tab on the Metro book. That tab turns a formation
-         round on the sheet, and the Metro sheet does not read that way: it
-         reads by Position, 1, 2, 3 down the page, which is the depot's own
-         convention and not something a correction should silently fight.
-         Offering a button that changes nothing you can see is worse than
-         not offering it. */
-      if (!b.metro && !b.hsSheet)
+      let panes;
+      if (b.kind === "berthing") {
+        panes = dayKeys.map(d => [X.DAY_SHEET[d], () => {
+          const day = secs[d];
+          if (!day || !day.size) return '<p class="noreviews">' + MSG.noEntries + "</p>";
+          return X.dayPreviewHtml(day, res.labels[d], b.ram, b.order(res), allHc,
+                                  true, wantMiles);
+        }]);
+      } else {
+        const sheets = b.kind === "metro"
+          ? METRO.sheetsFor(secs, res.labels, b.order(res), res.dates)
+          : HS.sheetsFor(secs, res.labels, res.dates);
+        panes = [[b.kind === "metro" ? "Sheet" : "Allocations",
+                  () => metroPane(sheets, b.kind === "metro" ? "Location" : "Day")]];
+      }
+      panes.push(["Review" + (review.length ? " (" + review.length + ")" : ""),
+                  () => reviewPane(review)]);
+      /* no Unit order tab on the depot's own documents: the Metro sheet
+         reads by position, and a button that changes nothing is worse
+         than none */
+      if (b.kind === "berthing")
         panes.push(["Unit order" + (editCount() ? " (" + editCount() + ")" : ""),
-                    () => orderPane(b, res, rebuildForRules, secNames)]);
-      panes.push(["Rules", () => rulesPane(b, res, secNames,
-        b.metro ? "metro" : (b.hsSheet ? "hs" : null))]);
-      const unitHtml = "<b>" + entries + "</b> " +
-        (entries === 1 ? "entry" : "entries") + " · " + secNames.size +
-        " section" + (secNames.size === 1 ? "" : "s");
-      /* Saving said nothing at all — on a machine where the browser drops
-   files into a folder without asking, or where a policy blocks it, the
-   only thing to do was click again. */
-      const acts = [["Save book", () => {
-        storePrinted(res);
-        download(book.name, book.bytes, XLSX_MIME);
-        say("Saved " + book.name + " — look in this computer's Downloads folder.", "go");
-      }]];
-      // the Metro sheet is fourteen columns across and needs the room
-      roadsEl.appendChild(roadCard(i, b.road, b.label, b.spriteCls, unitHtml,
-        b.review.length, panes, acts, wasOpen.get(b.road)));
-    });
-    /* ---- the stock requirements form, when asked for ----
-       Its own card and its own file: it is not a berthing book, it is the
-       depot's Kent Coast form with the counts filled in, and it rides in
-       the save-all zip with the rest. */
-    if (stockOn() && res.stock) {
-      const bytes = SHEETS_STOCKREQ.write(res.stock, res.labels,
-        f => fflate.zipSync(f, { level: 6 }));
-      if (bytes) {
-        const book = { road: "Stock requirements",
-                       name: "STOCK_REQUIREMENTS_" + res.tag + ".xlsx", bytes };
+                    () => orderPane(b, res, () => rebuild(MSG.rebuilt("with your order correction"), true),
+                                    secNames, say)]);
+      panes.push(["Rules", () => rulesPane(b, res, secNames, b.kind === "berthing" ? null : b.kind)]);
+      const unitHtml = "<b>" + entries + "</b> " + (entries === 1 ? "entry" : "entries") +
+        " · " + plural(secNames.size, "section");
+      roadsEl.appendChild(roadCard({
+        i, road: b.road, fleetLabel: b.label, spriteCls: b.sprite, unitHtml,
+        chips: reviewChips(review), panes, wide: b.wide,
+        saves: [["Save book", () => {
+          storePrinted(res);
+          download(book.name, book.bytes(), XLSX_MIME);
+          say(MSG.saved(book.name), "go");
+        }]],
+        restore: state.open.get(b.road),
+      }));
+      await paint();
+    }
+    /* the stock requirements form, when asked for: the depot's Kent Coast
+       form with the counts filled in, on a card of its own */
+    if (opt("stockreq") && res.stock) {
+      let bytes = null;
+      const book = { road: "Stock requirements",
+                     name: "STOCK_REQUIREMENTS_" + res.tag + ".xlsx",
+                     bytes: () => bytes || (bytes = SHEETS_STOCKREQ.write(res.stock, res.labels, zipFn)) };
+      const units = SHEETS_STOCKREQ.unitCount(res.stock);
+      const days = Object.keys(res.stock).filter(dk => res.stock[dk] && res.stock[dk].size);
+      if (days.length) {
         books.push(book);
-        const units = SHEETS_STOCKREQ.unitCount(res.stock);
-        /* previewed as the very grid the workbook writes, in the blank
-           form's own style records, under its printed page heading */
-        const panes = Object.keys(res.stock)
-          .filter(dk => res.stock[dk] && res.stock[dk].size)
-          .map(dk => [X.DAY_SHEET[dk] || dk,
-                      () => SHEETS_STOCKREQ.previewHtml(res.stock[dk],
-                                                        res.labels[dk])]);
-        roadsEl.appendChild(roadCard(plan.length, "Stock requirements",
-          "Kent Coast form", "s375",
-          "<b>" + units + "</b> unit" + (units === 1 ? "" : "s") +
-          " standing at the start of day", 0, panes,
-          [["Save form", () => {
-            download(book.name, book.bytes, XLSX_MIME);
-            say("Saved " + book.name +
-                " — look in this computer's Downloads folder.", "go");
-          }]]));
+        roadsEl.appendChild(roadCard({
+          i: BOOKS.length, road: "Stock requirements", fleetLabel: "Kent Coast form",
+          spriteCls: "375", wide: true,
+          unitHtml: "<b>" + units + "</b> " + (units === 1 ? "unit" : "units") +
+            " standing at the start of the day",
+          chips: [{ cls: "clean", text: "Counts filled in · POSITION and SEAT LOSS for the planner" }],
+          panes: days.map(dk => [X.DAY_SHEET[dk] || dk,
+            () => SHEETS_STOCKREQ.previewHtml(res.stock[dk], res.labels[dk])]),
+          saves: [["Save form", () => {
+            download(book.name, book.bytes(), XLSX_MIME);
+            say(MSG.saved(book.name), "go");
+          }]],
+          restore: state.open.get("Stock requirements"),
+        }));
       }
     }
     built = books;
     zipName = "SHEETS_BOOKS_" + res.tag + ".zip";
-    allbar.hidden = books.length === 0;
-    /* The headcode toggles rebuild the books, so they belong with the books
-       rather than above an empty page - they were the second thing a new
-       user saw, before they had dropped anything. */
-    optsEl.hidden = books.length === 0;
-    opts2El.hidden = books.length === 0;
-    if (opts3El) opts3El.hidden = books.length === 0;
-    if (opts4El) opts4El.hidden = books.length === 0;
-    allnote.textContent = Object.values(res.labels).join(", ");
-    const n = res.review.length;
-    const rv = n
-      ? (n === 1 ? " 1 item for a human eye is on its book's Review tab."
-                 : " " + n + " items for a human eye are on the books' Review tabs.")
-      : " Nothing needed a human eye.";
-    /* A correction made with Reverse is kept on this computer and re-applied
-       to every build on it, for good - so it has to be said out loud on
-       every build, not left to a tab label that reads like the review count
-       beside it. On a shared machine one person's reversal quietly reshapes
-       everybody else's books. */
-    const ed = editCount();
-    const mine = ed
-      ? " " + ed + (ed === 1 ? " order correction" : " order corrections") +
-        " made on this computer " + (ed === 1 ? "is" : "are") +
-        " in force — see the Unit order tab."
-      : "";
-    /* A book already saved for this date that no longer matches the plan is
-       the sharpest thing this page can say, so it leads the message. */
-    const chg = movedCount
-      ? " The plan has MOVED since a book for this date was saved on this" +
-        " computer — the differences lead the Review tabs."
-      : "";
-    say("Books built — look them over below, then save." + chg + rv + mine,
-        (movedCount || res.review.length || ed) ? "warn" : "go");
+    const labels = Object.values(res.labels).join(", ");
+    P.showBars(books.length > 0, labels);
+    P.restoreFocus(state);
+    const n = res.review.length, ed = editCount();
+    say(MSG.built(labels, n, movedCount, ed),
+        (movedCount || n || ed) ? "warn" : "go");
   }
 
-  async function accept(file) {
-    const nm = file.name.toLowerCase();
-    if (nm.endsWith(".docx") || nm.endsWith(".doc")) {
-      say("Weekend diagram prints go in the weekend panel below — drop them there.", "err");
-      return;
-    }
-    if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) {
-      say("ACWN workbooks aren't read any more — the weekday books are built from the Genius reports (PDF or CSV) or the Integrale CSV exports.", "err");
-      return;
-    }
-    if (nm.endsWith(".csv")) {
-      const text = new TextDecoder("utf-8").decode(await file.arrayBuffer());
-      let kind = null, fmt = "csv";
-      try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
-      if (!kind) {
-        try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {}
-      }
-      if (!kind) {
-        say("“" + file.name + "” isn't a report this reads — it takes the " +
-            "Diagram Summary and Diagrams CSVs from Integrale, or the " +
-            "Diagram Summary and Detail reports from Genius saved as CSV.", "err");
-        return;
-      }
-      await stash(kind, fmt, text);
-      return;
-    }
-    if (!nm.endsWith(".pdf")) {
-      say("This tool reads the Genius Diagram Summary & Detail reports (PDF or CSV) or the Integrale CSV exports for the daily sheets — weekend diagram prints (.docx / .doc) go in the panel below.", "err");
-      return;
-    }
-    const u8 = new Uint8Array(await file.arrayBuffer());
-    let kind = "?";
-    try {
-      const t = GENIUS.pdfText(u8);
-      if (/DIAGRAM SUMMARY REPORT/i.test(t)) kind = "sum";
-      else if (/Diagram Detail Report/i.test(t)) kind = "det";
-    } catch (e) {}
-    if (kind === "?") {
-      say("“" + file.name + "” doesn't look like a Genius report — save the Diagram Summary and Diagram Detail reports from Genius as PDFs and drop both here.", "err");
-      return;
-    }
-    await stash(kind, "pdf", u8);
-  }
-
-  // Genius comes as the report PDFs or as CSV exports of the same two
-  // reports; either pairs with the other, so they are one source.
-  let dropId = 0;
+  /* ---- what arrives on the drop zone ---- */
   const srcName = fmt => fmt === "csv" ? "Integrale" : "Genius";
   const family = fmt => fmt === "csv" ? "integrale" : "genius";
   /* Two reports of the same kind in ONE drop are two days of the same
@@ -988,26 +1054,58 @@ function reviewPane(items) {
         family(have[kind].fmt) === family(fmt)) have[kind].data.push(data);
     else have[kind] = { fmt, data: [data], drop: dropId };
   }
+  async function accept(file) {
+    const nm = file.name.toLowerCase();
+    if (nm.endsWith(".docx") || nm.endsWith(".doc")) {
+      /* the weekend's paperwork, on the weekday zone: sent where it goes */
+      say(MSG.sentToWeekend(file.name));
+      switchMode("we");
+      panels.weekend.dropFiles([file]);
+      return;
+    }
+    if (nm.endsWith(".xlsx") || nm.endsWith(".xls")) { say(MSG.notASheetInput, "err"); return; }
+    if (nm.endsWith(".csv") || nm.endsWith(".txt")) {
+      const text = decodeText(new Uint8Array(await file.arrayBuffer()));
+      let kind = null, fmt = "csv";
+      try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
+      if (!kind) { try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {} }
+      if (!kind) {
+        /* a text save of the weekend prints, sent where it goes */
+        if (SHEETS_PRINTS.looksLikePrints(text) || SHEETS_PRINTS.printsFromCsv(text)) {
+          say(MSG.sentToWeekend(file.name));
+          switchMode("we");
+          panels.weekend.dropFiles([file]);
+          return;
+        }
+        say(MSG.notAReport(file.name), "err");
+        return;
+      }
+      stash(kind, fmt, text);
+      return;
+    }
+    if (!nm.endsWith(".pdf")) { say(MSG.notThisPanel, "err"); return; }
+    const u8 = new Uint8Array(await file.arrayBuffer());
+    let txt = null;
+    try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(file.name), "err"); return; }
+    let kind = null;
+    if (/DIAGRAM SUMMARY REPORT/i.test(txt)) kind = "sum";
+    else if (/Diagram Detail Report/i.test(txt)) kind = "det";
+    if (!kind) { say(MSG.notAGeniusPdf(file.name), "err"); return; }
+    /* the text, extracted once here and never again by the build */
+    stash(kind, "pdf", { pdfText: txt });
+  }
   async function drained() {
     if (have.sum && have.det) {
       if (family(have.sum.fmt) !== family(have.det.fmt)) {
-        say("The Summary is from " + srcName(have.sum.fmt) + " but the Detail is from " +
-            srcName(have.det.fmt) + " — drop a matching pair together: both from Genius, or both from Integrale.", "err");
-        zone("Mixed sources loaded",
-             "drop a matching pair — both from Genius, or both from Integrale");
-        // nothing that was just refused is kept: a leftover half pairs with
-        // the next drop's first file and builds the wrong day
+        say(MSG.mixed(srcName(have.sum.fmt), srcName(have.det.fmt)), "err");
+        zone(MSG.zoneMixed[0], MSG.zoneMixed[1]);
+        /* nothing that was just refused is kept: a leftover half pairs with
+           the next drop's first file and builds the wrong day */
         delete have.sum; delete have.det;
         return;
       }
-      try {
-        await buildGenius();
-      } catch (err) {
-        say("Build failed: " + err.message, "err");
-        /* Books from an earlier drop must not survive a failed one: they are
-           one click from a zip named for the day that failed. */
-        clearBooks();
-      }
+      try { await buildGenius(); }
+      catch (err) { say(MSG.failed(err), "err"); clearBooks(); }
       delete have.sum; delete have.det;
       zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
     } else if (have.sum || have.det) {
@@ -1016,126 +1114,58 @@ function reviewPane(items) {
       const got = kind === "sum" ? "Summary" : "Detail";
       const want = kind === "sum" ? "Diagram Detail" : "Diagram Summary";
       const what = family(fmt) === "integrale" ? "CSV" : "report";
-      /* …and they must not sit under a HALF-loaded new one either. A report
-         arriving on top of a finished build makes those books the previous
-         day's: the Save buttons still worked, and only the file name said
-         so. Somebody interrupted between the two drops saved the wrong day. */
+      /* a report arriving on top of a finished build makes those books the
+         previous day's, and only the file name would say so */
       const had = clearBooks();
-      say(srcName(fmt) + " " + got + " loaded ✓ — now drop the " + want +
-          " " + what + "." + (had
-            ? " The books on screen were the previous build, so they have been cleared."
-            : ""));
-      zone("Diagram " + got + " loaded ✓ (" + srcName(fmt) + ")",
-           "now drop the " + want + " " + what + " · or click to choose it");
+      say(MSG.half(srcName(fmt), got, want, what, had));
+      const z = MSG.zoneHalf(srcName(fmt), got, want, what);
+      zone(z[0], z[1]);
     }
   }
+  /* One drop is one job: every file in it is read before anything is built,
+     and a file that cannot be read says so without taking the rest down. */
+  function dropFiles(files) {
+    dropId++;
+    enqueue(async () => {
+      for (const f of files) {
+        try { await accept(f); }
+        catch (err) { say(MSG.readFailed(f.name, err), "err"); }
+      }
+      await drained();
+    });
+  }
+  wireDrop($("#berth"), $("#file"), dropFiles);
+  panels.weekday = { dropFiles };
 
-  dlall.addEventListener("click", () => {
+  $("#dlall").addEventListener("click", () => {
     if (!built || !built.length) return;
     if (lastRes) storePrinted(lastRes);
-    downloadZip(zipName, built.map(b => [b.name, b.bytes]));
-    say("Saved " + zipName + " — " + built.length + " book" +
-        (built.length === 1 ? "" : "s") +
-        " in it, in this computer's Downloads folder.", "go");
+    downloadZip(zipName, built.map(b => [b.name, b.bytes()]));
+    say(MSG.savedZip(zipName, built.length), "go");
   });
-  /* The weekend panel has always had this. The weekday one did not, so the
-     only way to be sure of what was on screen was to reload the page. */
   $("#clearall").addEventListener("click", () => {
     clearBooks();
     delete have.sum; delete have.det;
-    // "Start over" means everything, the pasted text included
-    for (const el of [pasteSum, pasteDet])
-      if (el) { el.value = ""; markFilled(el); }
+    P.clearBoxes();
     zone(ZONE_DEFAULT[0], ZONE_DEFAULT[1]);
-    say("Cleared — drop this day's two reports to start again.");
+    say(MSG.cleared);
   });
-  for (const k of Object.keys(hcToggles)) {
-    if (!hcToggles[k]) continue;
-    hcToggles[k].addEventListener("change", () => {
-      if (!lastRes) return;
-      queue = queue.then(async () => {
-        await renderBooks(lastRes);
-        say("Books rebuilt with the new headcode setting — save them again if needed.", "go");
-      });
-    });
-  }
-  /* Mileage only changes how the books are WRITTEN OUT - the figure is
-     already on every unit, because the 395 sheet's MG column uses it - so
-     this re-renders rather than re-running the build. */
-  if (milesCol) milesCol.addEventListener("change", () => {
-    if (!lastRes) return;
-    queue = queue.then(async () => {
-      await renderBooks(lastRes);
-      say(milesCol.checked
-        ? "Books rebuilt with the mileage column — save them again if needed."
-        : "Books rebuilt without the mileage column — save them again if needed.",
-        "go");
-    });
-  });
-  /* The stock requirements form is a separate document built from counts
-     the run already made, so a toggle only re-renders as well. */
-  if (stockBox) stockBox.addEventListener("change", () => {
-    if (!lastRes) return;
-    queue = queue.then(async () => {
-      await renderBooks(lastRes);
-      say(stockBox.checked
-        ? "Stock requirements sheet added — it is on its own card below."
-        : "Stock requirements sheet removed.", "go");
-    });
-  });
-  /* Platform stands change what the BUILD produces, not just how it is
-     written out, so this one re-runs the build rather than re-rendering. */
-  if (platStand) platStand.addEventListener("change", () => {
-    if (!lastInputs) return;
-    queue = queue.then(async () => {
-      try {
-        await buildGenius();
-        say(platStand.checked
-          ? "Books rebuilt with long platform stands counted as berthings — save them again if needed."
-          : "Books rebuilt without platform stands — save them again if needed.", "go");
-      } catch (err) { say("Rebuild failed: " + err.message, "err"); }
-    });
-  });
-  /* ---- the same two reports pasted in as text ----
-     Some machines will not let the reports be saved anywhere the browser can
-     reach, so the CSVs can be pasted instead of dropped. Everything after
-     the sniff is the drop path exactly: the same stash slots, the same
-     drained(), so a pasted pair and a dropped pair cannot build differently.
-     PDFs are not offered - there is no text in one to copy. */
-  const pasteWrap = $("#pastebox"), pasteToggle = $("#pastetoggle"),
-        pasteSum = $("#paste_sum"), pasteDet = $("#paste_det"),
-        pasteSay = $("#paste_say");
-  const pSay = (msg, cls) => {
-    if (!pasteSay) return;
-    pasteSay.textContent = msg || "";
-    pasteSay.className = "paste-say" + (cls ? " " + cls : "");
+  /* the option boxes: headcodes, mileage and the form only change how the
+     books are written out; platform stands change what the build produces */
+  const onOpt = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => { rememberOpts(); fn(el.checked); });
   };
-  const markFilled = el => {
-    if (el) el.classList.toggle("filled", !!el.value.trim());
-  };
-  if (pasteToggle && pasteWrap) {
-    pasteToggle.addEventListener("click", () => {
-      const open = pasteWrap.hidden;
-      pasteWrap.hidden = !open;
-      pasteToggle.setAttribute("aria-expanded", open ? "true" : "false");
-      if (open && pasteSum) pasteSum.focus();
-    });
-  }
-  for (const el of [pasteSum, pasteDet])
-    if (el) el.addEventListener("input", () => { markFilled(el); pSay(""); });
-  // the CSV dragged straight into a box, for a machine that will not paste
-  for (const el of [pasteSum, pasteDet])
-    wireBoxDrop(el, name => pSay("Read " + name + " into the box.", "go"));
-  if ($("#paste_clear")) $("#paste_clear").addEventListener("click", () => {
-    for (const el of [pasteSum, pasteDet])
-      if (el) { el.value = ""; markFilled(el); }
-    pSay("Both boxes cleared.");
-    if (pasteSum) pasteSum.focus();
-  });
+  onOpt("hc_main", () => rebuild(MSG.rebuilt("with the new headcode setting")));
+  onOpt("milescol", on => rebuild(MSG.rebuilt(on ? "with the mileage column" : "without the mileage column")));
+  onOpt("stockreq", on => rebuild(on ? MSG.stockOn : MSG.stockOff));
+  onOpt("platstand", on => rebuild(MSG.rebuilt(on ? "with long platform stands counted" : "without platform stands"), true));
 
-  /* Which report a box holds is read off the text, not off which box it is,
-     so a pair pasted the wrong way round still builds - it says so rather
-     than refusing over something it can see the answer to. */
+  /* ---- the same two reports pasted in as text ----
+     Everything after the sniff is the drop path exactly: the same stash
+     slots, the same drained(), so a pasted pair and a dropped pair cannot
+     build differently. Which report a box holds is read off the text, not
+     off which box it is. */
   function sniffPaste(el, label) {
     const raw = el ? el.value : "";
     const text = GENIUS.pastedCsv(raw);
@@ -1144,55 +1174,32 @@ function reviewPane(items) {
     try { kind = GENIUS.sniffIntegrale(text); } catch (e) {}
     if (!kind) { try { kind = GENIUS.sniffGeniusCsv(text); fmt = "gcsv"; } catch (e) {} }
     if (kind) return { kind, fmt, text, el, label };
-    /* Say what is actually in the box. The report titles sit on EVERY line of
-       a Genius export, and the sniffer only reads the first one, so text that
-       names the report but does not sniff is a copy that began part way
-       through a line - which "does not read as one of the reports" never
-       told anybody. */
-    const names = /Diagram Detail Report|DIAGRAM SUMMARY REPORT|Diagram Code|Diagram Summary for:/
-      .test(text);
-    return { err: names
-      ? "The " + label + " box holds a report, but the copy starts part way " +
-        "through a line — select from the very top of the file, first line " +
-        "and all, and copy again."
-      : "The " + label + " box does not read as one of the reports (" +
-        (raw.length < 1000 ? raw.length + " characters"
-                           : Math.round(raw.length / 1000) + "k characters") +
-        " in it). Copy the whole " +
-        "file, first line and all — and paste a CSV export, not a PDF.", el };
+    /* the report titles sit on every line of a Genius export and the sniffer
+       reads the first, so text that names the report but does not sniff is
+       a copy that began part way through a line */
+    const names = /Diagram Detail Report|DIAGRAM SUMMARY REPORT|Diagram Code|Diagram Summary for:/.test(text);
+    return { err: names ? MSG.pastePartial(label) : MSG.pasteNotReport(label), el };
   }
-
   async function buildFromPaste() {
     const got = [sniffPaste(pasteSum, "Diagram Summary"),
                  sniffPaste(pasteDet, "Diagram Detail")];
     for (const g of got)
-      if (g.err) { pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
+      if (g.err) { P.pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
     const filled = got.filter(g => !g.empty);
-    if (!filled.length) {
-      pSay("Paste a report into one of the boxes — both are needed, both for " +
-           "the same date.", "err");
-      if (pasteSum) pasteSum.focus();
-      return;
-    }
+    if (!filled.length) { P.pSay(MSG.pasteOne, "err"); if (pasteSum) pasteSum.focus(); return; }
     if (filled.length === 2 && filled[0].kind === filled[1].kind) {
-      pSay("Both boxes hold the " + (filled[0].kind === "sum" ? "Summary" : "Detail") +
-           " — put the other report in the other box.", "err");
+      P.pSay(MSG.pasteSame(filled[0].kind === "sum" ? "Summary" : "Detail"), "err");
       return;
     }
-    /* One box at a time is allowed, because one of the two is often the one
-       that will not go through: the Diagram Detail is megabytes where the
-       Summary is a couple of hundred kilobytes, and a machine that chokes on
-       the paste chokes on that one. So a box left empty is filled from
-       whatever has already arrived - dropped as a file, or pasted before -
-       and only a report that is nowhere at all is refused. */
+    /* a box left empty is filled from whatever has already arrived -
+       dropped as a file, or pasted before - and only a report that is
+       nowhere at all is refused */
     const from = {};
     for (const g of filled) from[g.kind] = g;
     const NAME = { sum: "Diagram Summary", det: "Diagram Detail" };
     const missing = ["sum", "det"].filter(k => !from[k] && !have[k]);
     if (missing.length) {
-      pSay("Still needs the " + NAME[missing[0]] + " — paste it into the other " +
-           "box, or drop the file on the panel above. Either way round works.",
-           "err");
+      P.pSay(MSG.pasteNeeds(NAME[missing[0]]), "err");
       const other = got.find(g => g.empty);
       if (other && other.el) other.el.focus();
       return;
@@ -1202,291 +1209,202 @@ function reviewPane(items) {
       have[k] = { fmt: from[k].fmt, data: [from[k].text], drop: dropId };
     const swapped = !got[0].empty && got[0].kind !== "sum";
     const used = ["sum", "det"].filter(k => !from[k]);
-    pSay(swapped
-      ? "Read the boxes the other way round — the Summary was in the Detail box."
-      : (used.length
-         ? "Built with the " + NAME[used[0]] + " already loaded."
-         : ""), swapped || used.length ? "go" : "");
+    P.pSay(swapped ? MSG.pasteSwapped : (used.length ? MSG.pasteUsedLoaded(NAME[used[0]]) : ""),
+           swapped || used.length ? "go" : "");
     await drained();
   }
-  if ($("#paste_go")) $("#paste_go").addEventListener("click", () => {
-    queue = queue.then(buildFromPaste).catch(err =>
-      pSay("Couldn't read that: " + (err && err.message || err), "err"));
-  });
+  $("#paste_go").addEventListener("click", () =>
+    enqueue(() => buildFromPaste().catch(err => P.pSay(MSG.pasteUnreadable(err), "err"))));
 
-  /* One drop is one job: every file in it is read before anything is built.
-     Reading them as separate jobs meant a pair dropped together built once
-     off the first file and a leftover half from an earlier drop - Friday's
-     summary against Wednesday's detail - and then reported no weekday dates
-     at all. A file that cannot be read says so and does not take the panel
-     down with it. */
-  wireDrop($("#berth"), $("#file"), files => {
-    dropId++;
-    queue = queue.then(async () => {
-      for (const f of files) {
-        try { await accept(f); }
-        catch (err) {
-          say("Couldn't read “" + f.name + "”: " + (err && err.message || err) +
-              " — copy it to this computer's desktop and drop that.", "err");
-        }
-      }
-      await drained();
-    }).catch(err => say("Couldn't read that drop: " +
-      (err && err.message || err), "err"));
-  });
+  /* the board's first line: idle, unless this computer's storage owes a notice */
+  if (!store) say(MSG.storageOff, "warn");
+  else if (rulesDiscarded) say(MSG.rulesDiscarded, "warn");
+  else say(MSG.idle);
 })();
 
 /* ================= weekend panel: diagram prints ================= */
 (function weekend() {
-  const say = sayer($("#we_status"));
-  const roadsEl = $("#we_roads"), allbar = $("#we_allbar"),
-        allnote = $("#we_allnote"), optsEl = $("#we_opts");
+  const P = makePanel({
+    status: "#we_status", roads: "#we_roads", allbar: "#we_allbar", allnote: "#we_allnote",
+    optsRow: "#we_optsrow", pasteWrap: "#we_pastebox", pasteToggle: "#we_pastetoggle",
+    pasteSay: "#we_paste_say", pasteClear: "#we_paste_clear",
+    boxes: ["#we_paste_main", "#we_paste_re"],
+  });
+  const { say, enqueue, roadsEl } = P;
+  const [wePasteMain, wePasteRe] = P.boxes;
   let built = null;
   let loadedDocs = [];
   const SPRITE_FOR = { Mainline: "375", Metro: "465", "High Speed": "395" };
+  const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
+  const isWide = r => r === "Metro" || r === "High Speed";
 
   function render(res) {
-    // same as the weekday panel: a headcode tick rebuilds these too
-    const wasOpen = new Map();
-    for (const el of roadsEl.children)
-      if (el.openState) { const st = el.openState(); if (st) wasOpen.set(el.dataset.road, st); }
+    const state = P.captureOpen();
     roadsEl.textContent = "";
     res.books.forEach((b, i) => {
+      const road = roadName(b.road);
       if (b.skipped) {
-        roadsEl.appendChild(emptyRoadCard(i, b.road, b.label,
-          SPRITE_FOR[b.road] || "375",
-          "No " + b.road + " diagrams in this weekend's prints — nothing" +
-          " to berth."));
+        roadsEl.appendChild(emptyRoadCard(i, road, b.label, SPRITE_FOR[b.road] || "375",
+          MSG.emptyBook(road, false, true), isWide(b.road)));
         return;
       }
-      const items = b.report.split("\n").filter(l => l.startsWith("- "))
-        .map(l => l.slice(2));
+      const items = b.report.split("\n").filter(l => l.startsWith("- ")).map(l => l.slice(2));
       const panes = [
-        ["Sheet", () => SheetsEngine.previewHtml(b.layout)],
-        ["Review list" + (items.length ? " (" + items.length + ")" : ""),
-         () => reviewPane(items)],
+        ["Sheet", () => X.previewHtml(b.layout)],
+        ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
-      const unitHtml = "<b>" + b.entries + "</b> " +
-        (b.entries === 1 ? "entry" : "entries") + " · " + b.sections +
-        " section" + (b.sections === 1 ? "" : "s");
-      roadsEl.appendChild(roadCard(i, b.road, b.label,
-        SPRITE_FOR[b.road] || "375", unitHtml, items.length, panes,
-        [["Save sheet", () => {
+      roadsEl.appendChild(roadCard({
+        i, road, fleetLabel: b.label, spriteCls: SPRITE_FOR[b.road] || "375",
+        unitHtml: "<b>" + b.entries + "</b> " + (b.entries === 1 ? "entry" : "entries") +
+          " · " + plural(b.sections, "section"),
+        chips: reviewChips(items), panes, wide: isWide(b.road),
+        saves: [["Save book", () => {
           download(b.name, b.xlsx, XLSX_MIME);
-          wSay("Saved " + b.name + " — look in this computer's Downloads folder.", "go");
+          say(MSG.saved(b.name), "go");
         }]],
-        wasOpen.get(b.road)));
+        restore: state.open.get(road),
+      }));
     });
     const live = res.books.filter(b => !b.skipped);
-    allbar.hidden = live.length === 0;
-    optsEl.hidden = live.length === 0;
-    allnote.textContent = res.banner + " · " + res.diagrams +
-      " diagrams read";
+    P.showBars(live.length > 0, res.banner + " · " + plural(res.diagrams, "diagram") + " read");
+    P.restoreFocus(state);
   }
 
-  const weHc = {
-    Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
-    "High Speed": $("#we_hc_hs"),
-  };
+  const weHc = { Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
+                 "High Speed": $("#we_hc_hs") };
   function rebuildFromLoaded() {
     const allHeadcodes = {};
     for (const road of Object.keys(weHc))
       allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
     const res = SheetsEngine.run(loadedDocs,
-      b => fflate.unzipSync(b),
-      f => fflate.zipSync(f, { level: 6 }),
-      /* Ramsgate as a book of its own, the way the depot's base sheets and
-         the weekday panel have it - RAM_SHEETS beside SHEETS. */
+      b => fflate.unzipSync(b), zipFn,
+      /* Ramsgate as a book of its own, as the weekday panel has it */
       { allHeadcodes, splitRamsgate: true });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
     if (dlupd) dlupd.hidden = !res.updated;
-    const total = res.books.filter(b => !b.skipped)
-                           .reduce((a, b) => a + b.entries, 0);
-    let msg = "Berthed — " + total + " entries for " + res.banner + ".";
-    if (res.merge) {
-      msg += " Reissue cross-referenced: " + res.merge.replaced.length +
-             " diagram(s) replaced" +
-             (res.merge.added.length ? ", " + res.merge.added.length + " added" : "") + ".";
-    } else if (loadedDocs.length > 1) {
-      msg += " (" + loadedDocs.length + " documents loaded.)";
-    }
-    say(msg, "go");
+    const total = res.books.filter(b => !b.skipped).reduce((a, b) => a + b.entries, 0);
+    say(MSG.weBuilt(res.banner, total,
+      res.merge ? { replaced: res.merge.replaced.length, added: res.merge.added.length } : null,
+      loadedDocs.length), "go");
   }
 
-  function build(files) {
+  /* One drop is one job. A file that cannot be read says so and the rest
+     still build; one of the weekday reports dropped here is sent up. */
+  function dropFiles(files) {
     if (!files.length) return;
-    say("Reading " + files.map(f => f.name).join(", ") + "…");
-    Promise.all(files.map(f => new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onerror = () => rej(new Error("Couldn't read " + f.name +
-        ". Try copying it to the desktop first."));
-      fr.onload = () => res({ name: f.name, bytes: new Uint8Array(fr.result) });
-      fr.readAsArrayBuffer(f);
-    }))).then(newDocs => {
-      /* One of the weekday reports dropped down here is named rather than
-         reported as unreadable prints - the mirror case, a .docx on the
-         weekday panel, has always been sent down here by name. Only text
-         files are worth sniffing; a .docx is a zip. */
-      for (const d of newDocs) {
-        const nm = d.name.toLowerCase();
-        if (/\.(csv|txt)$/.test(nm)) {
-          let txt = "";
-          try { txt = new TextDecoder().decode(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
-          if (txt && !SheetsEngine.looksLikePrints(txt) &&
-              !SheetsEngine.printsFromCsv(txt) &&
-              (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
-            say(d.name + " is one of the weekday Diagram reports — it builds " +
-                "the Monday-to-Friday books, on the panel above.", "err");
-            return;
-          }
-        }
+    switchMode("we");
+    enqueue(async () => {
+      say(MSG.readingFiles(files.map(f => f.name)));
+      const reads = await Promise.allSettled(files.map(f => new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onerror = () => rej(new Error(MSG.weReadFailed(f.name)));
+        fr.onload = () => res({ name: f.name, bytes: new Uint8Array(fr.result) });
+        fr.readAsArrayBuffer(f);
+      })));
+      const newDocs = [];
+      for (const r of reads) {
+        if (r.status === "fulfilled") newDocs.push(r.value);
+        else say(r.reason.message, "err");
       }
+      const weekday = [];
       for (const d of newDocs) {
+        if (!/\.(csv|txt)$/i.test(d.name)) continue;
+        let txt = "";
+        try { txt = decodeText(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
+        if (txt && !SHEETS_PRINTS.looksLikePrints(txt) && !SHEETS_PRINTS.printsFromCsv(txt) &&
+            (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) weekday.push(d);
+      }
+      if (weekday.length) {
+        say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
+        switchMode("wk");
+        panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
+      }
+      const docs = newDocs.filter(d => !weekday.includes(d));
+      if (!docs.length) return;
+      for (const d of docs) {
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
       }
-      try {
-        rebuildFromLoaded();
-      } catch (err) {
-        loadedDocs = loadedDocs.filter(d => !newDocs.some(n => n.name === d.name));
-        if (!loadedDocs.length) {
-          built = null; roadsEl.textContent = ""; allbar.hidden = true;
-          optsEl.hidden = true;
-        } else {
-          try { rebuildFromLoaded(); } catch (e2) { /* keep previous view */ }
-        }
-        say(err && err.message ? err.message
-            : "That file couldn't be read as diagram prints.", "err");
+      try { rebuildFromLoaded(); }
+      catch (err) {
+        loadedDocs = loadedDocs.filter(d => !docs.some(n => n.name === d.name));
+        if (!loadedDocs.length) { built = null; roadsEl.textContent = ""; P.showBars(false); }
+        else { try { rebuildFromLoaded(); } catch (e2) { /* keep the previous view */ } }
+        say(err && err.message ? err.message : MSG.weUnreadable, "err");
       }
-    }).catch(err => say(err.message, "err"));
-  }
-
-  wireDrop($("#we_berth"), $("#we_file"), build);
-
-  /* ---- the prints pasted in as text ----
-     A .docx cannot be pasted, but its text can, and the text is what the
-     parser reads anyway: the Word readers exist only to get from the file
-     to a list of paragraphs. So a paste joins the pipeline one step in,
-     as a document like any other, and everything after it is shared.
-     The tabs are the structure - "Diagram:\tAZ\t601" - so the text is
-     handed over exactly as pasted, never tidied. */
-  const wePasteWrap = $("#we_pastebox"), wePasteToggle = $("#we_pastetoggle"),
-        wePasteMain = $("#we_paste_main"), wePasteRe = $("#we_paste_re"),
-        wePasteSay = $("#we_paste_say");
-  const wSay = (msg, cls) => {
-    if (!wePasteSay) return;
-    wePasteSay.textContent = msg || "";
-    wePasteSay.className = "paste-say" + (cls ? " " + cls : "");
-  };
-  const weMark = el => { if (el) el.classList.toggle("filled", !!el.value.trim()); };
-  if (wePasteToggle && wePasteWrap) {
-    wePasteToggle.addEventListener("click", () => {
-      const open = wePasteWrap.hidden;
-      wePasteWrap.hidden = !open;
-      wePasteToggle.setAttribute("aria-expanded", open ? "true" : "false");
-      if (open && wePasteMain) wePasteMain.focus();
     });
   }
-  for (const el of [wePasteMain, wePasteRe])
-    if (el) el.addEventListener("input", () => { weMark(el); wSay(""); });
-  for (const el of [wePasteMain, wePasteRe])
-    wireBoxDrop(el, name => wSay("Read " + name + " into the box.", "go"));
-  if ($("#we_paste_clear")) $("#we_paste_clear").addEventListener("click", () => {
-    for (const el of [wePasteMain, wePasteRe])
-      if (el) { el.value = ""; weMark(el); }
-    wSay("Both boxes cleared.");
-    if (wePasteMain) wePasteMain.focus();
-  });
+  wireDrop($("#we_berth"), $("#we_file"), dropFiles);
+  panels.weekend = { dropFiles };
+
+  /* ---- the prints pasted in as text ----
+     A paste joins the pipeline one step in, as a document like any other;
+     the tabs are the structure, so the text is handed over as pasted. */
   const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
-  if ($("#we_paste_go")) $("#we_paste_go").addEventListener("click", () => {
-    const main = (wePasteMain ? wePasteMain.value : "").replace(/^\uFEFF/, "");
-    const re = (wePasteRe ? wePasteRe.value : "").replace(/^\uFEFF/, "");
-    if (!main.trim()) {
-      wSay("Paste the weekend diagram prints into the first box.", "err");
-      if (wePasteMain) wePasteMain.focus();
-      return;
-    }
-    /* Say what is wrong before the engine does, because by then the reason
-       is one line deep in a document that was never a document. */
-    /* Both shapes the dropped path takes: tab-separated as Word puts it on
-       the clipboard, or comma-separated as a spreadsheet saves it. Pasted
-       and dropped must not disagree about what the prints are. */
-    const readsAsPrints = t => SheetsEngine.looksLikePrints(t) ||
-                               !!SheetsEngine.printsFromCsv(t);
+  const readsAsPrints = t => SHEETS_PRINTS.looksLikePrints(t) || !!SHEETS_PRINTS.printsFromCsv(t);
+  $("#we_paste_go").addEventListener("click", () => enqueue(async () => {
+    const main = (wePasteMain ? wePasteMain.value : "").replace(/^﻿/, "");
+    const re = (wePasteRe ? wePasteRe.value : "").replace(/^﻿/, "");
+    if (!main.trim()) { P.pSay(MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
     if (!readsAsPrints(main)) {
-      /* Name it when it is one of the WEEKDAY reports. The mirror case is
-         handled - a .docx on the weekday panel is sent down here by name -
-         but this one told somebody who had just pasted a CSV to go and save
-         it as a CSV. */
       const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);
-      wSay(weekday
-        ? "That is one of the weekday Diagram reports — it builds the " +
-          "Monday-to-Friday books, on the panel above."
-        : "That does not read as the diagram prints — no \u201cDiagram:\u201d " +
-          "line with its columns intact. Copy the whole document out of " +
-          "Word, and paste it as it comes.", "err");
+      P.pSay(weekday ? MSG.wePasteWeekday : MSG.wePasteFlat, "err");
       if (wePasteMain) wePasteMain.focus();
       return;
     }
     if (re.trim() && !readsAsPrints(re)) {
-      wSay("The reissue box does not read as diagram prints. Leave it empty " +
-           "if there is no reissue.", "err");
-      if (wePasteRe) wePasteRe.focus();
-      return;
+      P.pSay(MSG.wePasteReissue, "err"); if (wePasteRe) wePasteRe.focus(); return;
     }
     const docs = [asDoc("PASTED PRINTS.txt", main)];
     if (re.trim()) docs.push(asDoc("PASTED reissue prints.txt", re));
     const before = loadedDocs;
     loadedDocs = docs;
-    try {
-      rebuildFromLoaded();
-      wSay(re.trim() ? "Built from the pasted prints and reissue."
-                     : "Built from the pasted prints.", "go");
-    } catch (err) {
-      loadedDocs = before;
-      wSay(err && err.message ? err.message
-           : "That could not be read as diagram prints.", "err");
-    }
-  });
+    try { rebuildFromLoaded(); P.pSay(MSG.wePasted(!!re.trim()), "go"); }
+    catch (err) { loadedDocs = before; P.pSay(MSG.wePasteFailed(err), "err"); }
+  }));
   for (const road of Object.keys(weHc)) {
     if (!weHc[road]) continue;
-    weHc[road].addEventListener("change", () => {
+    weHc[road].addEventListener("change", () => enqueue(() => {
+      rememberOpts();
       if (!loadedDocs.length) return;
-      try {
-        rebuildFromLoaded();
-        say("Sheets rebuilt with the new headcode setting — save them again if needed.", "go");
-      } catch (e) { /* keep previous view */ }
-    });
+      try { rebuildFromLoaded(); say(MSG.rebuilt("with the new headcode setting"), "go"); }
+      catch (e) { say(MSG.weRebuildFailed(e), "err"); }
+    }));
   }
   $("#we_dlupd").addEventListener("click", () => {
     if (!built || !built.updated) return;
     download(built.updated.name, built.updated.bytes, DOCX_MIME);
-    wSay("Saved " + built.updated.name + " — the prints with the reissue\u2019s" +
-         " diagrams spliced in.", "go");
+    say(MSG.savedUpdated(built.updated.name), "go");
   });
   $("#we_clearall").addEventListener("click", () => {
-    loadedDocs = [];
-    built = null;
-    // "Start over" means everything, the pasted text included
-    for (const el of [wePasteMain, wePasteRe])
-      if (el) { el.value = ""; weMark(el); }
-    wSay("");
+    loadedDocs = []; built = null;
+    P.clearBoxes();
     roadsEl.textContent = "";
-    allbar.hidden = true;
+    P.showBars(false);
     const dlupd = $("#we_dlupd");
     if (dlupd) dlupd.hidden = true;
-    say("Cleared — drop this weekend's prints to start again.");
+    say(MSG.weCleared);
   });
   $("#we_dlall").addEventListener("click", () => {
     if (!built) return;
     const live = built.books.filter(b => !b.skipped);
-    downloadZip("SHEETS_" + built.stamp + ".zip", live.map(b => [b.name, b.xlsx]));
-    wSay("Saved SHEETS_" + built.stamp + ".zip — " + live.length + " sheet" +
-         (live.length === 1 ? "" : "s") +
-         " in it, in this computer's Downloads folder.", "go");
+    const name = "SHEETS_" + built.stamp + ".zip";
+    downloadZip(name, live.map(b => [b.name, b.xlsx]));
+    say(MSG.savedZip(name, live.length), "go");
   });
+  say(MSG.weIdle);
 })();
+
+/* A text file as the depot's machines save it: UTF-8 with or without a
+   BOM, UTF-16 from Notepad's "Unicode", or Windows-1252 from an older
+   export - told apart by the BOM and by whether UTF-8 decoding stumbles. */
+function decodeText(u8) {
+  if (u8.length >= 2 && u8[0] === 0xFF && u8[1] === 0xFE) return new TextDecoder("utf-16le").decode(u8);
+  if (u8.length >= 2 && u8[0] === 0xFE && u8[1] === 0xFF) return new TextDecoder("utf-16be").decode(u8);
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(u8); }
+  catch (e) { return new TextDecoder("windows-1252").decode(u8); }
+}
 }
 })();

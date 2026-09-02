@@ -57,10 +57,15 @@ test("parseDiagrams is unchanged", () => {
    Reading order was a third, and is not any more: it was taken back out
    after the verified Sunday 16/08 book disagreed with it 53 times. So the
    diagram column is compared in full again, which is the strongest check
-   here - it is the column the whole change moved. */
+   here - it is the column the whole change moved.
+
+   The review list's wording has moved on too (pluralised, dashes, the
+   merge notes), so the report text is left out here and its lines are
+   pinned in weekend-fixes.test.mjs; the review COUNT still has to match. */
 function sameShape(b) {
   if (b.skipped) return { road: b.road, label: b.label, skipped: true };
   const n = normBook(b);
+  delete n.report;
   return {
     ...n,
     layout: {
@@ -229,7 +234,8 @@ test("a diagram that starts stabled still gets berthed; one that never moves is 
   // GN622 never moves, so it has nothing to berth - but it is left off out
   // loud, naming the road it is standing in
   assert.ok(!diagCol.includes("622"), "the one that never moves is not berthed");
-  assert.match(metro.report, /standing all day: 1 diagram\(s\)/, "it is counted");
+  assert.match(metro.report, /standing all day: 1 diagram stands all day and is not berthed/,
+    "it is counted");
   assert.match(metro.report, /S Gn U Sd x1/, "with the road it stands in");
   assert.match(metro.report, /GN622/, "and its diagram number");
 });
@@ -304,9 +310,9 @@ test("the prints read the same pasted, dropped, or saved as a CSV", async () => 
     .some(b => /not produced/.test(b.report));
   assert.ok(said, "and the report says so rather than leaving it unexplained");
 
-  /* A reissue arrives the same ways the base does. What decides whether an
-     updated prints document comes back is the BASE: there is a .docx to
-     splice a reissue into, or there is not. */
+  /* A reissue arrives the same ways the base does. An updated prints
+     document needs BOTH to be .docx: a base to splice into, and a reissue
+     with paragraphs to splice in. */
   const reCsv = REISSUE_LINES.map(l => l.split("\t")
     .map(c => /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c)
     .join(",")).join("\r\n");
@@ -324,7 +330,14 @@ test("the prints read the same pasted, dropped, or saved as a CSV", async () => 
     [{ name: "P.docx", bytes: docx },
      { name: "P reissue.csv", bytes: new TextEncoder().encode(reCsv) }], zip.un, zip.z);
   assert.ok(mixed.merge, "a CSV reissue merges into a .docx base");
-  assert.ok(mixed.updated, "and that one CAN produce the updated prints");
+  /* …but a CSV has no paragraphs to splice, so there is no updated
+     document. This used to hand back the base UNCHANGED as _UPDATED.docx
+     while the review said "reissue merged" - the superseded prints under a
+     name that says they are current. */
+  assert.equal(mixed.updated, null, "and no updated document can be produced from it");
+  assert.ok(mixed.books.filter(b => !b.skipped).every(b =>
+    /not produced — the reissue was not a Word document/.test(b.report)),
+    "and every book's review says why");
 });
 
 test("a reissue replaces its diagram however the day cell is spelled", () => {

@@ -20,11 +20,14 @@
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
 const SKIN = SHEETS_HS_SKIN;
+const { fmtTime } = SHEETS_CORE;
+const { DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
    from the columns of the real sheet: ASH 2019 times against AFK 6, and RAM
    throughout for Ramsgate. Anything it does not name is passed through. */
 const ENDS_CODE = { AFK: "ASH", RE: "RAM", FKE: "FAV" };
+/* A berth code as the allocation sheet's ENDS columns write it. */
 const endsCode = c => ENDS_CODE[String(c || "").toUpperCase()] ||
                       String(c || "").toUpperCase();
 
@@ -43,11 +46,11 @@ const DEPOTS = ["ASHFORD", "FAVERSHAM", "MARGATE", "RAMSGATE"];
 const DEPOT_CODE = { ASHFORD: "ASH", FAVERSHAM: "FAV",
                      MARGATE: "MAR", RAMSGATE: "RAM" };
 const COL = l => l.charCodeAt(0) - 64;              // "B" -> 2
-const stamp = e => String(Math.floor(e.time / 60) % 24).padStart(2, "0") +
-  (e.time_kind === "pax" ? " " : "+") + String(e.time % 60).padStart(2, "0");
+/* The weekday reports' day keys - the only days a Genius or Integrale pair
+   ever carries. */
 const DAY_NAME = { M: "Monday", T: "Tuesday", W: "Wednesday", TH: "Thursday",
-                   F: "Friday", SA: "Saturday", SU: "Sunday" };
-const DAY_ORDER = ["M", "T", "W", "TH", "F", "SA", "SU"];
+                   F: "Friday" };
+const DAY_ORDER = ["M", "T", "W", "TH", "F"];
 const longDate = (dayKey, date) =>
   (DAY_NAME[dayKey] || "") + " " + String(date || "");
 
@@ -57,20 +60,30 @@ const PREVIEW_W = [8.4, 8.6, 8.4, 8.6, 8.1, 8.1, 8.4, 8.6, 8.1, 6.4, 5.6,
                    7.1, 6.3, 7.3, 8.3, 7.7, 7.9, 7.7, 8.4, 8.4];
 
 /* Yesterday's arrivals into this depot, read off the day before's own
-   entries: every unit whose PM berth is here, with what it came in on. */
+   entries: one row per unit whose PM berth is here, off its last stint of
+   the day. The reports say what the unit LEFT on and when - the departure
+   that took it there - not what it arrived on or at what time, so TRAIN ID
+   and ARRIVAL TIME are left blank for the depot to fill in rather than
+   printed with the departure's figures under the wrong headings. */
 function arrivalsInto(depot, secs) {
-  const out = [];
-  if (!secs) return out;
+  const last = new Map();      // diagram -> its latest stint into the depot
+  if (!secs) return [];
   const want = DEPOT_CODE[depot] || endsCode(depot);
+  const key = t => (t % 1440) < DAY_ROLL ? (t % 1440) + 1440 : (t % 1440);
   for (const [, list] of secs)
     for (const e of list)
       for (const u of e.units) {
         const pm = endsCode(u.pm || (u.ends || "").split(" ")[0]);
         if (pm !== want) continue;
-        out.push({ hc: e.headcode || "", at: stamp(e), unit: u.unit || "",
-                   cars: e.units.length > 1 ? "12" : "6" });
+        const id = (u.code || "") + u.diag;
+        const prev = last.get(id);
+        if (!prev || key(e.time) >= key(prev.time))
+          last.set(id, { id, time: e.time, unit: u.unit || "",
+                         cars: e.units.length > 1 ? "12" : "6" });
       }
-  return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return Array.from(last.values())
+    .sort((a, b) => key(a.time) - key(b.time) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map(a => ({ hc: "", at: "", unit: a.unit, cars: a.cars }));
 }
 
 /* The fleet roster for the UNIT drop-downs, built at runtime from
@@ -81,16 +94,19 @@ function rosterList() {
   return out.join(",");
 }
 
-function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
+/* One day's worksheet: the legend, a block per depot with entries, and the
+   standing notes, every cell naming the skin's style record. prevKey is
+   the day before (its entries fill the arrivals tables) or null. */
+function layoutDay(dayKey, dates, hsSecs, prevKey) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
   const dvRanges = { cet: [], fprp: [], cars: [], unit: [] };
-  /* Every cell names the skin's exact style record (xf) for the saved file,
-     and a coarse house look for the on-screen preview. */
-  const put = (r, c, xf, v, look, num) => {
+  /* Every cell names the skin's exact style record (xf), which both the
+     saved file and the on-screen preview draw it with. */
+  const put = (r, c, xf, v, num) => {
     const cell = { r, c, xf, v: v === undefined || v === null ? "" : String(v),
-                   look: look || 3, sides: [null, null, null, null] };
+                   sides: [null, null, null, null] };
     // a real number cell, so the MG colour rules can compare it
     if (num) cell.num = true;
     cells.push(cell);
@@ -120,11 +136,11 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
       const v = c === "B" ? depot + " PM ARRIVALS " +
                   (yday || "— no previous day loaded")
               : c === "H" ? depot + " UNIT ALLOCATIONS " + today : "";
-      put(r, COL(c), xf, v, c === "B" || c === "H" ? 8 : 3);
+      put(r, COL(c), xf, v);
     }
     merges.push("B" + r + ":F" + r, "H" + r + ":T" + r);
     r++;
-    for (const [c, xf, v] of SKIN.header) put(r, COL(c), xf, v, 7);
+    for (const [c, xf, v] of SKIN.header) put(r, COL(c), xf, v);
     rowHeights.set(r, +SKIN.headerHt);
     r++;
 
@@ -140,7 +156,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           mg: u.mg != null ? u.mg
             : (u.miles == null ? "" : Math.round(u.miles)),
           hl: u.hl,
-          time: stamp(e), unit: u.unit || "",
+          time: fmtTime(e.time, e.time_kind), unit: u.unit || "",
           endsAm: endsCode(u.am), endsPm: endsCode(u.pm),
         });
     const n = Math.max(rows.length, arr.length);
@@ -156,7 +172,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
                   : c === "D" ? (a ? a.unit : "") : c === "E" ? (a ? a.cars : "")
                   : "";
         // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
-        put(r, COL(c), xf, val, undefined,
+        put(r, COL(c), xf, val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
       for (const [c, xf] of Object.entries(right)) {
@@ -167,7 +183,7 @@ function layoutDay(dayKey, labels, dates, hsSecs, prevKey) {
           : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
         const num = (c === "K" || c === "N") && val !== "" &&
                     /^\d+$/.test(String(val));
-        put(r, COL(c), xf, val, undefined, num);
+        put(r, COL(c), xf, val, num);
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
            sheet on screen disagrees with the one in the workbook. Same two
@@ -252,7 +268,7 @@ function sheetsFor(hsSecs, labels, dates) {
       ? m[1].charAt(0) + m[1].slice(1).toLowerCase() + " " + m[2] + " " + m[3]
       : lbl || "SHEET";
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, labels, dates, hsSecs, i > 0 ? days[i - 1] : null) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 ? days[i - 1] : null) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -260,13 +276,14 @@ function sheetsFor(hsSecs, labels, dates) {
        legend and the house notes and nothing else. Count the blocks. */
   }).filter(s => s.layout.blocks > 0);
 }
+/* The whole allocations workbook as bytes, or null when no day has any
+   395 work. */
 function writeHsBook(hsSecs, labels, dates, zipFn) {
   const sheets = sheetsFor(hsSecs, labels, dates);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto,
-         DEPOTS, DEPOT_CODE };
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, DEPOTS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_HS = SHEETS_HS;

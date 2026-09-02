@@ -49,6 +49,22 @@ test("the page says which build it is", () => {
     "no build placeholder was left unsubstituted");
 });
 
+test("the analyser says which build it is, with a stamp of its own", () => {
+  /* The same check for the second deliverable, against package.json's
+     `analyser` block: two different files with two different histories, so
+     a fault reported against "version 2.6" has to name one of them. */
+  const html = readFileSync(new URL("../Diagram Analyser.html", import.meta.url), "utf8");
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  const a = pkg.analyser;
+  assert.ok(a && a.version && a.released, "package.json carries an analyser block");
+  assert.ok(html.includes(">" + a.version + "<"),
+    "the analyser version reaches its page: " + a.version);
+  assert.ok(html.includes(a.released),
+    "and so does its release date: " + a.released);
+  assert.ok(!/\{\{[A-Z_]+\}\}/.test(html),
+    "no build placeholder was left unsubstituted");
+});
+
 test("all modules come up in a clean context", () => {
   const ctx = built();
   for (const name of ["SHEETS_DATA", "SHEETS_CORE", "SHEETS_RULEBOOK",

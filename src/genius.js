@@ -1,6 +1,7 @@
-/* GENIUS - build daily berthing sheets from the Genius Diagram Summary +
-   Diagram Detail PDF reports, applying the weekend sheet builder's rulebook:
-   stints between berth boundaries, section groups, run-round suppression,
+/* GENIUS - the weekday pipeline: the Diagram Summary + Diagram Detail pair
+   from Genius (as PDFs, as CSV exports, or one of each) or the two Integrale
+   CSVs, read into one shape and put through the house rulebook: stints
+   between berth boundaries, section groups, run-round suppression,
    first-departure sections, D/E columns, ECS suppression, END markers, and
    the weekend engine's own station resolver for every code. */
 const GENIUS = (() => {
@@ -22,7 +23,6 @@ const GENIUS = (() => {
     }
     return m;
   }
-  const ORDER_FIX_KEYS = orderFixKeys(ORDER_FIX);
   /* Every pin, split into the location it names and the units it names, so a
      formation can be compared against it loosely. A pin is keyed on an EXACT
      set of diagram numbers, which is its weak point: when a formation loses
@@ -50,6 +50,19 @@ const GENIUS = (() => {
       s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
     return s;
   }
+  // strings whose baselines are within this many PDF units are one line -
+  // the report's rows are 12 apart, and a string never sits between two
+  const LINE_Y_TOL = 2;
+  // an average glyph is about this fraction of the font size wide in the
+  // report's face; it only has to place the END of a string well enough
+  // to tell a column gap from a word space
+  const GLYPH_W = 0.55;
+  // a gap narrower than this between one string's end and the next's start
+  // is a word space; anything wider is a column break
+  const COL_GAP = 4;
+  /* The report PDF's bytes -> its text, one line per printed row with a
+     double space at every column break. No PDF library: the Flate streams
+     are inflated and just the text-placing operators are read. */
   function pdfText(u8) {
     const s = latin(u8);
     const out = [];
@@ -78,9 +91,9 @@ const GENIUS = (() => {
           } else t = op.replace(/\) *Tj$/, "").slice(1);
           t = t.replace(/\\([()\\])/g, "$1")
                .replace(/\\(\d{1,3})/g, (a, b) => String.fromCharCode(parseInt(b, 8)));
-          const key = Math.round(y / 2) * 2;
+          const key = Math.round(y / LINE_Y_TOL) * LINE_Y_TOL;
           if (!lines.has(key)) lines.set(key, []);
-          lines.get(key).push([x, t, x + t.length * fsz * 0.55]);
+          lines.get(key).push([x, t, x + t.length * fsz * GLYPH_W]);
         }
       }
       const keys = [...lines.keys()].sort((a, b) => b - a);
@@ -88,7 +101,7 @@ const GENIUS = (() => {
         const parts = lines.get(k).sort((a, b) => a[0] - b[0]);
         let line = "", endX = null;
         for (const [px, pt, pe] of parts) {
-          if (endX !== null) line += (px - endX < 4) ? "" : "  ";
+          if (endX !== null) line += (px - endX < COL_GAP) ? "" : "  ";
           line += pt; endX = pe;
         }
         out.push(line);
@@ -110,7 +123,12 @@ const GENIUS = (() => {
     return (h < 24 && mi < 60) ? h * 60 + mi : null;
   };
   const sortkey = t => (t % 1440) < DAY_ROLL ? (t % 1440) + 1440 : (t % 1440);
-  function parseSummary(txt) {
+  /* The Summary PDF's text -> one row per working: {date, diag, fleet, pos,
+     start, from, to, end}, times in minutes. Rows are anchored on the two
+     clock cells, so which optional columns the report carries does not
+     matter. `notes`, when given, collects a line for every row whose POS
+     cell was not a number and was taken as 1. */
+  function parseSummary(txt, notes) {
     const rows = [];
     let date = null;
     for (const raw of txt.split("\n")) {
@@ -138,13 +156,27 @@ const GENIUS = (() => {
       // it, and TO immediately before the end time
       if (i1 < 2 || i2 - i1 < 2) continue;
       const fleet = t.slice(1, i1).find(v => /^\d{3}\/\d$/.test(v)) || null;
-      rows.push({ date, diag: t[0], fleet, pos: parseInt(t[i1 - 1], 10),
+      /* A blank POS cell leaves no token, so the one before the start time
+         is then START FUEL ("0.00") - and parseInt of that is 0, or NaN for
+         anything odder, neither of which is a place in a formation. Only a
+         whole number is a Position; anything else is 1, said out loud, the
+         way the CSV readers' `|| 1` already treats it. */
+      const posCell = t[i1 - 1], posGiven = /^\d+$/.test(posCell);
+      const pos = posGiven ? parseInt(posCell, 10) : 1;
+      if (!posGiven && notes)
+        notes.push(date + " " + t[0] + ": the Summary gives no Position for" +
+          " this working — taken as 1, so a formation it is part of may print" +
+          " the wrong way round. Check it against the real book.");
+      rows.push({ date, diag: t[0], fleet, pos,
                   start: mins(t[i1]), from: t[i1 + 1], to: t[i2 - 1],
                   end: mins(t[i2]) });
     }
     return rows;
   }
 
+  /* The Detail PDF's text -> Map date -> Map diagram -> itinerary rows
+     {code, name, arr, dep, hc, act}, times rolled forward past midnight as
+     the diagram runs (so they only ever go up). */
   function parseDetail(txt) {
     const byDate = new Map();
     let cur = null, prev = -1;
@@ -196,20 +228,34 @@ const GENIUS = (() => {
   };
   const sameArea = (a, b) =>
     a === b || BERTH_AREAS.some(g => g.has(a) && g.has(b));
-  const SE = () => (typeof SheetsEngine !== "undefined" ? SheetsEngine : null);
+  // The weekend engine, which loads before this module and lends it the
+  // station resolver and the stabling-name test.
+  const SE = () => SheetsEngine;
   // Sidings, depots and sheds only — see data.js STABLE_CODES.
-  const isStabling = s => STABLE_CODES.has(s.code) ||
-    (SE() ? SE().looksLikeStabling(locName(s))
-          : /(sd|sdg|sids?|sidings?|dep|depot|shed|yard|yd|dms|ebs)\s*$/i.test(locName(s)));
+  const isStabling = s => STABLE_CODES.has(s.code) || SE().looksLikeStabling(locName(s));
+  /* The resolver's guesses, written for the review list. Its own record is
+     a tuple - ["resolved", "X read as Y CRS (or A, B?)", conf, where] or
+     ["nocode", X, null, where] - and a tuple joined with spaces is not a
+     sentence anybody can act on. */
   function viaResolver(name, table, warn, where) {
-    const se = SE();
-    if (!se) return name.slice(0, 3).toUpperCase();
     const local = [];
-    const c = se.codeFor(name, table, local, where);
-    for (const w of local)
-      if (!(w[0] === "resolved" && (w[2] === "high" || w[2] === "manual")))
-        warn.push({ sec: null,
-                    msg: w.map(x => x == null ? "" : x).join(" ").trim() });
+    const c = SE().codeFor(name, table, local, where);
+    const CONF = { low: "low confidence", table: "matched in the code table" };
+    for (const w of local) {
+      if (w[0] === "resolved" && (w[2] === "high" || w[2] === "manual")) continue;
+      let msg;
+      if (w[0] === "nocode")
+        msg = "No code known for “" + name + "” at " + where + " — printed as " +
+              c + ". Check it.";
+      else {
+        const m = /^(.*) read as (.*?) ([A-Z]{2,4})(?: \(or (.*)\?\))?$/.exec(w[1] || "");
+        msg = "Location look-up: “" + name + "” read as " +
+              (m ? m[2] + " (" + m[3] + ")" : String(w[1] || "").replace(/^.* read as /, "")) +
+              " — " + (CONF[w[2]] || (w[2] + " confidence")) + " — at " + where +
+              ". Check it." + (m && m[4] ? " It could also be " + m[4] + "." : "");
+      }
+      warn.push({ sec: null, msg });
+    }
     return c;
   }
   function destCode(name, warn, where) {
@@ -217,7 +263,7 @@ const GENIUS = (() => {
     if (NAME_CODE[nm0]) return NAME_CODE[nm0];
     const d = SHEETS_CORE.destTlc(name);
     if (d && !d.includes("?")) return FIX_CODE[d] || d;
-    const c = viaResolver(name, SE() ? SE().DEST_CODE : {}, warn, where);
+    const c = viaResolver(name, SE().DEST_CODE, warn, where);
     return FIX_CODE[c] || c;
   }
   // corrections learned from the hand-built sheets: these beat whatever
@@ -227,7 +273,15 @@ const GENIUS = (() => {
     if (NAME_CODE[nm]) return NAME_CODE[nm];
     const r = SHEETS_CORE.amPm([[nm, 0, null, true, "settle"]], []);
     if (r[1]) return FIX_CODE[r[1]] || r[1];
-    const c = viaResolver(name, SE() ? SE().BERTH_CODE : {}, warn, where);
+    /* The berth table itself, before any guessing. amPm answers nothing for
+       a place it will not berth a unit at - the headshunts and depot
+       extensions in NON_BERTH_VISIT - but the Genius engine does split the
+       day there (they are in STABLE_CODES), and the column then needs the
+       code the table gives that road, not the resolver's first three
+       letters ("GRO" for the Grove Park headshunt). */
+    const bi = SHEETS_CORE.BERTH_SHEETS[nm];
+    if (bi && bi[1]) return FIX_CODE[bi[1]] || bi[1];
+    const c = viaResolver(name, SE().BERTH_CODE, warn, where);
     return FIX_CODE[c] || c;
   }
   const DAY_OF = { 1: "M", 2: "T", 3: "W", 4: "TH", 5: "F" };
@@ -238,8 +292,10 @@ const GENIUS = (() => {
     return DAY_OF[new Date(y < 100 ? 2000 + y : y, mo - 1, d).getDay()] || null;
   }
   // ---- the weekend engine's shapes, over Genius itineraries ----
+  /* Itinerary rows -> stops: consecutive rows at one location collapse into
+     one {code, name, arr, dep, hcIn, hcOut, act[, ml]}, the headcode it
+     arrived under and the one it leaves under carried separately. */
   function stopsOf(raw) {
-    // collapse consecutive same-location rows; carry identities in and out
     const out = [];
     let lastHc = null;
     for (const [i, j1] of runsOf(raw, s => s.code, null)) {
@@ -286,7 +342,7 @@ const GENIUS = (() => {
      or where the operator has asked for platform stands to be included.
      Everything else long enough to be one is named on the review list
      instead - between three and fourteen a day across the reports seen. */
-  function platformStand(s, opts) {
+  function platformStand(s) {
     if (isStabling(s)) return null;               // already a berth
     if (s.arr === null || s.dep === null) return null;
     let dwell = s.dep - s.arr;
@@ -294,6 +350,11 @@ const GENIUS = (() => {
     if (dwell < RUN_ROUND) return null;           // a turnround, not a stand
     return { dwell, shunted: s.act === "#" };
   }
+  /* The stops that split a diagram's day into stints: the first and last
+     stop, every stabling location where the identity changes (a minor spur
+     only after a berthing-length stay), and a platform stand the report
+     shunts or opts.platformStands asks for. Returns the sorted indexes;
+     opts.seen collects every platform stand looked at, taken or not. */
   function boundaries(stops, opts) {
     opts = opts || {};
     const b = new Set();
@@ -301,7 +362,7 @@ const GENIUS = (() => {
       const s = stops[k];
       if (k === 0 || k === stops.length - 1) { b.add(k); continue; }
       if (!isStabling(s)) {
-        const st = platformStand(s, opts);
+        const st = platformStand(s);
         if (st && (st.shunted || opts.platformStands) && s.hcIn !== s.hcOut) {
           b.add(k);
           if (opts.seen) opts.seen.push({ k, dwell: st.dwell, shunted: st.shunted,
@@ -351,7 +412,11 @@ const GENIUS = (() => {
     }
     return out;
   }
-  function buildDate(date, sumRows, details, prof, warn, fx, stockOut) {
+  /* One date, one fleet profile -> the writer-shaped sections: Map section
+     -> entries. `anyShunt` says whether the date's reports carry the shunt
+     column at all (settled once per date, over every fleet); `stockOut`,
+     when given, collects the stock-requirements count by section. */
+  function buildDate(date, sumRows, details, prof, warn, fx, anyShunt, stockOut) {
     const core = SHEETS_CORE;
     const meta = new Map(), summ = new Map();
     // The Genius summary carries one row per working, and a unit's Position
@@ -397,12 +462,11 @@ const GENIUS = (() => {
       if (!isStabling(stop) && !endpoint) return null;
       const nm = core.norm(locName(stop));
       if (!autoSec.has(nm)) {
-        const se = SE();
-        const r = se ? se.resolveStation(locName(stop)) : null;
+        const r = SE().resolveStation(locName(stop));
         const secName = ((r && r.name) || locName(stop)).toUpperCase();
         autoSec.set(nm, secName);
         warn.push({ sec: secName, msg: date + " " + locName(stop) +
-                  " is not in the section list - listed under " + secName });
+                  " is not in the section list — listed under " + secName });
       }
       return autoSec.get(nm);
     };
@@ -453,18 +517,12 @@ const GENIUS = (() => {
       for (let i = 0; i < bnd.length - 1; i++) stints.push([bnd[i], bnd[i + 1]]);
       meta.set(diag, { stops, stints, sum: sr, sums: srs, miles: raw.miles });
     }
-    /* Does this report carry the shunt column at all? A PDF that lost it, or
-       an Integrale export that never had it, would otherwise read as "no
-       stand anywhere was shunted" and take the exception below everywhere. */
-    let anyShunt = false;
-    for (const [, m] of meta)
-      if (m.stops.some(s => s.act === "#")) { anyShunt = true; break; }
     /* The mirror of "no detail itinerary": a diagram this book owns that
        the detail report never mentions is dropped without a word. */
     for (const [diag, srs] of summ) {
       if (details.has(diag) || !(srs[0].fleet in prof.fleets)) continue;
       warn.push({ sec: null, msg: date + " " + diag + ": in the summary but" +
-        " missing from the detail report - its rows are NOT in this book" });
+        " missing from the detail report — its rows are NOT in this book" });
     }
     /* ---- stock requirements ----
        How many diagrams start the day out of each location? Every diagram
@@ -508,8 +566,15 @@ const GENIUS = (() => {
         // timed off the final in-group stop that is a genuine call (a
         // fleeting ECS pass of the station is not one). A hop out of the
         // section and straight back with nothing worked is a run-round.
+        /* The stop at b is the NEXT stint's origin and its departure is that
+           stint's departure, so the walk stops short of it: a berth ->
+           platform -> berth shunt inside one section (Ashford 14+41 down
+           sidings to east sidings, out again at 16+27) otherwise printed the
+           shunt with the 16+27's time and headcode. Only the diagram's last
+           stop, which begins nothing, is walked to. */
+        const end = b === stops.length - 1 ? b : b - 1;
         let leaveIdx = null, lastGood = null;
-        for (let k = a; k <= b; k++) {
+        for (let k = a; k <= end; k++) {
           const s = stops[k];
           if (k > a && !inGrp(s)) {
             let back = null;
@@ -622,36 +687,23 @@ const GENIUS = (() => {
         for (let i = lastStint[0]; i < stops.length; i++)
           if (stops[i].hcOut && /^[12]/.test(stops[i].hcOut) &&
               stops[i].dep !== null) { worksAfter = true; break; }
-        /* Measured against the hand-written TUE 18/08 book, which settles all
-           four shapes this has to tell apart:
-             RM301  stands at Ramsgate Depot, then WORKS 2U80 away and ends at
-                    Gillingham Depot        - book reads RE, the berth
-             RM058  stands at West Marina, runs empty to Hastings, SAME AREA
-                                            - book reads XSE, the berth
-             GT103/104 stand at Ashford East, run empty to Folkestone
-                                            - book reads FKE, the finish
-             SG810  pauses at Dartford, runs empty home to Slade Green
-                                            - book reads SG, the finish
-           So the berth holds when it goes out to work again or when the move
-           keeps it inside one berthing area; an empty run out of the area TO
-           SOMEWHERE IT CAN STABLE is it going home for the night, and the
-           sheets follow it there. That last clause is what the note above
-           always said and the code never did, which is why 810, 103 and 104
-           read their staging post instead of their depot.
-
-           The stabling test is what keeps the Metro book still: 465 diagrams
-           448/449 and 715/716 run out of the Grove Park sidings and their
-           day simply ends at Cannon Street and Charing Cross. Nobody stands
-           a unit overnight in a terminal platform, so the sidings are still
-           the answer there, and without this clause they would have read
-           CST and CHX. */
+        /* The rule, as the hand-written TUE 18/08 book settles it across the
+           four shapes it has to tell apart: the evening berth holds as the
+           PM end point when the unit goes out to WORK again afterwards
+           (RM301, Ramsgate then 2U80 to Gillingham: RE) or when the move
+           keeps it inside one berthing area (RM058, West Marina shunted to
+           Hastings: XSE); an empty run out of the area to somewhere it can
+           stable is the unit going home, and the sheets follow it there
+           (GT103/104, Ashford East to Folkestone: FKE; SG810, Dartford to
+           Slade Green: SG). The "can stable" clause is what keeps a terminal
+           platform from becoming a berth: 465s whose day ends at Cannon
+           Street or Charing Cross still read their sidings. */
         /* Two questions, and they are not the same one. lateBerth asks
            whether the unit stood somewhere into the evening and then moved
            on at all - that is what empties the AM column, because an entry
            for such a stint is a PM entry whatever happens next. lateMove
            asks the narrower question above: is that berth the PM END POINT,
-           or was it only a staging post on the way home? Reading the second
-           off the first is what put 810, 103 and 104 wrong. */
+           or was it only a staging post on the way home? */
         const lateBerth = !!stints.length &&
           core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
           lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
@@ -691,11 +743,6 @@ const GENIUS = (() => {
           const s = stops[i];
           if (s.hcOut && /^[12]/.test(s.hcOut) && s.dep !== null) { paxAfter = true; break; }
         }
-        // where and when this unit's stint ENDS: units bound for the same
-        // next berth at the same time never parted on this entry - their
-        // later parting is SPLITS PM business, settled by D/E
-        const bEnd = stops[stints[u.si][1]];
-        const path = bEnd.code + "@" + (bEnd.arr !== null ? bEnd.arr : bEnd.dep);
         /* Was this unit actually shunted while it stood here? Genius marks a
            move on the spot with "#" in the activity column. A stand with one
            is the unit being put away; a stand without one can be a pause on
@@ -743,16 +790,17 @@ const GENIUS = (() => {
         const pt = PLATFORM_TURN[e.sec];
         if (pt) {
           /* The platform call this ENTRY is timed off - the last platform
-             call at or before the exit stop, searched across the stint
-             because these sections print the platform departure. It was the
-             FIRST call in the stint until Hastings showed why that is wrong:
-             RM029/030 start their day IN the platform, shunt out to Signal
-             70 and come back, and the first call is the standing start while
-             the turn happens on the return. Bounded by the exit on purpose -
-             a later out-and-back inside the same stint (Ramsgate sees them)
-             belongs to a later departure, not this one. */
+             call at or before the stint's real exit from the section
+             (leaveIdx: on a first-move profile exitIdx is the berth itself,
+             and a search bounded by that never found the platform, so the
+             Metro and High Speed books never turned anything). Not the FIRST
+             call in the stint: RM029/030 start their day IN the Hastings
+             platform, shunt out to Signal 70 and come back, and the turn
+             happens on the return. Bounded by the exit on purpose - a later
+             out-and-back inside the same stint (Ramsgate sees them) belongs
+             to a later departure, not this one. */
           let k = -1;
-          const lim = Math.min(u.exitIdx, sb2);
+          const lim = Math.min(u.leaveIdx, sb2);
           for (let i = sa2; i <= lim && i < stops.length; i++)
             if (stops[i].code === pt.platform) k = i;
           /* It has only turned round if it came INTO the platform from
@@ -770,7 +818,7 @@ const GENIUS = (() => {
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
                       dayEnd, miles, mg, hl, turn,
                       pos: posAt(sums, e.tmin), D, E,
-                      cls: prof.fleets[sum.fleet], paxAfter, path, shunted,
+                      cls: prof.fleets[sum.fleet], paxAfter, shunted,
                       later: later.length > 0 };
         // only when the export actually carries it, so an entry keeps the
         // exact shape the golden test pins when it does not
@@ -778,24 +826,23 @@ const GENIUS = (() => {
         if (unit) blk.unit = unit;
         blocks.push(blk);
       }
-      // Which unit leads: the whole ordering mirrors with the book's posAsc
-      // (see the fleet profiles), diagram number included - it is only a
-      // fallback for units the Position field cannot separate. A road that
-      // faces the other way to the rest of its section overrides it, so long
-      // as the whole formation came off that one road.
+      // Which unit leads. The direction is the section's (posAsc, see the
+      // fleet profiles) unless the whole formation came off a road that
+      // faces the other way (roadPosAsc), and a formation that turned round
+      // in the platform prints the INVERSE of whichever of those applies.
+      // The diagram number only separates units the Position cannot.
       const road = e.origins.size === 1 ? [...e.origins][0] : null;
       const byRoad = road === null ? undefined
         : (prof.roadPosAsc || new Map()).get(road);
+      const asc = byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad;
       /* A formation that turned round in the platform prints the other way
-         up, whatever the section's usual direction: the Position column gave
-         the order it left the berth in, and the sheet wants the order it
+         up from the section's or road's usual direction: the Position column
+         gave the order it left the berth in, and the sheet wants the order it
          stands in as it leaves. Every unit has to agree it turned - they are
          one train by then, so they always do, and a mixed answer means
          something is odd enough to leave alone. */
       const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
-      if (turned)
-        blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
-      else if (byRoad === undefined ? prof.posAsc.has(e.sec) : byRoad)
+      if (turned ? !asc : asc)
         blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
       else
         blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
@@ -805,7 +852,7 @@ const GENIUS = (() => {
         warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + ": " +
           blocks.map(x => x.diag.slice(2)).join(", ") + " runs through the " +
           "platform from a road this book does not have a side for, so the " +
-          "order is printed as the Position column gives it - check which " +
+          "order is printed as the Position column gives it — check which " +
           "way round it stands" });
       // a unit re-entering its berth to attach to another unit's first
       // departure is not listed again - the ATTACHMENT note covers it
@@ -813,20 +860,13 @@ const GENIUS = (() => {
       // East Sidings shown as the note). It comes BEFORE the order lookup:
       // the key has to name the units that print, or a pin written for a
       // pair stops matching the moment a third unit attaches.
-      /* ...but the unit that prints has to have COME IN to the berth for
-         this departure. GT117's diagram opens by attaching at the East
-         Sidings at 07 45 and leaving at 07 46: it joins a train that is
-         already made up, and GT116 is the train. RM308's opens standing in
-         Ramsgate depot at 15 05 with no arrival at all, and RM041 has been
-         alongside it since 10 24 - nothing joined anything there, they are
-         two berthed units going out together, and the book lists both.
-
-         A stint whose first stop has no arrival time is a diagram that
-         simply starts at that berth, which cannot be a unit joining another
-         unit's departure. Reading the two shapes the same way dropped RM041
-         off the Ramsgate PM sheet. Across the five real days to hand this
-         rule fires exactly twice - the Ashford 07 55 the manual describes,
-         and this one. */
+      /* ...but only a unit that COME IN to the berth for this departure is
+         "attaching": GT117's diagram opens by arriving at the East Sidings
+         at 07 45 and leaving at 07 46, so it joins a train that is already
+         made up. A stint whose first stop has no arrival time is a diagram
+         that simply starts at that berth (RM308, standing in Ramsgate depot
+         beside RM041 since 10 24): two berthed units going out together, and
+         the book lists both. */
       const cameIn = x => {
         const m = meta.get(x.diag), st = m && m.stints[x.si];
         return !!st && m.stops[st[0]].arr !== null;
@@ -876,12 +916,10 @@ const GENIUS = (() => {
             (!p.sec || p.sec === e.sec) &&
             [...mine].filter(x => p.set.has(x)).length >= 2);
           if (near.length) warn.push({ sec: e.sec, msg: e.sec + " " +
-            fmtT(e.tmin, e.hc) + " (" + [...mine].join("+") + "): a corrected " +
-            "order is recorded for " + [...near[0].set].join(", ") + " at this " +
-            "location, and this formation is not that set, so the correction " +
-            "does not apply and the order comes off the reports. A formation " +
-            "that gains or loses a unit loses its correction with it — check " +
-            "this one against the real book" });
+            fmtT(e.tmin, e.hc) + " (" + [...mine].join("+") + "): a correction " +
+            "exists for " + [...near[0].set].join(", ") + " here, but this " +
+            "formation is different, so its order comes from the report. " +
+            "Check it against the real book." });
         }
         /* What the lookup consulted, recorded at the lookup itself so nothing
            downstream has to re-derive a key and risk deriving a different
@@ -1027,14 +1065,14 @@ const GENIUS = (() => {
         } else if (mk.fkeLeads.has(dest)) { lead = mk.fke; rear = mk.cbe; }
         else if (mk.cbeLeads.has(dest) || e.route.includes(mk.cbeVia)) {
           lead = mk.cbe; rear = mk.fke;
-        } else warn.push({ sec: e.sec, msg: e.sec + " " + e.tmin + " to " + dest +
-                         " - no rule for which end leads" });
+        } else warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) +
+                         " to " + dest + " — no rule for which end leads" });
         if (lead) {
           e.blocks[0].end = lead;
           e.blocks[e.blocks.length - 1].end = rear;
         }
       }
-      e.dest = destCode(locName(e.destStop), warn, e.sec + " " + e.tmin);
+      e.dest = destCode(locName(e.destStop), warn, e.sec + " " + fmtT(e.tmin, e.hc));
       /* Two routes to one place: say which. Only set when a rule matches, so
          every other entry keeps the exact shape the golden test pins. */
       {
@@ -1086,11 +1124,16 @@ const GENIUS = (() => {
     // service arrival forms it. The roads work last-in-first-out, so
     // tonight's latest 12-car arrival forms tomorrow's earliest departure.
     {
+      /* Keyed and ordered on the rolled clock (sortkey), not the wall clock:
+         an arrival after midnight is the LATEST of the night, and on the
+         wall clock it sorted earliest and swapped the pairing round. */
       const arrs = new Map();
       for (const [, m] of meta) {
         const last = m.stops[m.stops.length - 1];
-        if (last.code === "FLKSETR" && last.arr !== null)
-          arrs.set(last.arr % 1440, (arrs.get(last.arr % 1440) || 0) + 1);
+        if (last.code === "FLKSETR" && last.arr !== null) {
+          const k = sortkey(last.arr);
+          arrs.set(k, (arrs.get(k) || 0) + 1);
+        }
       }
       const bigArr = [...arrs.entries()].filter(([, n]) => n >= 3)
         .map(([t]) => t).sort((x, y) => y - x);
@@ -1099,14 +1142,14 @@ const GENIUS = (() => {
         .sort((x, y) => sortkey(x.tmin) - sortkey(y.tmin));
       fkeBig.forEach((e, ix) => {
         if (ix >= bigArr.length) return;
-        const t = bigArr[ix];
+        const t = bigArr[ix] % 1440;
         const ex = "EX " + String(Math.floor(t / 60)).padStart(2, "0") + "+" +
                    String(t % 60).padStart(2, "0") + " ARR";
         for (let bi = 1; bi < e.blocks.length - 1; bi++)
           if (!e.blocks[bi].end) e.blocks[bi].end = ex;
         warn.push({ sec: "FOLKESTONE EAST",
                   msg: "FOLKESTONE EAST " + fmtT(e.tmin, e.hc) + ": " + ex +
-                  " is taken from tonight's Train Roads arrivals - double" +
+                  " is taken from tonight's Train Roads arrivals — double" +
                   " check the ACWN and change it if the times differ" });
       });
     }
@@ -1223,10 +1266,13 @@ const GENIUS = (() => {
        correction nobody else gets. */
     if (hasEdits) {
       const n = Object.keys(edits).length;
-      noteAll(n + " local rule edit" + (n === 1 ? " is" : "s are") + " in force" +
-        " - these books were built with " + (n === 1 ? "it" : "them") +
-        ", not with the tool as issued. Export from the Rules tab and send" +
-        " back so they can be baked in");
+      noteAll(n === 1
+        ? "1 order correction made on this computer was used for these books." +
+          " It is listed on the Unit order tab — tell us what it says so it" +
+          " can be built in for everyone."
+        : n + " order corrections made on this computer were used for these" +
+          " books. They are listed on the Unit order tab — tell us what it" +
+          " says so they can be built in for everyone.");
     }
     const secsByDay = {}, metroSecs = {}, hsSecs = {}, labels = {}, built = {};
     const stock = {};
@@ -1234,14 +1280,14 @@ const GENIUS = (() => {
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     for (const date of dates) {
       const dk = dayKey(date);
-      if (!dk) { noteAll(date + ": falls on a weekend - use the weekend prints panel"); continue; }
+      if (!dk) { noteAll(date + ": falls on a weekend — use the weekend prints panel"); continue; }
       const det = byDate.get(date);
       if (!det) { noteAll(date + ": summary given but no detail report for this date"); continue; }
       /* A book has one column per weekday, so a second date on the same day
          name has nowhere to go - it used to overwrite the first silently,
          warnings and all. */
       if (labels[dk]) {
-        noteAll(date + " is NOT in these books - it falls on the same " +
+        noteAll(date + " is NOT in these books — it falls on the same " +
           DAY_NAME[dk] + " column as " + built[dk] + ", which is what was" +
           " built; build one week at a time");
         continue;
@@ -1254,7 +1300,7 @@ const GENIUS = (() => {
       for (const diag of det.keys())
         if (!haveSum.has(diag))
           noteAll(date + " " + diag + ": a detail itinerary with no summary" +
-            " row - the diagram is left out, check the Summary export");
+            " row — the diagram is left out, check the Summary export");
       /* A fleet none of the three books knows is dropped by all three, and
          each drop is a bare `continue` - so the diagram left every book at
          once without a word, which is the same silent shape as a depot
@@ -1271,16 +1317,27 @@ const GENIUS = (() => {
         }
         for (const [fleet, diags] of strays)
           noteAll(date + " " + [...diags].sort().join(", ") + ": fleet " +
-            fleet + " is in no book - the diagram is left out of all of " +
+            fleet + " is in no book — the diagram is left out of all of " +
             "them. Check the fleet code in the Summary export");
       }
+      /* Does this date's report carry the shunt column at all? A PDF that
+         lost it, or an Integrale export that never had it, would otherwise
+         read as "no stand anywhere was shunted" and take the going-home
+         exception everywhere. One answer for the date, over every diagram:
+         a fleet whose own diagrams happen to have no "#" on them is still
+         reading a report that has the column. */
+      let anyShunt = false;
+      for (const raw of det.values())
+        if (raw.some(s => s.act === "#")) { anyShunt = true; break; }
       const warnMain = [], warnMetro = [], warnHs = [];
       const stockDay = new Map();
       secsByDay[dk] = buildDate(date, rows, det, PROFILES_G[0], warnMain, fx,
-                                stockDay);
+                                anyShunt, stockDay);
       stock[dk] = stockDay;
-      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx);
-      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx);
+      metroSecs[dk] = buildDate(date, rows, det, PROFILES_G[1], warnMetro, fx,
+                                anyShunt);
+      hsSecs[dk] = buildDate(date, rows, det, PROFILES_G[2], warnHs, fx,
+                             anyShunt);
       labels[dk] = DAY_NAME[dk] + " " + date.slice(0, 5);
       dayDate[dk] = date;
       for (const [warn, bag] of [[warnMain, reviews.main],
@@ -1298,6 +1355,19 @@ const GENIUS = (() => {
        seen. */
     if (!Object.keys(secsByDay).length) {
       const wknd = dates.filter(d => d && !dayKey(d));
+      /* Two reports for two different dates: each half is fine on its own
+         and the notes above have already said "no detail report for this
+         date", but nothing is built, so the error is the only thing seen -
+         and "no weekday dates found" sends somebody checking the calendar
+         when what they need is the other report run again. */
+      const weekday = dates.filter(d => d && dayKey(d));
+      const detDates = [...byDate.keys()].filter(Boolean);
+      if (weekday.some(d => !byDate.has(d)) && detDates.length)
+        throw new Error("The two reports are for different dates — the" +
+          " Diagram Summary is for " + weekday.join(", ") + " and the" +
+          " Diagram Detail for " + detDates.join(", ") + ". Both must be" +
+          " for the same date: run the one that is wrong again and drop" +
+          " the pair.");
       throw new Error(wknd.length
         ? "No weekday dates found in the reports — " + wknd.join(", ") +
           (wknd.length === 1 ? " falls" : " fall") + " on a weekend. Saturday" +
@@ -1309,8 +1379,9 @@ const GENIUS = (() => {
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {
       if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0)) continue;
-      noteAll("local rule edit " + k + " matched nothing in these reports" +
-              " - the working may have moved; re-pin it or clear it");
+      noteAll("The order correction " + k + " made on this computer matched" +
+              " nothing in these reports — the working may have moved;" +
+              " re-pin it or clear it");
     }
     return { secsByDay, metroSecs, hsSecs, labels, dates: dayDate, review, reviews,
              stock,
@@ -1321,11 +1392,16 @@ const GENIUS = (() => {
              tag: Object.values(labels).join("_").replace(/[ /]/g, "-") };
   }
 
-  /* Genius input: the report PDFs (bytes), the CSV exports (strings), or one
-     of each - they carry the same two reports and merge into the same pair. */
+  /* Genius input -> the books ({secsByDay, metroSecs, hsSecs, labels,
+     review, reviews, rules, stock, tag}). Each input is a report PDF (a
+     Uint8Array or ArrayBuffer), that PDF's text already extracted with
+     pdfText ({pdfText: string} - so a page need not extract it twice), or a
+     CSV export (a string); which report each one is comes off its contents,
+     and both reports must be present. opts: {orderFix, platformStands}. */
   async function build(inputs, opts) {
     let sumRows = [];
     const byDate = new Map();
+    const notes = [];
     const mergeDetail = m1 => {
       for (const [d, m] of m1) {
         if (!byDate.has(d)) byDate.set(d, new Map());
@@ -1339,41 +1415,32 @@ const GENIUS = (() => {
         else if (kind === "det") mergeDetail(parseDetailCsvG(inp));
         continue;
       }
-      const txt = pdfText(inp instanceof Uint8Array ? inp : new Uint8Array(inp));
-      if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt));
+      const txt = inp && typeof inp.pdfText === "string" ? inp.pdfText
+        : pdfText(inp instanceof Uint8Array ? inp : new Uint8Array(inp));
+      if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt, notes));
       if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found - drop the Genius Diagram Summary report as well.");
-    if (!byDate.size) throw new Error("No Diagram Detail itineraries found - drop the Genius Diagram Detail report as well.");
-    return assemble(sumRows, byDate, startOfDayOnly(sumRows, byDate), opts);
+    if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
+    if (!byDate.size) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
+    return assemble(sumRows, byDate, notes.concat(startOfDayOnly(sumRows, byDate) || []), opts);
   }
 
   /* Which way round a formation reads comes from the Position, and the
-     Position only means anything if the summary gives one PER WORKING. The
-     12/08 export did: 449 rows for 303 diagrams, 124 of them appearing more
-     than once, so the 16 50 off Grove Park carried its own Positions. The
-     17/08 export carried 322 rows for 322 diagrams - one apiece, the
-     start-of-day Position and nothing else - and every afternoon formation
-     was then ordered on where its units stood that morning.
+     Position only means anything if the Summary gives one PER WORKING. With
+     File › Session Settings › "Show diagram sections on the diagram summary
+     report" unticked the report collapses each diagram to one line carrying
+     the start-of-day Position, and every afternoon formation is then ordered
+     on where its units stood that morning - four of the six checkable Grove
+     Park PM formations wrong on 17/08, and not recoverable: the Detail
+     report carries no Position and no formation column. So it is said, in
+     the one place somebody reads.
 
-     It is not a small effect and it is not visible on the sheet: of the six
-     Grove Park PM formations that could be checked against 12/08, four came
-     out wrong, including the 16 50 and the 16 41. The order cannot be
-     recovered from anywhere else - the Detail report carries no Position and
-     no formation column - so the only honest thing is to say so, in the one
-     place somebody is going to read.
-
-     The check is not "how many rows" - a short day would fail that. It is
-     the two reports against each other: the Detail lists every working, so
-     if it shows diagrams working several times over while the Summary gives
-     each of them one line, the Summary is the start-of-day one.
-
-     The cause is one tick box, found by the tester after this landed:
-     File > Session Settings > "Show diagram sections on the diagram summary
-     report". A diagram section IS a working, so with it off the report
-     collapses each diagram to a single line and the Position goes with it.
-     The message names the setting, because "run the export again" is not
-     much use to somebody who does not know which of the options it was. */
+     The check is the two reports against each other, not a row count (a
+     short day would fail that): the Detail lists every working, so if it
+     shows diagrams working several times over while the Summary gives each
+     of them one line, the Summary is the start-of-day one. The message names
+     the setting, because "run the export again" is no use to somebody who
+     does not know which option it was. */
   function startOfDayOnly(sumRows, byDate) {
     const seen = new Map();
     for (const r of sumRows)
@@ -1389,17 +1456,11 @@ const GENIUS = (() => {
         if (hcs.size > 1) busy++;
       }
     if (busy < 5 || busy * 3 < seen.size) return undefined;
-    return ["This Diagram Summary carries the AM unit positions only, not " +
-      "the PM ones: " + seen.size + " diagrams on " + sumRows.length +
-      " lines, one apiece, while the Detail report shows " + busy +
-      " of them working more than once. So the only position it gives is " +
-      "where each unit stood at the start of the day, and every formation " +
-      "made up during the day is printed in its morning order - the " +
-      "afternoon Grove Park departures especially. In Genius, tick File > " +
-      "Session Settings > \u201cShow diagram sections on the diagram " +
-      "summary report\u201d and run the Summary again: that is the setting " +
-      "that gives you the PM positions. Until then, put the affected " +
-      "formations right with Reverse on the Unit order tab."];
+    return ["This Diagram Summary was exported without \u201cShow diagram " +
+      "sections\u201d ticked, so it carries only the morning unit positions " +
+      "and afternoon formations may print the wrong way round. In Genius: " +
+      "File \u203a Session Settings, tick it, and run the Summary again \u2014 or " +
+      "put the affected formations right with Reverse on the Unit order tab."];
   }
 
 
@@ -1493,9 +1554,11 @@ const GENIUS = (() => {
   const missingCols = c => c && c.missing
     ? " It is missing the " + c.missing.join(", ") + " column" +
       (c.missing.length === 1 ? "" : "s") +
-      " - add " + (c.missing.length === 1 ? "it" : "them") +
+      " — add " + (c.missing.length === 1 ? "it" : "them") +
       " to the export and run it again."
     : "";
+  /* Which Integrale export a CSV is, off its header row: "sum" (Diagram
+     Summary), "det" (Diagrams), or null for anything else. */
   function sniffIntegrale(text) {
     const rows = csvParse(text.slice(0, 4000));
     if (!rows.length) return null;
@@ -1580,7 +1643,7 @@ const GENIUS = (() => {
     // legs -> the itinerary rows assemble()/buildDate expect, with the
     // same past-midnight rolling parseDetail applies
     const byDate = new Map();
-    const stabled = [];
+    const stabled = [], unreadable = [];
     for (const [code, d] of diags) {
       if (!d.legs.length) { stabled.push(code); continue; }
       let prev = -1;
@@ -1605,11 +1668,13 @@ const GENIUS = (() => {
                    dep: null, hc: null, ml });
       }
       if (anyMl) out.miles = top;
-      if (!out.length) { stabled.push(code); continue; }
+      /* a diagram whose every leg was dropped for a bad time is not stable,
+         it is unreadable - and is said to be, by name */
+      if (!out.length) { unreadable.push(code); continue; }
       if (!byDate.has(d.date)) byDate.set(d.date, new Map());
       byDate.get(d.date).set(code, out);
     }
-    return { byDate, stabled, mangled, badTime };
+    return { byDate, stabled, unreadable, mangled, badTime };
   }
   // ---- Genius CSV exports (the same two reports, saved as CSV) ----
   // Every line repeats the whole report header and carries its data at the
@@ -1622,6 +1687,8 @@ const GENIUS = (() => {
       if ((row[i] || "").trim() === label) return i + 1;
     return -1;
   }
+  /* Which Genius report a CSV export is, off the title every line repeats:
+     "sum", "det", or null for anything else (an Integrale CSV included). */
   function sniffGeniusCsv(text) {
     const rows = csvParse(text.slice(0, 4000));
     if (!rows.length) return null;
@@ -1694,8 +1761,12 @@ const GENIUS = (() => {
         st.ml = ml;
         st.out.miles = Math.max(st.out.miles || 0, ml);
       }
-      if (TM.test(f[10]))
-        st.out.push({ code: f[8], name: f[9], arr: roll(mins(f[10])),
+      /* The to-side clock read the same tolerant way as the from-side: a
+         cell Excel has re-saved ("9:10:00") failed the strict test here and
+         the arrival stop was silently dropped, which moved AM/PM berths. */
+      const tv = tmin(f[10]);
+      if (tv !== null)
+        st.out.push({ code: f[8], name: f[9], arr: roll(tv),
                       dep: null, hc: null, ml: st.ml });
       if (!byDate.has(date)) byDate.set(date, new Map());
       byDate.get(date).set(diag, st.out);
@@ -1703,6 +1774,10 @@ const GENIUS = (() => {
     return byDate;
   }
 
+  /* Integrale input -> the same books build() returns. `texts` are the two
+     CSV exports as strings (Diagram Summary and Diagrams, either order,
+     both required); a stable-all-day placeholder diagram is left out with a
+     note. opts as for build(). */
   function buildIntegrale(texts, opts) {
     let sumRows = null, det = null;
     for (const t of texts) {
@@ -1710,29 +1785,42 @@ const GENIUS = (() => {
       if (kind === "sum") sumRows = parseSummaryCsv(t);
       else if (kind === "det") det = parseDetailCsv(t);
     }
-    if (!sumRows) throw new Error("No Integrale Diagram Summary rows found - drop the Diagram Summary CSV export as well.");
-    if (!det) throw new Error("No Integrale diagram legs found - drop the Diagrams CSV export as well.");
+    if (!sumRows) throw new Error("No Integrale Diagram Summary rows found — drop the Diagram Summary CSV export as well.");
+    if (!det) throw new Error("No Integrale diagram legs found — drop the Diagrams CSV export as well.");
     const notes = [];
+    const count = (n, one, many) => n + " " + (n === 1 ? one : many);
     if (det.stabled.length) {
       const drop = new Set(det.stabled);
       sumRows = sumRows.filter(r => !drop.has(r.diag));
-      notes.push(det.stabled.length + " stable-all-day diagram(s) with no " +
-        "movements left out: " + det.stabled.join(", "));
+      notes.push(count(det.stabled.length, "stable-all-day diagram", "stable-all-day diagrams") +
+        " with no movements left out: " + det.stabled.join(", "));
     }
     if (det.badTime)
-      notes.push(det.badTime + " leg(s) left out - the Start or End Time cell" +
-        " was blank or unreadable; check the export");
+      notes.push(count(det.badTime, "leg", "legs") + " left out — the Start or" +
+        " End Time cell was blank or unreadable; check the export" +
+        (det.unreadable.length
+          ? " (" + det.unreadable.join(", ") + " " +
+            (det.unreadable.length === 1 ? "has" : "have") +
+            " no readable leg at all, so " +
+            (det.unreadable.length === 1 ? "it is" : "they are") + " left out)"
+          : ""));
+    if (det.unreadable.length) {
+      const drop = new Set(det.unreadable);
+      sumRows = sumRows.filter(r => !drop.has(r.diag));
+    }
     if (det.mangled)
-      notes.push(det.mangled + " headcode(s) recovered from spreadsheet " +
-        "number formatting (e.g. 2.00E+05 read back as 2E05) - re-export " +
-        "the CSV with text columns to avoid this");
+      notes.push(count(det.mangled, "headcode", "headcodes") + " recovered from" +
+        " spreadsheet number formatting (e.g. 2.00E+05 read back as 2E05) —" +
+        " re-export the CSV with text columns to avoid this");
     const uncovered = sumRows.filter(r => r.uncovered).length;
     if (uncovered)
-      notes.push(uncovered + " of " + sumRows.length +
-        " diagrams are marked Uncovered in the plan");
+      notes.push(uncovered + " of " + sumRows.length + " diagrams " +
+        (uncovered === 1 ? "is" : "are") + " marked Uncovered in the plan");
     return assemble(sumRows, det.byDate, notes, opts);
   }
 
+  // _stopsOf and _boundaries are the golden tests' hooks into the two
+  // shapes shared with the weekend engine; nothing else calls them.
   return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
            pdfText,
            parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };

@@ -596,6 +596,9 @@ const SHEETS_RULES = (() => {
         ? { table: { head: ["Location", "When", "Diagrams running together",
                             "Prints in this order"], rows } }
         : { p: "Nothing in this book needs correcting." },
+      /* written for the printed handout; on the Unit order tab the Reverse
+         buttons are on the same screen, so the tab says nothing here */
+      env.inTool ? null :
       { note: "If you find one that is still wrong, the Unit order tab " +
         "inside the tool has a Reverse button against every coupled " +
         "formation in the build. Pressing it turns that formation round and " +

@@ -232,7 +232,7 @@ function unitCount(stockByDay) {
   return n;
 }
 
-return { layout, write, previewHtml, unitCount, TYPES, ROWS, XF_CSS, STYLES_XML };
+return { layout, write, previewHtml, unitCount, XF_CSS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_STOCKREQ;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_STOCKREQ = SHEETS_STOCKREQ;

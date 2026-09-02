@@ -1,6 +1,9 @@
-/* SheetsEngine — the weekend pipeline, a JS port of make_sheets.py.
-   Same rules, same output. Runs in the browser and in node. Reference
-   tables live in data.js; the xlsx writer and preview in xlsx.js. */
+/* SheetsEngine — the weekend pipeline: the diagram prints in, the berthing
+   books out. Began as a port of make_sheets.py and has since been brought
+   onto the weekday rulebook (unit order, the double lines, the headcode
+   sections), so it no longer matches that script's output. Runs in the
+   browser and in node. Reference tables live in data.js; the xlsx writer
+   and preview in xlsx.js. */
 "use strict";
 (function (root) {
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
@@ -107,23 +110,38 @@ function legLocs(rows, exitIdx){
   return out;
 }
 const SHORT_BERTH = 20;   // a stop shorter than this at an unmarked,
-                          // un-siding-named place is reported, not trusted
+                          // un-siding-named stabling place is still treated
+                          // as a berth, but goes on the report to be checked
 const GAP_WARN = 60;
 const ATT = ["ATTACH","ATTTT"], DET = ["DETACH","DETTT"];
 /* The prints reader lives in src/prints-read.js: the berthing sheets and
    the fleet analysis both open the same files, so they share one reader. */
-const {readPrints, docxParagraphs, looksLikePrints, printsFromCsv} = SHEETS_PRINTS;
+const {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
+       looksLikePrints, printsFromCsv} = SHEETS_PRINTS;
+const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"));
 
-function parseDiagrams(lines){
-  const diags = new Map();   // "CODE|NUM" -> {code,num,rows,fleet,date}
+/* The prints' lines as diagrams: "CODE|NUM" -> {code, num, rows, fleet,
+   date}, in document order. A "Diagram:" line that cannot be read is
+   reported on warn (when one is given) and the rows under it skipped, not
+   folded into the diagram before it. */
+function parseDiagrams(lines, warn){
+  const diags = new Map();
   let cur = null;
   for (const ln of lines){
     if (ln.indexOf("Diagram:") !== -1){
-      const m = /Diagram:\t(\w+)\t(\d+)\t(\w+)/.exec(ln);
+      /* The day cell is optional: a CSV save trims the trailing empty
+         cells, so a header can arrive as "Diagram:\tGN\t601" and nothing
+         after it. */
+      const m = /Diagram:\t(\w+)\t(\d+)(?:\t(\w+))?/.exec(ln);
       if (m){
         cur = m[1] + "|" + parseInt(m[2],10);
         diags.set(cur, {code:m[1], num:parseInt(m[2],10),
                         rows:[], fleet:null, date:null});
+      } else {
+        cur = null;
+        if (warn) warn.push(["unread", "a Diagram: line could not be read — “" +
+          ln.trim().replace(/\t+/g, " ") + "” — the rows under it were left out",
+          null, ""]);
       }
       continue;
     }
@@ -145,7 +163,22 @@ function parseDiagrams(lines){
   }
   return diags;
 }
-const mins = t => t ? parseInt(t.slice(0,2),10)*60 + parseInt(t.slice(3,5),10) : null;
+/* A clock cell as the prints write it - "05:30", "05.30" - or as a
+   spreadsheet re-saves it, leading zero gone and seconds added ("5:30:00").
+   Fixed character positions read "6:40" as 06 04, and every rule timed off
+   it was up to fifty minutes out while the cell still printed the raw text. */
+const TIME_RE = /^(\d{1,2})[:. ](\d{2})(?::\d{2})?$/;
+const mins = t => {
+  const m = TIME_RE.exec(String(t == null ? "" : t).trim());
+  return m ? parseInt(m[1],10)*60 + parseInt(m[2],10) : null;
+};
+/* …and the same cell as the book prints it: the zero put back, the seconds
+   dropped, the separator as it came. */
+const padTime = t => {
+  const s = String(t == null ? "" : t).trim();
+  const m = TIME_RE.exec(s);
+  return m ? m[1].padStart(2,"0") + s.charAt(m[1].length) + m[2] : s;
+};
 function fmtParse(fm){
   const out = new Map(); if (!fm) return out;
   const re = /(\d+)\((\d+)\)/g; let m;
@@ -193,7 +226,7 @@ function berthBoundaries(dlabel, stops, stabling, warn){
           && mod1440(s.dep - s.arr) < SHORT_BERTH)
         warn.push(["shortberth", dlabel + " sits at " + s.loc + " for only " +
                    mod1440(s.dep - s.arr) + " min before leaving on " +
-                   (s.hc_out || "?") + " - treated as a berth, check it is not " +
+                   (s.hc_out || "?") + " — treated as a berth, check it is not " +
                    "just a turnround", null, ""]);
     }
     else if (s.arr !== null && s.dep !== null && mod1440(s.dep - s.arr) >= GAP_WARN)
@@ -240,8 +273,9 @@ function generate(diags, prof, stabling, warn){
       const loc = (v.rows[0] && v.rows[0].loc) || "?";
       where.set(loc, (where.get(loc) || 0) + 1);
     }
-    warn.push(["stabled", stood.length + " diagram(s) stand all day and are " +
-      "not berthed: " +
+    warn.push(["stabled", plural(stood.length, "diagram") +
+      (stood.length === 1 ? " stands all day and is" : " stand all day and are") +
+      " not berthed: " +
       Array.from(where).sort((a,b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
         .map(x => x[0] + " x" + x[1]).join(", "),
       null, stood.map(v => v.code + v.num).join(" ")]);
@@ -277,8 +311,8 @@ function generate(diags, prof, stabling, warn){
     const secName = (r.name || o).toUpperCase();
     if (sections[secName] === undefined){ sections[secName] = []; autoOrder.push(secName); }
     sections[secName].push(o); loc2sec[o] = secName;
-    warn.push(["autosec", auto.get(o) + " berthing(s) at " + o +
-               ", which is not in the section list - listed under " + secName, null, ""]);
+    warn.push(["autosec", plural(auto.get(o), "berthing") + " at " + o +
+               ", which is not in the section list — listed under " + secName, null, ""]);
   }
   const entries = new Map();   // key -> entry (insertion ordered)
   const meta = new Map();      // diagram key -> {rows,stops,stints}
@@ -318,11 +352,11 @@ function generate(diags, prof, stabling, warn){
               if ("12".indexOf((stops[j].hc_out || "5")[0]) >= 0){ worked = true; break; }
             if (!worked){
               const backDep = stops[back].dep_idx !== null
-                            ? rows[stops[back].dep_idx].dep : "next";
+                            ? padTime(rows[stops[back].dep_idx].dep) : "next";
               warn.push(["runround", v.code + v.num + " runs round via " + nxt.loc +
-                         " at " + rows[s.dep_idx].dep + " (" +
+                         " at " + padTime(rows[s.dep_idx].dep) + " (" +
                          mod1440(stops[back].arr - s.dep) +
-                         " min) - listed on its " + backDep + " departure instead",
+                         " min) — listed on its " + backDep + " departure instead",
                          null, ""]);
               continue;
             }
@@ -354,7 +388,7 @@ function generate(diags, prof, stabling, warn){
       const key = sec + "\u0000" + mins(er.dep) + "\u0000" + er.hc;
       let e = entries.get(key);
       if (!e){
-        e = {sec, key, tmin:mins(er.dep), time_raw:er.dep, hc:er.hc,
+        e = {sec, key, tmin:mins(er.dep), time_raw:padTime(er.dep), hc:er.hc,
              dest_loc:legEnd(rows, di), units:[], origins:new Set(),
              exit_fm:new Map()};
         entries.set(key, e);
@@ -381,7 +415,7 @@ function generate(diags, prof, stabling, warn){
       const final = later.length ? fb.loc : stops[stops.length-1].loc;
       if (fb.insteadOf && later.length)
         warn.push(["complex", code + num + " runs empty from " + fb.loc + " to " +
-                   fb.insteadOf + " at the end of the day - earlier entries show it " +
+                   fb.insteadOf + " at the end of the day — earlier entries show it " +
                    "finishing at " + fb.loc, null, ""]);
       const fcode = codeFor(final, BERTH_CODE, warn, code + num);
       let Dv, Ev;
@@ -423,33 +457,17 @@ function generate(diags, prof, stabling, warn){
                    cls:prof.fleets[fleet]});
     }
     /* Lowest Position first, everywhere - which is NOT the weekday rule, and
-       is the one place the two books are meant to differ.
-
-       The weekday books read each section against the direction of travel
-       (pos_asc, with road_pos_asc for a road that faces the other way), and
-       carrying that over here looked obviously right: which end a formation
-       reads from is a fact about the place, not about the day. It is not.
-       Checked against the verified Sunday 16/08 book it reordered 53 of the
-       71 multi-unit entries - every one at Ashford, Slade Green, Victoria,
-       Dartford, West Marina, Tonbridge, Orpington and Sidcup - and the book
-       is right. The weekday directions were scored against hand-marked
-       weekday books and belong to them.
-
-       Two other traps for anyone who tries this again. The weekday
-       road_pos_asc names one road, so on the weekend prints the override
-       never fires at all and every section falls to the section default.
-       And the prints abbreviate road names, so bridging to the weekday
-       names through the siding-note tables looks tempting - but a note is a
-       short label, not a name: Dartford up siding and Slade Green up C.H.S.
-       are both written "UPS", so that bridge hands Dartford's formations
-       Slade Green's order. Both pinned in test/data.test.mjs.
-
-       (The pinned order is not carried over either, for a plainer reason:
-       pins name weekday diagram numbers and the weekend prints number their
-       diagrams separately, so a pin could only ever match by accident.) */
+       is the one place the two books are meant to differ. The weekday
+       per-section directions (pos_asc, road_pos_asc, the pinned order) were
+       scored against hand-marked weekday books and belong to them: carried
+       over here they reordered 53 of the 71 multi-unit entries on the
+       verified Sunday 16/08 book, and the book is right. Pinned in
+       test/data.test.mjs. */
     blocks.sort((x,y) => x.pos - y.pos || x.num - y.num);
     if (blocks.length > 1 && blocks.every(x => x.pos === 999))
-      warn.push(["order", sec + " " + e.time_raw, null, ""]);
+      warn.push(["order", sec + " " + e.time_raw + ": the prints give no " +
+                 "position for these units, so the order is unchecked — " +
+                 "compare it with the real book.", null, ""]);
     e.blocks = blocks;
     const blockNums = new Set(blocks.map(x => x.num));
     const boundsOk = blocks.every(x => grp.has(x.bound_loc));
@@ -500,7 +518,7 @@ function generate(diags, prof, stabling, warn){
         lead = mk.cbe; rear = mk.fke;
       } else {
         warn.push(["noend", sec + " " + e.time_raw + " runs to " + dest +
-                   " - no rule for which end leads, so no end marker", null, ""]);
+                   " — no rule for which end leads, so no end marker", null, ""]);
       }
       if (lead){ blocks[0].end = lead; blocks[blocks.length - 1].end = rear; }
     }
@@ -566,12 +584,7 @@ function dateBits(dateStr){
    thin rule under every entry. Taken from the ruled sheets. */
 const COL_SIDES = [["medium",null],["thin",null],["thin","medium"],[null,null],
                    ["thin","medium"],[null,null],[null,null],[null,"medium"]];
-/* Double lines follow the weekday rule: a break of BREAK_GAP or more in a
-   location's work, with work still to come after it, is ruled off - and a
-   page carries as many lines as it has breaks. It used to rule wherever the
-   section crossed midday and 20 00, which drew a line through a location
-   that was busy right across the middle of the day and none at all through
-   one that stood idle from 08 00 to 19 00. */
+/* The double lines follow the weekday rule - the note in layoutBook. */
 const BREAK_GAP = SHEETS_XLSX.BREAK_GAP;
 /* The sheet is laid out once. The xlsx writer and the on-screen preview both
    read that same layout, so what you look at is what you save. */
@@ -610,9 +623,14 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     let prevTk = null, prevLast = null, seenBreak = false;
     for (const e of sectionsOut[sec]){
       const tk = sortkey(mins(e.time_raw));
-      /* The weekday rule, kept in step: the first break of BREAK_GAP or more
-         is ruled, and any later one that leads into work after PM_BREAK.
-         Grove Park is never ruled - neither real weekday book rules it. */
+      /* The weekday rule, kept in step (SHEETS_XLSX.sectionRows holds the
+         evidence): the first break of BREAK_GAP or more is ruled, and any
+         later one that leads into work after PM_BREAK - so a page carries
+         as many lines as it has such breaks. It used to rule wherever the
+         section crossed midday and 20 00, which drew a line through a
+         location busy right across the middle of the day and none through
+         one that stood idle from 08 00 to 19 00. Grove Park is never ruled:
+         neither real weekday book rules it. */
       if (prevTk !== null && sec !== "GROVE PARK" && tk - prevTk >= BREAK_GAP) {
         if (!seenBreak || tk >= PM_BREAK) doubleEnds.add(prevLast);
         seenBreak = true;
@@ -656,62 +674,68 @@ function buildBook(layout, zipFn){
   return SHEETS_XLSX.writeWorkbook([{name: "Sheet1", layout: layout}], zipFn);
 }
 const previewHtml = SHEETS_XLSX.previewHtml;
+/* One book's plain-text review list: the entry and section counts, then
+   a "- " line per review item, the repeating kinds (dwells, unlisted
+   berths, unknown codes) gathered by location. */
 function buildReport(book, nEntries, nSecs, warn){
-  const dwell = new Map(), unlisted = new Map();
-  const dest = new Map(), berth = new Map(), other = [];
+  const dwell = new Map(), unlisted = new Map(), nocode = new Map(), other = [];
   for (const [kind,a,b,c] of warn){
     if (kind === "dwell"){ if (!dwell.has(a)) dwell.set(a,[]); dwell.get(a).push(b); }
     else if (kind === "unlisted") unlisted.set(a, (unlisted.get(a)||0) + 1);
-    else if (kind === "destcode"){ if (!dest.has(a)) dest.set(a,new Set()); dest.get(a).add(c); }
-    else if (kind === "berthcode"){ if (!berth.has(a)) berth.set(a,new Set()); berth.get(a).add(c); }
+    else if (kind === "nocode"){
+      if (!nocode.has(a)) nocode.set(a, new Set());
+      if (c) nocode.get(a).add(c);
+    }
     else if (kind === "suppress") other.push("suppressed positioning shunt: " + a);
     else if (kind === "autosec") other.push("new section: " + a);
-    else if (kind === "platberth") other.push("not listed: " + a);
     else if (kind === "shortberth") other.push("short stop: " + a);
     else if (kind === "complex") other.push("finish: " + a);
     else if (kind === "noend") other.push("end marker: " + a);
     else if (kind === "runround") other.push("run-round: " + a);
     else if (kind === "resolved") other.push("location read as: " + a);
-    else if (kind === "merge") other.push(a);
+    else if (kind === "unread") other.push("not read: " + a);
+    else if (kind === "order" || kind === "merge") other.push(a);
     else if (kind === "stabled") other.push("standing all day: " + a +
                                             (c ? " (" + c + ")" : ""));
-    else if (kind === "nocode") other.push("no code for '" + a + "' - used '" +
-                                           a.slice(0,3).toUpperCase() + "'");
     else other.push(kind + ": " + a + " " + c);
   }
   const srt = m => Array.from(m.keys()).sort();
-  let out = book + ": " + nEntries + " entries in " + nSecs + " sections\n\nReview items:\n";
+  let out = book + ": " + plural(nEntries, "entry", "entries") + " in " +
+            plural(nSecs, "section") + "\n\nReview items:\n";
   for (const loc of srt(dwell)){
     const ds = dwell.get(loc);
-    out += "- " + loc + ": " + ds.length + " station dwell(s) of " +
-           Math.min(...ds) + "-" + Math.max(...ds) + " min treated as layovers, not berths\n";
+    const lo = Math.min(...ds), hi = Math.max(...ds);
+    out += "- " + loc + ": " + plural(ds.length, "station dwell") + " of " +
+           (lo === hi ? lo : lo + " to " + hi) + " min treated as " +
+           (ds.length === 1 ? "a layover, not a berth" : "layovers, not berths") + "\n";
   }
   for (const loc of srt(unlisted))
-    out += "- " + loc + ": " + unlisted.get(loc) +
-           " berth departure(s) at a location with no section — not listed\n";
-  for (const loc of srt(dest))
-    out += "- destination '" + loc + "' has no code (used fallback) at: " +
-           Array.from(dest.get(loc)).sort().join(", ") + "\n";
-  for (const loc of srt(berth))
-    out += "- berth '" + loc + "' has no code (used fallback): " +
-           Array.from(berth.get(loc)).sort().join(", ") + "\n";
+    out += "- " + loc + ": " + plural(unlisted.get(loc), "berth departure") +
+           " at a location with no section — not listed\n";
+  for (const loc of srt(nocode))
+    out += "- No code known for “" + loc + "” — printed as " +
+           loc.slice(0,3).toUpperCase() + ". Check it. Seen at: " +
+           Array.from(nocode.get(loc)).sort().join(", ") + "\n";
   for (const x of Array.from(new Set(other))) out += "- " + x + "\n";
   return out;
 }
 /* ========================= top level ============================= */
 /* ============== reissue cross-reference / merge ================== */
-function isDocxBytes(b){
-  return b && b[0] === 0x50 && b[1] === 0x4B && b[2] === 0x03 && b[3] === 0x04;
-}
+/* The dropped files read and cross-referenced: one base document plus its
+   reissues, the diagrams merged reissue over base, the lists of what was
+   replaced and added (each diagram once, however many reissues carry it)
+   and any reader warnings. Throws on a reissue alone, two bases, or a
+   reissue for another day. */
 function mergeDocs(inputs, unzipFn){
+  const warn = [];
   const parsedDocs = inputs.map(function(f){
     const lines = readPrints(f.bytes, unzipFn);
-    return {name: f.name, bytes: f.bytes, diags: parseDiagrams(lines)};
+    return {name: f.name, bytes: f.bytes, diags: parseDiagrams(lines, warn)};
   });
   let bases = parsedDocs.filter(function(d){ return !/re-?issue/i.test(d.name); });
   let reissues = parsedDocs.filter(function(d){ return /re-?issue/i.test(d.name); });
   if (bases.length === 0 && parsedDocs.length === 1)
-    throw new Error("That looks like a reissue on its own — drop the full weekly " +
+    throw new Error("That looks like a reissue on its own — drop the full weekend " +
                     "prints with it (or first) so there is something to update.");
   if (bases.length === 0){
     parsedDocs.sort(function(a, b){ return b.diags.size - a.diags.size; });
@@ -720,7 +744,7 @@ function mergeDocs(inputs, unzipFn){
   }
   if (bases.length > 1)
     throw new Error("More than one full prints document was dropped — drop one " +
-                    "weekly prints file plus its reissue documents.");
+                    "weekend prints file plus its reissue documents.");
   const base = bases[0];
   function docDate(d){
     for (const v of d.diags.values()) if (v.date) return v.date;
@@ -728,32 +752,20 @@ function mergeDocs(inputs, unzipFn){
   }
   const baseDate = docDate(base);
   const merged = new Map(base.diags);
-  const replaced = [], added = [];
+  const replaced = new Set(), added = new Set();
   for (const r of reissues){
     const rDate = docDate(r);
     if (baseDate && rDate && rDate !== baseDate)
       throw new Error('"' + r.name + '" is dated ' + rDate + " but the prints are " +
                       "dated " + baseDate + " — that reissue belongs to a different day.");
     for (const [k, v] of r.diags){
-      if (merged.has(k)) replaced.push(v.code + " " + v.num);
-      else added.push(v.code + " " + v.num);
+      if (base.diags.has(k)) replaced.add(v.code + " " + v.num);
+      else added.add(v.code + " " + v.num);
       merged.set(k, v);
     }
   }
   return {base: base, reissues: reissues, merged: merged,
-          replaced: replaced, added: added};
-}
-function docParaSpans2(xml){
-  const paras = [];
-  /* A paragraph need not carry attributes. The old pattern required a space
-     after "w:p", so every <w:p> in a plain Word document was invisible here:
-     diagSpansX found no paragraphs, the reissue merge replaced nothing, and
-     the "updated prints" the panel saved were byte-identical to the
-     superseded original with no warning anywhere. */
-  const re = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g;
-  let m;
-  while ((m = re.exec(xml)) !== null) paras.push([m.index, m.index + m[0].length]);
-  return paras;
+          replaced: Array.from(replaced), added: Array.from(added), warn: warn};
 }
 function paraTextX(s){
   const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
@@ -762,7 +774,7 @@ function paraTextX(s){
   return out;
 }
 function diagSpansX(xml){
-  const paras = docParaSpans2(xml);
+  const paras = docParaSpans(xml);
   const starts = [];
   for (let i = 0; i < paras.length; i++){
     const t = paraTextX(xml.slice(paras[i][0], paras[i][1])).trim();
@@ -786,8 +798,14 @@ function diagSpansX(xml){
   }
   return {paras: paras, diags: diags};
 }
+/* The base .docx with every reissued diagram's paragraphs spliced over the
+   superseded ones - {name, bytes, appended}, or null when it cannot be
+   built: the base is not a .docx, or a reissue is not (its data is in the
+   books, but it has no paragraphs to splice in - and handing back the base
+   unchanged under an _UPDATED name would be worse than nothing). */
 function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   if (!isDocxBytes(base.bytes)) return null;
+  if (reissues.some(function(r){ return !isDocxBytes(r.bytes); })) return null;
   const dec = new TextDecoder("utf-8");
   const enc = new TextEncoder();
   let files;
@@ -796,10 +814,9 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   let xml = dec.decode(files["word/document.xml"]);
   const appended = [];
   for (const r of reissues){
-    if (!isDocxBytes(r.bytes)) continue;
     let rf;
-    try{ rf = unzipFn(r.bytes); } catch (e){ continue; }
-    if (!rf["word/document.xml"]) continue;
+    try{ rf = unzipFn(r.bytes); } catch (e){ return null; }
+    if (!rf["word/document.xml"]) return null;
     const rxml = dec.decode(rf["word/document.xml"]);
     const B = diagSpansX(xml), R = diagSpansX(rxml);
     const rmap = new Map();
@@ -832,33 +849,46 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
   return {name: nm, bytes: zipped, appended: appended};
 }
 
+/* The whole weekend build. input: one prints file's bytes, or a list of
+   {name, bytes} (a base plus reissues); opts: allHeadcodes {road: bool},
+   splitRamsgate. Returns {date, banner, stamp, diagrams, books, merge,
+   updated}; throws a message for the drop zone when the input is not usable. */
 function run(input, unzipFn, zipFn, opts){
   const allHeadcodes = (opts && opts.allHeadcodes) || {};
   const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
   const mg = mergeDocs(inputs, unzipFn);
   const diags = mg.merged;
   if (diags.size === 0)
-    throw new Error("No diagrams found in that file. Check it's the weekly diagram prints.");
+    throw new Error("No diagrams found in that file. Check it's the weekend diagram prints.");
   let dateStr = null;
   for (const v of diags.values()) if (v.date){ dateStr = v.date; break; }
   if (!dateStr) throw new Error("No date found in the prints — can't name the sheets.");
   const {stamp, banner} = dateBits(dateStr);
   let updated = null;
-  const mergeLines = [];
+  // the review items every book starts with: what the reader could not
+  // read, and what the reissue merge did
+  const mergeLines = mg.warn.slice();
   if (mg.reissues.length){
     updated = buildUpdatedDocx(mg.base, mg.reissues, unzipFn, zipFn);
-    mergeLines.push(["merge", "reissue merged: " + mg.replaced.length +
-      " diagram(s) replaced" +
+    mergeLines.push(["merge", "reissue merged: " +
+      plural(mg.replaced.length, "diagram") + " replaced" +
       (mg.added.length ? ", " + mg.added.length + " added" : "") +
       " from " + mg.reissues.map(function(r){ return r.name; }).join(", ")]);
     if (mg.replaced.length)
       mergeLines.push(["merge", "replaced by reissue: " + mg.replaced.join(", ")]);
     if (mg.added.length)
       mergeLines.push(["merge", "added by reissue: " + mg.added.join(", ")]);
-    if (!updated)
-      mergeLines.push(["merge", "updated prints document not produced (the base " +
-                      "prints are not a .docx) — the books above still use the " +
-                      "merged data"]);
+    if (!updated){
+      const why = !isDocxBytes(mg.base.bytes)
+        ? "the base prints are not a Word document, so there is nothing to " +
+          "splice the reissue into"
+        : mg.reissues.some(function(r){ return !isDocxBytes(r.bytes); })
+        ? "the reissue was not a Word document, so its diagrams could not be " +
+          "spliced in"
+        : "the Word document could not be rebuilt";
+      mergeLines.push(["merge", "updated prints document not produced — " + why +
+                      " — the books above still use the merged data"]);
+    }
   }
   const learned = new Set();
   for (const v of diags.values()){
@@ -914,7 +944,7 @@ function run(input, unzipFn, zipFn, opts){
             : null,
           updated: updated};
 }
-root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams, dateBits,
+root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams,
                     looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};

@@ -15,6 +15,10 @@ tools/*.png
 *.docx
 *.doc
 *.zip
+# The weekend panel takes the prints as plain text too - a .txt saved out of
+# Word, or the document copied and pasted - and that is the same real data.
+# (Nothing tracked ends in .txt; `git ls-files '*.txt'` before adding one.)
+*.txt
 # …and the one document of that kind the repository does own
 !HOW TO USE.docx
 

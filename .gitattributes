@@ -1,0 +1,13 @@
+# Source and the generated pages are text and go into the repository with LF
+# line endings whatever machine committed them - a Windows checkout must not
+# turn the built HTML into a whole-file diff. Office files and images are
+# bytes: no conversion, no textual diff.
+* text=auto eol=lf
+*.docx binary
+*.doc  binary
+*.xls  binary
+*.xlsx binary
+*.pdf  binary
+*.png  binary
+*.jpg  binary
+*.zip  binary
