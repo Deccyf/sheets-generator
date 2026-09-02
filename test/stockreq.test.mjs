@@ -31,6 +31,26 @@ test("the build counts every diagram at the place it starts the day", () => {
   }
 });
 
+test("a diagram whose itinerary is one stop does not take the build down", () => {
+  /* An Integrale leg from a siding to the same siding collapses to a single
+     stop: no stint, nothing to berth. The stock collector used to read the
+     first stint's origin without looking, and the whole day's build failed
+     with "Cannot read properties of undefined". */
+  const HS = "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+    "Start Location,End Time,End Location,Distance,First Train Note,Start Stock," +
+    "Last Train,Last Train Note,End Stock,Pre-assignment,Diagram Comments,Coverage Notes";
+  const HD = "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc,Start Location Name," +
+    "Start Time,Activity,Headcode,Cumulative Miles,Cumulative Fuel Miles,End Tiploc," +
+    "End Location Name,End Time,Off Diagram,Works";
+  const sum = [HS, "SS001,Covered,375/6,,0,10/08/2026 05:00,1,0X00,ASHFDNS," +
+    "10/08/2026 05:10,ASHFDNS,0,,,,,,SS001,,"].join("\r\n");
+  const det = [HD, "SS001,10/08/2026,,0,ASHFDNS,Ashford Down Sidings,05:00:00,,5A01,0,," +
+    "ASHFDNS,Ashford Down Sidings,05:10:00,,"].join("\r\n");
+  const r = N.GENIUS.buildIntegrale([sum, det]);
+  assert.ok(r.stock, "the build completes and still returns stock counts");
+  assert.equal(SR.unitCount(r.stock), 0, "and a diagram with no stint counts nowhere");
+});
+
 test("the counts agree with the summary's own diagram totals", () => {
   /* Every diagram is counted exactly once, at its first stint's origin,
      so the form's total is simply the diagrams the mainline book owns. */

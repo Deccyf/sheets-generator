@@ -478,6 +478,9 @@ const GENIUS = (() => {
        compares carries it. */
     if (stockOut) {
       for (const [, m] of meta) {
+        /* a diagram whose itinerary collapsed to one stop has no stint at
+           all - nothing to berth, and nothing standing to count */
+        if (!m.stints.length) continue;
         const origin = m.stops[m.stints[0][0]];
         const sec = secOf(origin, true);
         if (sec === null) continue;
