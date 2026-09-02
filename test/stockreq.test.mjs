@@ -158,6 +158,20 @@ test("the workbook has a tab per day and real formulas", () => {
   assert.ok(styles.includes("FFE3E3E3"), "the blank's styleSheet ships");
 });
 
+test("the printed heading sits before any page break, as the schema orders", () => {
+  /* Enough appended sections to run past one page at the fixed 83%, so the
+     writer plans a break - and headerFooter must still precede rowBreaks,
+     or Excel refuses the part. */
+  const stock = new Map();
+  for (let i = 0; i < 14; i++) stock.set("EXTRA " + i, new Map([["4 375", 1]]));
+  const bytes = SR.write({ mon: stock }, { mon: "MON 01/09" },
+    f => N.fflate.zipSync(f, { level: 6 }));
+  const s1 = N.fflate.strFromU8(N.fflate.unzipSync(bytes)["xl/worksheets/sheet1.xml"]);
+  const hf = s1.indexOf("<headerFooter"), rb = s1.indexOf("<rowBreaks");
+  assert.ok(rb > 0, "the form ran to a second page, so a break was planned");
+  assert.ok(hf > 0 && hf < rb, "headerFooter comes before rowBreaks");
+});
+
 test("an empty day writes nothing rather than an empty form", () => {
   assert.equal(SR.write({ mon: new Map() }, {}, f => N.fflate.zipSync(f)), null);
 });

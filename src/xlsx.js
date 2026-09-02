@@ -297,11 +297,12 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
     '<pageSetup paperSize="9" scale="' + plan.scale + '"' +
     (opts.fitToHeight === 0 ? ' fitToHeight="0"' : '') +
     ' orientation="' + (opts.landscape ? "landscape" : "portrait") + '"/>') +
-   brk +
    /* a printed page heading, for the one document that carries its title
       there rather than in a grid row - absent everywhere else, so nothing
-      the golden suite reads changes shape */
+      the golden suite reads changes shape. The schema puts headerFooter
+      between pageSetup and rowBreaks, and Excel holds it to that. */
    (opts.headerXml || '') +
+   brk +
    (opts.hasComments ? '<legacyDrawing r:id="rId1"/>' : '') +
    '</worksheet>';
 }
