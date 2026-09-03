@@ -243,7 +243,12 @@ const SHEETS_RULES = (() => {
           ["ROAD, or PLATFORM at a terminus",
            "Left ruled and empty, to write in."],
           ["COMMENTS", "Left ruled and empty, to write in."],
-          ["S, R/T, L/S", "Left ruled and empty, to write in."],
+          ["S", "Whether this formation splits: Y where the units come " +
+           "apart again later today, N where they stay as one. It is " +
+           "written against every unit of the formation. A single unit has " +
+           "nothing to split, and its cell is left empty — which is how the " +
+           "depot's own workbook keeps it."],
+          ["R/T, L/S", "Left ruled and empty, to write in."],
           ["ENDS", "Where the diagram finishes, and which half of the day it " +
            "finishes in — GP PM, SG AM."],
           ["MILES", "What the diagram runs, out of the Diagram Detail export. " +

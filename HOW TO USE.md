@@ -311,9 +311,12 @@ They are the documents the depot already keeps, filled in from the reports:
 
 * The **Metro** book is a sheet per location rather than per day, landscape,
   sixteen columns, reading by Position — 1, 2, 3 straight down each
-  formation. The reports fill nine columns; the timing point, comments, S,
-  R/T and L/S are ruled and left empty for you to write in, along with the
-  two unheaded spares a long comment runs into. Grove Park and Slade Green
+  formation. The reports fill ten columns; the timing point, comments, R/T
+  and L/S are ruled and left empty for you to write in, along with the two
+  unheaded spares a long comment runs into. **S** is the split column and is
+  filled in: **Y** where the formation comes apart again later today, **N**
+  where it stays as one, and empty against a single unit, which has nothing
+  to split. Grove Park and Slade Green
   get an **AM** and a **PM** sheet each, split at ten in the morning, and
   their **ROAD** column says which road the working comes off — **DOWNS**,
   **UPS**, **SHED**, **C/END** or **L/END**. Everywhere else the ROAD column

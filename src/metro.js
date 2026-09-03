@@ -8,10 +8,10 @@
        date against it;
      * one row per unit, the headcode, time and destination written once on
        the entry's first row and the rest of the formation under it;
-     * sixteen columns, of which the reports fill nine. Two of the rest are
+     * sixteen columns, of which the reports fill ten. Two of the rest are
        spares with no heading at all, which the depot uses when a comment
-       overflows; the other five are ruled and left empty to write in, the
-       way the Unit column already is on the berthing books. All seven are
+       overflows; the other four are ruled and left empty to write in, the
+       way the Unit column already is on the berthing books. All six are
        hand-kept in the real workbook too.
 
    Grove Park and Slade Green get an AM and a PM sheet, which is how the real
@@ -167,7 +167,15 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       col(8, i === 0 ? roadOf(e) : "");
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, "");                     // the two spares
-      col(12, ""); col(13, ""); col(14, "");        // S, R/T, L/S: by hand
+      /* S is the depot's SPLIT column: Y where this formation comes apart
+         again later today, N where it stays as one, written against every
+         unit of the formation the way the workbook writes it. A lone unit
+         has nothing to split and the workbook leaves its cell empty, so
+         this does too — an N there would be answering a question nobody
+         asked. Both SPLITS and SPLITS PM are a Y: the column asks whether
+         it splits, not when. */
+      col(12, units.length > 1 ? (e.flag ? "Y" : "N") : "");
+      col(13, ""); col(14, "");                     // R/T, L/S: by hand
       col(15, u.ends || "");
       col(16, finite(u.miles) ? Math.round(+u.miles) : "", 5, finite(u.miles));
       rowHeights.set(r, 18);

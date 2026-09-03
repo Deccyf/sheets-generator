@@ -85,11 +85,44 @@ test("the Metro sheet reads by Position, lowest first", () => {
   // ENDS and MILES belong to the diagram, so every row of it carries them
   assert.deepEqual(Array.from(col(15)), ["GP PM", "GP PM", "GP PM"], "ENDS on each");
   assert.deepEqual(Array.from(col(16)), ["338", "338", "338"], "MILES on each");
+  // S belongs to the formation, so it too is written against every unit
+  assert.deepEqual(Array.from(col(12)), ["N", "N", "N"],
+    "this formation is not flagged as splitting");
   // and the hand-kept columns are ruled and empty — the two spares among
   // them. ROAD (8) is here too: this entry carries no origin berth, so the
   // tool has no road to write
-  for (const c of [3, 8, 9, 10, 11, 12, 13, 14])
+  for (const c of [3, 8, 9, 10, 11, 13, 14])
     assert.equal(at.get("3," + c), "", "column " + c + " is left for the depot");
+});
+
+test("the S column answers Y or N, and a lone unit is asked nothing", () => {
+  /* S is the depot's SPLIT column. Its December 2025 workbook writes it on
+     every row of a formation — 6 of its 115 pairs and 2 of its 19 threes are
+     Y, the rest N — and leaves it EMPTY on all 24 of its single-unit
+     departures, which have nothing to split. The tool already works out
+     where a formation comes apart; this is the same answer in the depot's
+     own two letters. */
+  const N = built();
+  const M = N.SHEETS_METRO;
+  const unit = (diag, pos) => ({ diag, code: "SG", pos, ends: "GP PM", miles: 100 });
+  const entry = (time, headcode, flag, units) =>
+    ({ time, time_kind: "ecs", dest: "SEV", headcode, flag, units });
+  const lay = M.layoutSection("GROVE PARK AM", [
+    entry(5 * 60, "5S01", "SPLITS", [unit("431", 1), unit("432", 2)]),
+    entry(6 * 60, "5S02", "SPLITS PM", [unit("440", 1), unit("441", 2)]),
+    entry(7 * 60, "5S03", "", [unit("450", 1), unit("451", 2)]),
+    entry(8 * 60, "5S04", "", [unit("460", 1)]),
+  ], "MON 03/08");
+  const at = new Map();
+  for (const c of lay.cells) at.set(c.r + "," + c.c, c.v);
+  const S = r => at.get(r + ",12");
+  assert.deepEqual([S(3), S(4)], ["Y", "Y"],
+    "a formation that comes apart today is Y, on both its rows");
+  assert.deepEqual([S(5), S(6)], ["Y", "Y"],
+    "and one that comes apart after it berths is a Y too — the column asks " +
+    "whether it splits, not when");
+  assert.deepEqual([S(7), S(8)], ["N", "N"], "one that stays as one is N");
+  assert.equal(S(9), "", "a lone unit is left empty, as the workbook leaves it");
 });
 
 test("the ROAD column carries the Dn / Up / Shed a working comes off", () => {

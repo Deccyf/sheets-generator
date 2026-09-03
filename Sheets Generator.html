@@ -452,7 +452,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.0.3</b> · 3 September 2026</span>
+      <span class="ver">Version <b>3.0.4</b> · 3 September 2026</span>
     </div>
   </header>
 
@@ -523,8 +523,8 @@
           day for Ramsgate's own people.</li>
         <li><b>METRO_SHEETS</b> — the Metro book (465 / 466 / 707 units). Not a
           berthing sheet: the depot's own Metro document, a worksheet per
-          location, landscape, with POS, ENDS and MILES and six columns left
-          ruled and empty to fill in by hand.</li>
+          location, landscape, with POS, S, ENDS and MILES and five columns
+          left ruled and empty to fill in by hand.</li>
         <li><b>HS_SHEETS</b> — the High Speed book (395 units). Not a berthing
           sheet either: the Class 395 Allocations Sheet, a worksheet per day
           with a block for each depot, last night's arrivals beside today's
@@ -761,7 +761,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.0.3
+      works without an internet connection. Version 3.0.4
       &middot; 3 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -1904,7 +1904,12 @@ const SHEETS_RULES = (() => {
           ["ROAD, or PLATFORM at a terminus",
            "Left ruled and empty, to write in."],
           ["COMMENTS", "Left ruled and empty, to write in."],
-          ["S, R/T, L/S", "Left ruled and empty, to write in."],
+          ["S", "Whether this formation splits: Y where the units come " +
+           "apart again later today, N where they stay as one. It is " +
+           "written against every unit of the formation. A single unit has " +
+           "nothing to split, and its cell is left empty — which is how the " +
+           "depot's own workbook keeps it."],
+          ["R/T, L/S", "Left ruled and empty, to write in."],
           ["ENDS", "Where the diagram finishes, and which half of the day it " +
            "finishes in — GP PM, SG AM."],
           ["MILES", "What the diagram runs, out of the Diagram Detail export. " +
@@ -4006,10 +4011,10 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_STOCKREQ = SHEETS_STOCK
        date against it;
      * one row per unit, the headcode, time and destination written once on
        the entry's first row and the rest of the formation under it;
-     * sixteen columns, of which the reports fill nine. Two of the rest are
+     * sixteen columns, of which the reports fill ten. Two of the rest are
        spares with no heading at all, which the depot uses when a comment
-       overflows; the other five are ruled and left empty to write in, the
-       way the Unit column already is on the berthing books. All seven are
+       overflows; the other four are ruled and left empty to write in, the
+       way the Unit column already is on the berthing books. All six are
        hand-kept in the real workbook too.
 
    Grove Park and Slade Green get an AM and a PM sheet, which is how the real
@@ -4165,7 +4170,15 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       col(8, i === 0 ? roadOf(e) : "");
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, "");                     // the two spares
-      col(12, ""); col(13, ""); col(14, "");        // S, R/T, L/S: by hand
+      /* S is the depot's SPLIT column: Y where this formation comes apart
+         again later today, N where it stays as one, written against every
+         unit of the formation the way the workbook writes it. A lone unit
+         has nothing to split and the workbook leaves its cell empty, so
+         this does too — an N there would be answering a question nobody
+         asked. Both SPLITS and SPLITS PM are a Y: the column asks whether
+         it splits, not when. */
+      col(12, units.length > 1 ? (e.flag ? "Y" : "N") : "");
+      col(13, ""); col(14, "");                     // R/T, L/S: by hand
       col(15, u.ends || "");
       col(16, finite(u.miles) ? Math.round(+u.miles) : "", 5, finite(u.miles));
       rowHeights.set(r, 18);

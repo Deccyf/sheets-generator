@@ -464,9 +464,12 @@ const children = [
   h3("Two of them are not berthing sheets"),
   p("The **Metro** and **High Speed** books are your own documents rather " +
     "than berthing sheets, and the tool builds them that way. The Metro book " +
-    "is a tab per location, landscape, fourteen columns, read by **Position** " +
+    "is a tab per location, landscape, sixteen columns, read by **Position** " +
     "— lowest first, straight down each formation — with the timing point, " +
-    "the road, comments, S, R/T and L/S ruled and left for you to write in."),
+    "comments, R/T and L/S ruled and left for you to write in. **S** is " +
+    "filled in: **Y** where the formation comes apart again later today, " +
+    "**N** where it stays as one, and left empty against a single unit, " +
+    "which has nothing to split."),
   p("The High Speed book is the **Class 395 Allocations Sheet**: a tab per " +
     "day named the way yours are, a block for each depot down it (Ashford, " +
     "Faversham, Margate, Ramsgate), last night's arrivals on the left and " +

@@ -4,6 +4,25 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.0.4 — 3 September 2026 — the Metro sheets' S column
+
+**S is the split column, and the tool fills it in.** It was ruled and left
+empty with R/T and L/S, but the answer was already worked out: the berthing
+books have flagged a formation SPLITS or SPLITS PM since long before. It now
+prints the depot's own two letters — **Y** where the units come apart again
+later today, **N** where they stay as one — against every unit of the
+formation, the way the December 2025 workbook writes it.
+
+A **single unit is left empty**, not given an N. That is the workbook's own
+practice: all 24 of its one-unit departures have the cell blank, while its
+115 pairs and 19 threes are all answered one way or the other (6 and 2 of
+them Y). A unit on its own has nothing to split, and an N there would be
+answering a question nobody asked.
+
+Both SPLITS and SPLITS PM print Y. The column asks whether the formation
+splits, not when — the workbook has no third letter for a parting that comes
+after the units are put away.
+
 ## 3.0.3 — 3 September 2026 — three things the sheets were getting wrong
 
 - **A working nobody had allocated was given the diagram's other unit.** The
