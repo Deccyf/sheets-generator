@@ -440,19 +440,22 @@ const GENIUS = (() => {
       return best.pos;
     };
     /* The allocated unit, taken the same way round as the Position: off the
-       working being printed, not off the diagram's first row.
+       working being printed, not off the diagram's first row - a diagram
+       whose morning is cancelled keeps its summary row with the allocation
+       blank while the unit is named on the workings that survived, and
+       reading row one printed nothing at all for it.
 
-       A diagram whose morning is cancelled keeps its summary row with the
-       allocation blank, and the unit is named on the workings that survived
-       - so reading row one only printed nothing at all for a diagram that
-       has a unit allocated all afternoon. The fall-back is any row that
-       names one, because a blank cell is the absence of an answer and
-       another row's is better than none. */
+       Only ever off the row covering this departure. A diagram allocated in
+       the morning and not yet in the evening used to have the morning's unit
+       carried down its whole day, so evening departures nobody had allocated
+       came out with a unit against them - the tool answering a question the
+       plan had not. An allocation is the planner's to make: where the report
+       does not name one for this working the cell stays empty, ruled, for
+       the depot to write in, which is what the rulebook says it does. */
     const unitAt = (rows, t) => {
       const k = sortkey(t);
       for (const r of rows)
         if (r.unit && sortkey(r.start) <= k && k <= sortkey(r.end)) return r.unit;
-      for (const r of rows) if (r.unit) return r.unit;
       return "";
     };
     const autoSec = new Map();
@@ -1157,6 +1160,38 @@ const GENIUS = (() => {
     const live = new Set();
     for (const e of entries.values()) if (!e.suppress)
       for (const x of e.blocks) live.add(x.diag + "|" + x.si);
+    /* MG runs to wherever the unit next berths ON THE SHEET, which is not
+       always the end of its own stint. GT116 leaves Ashford at 05+31, is
+       back on the East sidings at 06 59 and goes out again at 07 46 - but
+       that departure prints as GT117's row, with GT116 named in the
+       attachment note, so the 39 miles of the first stint were all the book
+       ever showed of a 455-mile day. Where a later stint has no row of its
+       own the miles it runs belong to the last row that DOES print, and a
+       diagram's printed figures then still add up to its day.
+       Two stints that BOTH print are unaffected: a unit stands still between
+       them, so the running total at the end of one is the running total at
+       the start of the next, and the sum is the stint span as before. */
+    for (const e of entries.values()) {
+      if (e.suppress) continue;
+      for (const x of e.blocks) {
+        const m = meta.get(x.diag);
+        if (!m || x.mg === undefined) continue;
+        const mlAt = si => {
+          const st = m.stints[si];
+          return st && m.stops[st[0]] ? m.stops[st[0]].ml : undefined;
+        };
+        const from = mlAt(x.si);
+        if (from === undefined) continue;
+        let to;
+        for (let k = x.si + 1; k < m.stints.length && to === undefined; k++)
+          if (live.has(x.diag + "|" + k)) to = mlAt(k);
+        // nothing later of this diagram prints: the rest of the day is this
+        // row's, because there is no other row for it to land on
+        if (to === undefined) to = m.miles;
+        if (typeof to === "number" && isFinite(to) && to >= from)
+          x.mg = Math.round(to - from);
+      }
+    }
     for (const e of entries.values()) {
       for (const x of e.blocks)
         if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";

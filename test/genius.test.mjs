@@ -292,7 +292,7 @@ test("a Saturday pair says where the weekend sheets come from", async () => {
   assert.ok(Object.keys(ok.labels).length, "the weekday pair is untouched");
 });
 
-test("a diagram whose morning is cancelled still shows its afternoon unit", async () => {
+test("the allocated unit is read off the working being printed, and only that", async () => {
   const N = built();
 
   /* The allocated unit is read off the working being printed, the same way
@@ -300,7 +300,12 @@ test("a diagram whose morning is cancelled still shows its afternoon unit", asyn
      diagram whose morning is cancelled keeps that row with the allocation
      cell empty, and names the unit on the workings that survived - so
      reading row one only printed no unit at all for a diagram that has one
-     allocated all afternoon. Reported on 811/812. */
+     allocated all afternoon. Reported on 811/812.
+
+     It does not run the other way either. Until 3.0.3 a working the report
+     left unallocated fell back to any other row of the diagram, so an
+     evening departure nobody had allocated came out carrying the morning's
+     unit. An allocation is the planner's to make: the cell stays empty. */
   const SHEAD = '"GENIUS","DIAGRAM SUMMARY REPORT",' +
     '"Diagram Summary for:"," 03/08/26","NOTES","NOTES",';
   const srow = (diag, unit, fleet, pos, start, from, to, end) =>
@@ -339,8 +344,16 @@ test("a diagram whose morning is cancelled still shows its afternoon unit", asyn
             if (u.diag === "401") units.push(sec + " " + e.time + " = " + (u.unit || "-"));
     }
   assert.ok(units.length, "the fixture printed something to look at");
-  assert.ok(units.every(x => /= 301$/.test(x)),
-    "every row carries the unit the surviving workings name: " + units.join(" | "));
+  const at = t => units.filter(x => x.indexOf(" " + t + " = ") > 0);
+  // the two workings the report allocates carry their unit
+  assert.deepEqual(Array.from(at(840)), ["RAMSGATE 840 = 301"],
+    "the 14 00 names its unit: " + units.join(" | "));
+  assert.deepEqual(Array.from(at(1240)), ["ASHFORD 1240 = 301"],
+    "and so does the 20+40: " + units.join(" | "));
+  // the cancelled morning names none, so its cell is left for the depot
+  assert.deepEqual(Array.from(at(300)), ["ASHFORD 300 = -"],
+    "the cancelled morning is blank, not given the afternoon's unit: " +
+    units.join(" | "));
 });
 
 test("the sniffers tell the three report formats apart", async () => {

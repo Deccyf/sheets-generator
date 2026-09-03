@@ -4,6 +4,32 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.0.3 — 3 September 2026 — three things the sheets were getting wrong
+
+- **A working nobody had allocated was given the diagram's other unit.** The
+  unit was read off any row of the diagram that named one, so a diagram
+  allocated in the morning and left for the planner in the evening printed
+  the morning's unit against evening departures nobody had allocated. It is
+  now read off the row covering the working being printed, and only that: no
+  row, no unit, and the cell is left ruled and empty for the depot.
+- **A unit that attaches and stays out lost the rest of its day's miles.**
+  MG is per working, and a working's figure ran to the end of its own stint —
+  but GT116 leaves Ashford at 05+31, is back on the sidings at 06 59 and goes
+  out again at 07 46 attached to GT117, and *that* departure prints as
+  GT117's row. So the 39 miles of the first stint were all the book ever
+  showed of a 455-mile day. A working's miles now run to wherever the unit
+  next berths **on the sheet**, and where nothing later of that diagram
+  prints, to the end of its day — so a diagram's figures add up to the day it
+  runs. Two stints that both print are unaffected: a unit stands still
+  between them, so each row still shows its own working.
+- **The 395 preview drew merged panels as open boxes.** A merged range is one
+  cell on the page and the spreadsheet draws its box from the cells around
+  the range's *edge* — the bottom rule off its bottom row, the right off its
+  right-hand column. The preview took the anchor cell's own four sides, and
+  an anchor does not own the far edges of its range, so the COMMENTS panel
+  and the NOTE block came out with their lines simply missing. The saved
+  workbook was always right; only the preview was wrong.
+
 ## 3.0.2 — 3 September 2026 — the Metro sheets against the December 2025 book
 
 The depot's **December 2025** workbook replaced the May 2026 one as the

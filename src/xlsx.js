@@ -453,6 +453,37 @@ function previewHtml(layout){
   const edge = function(name, s){
     return "border-" + name + ":" + (SIDE_CSS[s] || "0") + ";";
   };
+  const xfCss = layout.opts && layout.opts.xfCss;
+  const SIDES = ["left", "right", "top", "bottom"];
+  /* What one cell draws on one of its sides, whichever dressing it wears. */
+  function borderOf(cell, i){
+    if (!cell) return null;
+    if (xfCss && cell.xf !== undefined && xfCss[cell.xf]){
+      const m = new RegExp("border-" + SIDES[i] + ":([^;]*)").exec(xfCss[cell.xf]);
+      const v = m ? m[1].trim() : "";
+      return (!v || v === "0" || v === "none") ? null : v;
+    }
+    const s = cell.sides && cell.sides[i];
+    return s ? (SIDE_CSS[s] || null) : null;
+  }
+  /* A merged range is ONE cell on the page, and its box is drawn from the
+     cells around the range's EDGE - the bottom rule off its bottom row, the
+     right off its right-hand column - which is how the spreadsheet draws it.
+     The preview took the anchor cell's own four sides, and an anchor does not
+     own the far edges of its range: the 395 sheet's COMMENTS panel and its
+     NOTE rows carry their bottom and right on cells further down and across,
+     so both came out as open boxes with the lines simply missing. */
+  function edgeOf(r1, c1, r2, c2, i){
+    let found = null;
+    if (i < 2){                            // left, right: down one column
+      const c = i === 0 ? c1 : c2;
+      for (let r = r1; r <= r2 && !found; r++) found = borderOf(at.get(r + "," + c), i);
+    } else {                               // top, bottom: along one row
+      const r = i === 2 ? r1 : r2;
+      for (let c = c1; c <= c2 && !found; c++) found = borderOf(at.get(r + "," + c), i);
+    }
+    return found;
+  }
   /* The preview is meant to be what gets saved, so the page breaks show on
      it too - otherwise the only way to see where the paper falls is to save
      the book and open Page Break Preview in Excel. */
@@ -491,7 +522,6 @@ function previewHtml(layout){
          ruled, filled, coloured sheet - the one thing this preview exists
          not to do. The skin carries one CSS declaration per record. */
       let css;
-      const xfCss = layout.opts && layout.opts.xfCss;
       if (xfCss && cell && cell.xf !== undefined && xfCss[cell.xf]) {
         // …and anything the workbook's own conditional formatting paints
         // over it when Excel opens the file
@@ -503,6 +533,15 @@ function previewHtml(layout){
           css += "text-align:" + LOOKS[look][1] + ";font-size:" + LOOK_SIZE[look] + ";";
           if (LOOK_BOLD[look]) css += "font-weight:700;";
         }
+      }
+      // a merged cell takes its box from the range's own edges, not the
+      // anchor's four sides
+      if (sp){
+        const rEnd = r + sp[1] - 1, cEnd = c + sp[0] - 1;
+        css += ";";
+        for (let i = 0; i < 4; i++)
+          css += "border-" + SIDES[i] + ":" +
+                 (edgeOf(r, c, rEnd, cEnd, i) || "0") + ";";
       }
       /* 0 is a value some documents print (the stock form's SEAT LOSS
          cells carry a literal 0), not an empty cell */

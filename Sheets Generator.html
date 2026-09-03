@@ -452,7 +452,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.0.2</b> · 3 September 2026</span>
+      <span class="ver">Version <b>3.0.3</b> · 3 September 2026</span>
     </div>
   </header>
 
@@ -666,7 +666,9 @@
         an hour or more gets a line on the sheet; otherwise it is named on the
         Review tab and left off.</p>
       <p><b>Mileage column</b> — adds MILES to the Mainline and Ramsgate books:
-        the miles a unit runs from that departure until it next berths. Blank
+        the miles a unit runs from that departure until it next berths on the
+        book. A unit that attaches to another diagram and stays out has no
+        second row, so the row it does have carries the rest of its day. Blank
         on a build from PDFs, which carry no mileage.</p>
       <p><b>Stock requirements form</b> — fills in the Kent Coast form, every
         diagram counted at the location it starts the day from, by unit type.
@@ -759,7 +761,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.0.2
+      works without an internet connection. Version 3.0.3
       &middot; 3 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -1838,7 +1840,11 @@ const SHEETS_RULES = (() => {
           ["MG", "The miles this WORKING runs, not the diagram's total for " +
            "the day. A diagram that comes out twice has a figure for each " +
            "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
-           "182 on its 16+26 one. It is written as a number, so the sheet's " +
+           "182 on its 16+26 one. It runs to wherever that unit next berths " +
+           "ON THIS SHEET — a unit that attaches to another diagram and " +
+           "stays out has no second row, so the row it does have carries the " +
+           "rest of its day, and a diagram's figures always add up to the " +
+           "day it runs. It is written as a number, so the sheet's " +
            "own colouring works on it — green under 500 miles, red at 500 " +
            "and over, the same key that is printed at the top. A report " +
            "saved as a PDF carries no mileage and the column stays empty."],
@@ -1960,9 +1966,12 @@ const SHEETS_RULES = (() => {
                   "train it is."],
         ["Miles", "Only if the mileage box was ticked when the book was " +
                   "built. It is the miles that unit runs from this departure " +
-                  "until it next berths — not what the diagram does all day, " +
-                  "so the same diagram reads a different figure on each of " +
-                  "its rows. It comes out of the reports' own running " +
+                  "until it next berths ON THE BOOK — not what the diagram " +
+                  "does all day, so the same diagram reads a different " +
+                  "figure on each of its rows. A unit that attaches to " +
+                  "another diagram and stays out has no second row, so the " +
+                  "row it does have carries the rest of its day. " +
+                  "It comes out of the reports' own running " +
                   "mileage, and a report saved as a PDF carries none, so the " +
                   "column stays empty on a build made from PDFs."],
       ] } },
@@ -3358,6 +3367,37 @@ function previewHtml(layout){
   const edge = function(name, s){
     return "border-" + name + ":" + (SIDE_CSS[s] || "0") + ";";
   };
+  const xfCss = layout.opts && layout.opts.xfCss;
+  const SIDES = ["left", "right", "top", "bottom"];
+  /* What one cell draws on one of its sides, whichever dressing it wears. */
+  function borderOf(cell, i){
+    if (!cell) return null;
+    if (xfCss && cell.xf !== undefined && xfCss[cell.xf]){
+      const m = new RegExp("border-" + SIDES[i] + ":([^;]*)").exec(xfCss[cell.xf]);
+      const v = m ? m[1].trim() : "";
+      return (!v || v === "0" || v === "none") ? null : v;
+    }
+    const s = cell.sides && cell.sides[i];
+    return s ? (SIDE_CSS[s] || null) : null;
+  }
+  /* A merged range is ONE cell on the page, and its box is drawn from the
+     cells around the range's EDGE - the bottom rule off its bottom row, the
+     right off its right-hand column - which is how the spreadsheet draws it.
+     The preview took the anchor cell's own four sides, and an anchor does not
+     own the far edges of its range: the 395 sheet's COMMENTS panel and its
+     NOTE rows carry their bottom and right on cells further down and across,
+     so both came out as open boxes with the lines simply missing. */
+  function edgeOf(r1, c1, r2, c2, i){
+    let found = null;
+    if (i < 2){                            // left, right: down one column
+      const c = i === 0 ? c1 : c2;
+      for (let r = r1; r <= r2 && !found; r++) found = borderOf(at.get(r + "," + c), i);
+    } else {                               // top, bottom: along one row
+      const r = i === 2 ? r1 : r2;
+      for (let c = c1; c <= c2 && !found; c++) found = borderOf(at.get(r + "," + c), i);
+    }
+    return found;
+  }
   /* The preview is meant to be what gets saved, so the page breaks show on
      it too - otherwise the only way to see where the paper falls is to save
      the book and open Page Break Preview in Excel. */
@@ -3396,7 +3436,6 @@ function previewHtml(layout){
          ruled, filled, coloured sheet - the one thing this preview exists
          not to do. The skin carries one CSS declaration per record. */
       let css;
-      const xfCss = layout.opts && layout.opts.xfCss;
       if (xfCss && cell && cell.xf !== undefined && xfCss[cell.xf]) {
         // …and anything the workbook's own conditional formatting paints
         // over it when Excel opens the file
@@ -3408,6 +3447,15 @@ function previewHtml(layout){
           css += "text-align:" + LOOKS[look][1] + ";font-size:" + LOOK_SIZE[look] + ";";
           if (LOOK_BOLD[look]) css += "font-weight:700;";
         }
+      }
+      // a merged cell takes its box from the range's own edges, not the
+      // anchor's four sides
+      if (sp){
+        const rEnd = r + sp[1] - 1, cEnd = c + sp[0] - 1;
+        css += ";";
+        for (let i = 0; i < 4; i++)
+          css += "border-" + SIDES[i] + ":" +
+                 (edgeOf(r, c, rEnd, cEnd, i) || "0") + ";";
       }
       /* 0 is a value some documents print (the stock form's SEAT LOSS
          cells carry a literal 0), not an empty cell */
@@ -7401,19 +7449,22 @@ const GENIUS = (() => {
       return best.pos;
     };
     /* The allocated unit, taken the same way round as the Position: off the
-       working being printed, not off the diagram's first row.
+       working being printed, not off the diagram's first row - a diagram
+       whose morning is cancelled keeps its summary row with the allocation
+       blank while the unit is named on the workings that survived, and
+       reading row one printed nothing at all for it.
 
-       A diagram whose morning is cancelled keeps its summary row with the
-       allocation blank, and the unit is named on the workings that survived
-       - so reading row one only printed nothing at all for a diagram that
-       has a unit allocated all afternoon. The fall-back is any row that
-       names one, because a blank cell is the absence of an answer and
-       another row's is better than none. */
+       Only ever off the row covering this departure. A diagram allocated in
+       the morning and not yet in the evening used to have the morning's unit
+       carried down its whole day, so evening departures nobody had allocated
+       came out with a unit against them - the tool answering a question the
+       plan had not. An allocation is the planner's to make: where the report
+       does not name one for this working the cell stays empty, ruled, for
+       the depot to write in, which is what the rulebook says it does. */
     const unitAt = (rows, t) => {
       const k = sortkey(t);
       for (const r of rows)
         if (r.unit && sortkey(r.start) <= k && k <= sortkey(r.end)) return r.unit;
-      for (const r of rows) if (r.unit) return r.unit;
       return "";
     };
     const autoSec = new Map();
@@ -8118,6 +8169,38 @@ const GENIUS = (() => {
     const live = new Set();
     for (const e of entries.values()) if (!e.suppress)
       for (const x of e.blocks) live.add(x.diag + "|" + x.si);
+    /* MG runs to wherever the unit next berths ON THE SHEET, which is not
+       always the end of its own stint. GT116 leaves Ashford at 05+31, is
+       back on the East sidings at 06 59 and goes out again at 07 46 - but
+       that departure prints as GT117's row, with GT116 named in the
+       attachment note, so the 39 miles of the first stint were all the book
+       ever showed of a 455-mile day. Where a later stint has no row of its
+       own the miles it runs belong to the last row that DOES print, and a
+       diagram's printed figures then still add up to its day.
+       Two stints that BOTH print are unaffected: a unit stands still between
+       them, so the running total at the end of one is the running total at
+       the start of the next, and the sum is the stint span as before. */
+    for (const e of entries.values()) {
+      if (e.suppress) continue;
+      for (const x of e.blocks) {
+        const m = meta.get(x.diag);
+        if (!m || x.mg === undefined) continue;
+        const mlAt = si => {
+          const st = m.stints[si];
+          return st && m.stops[st[0]] ? m.stops[st[0]].ml : undefined;
+        };
+        const from = mlAt(x.si);
+        if (from === undefined) continue;
+        let to;
+        for (let k = x.si + 1; k < m.stints.length && to === undefined; k++)
+          if (live.has(x.diag + "|" + k)) to = mlAt(k);
+        // nothing later of this diagram prints: the rest of the day is this
+        // row's, because there is no other row for it to land on
+        if (to === undefined) to = m.miles;
+        if (typeof to === "number" && isFinite(to) && to >= from)
+          x.mg = Math.round(to - from);
+      }
+    }
     for (const e of entries.values()) {
       for (const x of e.blocks)
         if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";

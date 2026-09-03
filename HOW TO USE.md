@@ -356,8 +356,10 @@ the books print a page for are considered; a unit standing at St Pancras is
 not a berthing question.
 
 **Mileage column.** Adds MILES to the Mainline and Ramsgate books: the miles
-a unit runs from that departure until it next berths, the figure the 395
-sheet calls MG. It is blank on a build from PDFs, which carry no mileage.
+a unit runs from that departure until it next berths *on the book*, the
+figure the 395 sheet calls MG. A unit that attaches to another diagram and
+stays out has no second row, so the row it does have carries the rest of its
+day. It is blank on a build from PDFs, which carry no mileage.
 
 **Stock requirements form.** Going into a Monday, or the day after a bank
 holiday, planning fills in the Kent Coast stock requirements form: how many

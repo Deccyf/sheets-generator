@@ -335,3 +335,59 @@ test("the 395 preview is drawn in the workbook's own dress", () => {
   assert.ok(!under.includes("font-size:undefined"),
     "no look without a size behind it");
 });
+
+test("a merged panel's box comes from the range's edges, not the anchor's sides", () => {
+  /* A merged range is ONE cell on the page, and the spreadsheet draws its box
+     from the cells around the range's EDGE — the bottom rule off its bottom
+     row, the right off its right-hand column. The preview took the anchor
+     cell's own four sides, and an anchor does not own the far edges of its
+     range: on the 395 sheet the COMMENTS panel and the NOTE block carry their
+     bottom and right on cells further down and across, so both came out as
+     open boxes with the lines simply missing. */
+  const N = built();
+  const H = N.SHEETS_HS, X = N.SHEETS_XLSX, SKIN = N.SHEETS_HS_SKIN;
+  const lay = H.layoutDay("M", { M: "03/08/26" }, { M: new Map([["ASHFORD", [
+    { time: 300, time_kind: "ecs", dest: "STP", headcode: "5X01",
+      units: [{ diag: "601", code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+                mg: 143, miles: 500 }] }]]]) }, null);
+  const at = new Map();
+  for (const c of lay.cells) at.set(c.r + "," + c.c, c);
+  const colNum = s => { let n = 0; for (const ch of s) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+  // what one cell's own style record draws on one of its sides
+  const side = (r, c, s) => {
+    const cell = at.get(r + "," + c);
+    const m = new RegExp("border-" + s + ":([^;]*)")
+      .exec((cell && SKIN.xfCss[cell.xf]) || "");
+    const v = m ? m[1].trim() : "";
+    return (!v || v === "0" || v === "none") ? "" : v;
+  };
+  // the tall COMMENTS panel: the deepest merge on the page
+  let deep = null, rows = 0;
+  for (const m of Array.from(lay.merges)) {
+    const p = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(m);
+    if (!p) continue;
+    if (+p[4] - +p[2] + 1 > rows) {
+      rows = +p[4] - +p[2] + 1;
+      deep = { c1: colNum(p[1]), r1: +p[2], c2: colNum(p[3]), r2: +p[4] };
+    }
+  }
+  assert.ok(rows > 1, "the sheet has a panel merged over several rows");
+  // the fault, pinned at the source: the anchor does not carry the far sides
+  assert.equal(side(deep.r1, deep.c1, "bottom"), "",
+    "the anchor cell of the panel has no bottom rule of its own");
+  const want = {
+    top: side(deep.r1, deep.c1, "top"), left: side(deep.r1, deep.c1, "left"),
+    bottom: side(deep.r2, deep.c1, "bottom"), right: side(deep.r1, deep.c2, "right"),
+  };
+  for (const s of Object.keys(want))
+    assert.ok(want[s], "the workbook rules the panel's " + s + " edge");
+  const td = new RegExp('<td colspan="' + (deep.c2 - deep.c1 + 1) +
+    '" rowspan="' + rows + '" style="([^"]*)"').exec(X.previewHtml(lay));
+  assert.ok(td, "the panel is one cell on the page");
+  for (const s of Object.keys(want)) {
+    // the last declaration wins in an inline style, as it does in the browser
+    const all = td[1].split(";").filter(d => d.trim().startsWith("border-" + s + ":"));
+    assert.equal((all.pop() || "").split(":").slice(1).join(":").trim(), want[s],
+      "the panel's " + s + " is drawn where the workbook draws it");
+  }
+});

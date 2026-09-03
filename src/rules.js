@@ -179,7 +179,11 @@ const SHEETS_RULES = (() => {
           ["MG", "The miles this WORKING runs, not the diagram's total for " +
            "the day. A diagram that comes out twice has a figure for each " +
            "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
-           "182 on its 16+26 one. It is written as a number, so the sheet's " +
+           "182 on its 16+26 one. It runs to wherever that unit next berths " +
+           "ON THIS SHEET — a unit that attaches to another diagram and " +
+           "stays out has no second row, so the row it does have carries the " +
+           "rest of its day, and a diagram's figures always add up to the " +
+           "day it runs. It is written as a number, so the sheet's " +
            "own colouring works on it — green under 500 miles, red at 500 " +
            "and over, the same key that is printed at the top. A report " +
            "saved as a PDF carries no mileage and the column stays empty."],
@@ -301,9 +305,12 @@ const SHEETS_RULES = (() => {
                   "train it is."],
         ["Miles", "Only if the mileage box was ticked when the book was " +
                   "built. It is the miles that unit runs from this departure " +
-                  "until it next berths — not what the diagram does all day, " +
-                  "so the same diagram reads a different figure on each of " +
-                  "its rows. It comes out of the reports' own running " +
+                  "until it next berths ON THE BOOK — not what the diagram " +
+                  "does all day, so the same diagram reads a different " +
+                  "figure on each of its rows. A unit that attaches to " +
+                  "another diagram and stays out has no second row, so the " +
+                  "row it does have carries the rest of its day. " +
+                  "It comes out of the reports' own running " +
                   "mileage, and a report saved as a PDF carries none, so the " +
                   "column stays empty on a build made from PDFs."],
       ] } },

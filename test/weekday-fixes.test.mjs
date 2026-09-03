@@ -398,3 +398,93 @@ test("10. build() takes a PDF's text already extracted, and builds the same book
   // an object that is not a PDF's text is still refused as a report
   await assert.rejects(() => G.build([{ pdfText: "nothing here" }, pdfs[1]]), /Summary/);
 });
+
+test("11. an unallocated working is left blank, not given the diagram's other unit", () => {
+  /* A diagram allocated in the morning and not yet in the evening had the
+     morning's unit carried down its whole day, so evening departures nobody
+     had allocated came out with a unit against them. The rulebook says the
+     tool does not invent a unit number and leaves the cell for the depot;
+     it is only ever read off the row covering the working being printed. */
+  const S = [HS,
+    // two workings of one diagram: the morning allocated 465609, the
+    // evening left for the planner
+    "GT024,Covered,375/6,,0,10/08/2026 06:00,1,2A01,ASHFDNS,10/08/2026 09:00,VICTRIE,10,,465609,,,,GT024,,",
+    "GT024,Covered,375/6,,0,10/08/2026 17:12,1,2A40,VICTGCS,10/08/2026 19:00,ASHFDNS,10,,,,,,GT024,,"].join("\r\n");
+  const D = [HD,
+    leg("GT024", "ASHFDNS", "Ashford Down Sidings", "06:00", "5A01", "ASHFKY", "Ashford", "06:05"),
+    leg("GT024", "ASHFKY", "Ashford", "06:10", "2A01", "VICTRIE", "Victoria", "09:00"),
+    leg("GT024", "VICTRIE", "Victoria", "09:10", "5A02", "VICTGCS", "Victoria Grosvenor Shed", "09:20"),
+    leg("GT024", "VICTGCS", "Victoria Grosvenor Shed", "17:12", "5A40", "VICTRIE", "Victoria", "17:20"),
+    leg("GT024", "VICTRIE", "Victoria", "17:30", "2A40", "ASHFKY", "Ashford", "18:50"),
+    leg("GT024", "ASHFKY", "Ashford", "18:55", "5A41", "ASHFDNS", "Ashford Down Sidings", "19:00")].join("\r\n");
+  const r = G.buildIntegrale([S, D]);
+  const unitsAt = () => {
+    const out = [];
+    for (const [sec, list] of r.secsByDay.M)
+      for (const e of list)
+        for (const u of e.units)
+          out.push(sec + " " + fmt(e) + " = " + JSON.stringify(u.unit || ""));
+    return out.sort();
+  };
+  const rows = Array.from(unitsAt());
+  assert.ok(rows.length >= 2, "the fixture built both workings: " + rows.join(" | "));
+  const morning = rows.filter(x => /ASHFORD 06/.test(x));
+  const evening = rows.filter(x => /VICTORIA 17/.test(x));
+  assert.ok(morning.length, "the morning working is on the book: " + rows.join(" | "));
+  assert.ok(evening.length, "and so is the evening one: " + rows.join(" | "));
+  // the books print the last three digits of the unit number, as 465609 -> 609
+  assert.ok(morning.every(x => x.endsWith('"609"')),
+    "the allocated morning keeps its unit: " + morning.join(" | "));
+  assert.ok(evening.every(x => x.endsWith('""')),
+    "the unallocated evening is left blank for the depot: " + evening.join(" | "));
+});
+
+test("12. a unit that attaches and stays out carries the rest of the day's miles", () => {
+  /* GT116 leaves Ashford at 05+31, is back on the sidings at 06 59 and goes
+     out again at 07 46 attached to GT117 - and that departure prints as
+     GT117's row, with GT116 named in the attachment note. So the 39 miles of
+     the first stint were all the book ever showed of a 455-mile day. A
+     working's miles now run to wherever the unit next berths ON THE SHEET,
+     and where nothing later of that diagram prints, to the end of its day. */
+  const mleg = (d, a, an, at, hc, b, bn, bt, cum) =>
+    `${d},10/08/2026,,0,${a},${an},${at}:00,,${hc},${cum},,${b},${bn},${bt}:00,,`;
+  const S = [HS,
+    srow("GT116", "375/6", 1, "05:31", "ASHFDNS", "06:59", "ASHFDNS"),
+    srow("GT116", "375/6", 1, "07:46", "ASHFDNS", "14:05", "VICTGCS"),
+    srow("GT117", "375/6", 2, "07:45", "ASHFDNS", "10:10", "VICTGCS")].join("\r\n");
+  const D = [HD,
+    // out to Maidstone and back to the sidings: 39 miles
+    mleg("GT116", "ASHFDNS", "Ashford Down Sidings", "05:31", "5A05", "ASHFKY", "Ashford", "05:35", 2),
+    mleg("GT116", "ASHFKY", "Ashford", "05:36", "5A05", "MDSTE", "Maidstone East", "06:04", 20),
+    mleg("GT116", "MDSTE", "Maidstone East", "06:18", "2N06", "ASHFKY", "Ashford", "06:49", 38),
+    mleg("GT116", "ASHFKY", "Ashford", "06:55", "5N06", "ASHFDNS", "Ashford Down Sidings", "06:59", 39),
+    // …then out again on GT117's 07 55 and never berthing again: 246 more
+    mleg("GT116", "ASHFDNS", "Ashford Down Sidings", "07:46", "5A18", "ASHFKY", "Ashford", "07:50", 41),
+    mleg("GT116", "ASHFKY", "Ashford", "07:55", "2A18", "VICTRIE", "Victoria", "09:36", 120),
+    mleg("GT116", "VICTRIE", "Victoria", "09:55", "2N24", "ASHFKY", "Ashford", "11:32", 200),
+    mleg("GT116", "ASHFKY", "Ashford", "11:56", "2A34", "VICTRIE", "Victoria", "13:36", 280),
+    mleg("GT116", "VICTRIE", "Victoria", "13:55", "5F07", "VICTGCS", "Victoria Grosvenor Shed", "14:05", 285),
+    // GT117's day opens by arriving on the sidings to be joined
+    mleg("GT117", "ASHFDNS", "Ashford Down Sidings", "07:45", "", "ASHFDNS", "Ashford Down Sidings", "07:45", 0),
+    mleg("GT117", "ASHFDNS", "Ashford Down Sidings", "07:46", "5A18", "ASHFKY", "Ashford", "07:50", 2),
+    mleg("GT117", "ASHFKY", "Ashford", "07:55", "2A18", "VICTRIE", "Victoria", "09:36", 81),
+    mleg("GT117", "VICTRIE", "Victoria", "10:00", "5F09", "VICTGCS", "Victoria Grosvenor Shed", "10:10", 84)]
+    .join("\r\n");
+  const r = G.buildIntegrale([S, D]);
+  const rows = [];
+  for (const [sec, list] of r.secsByDay.M)
+    for (const e of list)
+      for (const u of e.units)
+        rows.push({ where: sec + " " + fmt(e), diag: u.diag, mg: u.mg, miles: u.miles });
+  const shown = rows.map(x => x.where + " " + x.diag + " mg=" + x.mg).join(" | ");
+  const g116 = rows.filter(x => x.diag === "116");
+  assert.equal(g116.length, 1,
+    "116 prints once, its second departure being GT117's row: " + shown);
+  assert.equal(g116[0].mg, 285,
+    "and carries the whole day, not the 39 miles of its first stint: " + shown);
+  // the diagram that DOES print both halves is untouched: a unit stands
+  // still between two stints, so each row still shows its own working
+  const g117 = rows.filter(x => x.diag === "117");
+  assert.equal(g117.length, 1, "117 prints its one departure: " + shown);
+  assert.equal(g117[0].mg, 84, "117 runs its own day: " + shown);
+});

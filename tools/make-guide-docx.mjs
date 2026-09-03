@@ -475,6 +475,10 @@ const children = [
   ...bullets([
     "`MG` is the miles **that working** runs, not the diagram's total for " +
     "the day, so a diagram that comes out twice has a figure for each time. " +
+    "It runs to wherever that unit next berths **on the sheet** — a unit " +
+    "that attaches to another diagram and stays out has no second row, so " +
+    "the row it does have carries the rest of its day, and a diagram's " +
+    "figures always add up to the day it runs. " +
     "It is a number, so your colouring works on it: **green under 500 " +
     "miles, red at 500 and over**.",
     "The **DIAGRAM cells carry the route notes** as comments, same as " +
