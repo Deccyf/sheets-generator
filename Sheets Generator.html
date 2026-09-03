@@ -71,12 +71,13 @@
   .mast .linkish:focus-visible{outline-color:var(--flag)}
 
   /* ---------- the fleet, drawn up along the masthead ---------- */
-  .lineup{display:flex; gap:26px; align-items:flex-end; flex-wrap:wrap; flex:0 1 auto}
+  .lineup{display:flex; gap:14px 22px; align-items:flex-end; flex-wrap:wrap; flex:0 1 auto;
+    max-width:600px}
   .lineup figure{margin:0}
-  .lineup svg{height:30px; width:auto; display:block}
-  .lineup figcaption{font-family:var(--mono); font-size:10px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--paper); opacity:.8; margin-top:6px}
-  .road-sprite{margin-left:auto; align-self:center}
+  .lineup svg{height:26px; width:auto; display:block}
+  .lineup figcaption{font-family:var(--mono); font-size:9.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--paper); opacity:.8; margin-top:5px; white-space:nowrap}
+  .road-sprite{margin-left:auto; align-self:center; display:flex; gap:6px; align-items:center}
   .road-sprite svg{height:20px; width:auto; display:block}
   .unit svg{height:16px; width:auto; display:block}
 
@@ -9286,12 +9287,67 @@ function sprite(cls) {
   const rail = '<rect x="0" y="30" width="132" height="1.2" fill="#5A6169"/>';
   if (cls === "395") {
     return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 395 Javelin">' +
-      '<path d="M4 6 a3 3 0 0 1 3-3 h103 l18 15 v5 a1.5 1.5 0 0 1-1.5 1.5 h-119.5 a3 3 0 0 1-3-3 z" fill="#26356B"/>' +
+      '<path d="M4 6 a3 3 0 0 1 3-3 h103 l18 15 v5 a1.5 1.5 0 0 1-1.5 1.5 h-119.5 a3 3 0 0 1-3-3 z" fill="#26356B" stroke="#8FA0CE" stroke-width="0.9"/>' +
       '<path d="M113 3 l15 15 v4.6 a1.5 1.5 0 0 1-1.5 1.5 h-6.5 l-16-21 z" fill="#F5C400"/>' +
       '<rect x="10" y="8" width="92" height="5.4" rx="1.4" fill="#8FA0CE"/>' +
       '<rect x="4" y="19" width="110" height="2.4" fill="#E8EAF2"/>' +
       '<rect x="46" y="7" width="5" height="14" fill="#1B2751"/>' +
       '<rect x="78" y="7" width="5" height="14" fill="#1B2751"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "377") {
+    // 377 Electrostar in Southern's white and green, as the 377/5s run here
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 377 Electrostar">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+      '<path d="M4.5 17.5 h113.5 l6 4.2 v1.3 a3 3 0 0 1-3 3 h-116.5 a4 4 0 0 1-4-4 z" fill="#2F8A4C"/>' +
+      '<rect x="4.5" y="16.2" width="113" height="1.6" fill="#8CCB9B"/>' +
+      '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
+      '<rect x="4" y="6" width="112" height="2.4" fill="#C8CBC4"/>' +
+      '<rect x="10" y="9.6" width="102" height="6" rx="1.6" fill="#3A4348"/>' +
+      '<rect x="40" y="9" width="8" height="15" fill="#5FAF7A"/>' +
+      '<rect x="88" y="9" width="8" height="15" fill="#5FAF7A"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "376") {
+    // 376 metro Electrostar: the flatter cab, a lighter window band, doors everywhere
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 376 Electrostar">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h114 l6 4 v13 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
+      '<path d="M120 4 l6 4 v13 a3 3 0 0 1-3 3 h-3 v-20 z" fill="#FFD335"/>' +
+      '<rect x="4" y="6" width="116" height="2.6" fill="#18244F"/>' +
+      '<rect x="10" y="10" width="108" height="6.4" rx="1.6" fill="#B3C0E6"/>' +
+      '<rect x="26" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="50" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="74" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="98" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "466") {
+    // 466 Networker: the two-car, so a shorter body than the 465
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 466 Networker">' +
+      '<path d="M18 8 a4 4 0 0 1 4-4 h98 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-103 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+      '<path d="M120 4 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-7 v-21 z" fill="#FFD335"/>' +
+      '<rect x="18" y="6" width="100" height="2.6" fill="#C8CBC4"/>' +
+      '<rect x="24" y="10" width="90" height="6" rx="1.6" fill="#3A4348"/>' +
+      '<rect x="44" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="54" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="84" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="94" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<circle cx="34" cy="27" r="3" fill="#23282C"/><circle cx="46" cy="27" r="3" fill="#23282C"/>' +
+      '<circle cx="100" cy="27" r="3" fill="#23282C"/><circle cx="112" cy="27" r="3" fill="#23282C"/>' +
+      rail + "</svg>";
+  }
+  if (cls === "707") {
+    // 707 Desiro City: the big curved windscreen and no yellow panel; pale doors
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 707 Desiro City">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h102 c10 0 18 6 18 15 v2 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
+      '<path d="M107 7 c9 .5 15.5 6 16.5 13 h-3.8 c-1 -5.4 -6.2 -9.2 -12.7 -9.2 z" fill="#9DACD9"/>' +
+      '<rect x="4" y="6" width="103" height="2.6" fill="#18244F"/>' +
+      '<rect x="10" y="10" width="97" height="6.4" rx="1.6" fill="#9DACD9"/>' +
+      '<rect x="28" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="52" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="76" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="98" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="112" y="19.5" width="9" height="1.8" fill="#F5C400"/>' +
       wheels + rail + "</svg>";
   }
   if (cls === "465") {
@@ -9308,7 +9364,7 @@ function sprite(cls) {
   }
   // 375 Electrostar - Southeastern's dark blue livery, yellow warning end
   return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 375 Electrostar">' +
-    '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E"/>' +
+    '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
     '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
     '<rect x="4" y="6" width="112" height="2.6" fill="#18244F"/>' +
     '<rect x="10" y="10" width="102" height="6.4" rx="1.6" fill="#9DACD9"/>' +
@@ -9316,13 +9372,20 @@ function sprite(cls) {
     '<rect x="88" y="9" width="8" height="15" fill="#3D4F94"/>' +
     wheels + rail + "</svg>";
 }
+/* the whole fleet, drawn up along the masthead: each book's classes */
+const FLEET_LINEUP = [["375", "Mainline"], ["376", "Mainline"], ["377", "Mainline"],
+                      ["465", "Metro"], ["466", "Metro"], ["707", "Metro"],
+                      ["395", "High Speed"]];
 const lineupEl = $("#lineup");
 if (lineupEl) {
-  lineupEl.innerHTML = [["375", "Mainline"], ["465", "Metro"], ["395", "High Speed"]]
-    .map(([c, name]) =>
-      "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
-      "</figcaption></figure>").join("");
+  lineupEl.innerHTML = FLEET_LINEUP.map(([c, name]) =>
+    "<figure>" + sprite(c) + "<figcaption>" + c + " · " + name +
+    "</figcaption></figure>").join("");
 }
+/* the classes each book carries, for its card */
+const SPRITES = { Mainline: ["375", "376", "377"], Ramsgate: ["375", "376"],
+                  Metro: ["465", "466", "707"], "High Speed": ["395"] };
+const spritesOf = cls => (Array.isArray(cls) ? cls : [cls]).map(sprite).join("");
 
 /* ---------------- a screenshot, enlarged ----------------
    The how-to fold's screenshots are small on the page. A click on one (or
@@ -9354,7 +9417,7 @@ function roadHead(i, road, fleetLabel, spriteCls) {
   head.innerHTML = '<span class="road-no">Road ' + (i + 1) + "</span>" +
     '<h2 class="road-name">' + escHtml(road) + "</h2>" +
     '<span class="road-fleet">' + escHtml(fleetLabel) + "</span>" +
-    '<span class="road-sprite" aria-hidden="true">' + sprite(spriteCls) + "</span>";
+    '<span class="road-sprite" aria-hidden="true">' + spritesOf(spriteCls) + "</span>";
   return head;
 }
 /* A road with nothing on it: same head, one line saying why. */
@@ -9455,7 +9518,8 @@ function roadCard(spec) {
   const unit = document.createElement("div");
   unit.className = "unit";
   unit.style.animationDelay = (i * 90) + "ms";
-  unit.innerHTML = '<span aria-hidden="true">' + sprite(spriteCls) + "</span>" + unitHtml;
+  unit.innerHTML = '<span aria-hidden="true">' +
+    sprite(Array.isArray(spriteCls) ? spriteCls[0] : spriteCls) + "</span>" + unitHtml;
   track.appendChild(unit);
   const chipRow = document.createElement("div");
   chipRow.className = "chips";
@@ -9653,18 +9717,18 @@ const panels = {};
      ones. The depot's own documents (Metro, 395) are not berthing books. */
   const BOOKS = [
     { road: "Mainline", file: "SHEETS_", kind: "berthing", hc: "main", ram: false,
-      fleet: "Mainline", label: "375 / 376 / 377", sprite: "375",
+      fleet: "Mainline", label: "375 / 376 / 377", sprite: SPRITES.Mainline,
       secs: r => r.secsByDay, order: r => X.bookOrder(r.secsByDay, X.MAIN_ORDER, true),
       rev: "main", opts: {} },
     { road: "Ramsgate", file: "RAM_SHEETS_", kind: "berthing", hc: "main", ram: true,
-      fleet: "Ramsgate", label: "cut from the mainline day", sprite: "375",
+      fleet: "Ramsgate", label: "cut from the mainline day", sprite: SPRITES.Ramsgate,
       secs: r => r.secsByDay, order: () => null, rev: "ram", opts: {} },
     { road: "Metro", file: "METRO_SHEETS_", kind: "metro", hc: "metro", ram: false,
-      fleet: "Metro", label: "465 / 466 / 707", sprite: "465", cycle: true, wide: true,
+      fleet: "Metro", label: "465 / 466 / 707", sprite: SPRITES.Metro, cycle: true, wide: true,
       secs: r => r.metroSecs, order: r => X.bookOrder(r.metroSecs, X.METRO_ORDER, false),
       rev: "metro", opts: { baseOrder: X.METRO_ORDER, splitRamsgate: false } },
     { road: "High Speed", file: "HS_SHEETS_", kind: "hs", hc: "hs", ram: false,
-      fleet: "High Speed", label: "395", sprite: "395", cycle: true, wide: true,
+      fleet: "High Speed", label: "395", sprite: SPRITES["High Speed"], cycle: true, wide: true,
       secs: r => r.hsSecs, order: r => X.bookOrder(r.hsSecs, X.HS_ORDER, false),
       rev: "hs", opts: { baseOrder: [], splitRamsgate: false } },
   ];
@@ -9990,8 +10054,9 @@ const panels = {};
   const [wePasteMain, wePasteRe] = P.boxes;
   let built = null;
   let loadedDocs = [];
-  const SPRITE_FOR = { Mainline: "375", Metro: "465", "High Speed": "395" };
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
+  const SPRITE_FOR = { Mainline: SPRITES.Mainline, "RAM SHEETS": SPRITES.Ramsgate,
+                       Metro: SPRITES.Metro, "High Speed": SPRITES["High Speed"] };
   const isWide = r => r === "Metro" || r === "High Speed";
 
   function render(res) {
