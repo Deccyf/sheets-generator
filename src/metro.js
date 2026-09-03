@@ -8,11 +8,11 @@
        date against it;
      * one row per unit, the headcode, time and destination written once on
        the entry's first row and the rest of the formation under it;
-     * fourteen columns, of which the reports fill nine. The other five are
-       ruled and left empty for the depot to write in, the way the Unit
-       column already is on the berthing books - they are hand-kept in the
-       real workbook too (COMMENTS is filled on 13% of its rows, R/T and L/S
-       on 6%).
+     * sixteen columns, of which the reports fill nine. Two of the rest are
+       spares with no heading at all, which the depot uses when a comment
+       overflows; the other five are ruled and left empty to write in, the
+       way the Unit column already is on the berthing books. All seven are
+       hand-kept in the real workbook too.
 
    Grove Park and Slade Green get an AM and a PM sheet, which is how the real
    workbook splits them, and their ROAD column carries the Dn / Up / Shed the
@@ -37,17 +37,24 @@ const AM_SHEET_END = 10 * 60;
    terminus has PLATFORMs where a depot has ROADs, and the two big depots
    call the timing point a SIGNAL where everywhere else calls it a STATION.
    Both are the real workbook's own wording. */
-const WIDTHS = [11.3, 11, 16.3, 17.9, 8.1, 14, 14.9, 9.1, 16.1, 2.9, 2.9, 3.7, 10.6, 9.1];
+/* Column widths, read off the workbook's own ASHFORD sheet. */
+const WIDTHS = [11.3, 11, 16.3, 17.9, 8.1, 14, 14.9, 9.1, 9.1, 16.1,
+                2.9, 2.9, 3.7, 3.7, 10.6, 9.1];
 const SIGNAL_AT = new Set(["GROVE PARK", "SLADE GREEN"]);
-const PLATFORM_AT = new Set(["CANNON STREET", "CHARING CROSS", "VICTORIA",
+/* Victoria is NOT one of these: the workbook heads its column ROAD, the
+   same as every other location that is not a London terminus. */
+const PLATFORM_AT = new Set(["CANNON STREET", "CHARING CROSS",
                              "LONDON BRIDGE", "BLACKFRIARS"]);
-/* The fourteen column headings for a location, in the workbook's own order. */
+/* The sixteen column headings for a location, in the workbook's own order.
+   Columns 10 and 11 carry no heading: they are the spares a long comment
+   runs into, and the depot rules them like the rest of the grid. */
 function headings(sec) {
   return ["TRAIN I.D.", "SIDINGS", SIGNAL_AT.has(sec) ? "SIGNAL" : "STATION",
           "DESTINATION", "POS", "DIAG", "FORMATION",
-          PLATFORM_AT.has(sec) ? "PLATFORM" : "ROAD", "COMMENTS",
+          PLATFORM_AT.has(sec) ? "PLATFORM" : "ROAD", "COMMENTS", "", "",
           "S", "R/T", "L/S", "ENDS", "MILES"];
 }
+const NCOL = 16;
 /* The destination in full, which is how this sheet writes it - the berthing
    books use the three-letter code. The name table is keyed the other way
    round, so it is turned once here. */
@@ -144,7 +151,7 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       const bot = lastOfEntry ? "thin" : null;
       const col = (c, v, look, num) =>
         put(r, c, v, look === undefined ? BODY_LOOK : look,
-            [c === 1 ? "medium" : "thin", c === 14 ? "medium" : "thin", null, bot],
+            [c === 1 ? "medium" : "thin", c === NCOL ? "medium" : "thin", null, bot],
             false, num);
       // written once, against the top row of the formation
       col(1, i === 0 ? (e.headcode || "") : "");
@@ -159,9 +166,10 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       // blank for the depot to write in
       col(8, i === 0 ? roadOf(e) : "");
       col(9, "");                                   // COMMENTS: by hand
-      col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
-      col(13, u.ends || "");
-      col(14, finite(u.miles) ? Math.round(+u.miles) : "", 5, finite(u.miles));
+      col(10, ""); col(11, "");                     // the two spares
+      col(12, ""); col(13, ""); col(14, "");        // S, R/T, L/S: by hand
+      col(15, u.ends || "");
+      col(16, finite(u.miles) ? Math.round(+u.miles) : "", 5, finite(u.miles));
       rowHeights.set(r, 18);
       r++;
     });
@@ -175,10 +183,10 @@ function layoutSection(name, entries, dateLbl, dateFull) {
   put(r, 1, "DATED " + issued, BODY_LOOK, null, true);
   put(r, 5, "NAME", BODY_LOOK, null, true);
   put(r, 11, "SIGNATURE", BODY_LOOK, null, true);
-  merges.push("A" + r + ":D" + r, "E" + r + ":J" + r, "K" + r + ":N" + r);
+  merges.push("A" + r + ":D" + r, "E" + r + ":J" + r, "K" + r + ":P" + r);
   rowHeights.set(r, 18); r++;
   put(r, 1, EMAIL_LINE, 4, null, true);
-  merges.push("A" + r + ":N" + r);
+  merges.push("A" + r + ":P" + r);
   rowHeights.set(r, 18); r++;
   return { cells, merges, rowHeights, maxRow: r,
            opts: { widths: fitWidths(cells), landscape: true, fitToHeight: 0,

@@ -1,6 +1,6 @@
 /* The Metro book is the depot's own document, not a berthing sheet: a
-   worksheet per location, landscape, fourteen columns. Pinned against the
-   shape of the operator's own May 2026 workbook. */
+   worksheet per location, landscape, sixteen columns. Pinned against the
+   shape of the operator's own December 2025 workbook. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
@@ -36,23 +36,26 @@ test("the Metro sheet carries the depot's own columns", async () => {
   const sh = sheets[0];
   const at = new Map();
   for (const c of sh.layout.cells) at.set(c.r + "," + c.c, c.v);
-  const row = n => Array.from({ length: 14 }, (_, i) => at.get(n + "," + (i + 1)) || "");
+  const row = n => Array.from({ length: 16 }, (_, i) => at.get(n + "," + (i + 1)) || "");
 
   assert.match(row(1)[0], /^SERVICES STARTING /, "the title row: " + row(1)[0]);
   assert.deepEqual(Array.from(row(2)),
     ["TRAIN I.D.", "SIDINGS", "STATION", "DESTINATION", "POS", "DIAG",
-     "FORMATION", "ROAD", "COMMENTS", "S", "R/T", "L/S", "ENDS", "MILES"],
-    "the header row, in the workbook's own order and wording");
+     "FORMATION", "ROAD", "COMMENTS", "", "", "S", "R/T", "L/S", "ENDS", "MILES"],
+    "the header row, in the workbook's own order and wording — including the\n" +
+    "     two unheaded spares a long comment runs into");
   // the two depots call the timing point a SIGNAL, and a terminus has
   // PLATFORMs where a depot has ROADs
   assert.equal(Array.from(M.headings("GROVE PARK"))[2], "SIGNAL");
-  assert.equal(Array.from(M.headings("VICTORIA"))[7], "PLATFORM");
+  assert.equal(Array.from(M.headings("CANNON STREET"))[7], "PLATFORM");
+  // Victoria is not a London terminus in this book: its column is ROAD
+  assert.equal(Array.from(M.headings("VICTORIA"))[7], "ROAD");
   assert.equal(Array.from(M.headings("TONBRIDGE"))[7], "ROAD");
 
   // landscape, and as many pages down as the day needs
   assert.equal(sh.layout.opts.landscape, true, "landscape");
   assert.equal(sh.layout.opts.fitToHeight, 0, "runs down as many pages as it needs");
-  assert.equal(Array.from(sh.layout.opts.widths).length, 14, "fourteen columns");
+  assert.equal(Array.from(sh.layout.opts.widths).length, 16, "sixteen columns");
 });
 
 test("the Metro sheet reads by Position, lowest first", () => {
@@ -80,11 +83,12 @@ test("the Metro sheet reads by Position, lowest first", () => {
   assert.deepEqual(Array.from(col(2)), ["05+09", "", ""], "SIDINGS written once");
   assert.equal(at.get("4,4"), "", "DESTINATION written once");
   // ENDS and MILES belong to the diagram, so every row of it carries them
-  assert.deepEqual(Array.from(col(13)), ["GP PM", "GP PM", "GP PM"], "ENDS on each");
-  assert.deepEqual(Array.from(col(14)), ["338", "338", "338"], "MILES on each");
-  // and the hand-kept columns are ruled and empty. ROAD (8) is here too:
-  // this entry carries no origin berth, so the tool has no road to write
-  for (const c of [3, 8, 9, 10, 11, 12])
+  assert.deepEqual(Array.from(col(15)), ["GP PM", "GP PM", "GP PM"], "ENDS on each");
+  assert.deepEqual(Array.from(col(16)), ["338", "338", "338"], "MILES on each");
+  // and the hand-kept columns are ruled and empty — the two spares among
+  // them. ROAD (8) is here too: this entry carries no origin berth, so the
+  // tool has no road to write
+  for (const c of [3, 8, 9, 10, 11, 12, 13, 14])
     assert.equal(at.get("3," + c), "", "column " + c + " is left for the depot");
 });
 
@@ -109,13 +113,16 @@ test("the ROAD column carries the Dn / Up / Shed a working comes off", () => {
     return [at.get("3,8"), at.get("4,8")];
   };
   assert.deepEqual(Array.from(roadOn("GROVE PARK AM", "GROVE PARK UP C.H.S")),
-    ["UP", ""], "the up carriage holding sidings, written once on the top row");
-  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK DOWN CHS"))[0], "DN");
+    ["UPS", ""], "the up carriage holding sidings, written once on the top row");
+  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK DOWN CHS"))[0], "DOWNS");
   assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK C.S.D"))[0], "SHED");
-  assert.equal(Array.from(roadOn("GROVE PARK PM", "GROVE PARK UP HEADSHUNT"))[0], "UP");
+  assert.equal(Array.from(roadOn("GROVE PARK PM", "GROVE PARK UP HEADSHUNT"))[0], "UPS");
+  // the depot's own words for the two extensions, off its Dartford sheet
+  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK DPT CTRY ED EXT"))[0], "C/END");
+  assert.equal(Array.from(roadOn("GROVE PARK PM", "GROVE PARK DPT LNDN ED EXT"))[0], "L/END");
   /* Slade Green had nothing at all: only its up sidings were in any table,
      and that one under a siding NOTE rather than a road. */
-  assert.equal(Array.from(roadOn("SLADE GREEN AM", "SLADE GREEN UP C.H.S"))[0], "UP");
+  assert.equal(Array.from(roadOn("SLADE GREEN AM", "SLADE GREEN UP C.H.S"))[0], "UPS");
   assert.equal(Array.from(roadOn("SLADE GREEN AM", "SLADE GREEN T&R.S.M.D"))[0], "SHED");
   assert.equal(Array.from(roadOn("SLADE GREEN PM", "SLADE GREEN DPT EAST HSHNT"))[0], "SHED");
   // a platform departure is not off a road, and neither is anywhere else

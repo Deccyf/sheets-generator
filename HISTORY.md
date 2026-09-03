@@ -4,6 +4,29 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.0.2 — 3 September 2026 — the Metro sheets against the December 2025 book
+
+The depot's **December 2025** workbook replaced the May 2026 one as the
+baseline the Metro sheets are held to, and it settled three things:
+
+- **The sheet is sixteen columns, not fourteen.** Between COMMENTS and S sit
+  two columns with no heading, which the depot uses when a comment overflows
+  — its Slade Green sheet runs "MUST BE MO FREE / FOR TRAINING TRIP" across
+  them. The tool omitted both, so everything from S rightwards sat two
+  columns left of where the depot keeps it. All sixteen headings and widths
+  now match the workbook's own ASHFORD sheet exactly.
+- **Victoria's column is ROAD, not PLATFORM.** Only the London termini —
+  Cannon Street and Charing Cross — head it PLATFORM.
+- **The road names are the depot's own words.** Its Dartford sheet writes
+  DOWNS, C/END and L/END, and its comments write SG UPS, so the ROAD column
+  now says DOWNS, UPS, SHED, C/END and L/END rather than the DN / UP / SD the
+  berthing books abbreviate to. The road *number* it writes there — "1 UP",
+  "4 UP" — is beyond the reports, which name a berth and not which of its
+  roads, so the up sidings are the unnumbered UPS.
+
+The AM/PM boundary was re-checked against this book and holds: its AM sheets
+end 07+10 and 07+23, its PM sheets open 13+12 and 13+15.
+
 ## 3.0.1 — 3 September 2026 — the Metro sheets' AM/PM split and ROAD column
 
 Two things a colleague read off the Metro book, both checked against the

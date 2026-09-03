@@ -222,12 +222,15 @@ page breaks included.
 
 The weekday **Metro** book is the depot's own Metro document: a worksheet
 per location (per location *and* day when a pair covers more than one
-date), landscape, fourteen columns, read by Position, nine columns filled
-and five left ruled for hand entry. Grove Park and Slade Green take an AM
-and a PM worksheet each, split at `AM_SHEET_END` — ten in the morning, read
-off the depot's own workbook, where the AM sheets end 07+23 and the PM
-sheets open 10+40 — and their ROAD column carries the DN / UP / SHED the
-working comes off, from `DEPOT_ROAD` in `src/data.js`. The weekday **High Speed** book is the
+date), landscape, sixteen columns, read by Position, nine columns filled and
+seven left ruled for hand entry — five headed, plus the two unheaded spares
+the depot runs a long comment into. Headings and widths are the December
+2025 workbook's own ASHFORD sheet. Grove Park and Slade Green take an AM and
+a PM worksheet each, split at `AM_SHEET_END` — ten in the morning, read off
+that workbook, where the AM sheets end 07+23 and the PM sheets open 13+12 —
+and their ROAD column carries the road the working comes off in the depot's
+own words (DOWNS, UPS, SHED, C/END, L/END), from `DEPOT_ROAD` in
+`src/data.js`. The weekday **High Speed** book is the
 Class 395 Allocations Sheet: a worksheet per day, a block per depot, last
 night's arrivals (one row per unit; arrival time and train ID left for the
 depot, since the reports do not carry them) beside today's allocations, in

@@ -128,9 +128,11 @@ test("a figure that is not a number is never written as <v>NaN</v>", () => {
   assert.ok(!/<v>NaN<\/v>/.test(xml), "no NaN in the Metro sheet");
   // the unit with no position sorts last, so it is row 4
   assert.match(xml, /<c r="E3" s="\d+"><v>2<\/v><\/c>/, "a real POS is a number");
-  assert.match(xml, /<c r="N3" s="\d+"><v>120<\/v><\/c>/, "MILES rounded, as a number");
+  // MILES is column P: the sheet is sixteen wide, two of them the depot's
+  // unheaded spares between COMMENTS and S
+  assert.match(xml, /<c r="P3" s="\d+"><v>120<\/v><\/c>/, "MILES rounded, as a number");
   assert.match(xml, /<c r="E4" s="\d+"\/>/, "the blank POS is an empty ruled cell");
-  assert.match(xml, /<c r="N4" s="\d+"\/>/, "and so is the unreadable mileage");
+  assert.match(xml, /<c r="P4" s="\d+"\/>/, "and so is the unreadable mileage");
   // the writer guards itself too: the berthing books' mileage column
   const lay = X.rowsToLayout([{ kind: "hdr", name: "ASHFORD", date: "X" },
     { kind: "data", vals: { 1: "05 05 VIC", 2: "4 377", 3: "102", 4: "", 5: "", 6: "", 7: "", 8: "", 9: NaN },

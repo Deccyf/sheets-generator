@@ -149,18 +149,25 @@ const SIDING_CLASS_RE = new RegExp(
   /* Which road at the two metro depots a unit comes off, for the ROAD column
      of the Metro sheets. The same knowledge as GP_ROAD above, which the
      berthing books print against the headcode - but that one is Grove Park
-     only and abbreviates the shed to SD, where the Metro sheets spell it out.
-     The depot extensions and the headshunts are roads on the depot itself,
-     so a unit off one of them has come off the shed. */
+     only, and it abbreviates for a notes column where this is a column of
+     its own.
+
+     The words are the depot's, taken from the December 2025 workbook, which
+     writes DOWNS, C/END and L/END on its Dartford sheet and SG UPS in its
+     comments. The road NUMBER it writes there - "1 UP", "4 UP" - is beyond
+     the reports, which name a berth and not which of its roads, so the up
+     sidings are the unnumbered UPS. Both headshunts are roads at the depot
+     end, and the country and London end extensions are the depot's own
+     C/END and L/END. */
   const DEPOT_ROAD = {
     "GROVE PARK C.S.D": "SHED",
-    "GROVE PARK DOWN CHS": "DN",
-    "GROVE PARK UP C.H.S": "UP",
-    "GROVE PARK UP HEADSHUNT": "UP",
-    "GROVE PARK DPT CTRY ED EXT": "SHED",
-    "GROVE PARK DPT LNDN ED EXT": "SHED",
+    "GROVE PARK DOWN CHS": "DOWNS",
+    "GROVE PARK UP C.H.S": "UPS",
+    "GROVE PARK UP HEADSHUNT": "UPS",
+    "GROVE PARK DPT CTRY ED EXT": "C/END",
+    "GROVE PARK DPT LNDN ED EXT": "L/END",
     "SLADE GREEN T&R.S.M.D": "SHED",
-    "SLADE GREEN UP C.H.S": "UP",
+    "SLADE GREEN UP C.H.S": "UPS",
     "SLADE GREEN DPT EAST HSHNT": "SHED",
   };
   const SIDING_NOTES = { "ASHFORD EAST BTH SDGS": "EAST SIDINGS",
