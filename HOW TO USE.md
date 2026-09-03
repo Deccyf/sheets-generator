@@ -311,10 +311,13 @@ They are the documents the depot already keeps, filled in from the reports:
 
 * The **Metro** book is a sheet per location rather than per day, landscape,
   fourteen columns, reading by Position — 1, 2, 3 straight down each
-  formation. The reports fill eight columns; the other six (the timing
-  point, the road, comments, S, R/T and L/S) are ruled and left empty for
-  you to write in. On screen it has one **Sheet** tab with a **Location**
-  picker.
+  formation. The reports fill nine columns; the other five (the timing
+  point, comments, S, R/T and L/S) are ruled and left empty for you to write
+  in. Grove Park and Slade Green get an **AM** and a **PM** sheet each, split
+  at ten in the morning, and their **ROAD** column says which road the
+  working comes off — **DN**, **UP** or **SHED**. Everywhere else the ROAD
+  column is left for you. On screen it has one **Sheet** tab with a
+  **Location** picker.
 * The **High Speed** book is your **Class 395 Allocations Sheet**: a sheet
   per day, a block per depot (Ashford, Faversham, Margate, Ramsgate) with
   last night's arrivals on the left and today's allocations on the right,

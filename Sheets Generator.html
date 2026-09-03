@@ -452,7 +452,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.0.0</b> · 2 September 2026</span>
+      <span class="ver">Version <b>3.0.1</b> · 3 September 2026</span>
     </div>
   </header>
 
@@ -759,8 +759,8 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.0.0
-      &middot; 2 September 2026. If something looks wrong, check you have the
+      works without an internet connection. Version 3.0.1
+      &middot; 3 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
   </footer>
@@ -936,6 +936,23 @@ const SIDING_CLASS_RE = new RegExp(
   const GP_ROAD = { "GROVE PARK C.S.D": "SD", "GROVE PARK DOWN CHS": "DN",
     "GROVE PARK UP C.H.S": "UP", "GROVE PARK UP HEADSHUNT": "UP",
     "GROVE PARK DPT CTRY ED EXT": "SD" };
+  /* Which road at the two metro depots a unit comes off, for the ROAD column
+     of the Metro sheets. The same knowledge as GP_ROAD above, which the
+     berthing books print against the headcode - but that one is Grove Park
+     only and abbreviates the shed to SD, where the Metro sheets spell it out.
+     The depot extensions and the headshunts are roads on the depot itself,
+     so a unit off one of them has come off the shed. */
+  const DEPOT_ROAD = {
+    "GROVE PARK C.S.D": "SHED",
+    "GROVE PARK DOWN CHS": "DN",
+    "GROVE PARK UP C.H.S": "UP",
+    "GROVE PARK UP HEADSHUNT": "UP",
+    "GROVE PARK DPT CTRY ED EXT": "SHED",
+    "GROVE PARK DPT LNDN ED EXT": "SHED",
+    "SLADE GREEN T&R.S.M.D": "SHED",
+    "SLADE GREEN UP C.H.S": "UP",
+    "SLADE GREEN DPT EAST HSHNT": "SHED",
+  };
   const SIDING_NOTES = { "ASHFORD EAST BTH SDGS": "EAST SIDINGS",
     "ASHFORD UP SIDINGS": "UP SIDINGS", "SLADE GREEN UP C.H.S": "UPS",
     "TONBRIDGE DM SIDING": "DNM", "TONBRIDGE JUB SDGS": "JUB" };
@@ -1617,7 +1634,7 @@ const PROFILES = [
 
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
-  MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
+  MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD, DEPOT_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
@@ -3934,20 +3951,30 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_STOCKREQ = SHEETS_STOCK
        date against it;
      * one row per unit, the headcode, time and destination written once on
        the entry's first row and the rest of the formation under it;
-     * fourteen columns, of which the reports fill eight. The other six are
+     * fourteen columns, of which the reports fill nine. The other five are
        ruled and left empty for the depot to write in, the way the Unit
        column already is on the berthing books - they are hand-kept in the
-       real workbook too (COMMENTS is filled on 13% of its rows, ROAD on 19%,
-       R/T and L/S on 6%).
+       real workbook too (COMMENTS is filled on 13% of its rows, R/T and L/S
+       on 6%).
 
    Grove Park and Slade Green get an AM and a PM sheet, which is how the real
-   workbook splits them. */
+   workbook splits them, and their ROAD column carries the Dn / Up / Shed the
+   working comes off. */
 "use strict";
 const SHEETS_METRO = (() => {
 const X = SHEETS_XLSX;
 const { fmtTime } = SHEETS_CORE;
-const { DEST_TLC } = SHEETS_DATA;
-const { PM_BREAK, DAY_ROLL } = SHEETS_RULEBOOK;
+const { DEST_TLC, DEPOT_ROAD } = SHEETS_DATA;
+const { DAY_ROLL } = SHEETS_RULEBOOK;
+/* Where the AM sheet ends and the PM sheet starts at the two depots.
+   Read off the depot's own May 2026 workbook rather than picked: its AM
+   sheets run to 07+10 (Slade Green) and 07+23 (Grove Park), and its PM
+   sheets open at 10+40 (Slade Green) and 13+12 (Grove Park), so the
+   boundary it keeps lies between 07+23 and 10+40. Ten o'clock sits inside
+   that with room either side, and the morning peak is over by it.
+   NOT the berthing books' AM_CUTOFF: that is 14:00, which would put Grove
+   Park's 13+12 on the AM sheet, and the workbook has it on the PM one. */
+const AM_SHEET_END = 10 * 60;
 
 /* Column widths, and the two headings that change with the location: a
    terminus has PLATFORMs where a depot has ROADs, and the two big depots
@@ -3981,10 +4008,23 @@ const destName = code => NAME_OF[String(code || "").toUpperCase()] || code || ""
 
 /* Which sheet an entry belongs on. Grove Park and Slade Green are split by
    the time of day, the way the real workbook splits them; everywhere else
-   is one sheet. */
+   is one sheet.
+
+   The split was PM_BREAK (20:00), which is not a morning and an afternoon
+   at all: the AM sheet carried the whole PM peak and the PM sheet held only
+   what left after eight in the evening. A departure before 03:00 is the
+   back of last night's work, so it stays on the PM sheet. */
 function sheetFor(sec, e) {
   if (!SIGNAL_AT.has(sec)) return sec;
-  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < DAY_ROLL ? " PM" : " AM");
+  const t = e.time % 1440;
+  return sec + (t < DAY_ROLL || t >= AM_SHEET_END ? " PM" : " AM");
+}
+/* The Dn / Up / Shed indicator for the ROAD column: which road at the depot
+   this working comes off. Known for the two metro depots only, and blank
+   where the entry starts in a platform rather than on a road. */
+function roadOf(e) {
+  const origin = (e.pub && e.pub.sheet) || "";
+  return DEPOT_ROAD[String(origin).toUpperCase()] || "";
 }
 
 /* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
@@ -4057,7 +4097,10 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       col(5, finite(u.pos) ? +u.pos : "", undefined, finite(u.pos));
       col(6, (u.code || "") + u.diag);
       col(7, u.unit || "");                         // the allocated unit
-      col(8, "");                                   // ROAD / PLATFORM: by hand
+      // ROAD: the depot road this working comes off, where the tool knows
+      // it; a platform departure and everywhere but the two depots stay
+      // blank for the depot to write in
+      col(8, i === 0 ? roadOf(e) : "");
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
       col(13, u.ends || "");

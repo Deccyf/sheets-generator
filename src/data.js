@@ -146,6 +146,23 @@ const SIDING_CLASS_RE = new RegExp(
   const GP_ROAD = { "GROVE PARK C.S.D": "SD", "GROVE PARK DOWN CHS": "DN",
     "GROVE PARK UP C.H.S": "UP", "GROVE PARK UP HEADSHUNT": "UP",
     "GROVE PARK DPT CTRY ED EXT": "SD" };
+  /* Which road at the two metro depots a unit comes off, for the ROAD column
+     of the Metro sheets. The same knowledge as GP_ROAD above, which the
+     berthing books print against the headcode - but that one is Grove Park
+     only and abbreviates the shed to SD, where the Metro sheets spell it out.
+     The depot extensions and the headshunts are roads on the depot itself,
+     so a unit off one of them has come off the shed. */
+  const DEPOT_ROAD = {
+    "GROVE PARK C.S.D": "SHED",
+    "GROVE PARK DOWN CHS": "DN",
+    "GROVE PARK UP C.H.S": "UP",
+    "GROVE PARK UP HEADSHUNT": "UP",
+    "GROVE PARK DPT CTRY ED EXT": "SHED",
+    "GROVE PARK DPT LNDN ED EXT": "SHED",
+    "SLADE GREEN T&R.S.M.D": "SHED",
+    "SLADE GREEN UP C.H.S": "UP",
+    "SLADE GREEN DPT EAST HSHNT": "SHED",
+  };
   const SIDING_NOTES = { "ASHFORD EAST BTH SDGS": "EAST SIDINGS",
     "ASHFORD UP SIDINGS": "UP SIDINGS", "SLADE GREEN UP C.H.S": "UPS",
     "TONBRIDGE DM SIDING": "DNM", "TONBRIDGE JUB SDGS": "JUB" };
@@ -827,7 +844,7 @@ const PROFILES = [
 
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
-  MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD,
+  MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD, DEPOT_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
   PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,

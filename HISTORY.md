@@ -4,6 +4,29 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.0.1 — 3 September 2026 — the Metro sheets' AM/PM split and ROAD column
+
+Two things a colleague read off the Metro book, both checked against the
+depot's own May 2026 workbook rather than guessed at:
+
+- **The AM and PM sheets were split at eight in the evening.** Grove Park
+  and Slade Green take an AM and a PM worksheet each, and the tool divided
+  them at `PM_BREAK` (20:00) — so the AM sheet carried the whole afternoon
+  and the PM peak with it, and the PM sheet held only what left after eight.
+  The depot's workbook puts the boundary in the morning: its AM sheets end
+  07+10 and 07+23, its PM sheets open 10+40 and 13+12. The split is now ten
+  in the morning, which sits inside that gap. It is deliberately **not** the
+  berthing books' `AM_CUTOFF` (14:00), which would put Grove Park's own
+  13+12 back on the AM sheet.
+- **No Dn / Up / Shed indicator at either depot.** The ROAD column — which
+  is what that column is called at Grove Park and Slade Green, where a
+  terminus has PLATFORM — was always left blank. The knowledge was already
+  in the tool: `BERTH_SHEETS` has carried the road against every depot berth
+  from the start and nothing ever read it, and the berthing books print it
+  against the Grove Park headcodes. `DEPOT_ROAD` now names it for both
+  depots and the ROAD column carries it. On a real day's reports it fills
+  every one of the thirty Grove Park and Slade Green departures.
+
 ## 3.0.0 — 2 September 2026 — the overhaul
 
 A complete pass over the Sheets Generator: interface, wording, correctness,

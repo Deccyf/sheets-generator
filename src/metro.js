@@ -8,20 +8,30 @@
        date against it;
      * one row per unit, the headcode, time and destination written once on
        the entry's first row and the rest of the formation under it;
-     * fourteen columns, of which the reports fill eight. The other six are
+     * fourteen columns, of which the reports fill nine. The other five are
        ruled and left empty for the depot to write in, the way the Unit
        column already is on the berthing books - they are hand-kept in the
-       real workbook too (COMMENTS is filled on 13% of its rows, ROAD on 19%,
-       R/T and L/S on 6%).
+       real workbook too (COMMENTS is filled on 13% of its rows, R/T and L/S
+       on 6%).
 
    Grove Park and Slade Green get an AM and a PM sheet, which is how the real
-   workbook splits them. */
+   workbook splits them, and their ROAD column carries the Dn / Up / Shed the
+   working comes off. */
 "use strict";
 const SHEETS_METRO = (() => {
 const X = SHEETS_XLSX;
 const { fmtTime } = SHEETS_CORE;
-const { DEST_TLC } = SHEETS_DATA;
-const { PM_BREAK, DAY_ROLL } = SHEETS_RULEBOOK;
+const { DEST_TLC, DEPOT_ROAD } = SHEETS_DATA;
+const { DAY_ROLL } = SHEETS_RULEBOOK;
+/* Where the AM sheet ends and the PM sheet starts at the two depots.
+   Read off the depot's own May 2026 workbook rather than picked: its AM
+   sheets run to 07+10 (Slade Green) and 07+23 (Grove Park), and its PM
+   sheets open at 10+40 (Slade Green) and 13+12 (Grove Park), so the
+   boundary it keeps lies between 07+23 and 10+40. Ten o'clock sits inside
+   that with room either side, and the morning peak is over by it.
+   NOT the berthing books' AM_CUTOFF: that is 14:00, which would put Grove
+   Park's 13+12 on the AM sheet, and the workbook has it on the PM one. */
+const AM_SHEET_END = 10 * 60;
 
 /* Column widths, and the two headings that change with the location: a
    terminus has PLATFORMs where a depot has ROADs, and the two big depots
@@ -55,10 +65,23 @@ const destName = code => NAME_OF[String(code || "").toUpperCase()] || code || ""
 
 /* Which sheet an entry belongs on. Grove Park and Slade Green are split by
    the time of day, the way the real workbook splits them; everywhere else
-   is one sheet. */
+   is one sheet.
+
+   The split was PM_BREAK (20:00), which is not a morning and an afternoon
+   at all: the AM sheet carried the whole PM peak and the PM sheet held only
+   what left after eight in the evening. A departure before 03:00 is the
+   back of last night's work, so it stays on the PM sheet. */
 function sheetFor(sec, e) {
   if (!SIGNAL_AT.has(sec)) return sec;
-  return sec + ((e.time % 1440) >= PM_BREAK || (e.time % 1440) < DAY_ROLL ? " PM" : " AM");
+  const t = e.time % 1440;
+  return sec + (t < DAY_ROLL || t >= AM_SHEET_END ? " PM" : " AM");
+}
+/* The Dn / Up / Shed indicator for the ROAD column: which road at the depot
+   this working comes off. Known for the two metro depots only, and blank
+   where the entry starts in a platform rather than on a road. */
+function roadOf(e) {
+  const origin = (e.pub && e.pub.sheet) || "";
+  return DEPOT_ROAD[String(origin).toUpperCase()] || "";
 }
 
 /* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
@@ -131,7 +154,10 @@ function layoutSection(name, entries, dateLbl, dateFull) {
       col(5, finite(u.pos) ? +u.pos : "", undefined, finite(u.pos));
       col(6, (u.code || "") + u.diag);
       col(7, u.unit || "");                         // the allocated unit
-      col(8, "");                                   // ROAD / PLATFORM: by hand
+      // ROAD: the depot road this working comes off, where the tool knows
+      // it; a platform departure and everywhere but the two depots stay
+      // blank for the depot to write in
+      col(8, i === 0 ? roadOf(e) : "");
       col(9, "");                                   // COMMENTS: by hand
       col(10, ""); col(11, ""); col(12, "");        // S, R/T, L/S: by hand
       col(13, u.ends || "");

@@ -82,9 +82,88 @@ test("the Metro sheet reads by Position, lowest first", () => {
   // ENDS and MILES belong to the diagram, so every row of it carries them
   assert.deepEqual(Array.from(col(13)), ["GP PM", "GP PM", "GP PM"], "ENDS on each");
   assert.deepEqual(Array.from(col(14)), ["338", "338", "338"], "MILES on each");
-  // and the six hand-kept columns are ruled and empty
+  // and the hand-kept columns are ruled and empty. ROAD (8) is here too:
+  // this entry carries no origin berth, so the tool has no road to write
   for (const c of [3, 8, 9, 10, 11, 12])
     assert.equal(at.get("3," + c), "", "column " + c + " is left for the depot");
+});
+
+test("the ROAD column carries the Dn / Up / Shed a working comes off", () => {
+  const N = built();
+  const M = N.SHEETS_METRO;
+  /* The two metro depots stable on named roads, and which one a working
+     comes off is the first thing the sheet is read for. The knowledge was
+     already in the tool - BERTH_SHEETS carries it, and the berthing books
+     print it against the Grove Park headcodes - but the Metro sheet left
+     the column blank at both depots. */
+  const mk = (sheet, time) => ({
+    time: time === undefined ? 6 * 60 : time, time_kind: "ecs", dest: "SEV",
+    headcode: "5S08", pub: { sheet },
+    units: [{ diag: "203", code: "SG", pos: 1, ends: "GP PM" },
+            { diag: "204", code: "SG", pos: 2, ends: "GP PM" }],
+  });
+  const roadOn = (sec, sheet) => {
+    const lay = M.layoutSection(sec, [mk(sheet)], "MON 03/08", "03/08/26");
+    const at = new Map();
+    for (const c of lay.cells) at.set(c.r + "," + c.c, c.v);
+    return [at.get("3,8"), at.get("4,8")];
+  };
+  assert.deepEqual(Array.from(roadOn("GROVE PARK AM", "GROVE PARK UP C.H.S")),
+    ["UP", ""], "the up carriage holding sidings, written once on the top row");
+  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK DOWN CHS"))[0], "DN");
+  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK C.S.D"))[0], "SHED");
+  assert.equal(Array.from(roadOn("GROVE PARK PM", "GROVE PARK UP HEADSHUNT"))[0], "UP");
+  /* Slade Green had nothing at all: only its up sidings were in any table,
+     and that one under a siding NOTE rather than a road. */
+  assert.equal(Array.from(roadOn("SLADE GREEN AM", "SLADE GREEN UP C.H.S"))[0], "UP");
+  assert.equal(Array.from(roadOn("SLADE GREEN AM", "SLADE GREEN T&R.S.M.D"))[0], "SHED");
+  assert.equal(Array.from(roadOn("SLADE GREEN PM", "SLADE GREEN DPT EAST HSHNT"))[0], "SHED");
+  // a platform departure is not off a road, and neither is anywhere else
+  assert.equal(Array.from(roadOn("GROVE PARK AM", "GROVE PARK"))[0], "");
+  assert.equal(Array.from(roadOn("DARTFORD", "DARTFORD SIDINGS"))[0], "");
+});
+
+test("the AM and PM sheets split where the depot's own workbook splits them", () => {
+  const N = built();
+  const M = N.SHEETS_METRO;
+  /* The split was PM_BREAK (20:00), which is not a morning and an
+     afternoon: the AM sheet carried the whole PM peak and the PM sheet held
+     only what left after eight in the evening. The boundary is read off the
+     depot's May 2026 workbook — its AM sheets end 07+10 and 07+23, its PM
+     sheets open 10+40 and 13+12 — so ten o'clock, not the berthing books'
+     14:00, which would put Grove Park's own 13+12 back on the AM sheet. */
+  const mk = time => ({ time, time_kind: "ecs", dest: "SEV", headcode: "5S08",
+                        pub: { sheet: "GROVE PARK UP C.H.S" },
+                        units: [{ diag: "203", code: "SG", pos: 1 }] });
+  const times = { "06:00": 6 * 60, "09:30": 9 * 60 + 30, "13:12": 13 * 60 + 12,
+                  "17:00": 17 * 60, "18:45": 18 * 60 + 45,
+                  "21:10": 21 * 60 + 10, "00:30": 24 * 60 + 30 };
+  const on = {};
+  for (const [label, t] of Object.entries(times)) {
+    const secs = { M: new Map([["GROVE PARK", [mk(t)]]]) };
+    const sheets = M.sheetsFor(secs, { M: "MON 03/08" }, ["GROVE PARK"]);
+    on[label] = Array.from(sheets)[0].name;
+  }
+  assert.equal(on["06:00"], "GROVE PARK AM");
+  assert.equal(on["09:30"], "GROVE PARK AM", "the last of the morning is still AM");
+  assert.equal(on["13:12"], "GROVE PARK PM",
+    "the workbook's own first PM departure is on the PM sheet");
+  assert.equal(on["17:00"], "GROVE PARK PM", "the PM peak is PM, not AM");
+  assert.equal(on["18:45"], "GROVE PARK PM", "and so is the rest of the peak");
+  assert.equal(on["21:10"], "GROVE PARK PM");
+  assert.equal(on["00:30"], "GROVE PARK PM", "the back of last night's work");
+  const at = t => {
+    const secs = { M: new Map([["SLADE GREEN", [mk(t)]]]) };
+    return Array.from(M.sheetsFor(secs, { M: "MON 03/08" }, ["SLADE GREEN"]))[0].name;
+  };
+  assert.equal(at(10 * 60 - 1), "SLADE GREEN AM", "the last minute of the morning");
+  assert.equal(at(10 * 60), "SLADE GREEN PM", "and the first of the afternoon");
+  assert.equal(at(10 * 60 + 40), "SLADE GREEN PM",
+    "the workbook's own earliest PM departure, 10+40");
+  // everywhere else is still one sheet, whatever the time
+  const dart = { M: new Map([["DARTFORD", [mk(6 * 60), mk(21 * 60)]]]) };
+  const ds = M.sheetsFor(dart, { M: "MON 03/08" }, ["DARTFORD"]);
+  assert.deepEqual(Array.from(ds).map(s => s.name), ["DARTFORD"]);
 });
 
 test("MILES is the diagram's own total, not the running one added up", async () => {
