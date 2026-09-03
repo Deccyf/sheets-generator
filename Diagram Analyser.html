@@ -132,6 +132,17 @@
     line-height:1.5; color:#3C464D}
   details.hint .pop ol.how li{margin:0 0 5px}
   details.hint .pop ol.how img{margin:6px 0 2px}
+  /* a screenshot is small in the fold; click it and it opens full size */
+  .zoom{border:0; padding:0; background:none; cursor:zoom-in; display:block; width:100%; margin:0}
+  .zoom:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
+  dialog.lightbox{border:0; padding:0; background:transparent; max-width:96vw; max-height:96vh}
+  dialog.lightbox::backdrop{background:rgba(27,34,38,.86)}
+  dialog.lightbox figure{margin:0; display:flex; flex-direction:column; align-items:center; gap:10px}
+  dialog.lightbox img{max-width:94vw; max-height:82vh; width:auto; height:auto; display:block;
+    background:#fff; border:1px solid var(--apron-dk); box-shadow:0 12px 40px rgba(0,0,0,.5);
+    cursor:zoom-out}
+  dialog.lightbox figcaption{color:var(--paper); font-size:13px; text-align:center; max-width:70ch}
+  dialog.lightbox .btn{display:block; margin:12px auto 0}
 
   /* ---------- the mode switch: weekday or weekend, one at a time ---------- */
   .modes{display:flex; gap:6px; margin:22px 0 0; flex-wrap:wrap}

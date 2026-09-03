@@ -591,6 +591,29 @@ if (lineupEl) {
       "</figcaption></figure>").join("");
 }
 
+/* ---------------- a screenshot, enlarged ----------------
+   The how-to fold's screenshots are small on the page. A click on one (or
+   Enter on the button round it) shows the same image full size in a
+   dialog; a click anywhere, Close, or Esc puts it back. */
+const lightbox = $("#lightbox");
+if (lightbox && typeof lightbox.showModal === "function") {
+  const lbImg = $("#lightbox_img"), lbCap = $("#lightbox_cap");
+  document.addEventListener("click", e => {
+    const z = e.target && e.target.closest ? e.target.closest("button.zoom") : null;
+    if (!z) return;
+    const img = z.querySelector("img");
+    if (!img) return;
+    lbImg.src = img.src; lbImg.alt = img.alt; lbCap.textContent = img.alt;
+    lightbox.showModal();
+  });
+  const shut = () => { if (lightbox.open) lightbox.close(); };
+  const closeBtn = $("#lightbox_close");
+  if (closeBtn) closeBtn.addEventListener("click", shut);
+  lightbox.addEventListener("click", e => {
+    if (e.target === lightbox || e.target === lbImg) shut();
+  });
+}
+
 /* ---------------- the cards ---------------- */
 function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
