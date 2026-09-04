@@ -78,6 +78,26 @@ console.log("weekend status:", await page.textContent("#we_status"));
 console.log("updated-prints button hidden:", await page.locator("#we_dlupd").isHidden());
 await page.waitForSelector("#we_roads .road .view table.sheet");
 console.log("weekend preview table rendered ✓");
+
+/* The Metro and High Speed roads are the depot's own documents on a weekend
+   too, so their cards carry a picker over the sheets rather than one page. */
+for (const [road, what] of [["Metro", "Location"], ["High Speed", "Day"]]) {
+  const card = page.locator('#we_roads .road[data-road="' + road + '"]').first();
+  const toggle = card.locator(".btn.ghost").first();  // the preview toggle
+  if (!(await toggle.count())) {
+    console.log("weekend " + road + ": nothing to show on this fixture");
+    continue;
+  }
+  // cards come up open; only click when this one is not
+  if ((await toggle.textContent()).includes("Open")) await toggle.click();
+  await card.locator(".pickbar select").waitFor({ timeout: 10000 });
+  const opts = await card.locator(".pickbar select option").count();
+  const ok = await card.locator("table.sheet").count();
+  console.log("weekend " + road + ": " + what + " picker with " + opts +
+              " sheet(s), table rendered: " + (ok > 0));
+  if (!opts || !ok) throw new Error("weekend " + road + " card did not render its document");
+
+}
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
 
 /* ---- the weekend prints pasted in instead of dropped ---- */

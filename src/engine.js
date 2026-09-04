@@ -7,10 +7,12 @@
 "use strict";
 (function (root) {
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
-        TRANSIT, STATIONS, MANUAL_LOC, routeRule } = SHEETS_DATA;
+        TRANSIT, STATIONS, MANUAL_LOC, PRINT_ROAD, MINOR_SPUR_PRINTS,
+        routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 const PROFILES = SHEETS_DATA.PROFILES;
-const { DAY_ROLL, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
+const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, BERTH_STAY,
+        runsOf } = SHEETS_RULEBOOK;
 const QUAL_RE = /(up\s*sd|dn\s*sd|down\s*sd|u\s*sd|d\s*sd|sdg|sidings?|sids?|sd|depot|dep|shed|yard|yd|bk\s*rd|rd|tr|turnback|tb|ebs|dms|jub\s*s|pk\s*s|us|ds)$/i;
 function nrm(x){ return x.toLowerCase().replace(/[^a-z0-9]/g, ""); }
 function stripQual(loc){
@@ -156,8 +158,14 @@ function parseDiagrams(lines, warn){
     } else if (ln.startsWith("\t\t")){
       const g = ln.split("\t"); while (g.length < 9) g.push("");
       const pick = i => (g[i] || "").trim();
+      /* Column 7 is the RUNNING mileage - 0.82, 43.74, 86.66 down the
+         diagram - the same figure the weekday reports carry as Cumulative
+         Miles, and what the Metro book's MILES column and the 395 sheet's
+         MG are made of. It was read past for a long time, so every weekend
+         book came out with no mileage at all. Blank on the event rows
+         (ATTTT, DETTT), so it is carried forward rather than read per row. */
       const row = {loc:pick(2), arr:pick(3), dep:pick(4),
-                   hc:pick(5), ev:pick(6), fm:pick(8)};
+                   hc:pick(5), ev:pick(6), ml:pick(7), fm:pick(8)};
       if (row.loc || row.ev) d.rows.push(row);
     }
   }
@@ -225,6 +233,18 @@ function berthBoundaries(dlabel, stops, stabling, warn){
     if (s.hash) b.add(k);
     else if ((stabling.has(s.loc) || looksLikeStabling(s.loc))
              && s.hc_in !== s.hc_out){
+      /* A SHUNT SPUR only splits the diagram when the unit really stands
+         there. Under BERTH_STAY it is a turnround - in off the platform and
+         straight back out to form the next working - and the book already
+         carries that as the departure it came in on. A home berthing siding
+         is not held to this: the books list every re-departure off those
+         roads however short the sit. */
+      const stay = (s.arr !== null && s.dep !== null)
+                 ? mod1440(s.dep - s.arr) : null;
+      if (MINOR_SPUR_PRINTS.has(s.loc) && stay !== null && stay < BERTH_STAY){
+        warn.push(["turnback", s.loc, stay, dlabel]);
+        continue;
+      }
       b.add(k);
       // A short stop somewhere that is not marked '#' and is not named like a
       // siding is far more likely to be a turnround than a berthing - the
@@ -328,7 +348,31 @@ function generate(diags, prof, stabling, warn){
     const rows = v.rows, stops = stopsOf(rows);
     const bnd = berthBoundaries(dlabel, stops, stabling, warn);
     const stints = []; for (let i = 0; i < bnd.length-1; i++) stints.push([bnd[i], bnd[i+1]]);
-    meta.set(dk, {rows, stops, stints, num:v.num, code:v.code, fleet:v.fleet});
+    /* The running mileage carried forward over the rows that leave the cell
+       blank - the event rows (ATTTT, DETTT) do - so any row can be asked
+       what the diagram had run by the time it got there. A row's figure is
+       the total AFTER its own leg, so what had been run when it LEFT is the
+       row before it, which is `before` below. The day's total is the last
+       figure, not the sum of them. */
+    const mlAt = new Array(rows.length);
+    let ml = null;
+    for (let i = 0; i < rows.length; i++){
+      const x = parseFloat(rows[i].ml);
+      if (isFinite(x)) ml = x;
+      mlAt[i] = ml;
+    }
+    const before = i => (i > 0 ? mlAt[i-1] : 0);
+    /* Where the DIAGRAM finishes, one answer for the whole day rather than
+       one per row: the berth, then which half of the day it gets there in.
+       The Metro sheet's ENDS column reads "GP PM", "SG AM". Worked out once
+       per diagram so the code lookup warns at most once about it. */
+    const lastStop = stops[stops.length-1];
+    const endT = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
+    const endCode = codeFor(lastStop.loc, BERTH_CODE, warn, dlabel);
+    const dayEnd = endCode
+      ? endCode + (endT !== null && sortkey(endT) < AM_CUTOFF ? " AM" : " PM") : "";
+    meta.set(dk, {rows, stops, stints, num:v.num, code:v.code, fleet:v.fleet,
+                  before, miles: ml, dayEnd});
     for (let si = 0; si < stints.length; si++){
       const [a,b] = stints[si];
       const origin = stops[a].loc;
@@ -413,7 +457,7 @@ function generate(diags, prof, stabling, warn){
     const sec = e.sec, grp = new Set(sections[sec]);
     const blocks = [];
     for (const {dk, si, ei} of e.units){
-      const {rows, stops, stints, num, code, fleet} = meta.get(dk);
+      const {rows, stops, stints, num, code, fleet, before, miles, dayEnd} = meta.get(dk);
       const later = stints.slice(si+1).map(([a,]) => stops[a].loc);
       // E answers "where does it end up after this entry". An entry that comes
       // off the last berth ends wherever the diagram ends; an earlier entry
@@ -458,9 +502,18 @@ function generate(diags, prof, stabling, warn){
         const r = rows[i];
         if (r.hc && (r.hc[0] === "1" || r.hc[0] === "2") && r.dep){ paxAfter = true; break; }
       }
-      blocks.push({dk, num, si, pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
+      /* What THIS working runs, the way the 395 sheet's MG column keeps it:
+         the running total when the unit gets to the berth it is next put
+         away on, less the total when it left this one. A row's figure is the
+         total after its own leg, so both ends are read with `before`. */
+      const mgFrom = before(stops[a].dep_idx !== null ? stops[a].dep_idx : stops[a].i0);
+      const mgTo = before(stops[b].i0);
+      blocks.push({dk, num, code, si, pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
                    D:Dv, E:Ev, att:attBefore, devents, bound_loc:stops[b].loc,
                    pax_after:paxAfter, later:later.length > 0,
+                   ends: dayEnd, miles,
+                   mg: (mgFrom !== null && mgTo !== null && mgTo >= mgFrom)
+                       ? Math.round(mgTo - mgFrom) : undefined,
                    cls:prof.fleets[fleet]});
     }
     /* Lowest Position first, everywhere - which is NOT the weekday rule, and
@@ -677,6 +730,63 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
   }
   return {cells:cells, merges:merges, rowHeights:rowHeights, maxRow:r};
 }
+/* ---- the depot's own two documents, off the weekend prints ----
+
+   The Metro book and the 395 Allocations Sheet are not berthing sheets, and
+   the weekday panel has drawn them properly for a long time while the
+   weekend panel drew all three roads with layoutBook - the same 8-column
+   berthing grid three times over, differing only in which diagrams landed
+   on it. Everything those two documents want is already worked out here, so
+   the entries are handed to SHEETS_METRO and SHEETS_HS in the shape
+   buildDate gives the weekday side and the very same code draws them.
+
+   What the prints cannot say is left out rather than invented. They do not
+   allocate units, so FORMATION and UNIT NO come out ruled and empty - which
+   is what a weekday build does too when the report has no allocation yet.
+   And they list calls, not passing points, so no 395 working names
+   Ebbsfleet or Gravesend: `hl` is left undefined and the allocation sheet
+   falls back to its standing headcode lookup for the high-level note, the
+   same as it does on a PDF-fed weekday build. */
+function weekdayShape(secsOut){
+  const secs = new Map();
+  for (const sec of Object.keys(secsOut)){
+    const list = [];
+    for (const e of secsOut[sec]){
+      list.push({
+        section: sec, time: e.tmin,
+        /* The weekday rule for whether a working is empty, so the two
+           builds of this document agree: a 1 or a 2 in front of the
+           headcode is a passenger working and everything else is empty.
+           The prints' own plus says the same thing on every real document
+           seen, but it is the headcode that decides it on the weekday side
+           and this is the weekday side's sheet. */
+        time_kind: e.hc && /^[12]/.test(e.hc) ? "pax" : "ecs",
+        dest: e.dest, headcode: e.hc || null,
+        flag: e.splits ? "SPLITS" : (e.splits_pm ? "SPLITS PM" : ""),
+        units: e.blocks.map(function(x){
+          const u = { cls: x.cls, diag: dnum(x.num), code: x.code,
+                      am: x.D || "", pm: x.E || "", unit: "",
+                      ends: x.ends || "", miles: x.miles };
+          // 999 is "the prints gave no position", not a position
+          if (x.pos !== 999) u.pos = x.pos;
+          if (x.mg !== undefined) u.mg = x.mg;
+          return u;
+        }),
+        // which road it comes off, for the Metro book's ROAD column
+        pub: { sheet: Array.from(e.origins)[0] || "" },
+      });
+    }
+    if (list.length) secs.set(sec, list);
+  }
+  return secs;
+}
+/* The day key the two documents file a weekend build under. Their tab names
+   come from the label rather than this, but SHEETS_HS lists the days it
+   knows, so the key has to be one of them. */
+const DAY_KEY = {SUN:"SU", MON:"M", TUE:"T", WED:"W", THU:"TH", FRI:"F", SAT:"SA"};
+const DAY_WORDS = {SUN:"SUNDAY", MON:"MONDAY", TUE:"TUESDAY", WED:"WEDNESDAY",
+                   THU:"THURSDAY", FRI:"FRIDAY", SAT:"SATURDAY"};
+
 function buildBook(layout, zipFn){
   return SHEETS_XLSX.writeWorkbook([{name: "Sheet1", layout: layout}], zipFn);
 }
@@ -686,8 +796,13 @@ const previewHtml = SHEETS_XLSX.previewHtml;
    berths, unknown codes) gathered by location. */
 function buildReport(book, nEntries, nSecs, warn){
   const dwell = new Map(), unlisted = new Map(), nocode = new Map(), other = [];
+  const turnback = new Map();
   for (const [kind,a,b,c] of warn){
     if (kind === "dwell"){ if (!dwell.has(a)) dwell.set(a,[]); dwell.get(a).push(b); }
+    else if (kind === "turnback"){
+      if (!turnback.has(a)) turnback.set(a, []);
+      turnback.get(a).push(b);
+    }
     else if (kind === "unlisted") unlisted.set(a, (unlisted.get(a)||0) + 1);
     else if (kind === "nocode"){
       if (!nocode.has(a)) nocode.set(a, new Set());
@@ -715,6 +830,17 @@ function buildReport(book, nEntries, nSecs, warn){
     out += "- " + loc + ": " + plural(ds.length, "station dwell") + " of " +
            (lo === hi ? lo : lo + " to " + hi) + " min treated as " +
            (ds.length === 1 ? "a layover, not a berth" : "layovers, not berths") + "\n";
+  }
+  /* Said out loud, and gathered by place: one line for a spur rather than
+     one for every call at it. */
+  for (const loc of srt(turnback)){
+    const ts = turnback.get(loc);
+    const lo = Math.min(...ts), hi = Math.max(...ts);
+    out += "- " + loc + ": " + plural(ts.length, "call") + " of " +
+           (lo === hi ? lo : lo + " to " + hi) + " min treated as " +
+           (ts.length === 1 ? "a turnround, not a berthing"
+                            : "turnrounds, not berthings") +
+           " — the departure each one comes in on is already on the sheet\n";
   }
   for (const loc of srt(unlisted))
     out += "- " + loc + ": " + plural(unlisted.get(loc), "berth departure") +
@@ -914,6 +1040,33 @@ function run(input, unzipFn, zipFn, opts){
     const secs = gen.out;
     const n = Object.values(secs).reduce((a,v) => a + v.length, 0);
     if (n === 0){ books.push({label:prof.label, road:prof.road, skipped:true}); continue; }
+    /* The Metro and High Speed roads are the depot's own documents, drawn
+       by the same code the weekday panel uses. Only the mainline road is a
+       berthing book on a weekend. */
+    if (prof.road === "Metro" || prof.road === "High Speed"){
+      const isMetro = prof.road === "Metro";
+      const dayName = dateBits(dateStr).banner.slice(0, 3);
+      const dk = DAY_KEY[dayName] || "M";
+      const labels = {}, dates = {}, shaped = {};
+      labels[dk] = banner;
+      dates[dk] = dateStr.replace(/\/(\d\d)(\d\d)$/, "/$2");   // dd/mm/yy, as the sign-off writes it
+      shaped[dk] = weekdayShape(secs);
+      const sheets = isMetro
+        ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
+                                 DAY_WORDS[dayName] || "")
+        : SHEETS_HS.sheetsFor(shaped, labels, dates);
+      const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
+      const nSecs = Object.keys(secs).length;
+      for (const note of (sheets.notes || [])) warn.push(["merge", note]);
+      books.push({label: prof.label, road: prof.road, name,
+                  kind: isMetro ? "metro" : "hs", sheets,
+                  xlsx: sheets.length ? SHEETS_XLSX.writeWorkbook(sheets, zipFn) : null,
+                  reportName: name.replace(/\.xlsx$/, ".report.txt"),
+                  report: buildReport(name, n, nSecs, warn),
+                  entries: n, sections: nSecs, reviews: warn.length,
+                  sectionCounts: Object.keys(secs).map(s2 => [s2, secs[s2].length])});
+      continue;
+    }
     const tag = prof.tag ? "_" + prof.tag : "";
     /* The depot's own base sheets keep Ramsgate as a book of its own -
        RAM_SHEETS beside SHEETS - and the weekday panel has always split it

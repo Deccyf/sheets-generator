@@ -60,7 +60,11 @@ export async function normalizeWorkbook(readerCtx, bytes, opts) {
     const cells = [], heights = [];
     ws.eachRow({ includeEmpty: true }, (row, r) => {
       if (row.height !== undefined) heights.push([r, row.height]);
-      for (let c = 1; c <= 8; c++) {
+      /* Eight is a berthing sheet's width. The depot's own documents are
+         wider - the Metro book sixteen columns, the 395 sheet twenty - so a
+         caller reading one of those says how far to walk. */
+      const ncol = (opts && opts.ncol) || 8;
+      for (let c = 1; c <= ncol; c++) {
         if (covered.has(r + "," + c)) continue;
         const cell = row.getCell(c);
         const v = cell.value === null || cell.value === undefined ? "" : String(cell.value);

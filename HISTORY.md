@@ -4,6 +4,64 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.1.0 — 4 September 2026 — the weekend builds the depot's own documents
+
+**The weekend panel drew all three roads with one layout.** Mainline, Metro
+and High Speed were the same 8-column berthing grid three times over,
+differing only in which diagrams landed on it, while the weekday panel had
+been writing the depot's own two documents properly for a long time. They
+are the same documents now, drawn by the same code:
+
+- **Metro** builds `METRO_SHEETS_<day>.xlsx` — the sixteen-column document,
+  a worksheet per location, Grove Park and Slade Green split AM and PM, with
+  POS, ROAD, S, ENDS and MILES filled in.
+- **High Speed** builds `HS_SHEETS_<day>.xlsx` — the Class 395 Allocations
+  Sheet, a block per depot with MG and the mileage colouring.
+
+Mainline and Ramsgate stay berthing books, and the mainline side is
+unchanged: held against the operator's own SUN 16/08 book it still matches
+58 of its 60 entries with nothing missing and every section in order.
+
+**The mileage was there all along.** Column 7 of the prints is a running
+total — the same figure the weekday reports carry as Cumulative Miles, and
+what MILES and MG are made of. The reader picked columns 2–6 and 8 and
+stepped over it, so every weekend book came out with no mileage at all.
+
+Everything else those documents want was already worked out: POS off the
+formation column, ENDS off the diagram's last berth, S off the split the
+books have flagged for a long time, and ROAD off the prints' own names for
+the depot roads — `G Pk DnSd` is the down carriage holding sidings, which
+the depot writes DOWNS. The prints do not allocate units, so FORMATION and
+UNIT NO come out ruled and empty, exactly as a weekday build does when the
+report has no allocation yet. And they list calls rather than passing
+points, so no 395 working names Ebbsfleet or Gravesend and the high-level
+note falls back to the standing headcode lookup, the same as a PDF-fed
+weekday build.
+
+The 395 sheet is now **timed off the first move**, as the weekday one is:
+AZ601 is its 07+10 off the down sidings as 5R09, not the 07.47 out of the
+platform as 2R09. That was the one place the weekend and weekday profiles
+deliberately disagreed, and the reason was that the weekend book was still a
+berthing book.
+
+### A brief call at a shunt spur is a turnround, not a berthing
+
+Reported as "Sunday now seems to be broken — lots of Sidcup". The Sunday
+06/09/26 prints turn the Sidcup service back through Sidcup Sidings: off the
+platform, two minutes in, nine to sixteen minutes standing, two minutes back
+out to form the next working. The place is named like a siding, so every one
+of those counted as putting the unit away — **twenty-seven Sidcup lines in
+the Metro book and eight in the mainline one**, for stands nobody berths a
+unit on.
+
+The weekday side has always held its shunt spurs to a stay of berthing
+length (`BERTH_STAY`, 65 minutes); the weekend side had no such rule. It
+does now, off the same constant, and Sidcup Sidings joins the spur list
+beside Gillingham Up Sidings, Hastings Park Sidings and Bellingham Siding.
+A unit that stands there *properly* is still berthed there — the rule is the
+stay, not the place — and every call that goes is named on the review list,
+gathered by place. The verified SUN 16/08 book is untouched by it.
+
 ## 3.0.5 — 4 September 2026 — the plus in a weekend clock cell
 
 **A regression from 3.0.0, reported as "the weekend sheets now show empties

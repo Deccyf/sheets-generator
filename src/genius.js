@@ -41,7 +41,8 @@ const GENIUS = (() => {
   /* The locations the books actually print a page for. */
   const PAGE_SECTIONS = new Set([...SHEETS_DATA.MAIN_ORDER,
     ...SHEETS_DATA.METRO_ORDER, ...SHEETS_DATA.HS_ORDER]);
-  const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, runsOf } = SHEETS_RULEBOOK;
+  const { DAY_ROLL, AM_CUTOFF, PM_BREAK, RUN_ROUND, BERTH_STAY,
+          runsOf } = SHEETS_RULEBOOK;
   // ---- pdf text extraction (machine reports; Flate streams) ----
   function inflate(u8) { return fflate.unzlibSync(u8); }
   function latin(u8) {
@@ -326,8 +327,8 @@ const GENIUS = (() => {
   // even after a 40-minute sit (the manual's 14+41 / 15+43 / 16 27
   // Ashford rows prove it). Only the SHUNT SPURS - places that host
   // brief working calls all day and are never listed as re-departures -
-  // need a stay of berthing length before they split.
-  const BERTH_STAY = 65;
+  // need a stay of berthing length before they split. The threshold is the
+  // rulebook's, because the weekend pipeline holds its spurs to it too.
   /* The roads inside the Grove Park depot fence. A move from one of these to
      another never leaves the depot, so it is a shunt the sheets do not carry -
      the units have not gone anywhere a reader needs telling about. GRVPK, the

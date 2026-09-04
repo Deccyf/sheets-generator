@@ -85,25 +85,37 @@ test("weekend books: shared writer matches the legacy zipXlsx output", async () 
        and border has to survive the round trip - which is the same thing the
        weekday test proves against the old ExcelJS writer, without depending
        on a weekend engine that has deliberately moved on. */
-    const wb = await normalizeWorkbook(L, b.xlsx);
-    const sheet = wb[0];
-    // a formula cell reads back as its formula, not its value
-    const formula = new Set();
-    for (const c of b.layout.cells) if (c.f) formula.add(c.r + "," + c.c);
-    const want = new Map();
-    for (const c of b.layout.cells)
-      if (!c.f && c.v !== "" && c.v !== undefined && c.v !== null)
-        want.set(c.r + "," + c.c, String(c.v));
-    const got = new Map();
-    for (const [r, c, v] of sheet.cells)
-      if (v && v.v !== null && v.v !== undefined && v.v !== "" &&
-          !formula.has(r + "," + c))
-        got.set(r + "," + c, String(v.v));
-    assert.deepEqual(norm([...got.entries()].sort()),
-                     norm([...want.entries()].sort()), b.name + " values");
-    assert.deepEqual(norm(sheet.merges.slice().sort()),
-                     norm(b.layout.merges.slice().sort()), b.name + " merges");
-    checked++;
+    /* Eight columns on a berthing sheet; the depot's own documents are as
+       wide as their own layouts say. */
+    const pageCols = l => l.cells.reduce((m, c) => c.c > m ? c.c : m, 0);
+    const widest = (b.sheets ? b.sheets.map(s => s.layout) : [b.layout])
+      .reduce((m, l) => Math.max(m, pageCols(l)), 8);
+    const wb = await normalizeWorkbook(L, b.xlsx, { ncol: widest });
+    /* A berthing book is one worksheet; the Metro document is a worksheet
+       per location and the 395 sheet one per day, so every page is read
+       back rather than just the first. */
+    const pages = b.sheets ? b.sheets.map(s => s.layout) : [b.layout];
+    assert.equal(wb.length, pages.length, b.name + " worksheet count");
+    pages.forEach((layout, si) => {
+      const sheet = wb[si];
+      // a formula cell reads back as its formula, not its value
+      const formula = new Set();
+      for (const c of layout.cells) if (c.f) formula.add(c.r + "," + c.c);
+      const want = new Map();
+      for (const c of layout.cells)
+        if (!c.f && c.v !== "" && c.v !== undefined && c.v !== null)
+          want.set(c.r + "," + c.c, String(c.v));
+      const got = new Map();
+      for (const [r, c, v] of sheet.cells)
+        if (v && v.v !== null && v.v !== undefined && v.v !== "" &&
+            !formula.has(r + "," + c))
+          got.set(r + "," + c, String(v.v));
+      assert.deepEqual(norm([...got.entries()].sort()),
+                       norm([...want.entries()].sort()), b.name + " values, sheet " + si);
+      assert.deepEqual(norm(sheet.merges.slice().sort()),
+                       norm(layout.merges.slice().sort()), b.name + " merges, sheet " + si);
+      checked++;
+    });
   }
   assert.ok(checked >= 2, "at least two weekend books were checked");
 });

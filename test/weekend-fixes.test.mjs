@@ -15,8 +15,14 @@ const docx = (lines, name) => ({ name, bytes: makeDocx(lines, N.fflate) });
 const text = (lines, name) => ({ name, bytes: enc.encode(lines.join("\n")) });
 const csv = (lines, name) => ({ name, bytes: enc.encode(
   lines.map(l => l.split("\t").join(",")).join("\r\n")) });
-const col1 = book => book.layout.cells
-  .filter(c => c.c === 1 && c.v).sort((a, b) => a.r - b.r).map(c => String(c.v));
+/* A book's pages: the mainline roads are berthing books with one layout,
+   Metro and High Speed are the depot's own documents and carry a worksheet
+   each. */
+const pagesOf = book => book.sheets ? book.sheets.map(s => s.layout)
+                      : (book.layout ? [book.layout] : []);
+const col1 = book => pagesOf(book)
+  .reduce((a, l) => a.concat(l.cells.filter(c => c.c === 1 && c.v)
+    .sort((x, y) => x.r - y.r).map(c => String(c.v))), []);
 const reviewLines = res => res.books.filter(b => !b.skipped)
   .flatMap(b => b.report.split("\n").filter(l => l.startsWith("- ")));
 const sheetXml = (bytes, n) => dec.decode(zip.un(bytes)["xl/worksheets/sheet" + (n || 1) + ".xml"]);
@@ -357,4 +363,139 @@ test("a plus in the clock is a time, not an unreadable cell", () => {
   // clock, so this is the time being read rather than the order they arrived
   assert.deepEqual(timesOf(pax.concat(empty)), ["05+30 AFK", "06 30 CHX"],
     "whichever order the prints list them in");
+});
+
+test("the weekend builds the depot's own Metro and 395 documents", () => {
+  /* The weekend panel used to draw all three roads with one layout - the
+     8-column berthing grid, three times over, differing only in which
+     diagrams landed on it - while the weekday panel had drawn the depot's
+     own two documents properly for a long time. Everything those documents
+     want was already worked out here, so they are handed the entries in the
+     shape the weekday side hands them and the very same code draws them.
+
+     The mileage is the piece that was missing: column 7 of the prints is a
+     RUNNING total, the same figure the weekday reports carry as Cumulative
+     Miles, and the reader stepped straight over it. */
+  const lines = [
+    "Diagram:\tGN\t601\tSat", "Fleet:\t465/9", "From:\t01/08/2026",
+    "\t\tG Pk DnSd\t\t05+50\t5C01\t\t0.5\t601(1)\\602(2)",
+    "\t\tG Pk\t05+55\t06.00\t2C01\t\t2.1\t",
+    "\t\tC St\t06.40\t06.50\t2C02\t\t14.8\t",
+    "\t\tG Pk\t07.30\t07+35\t5C03\t\t27.4\t",
+    "\t\tG Pk UpSd\t07+40\t\t\t#\t28.0\t",
+    "\t\tG Pk UpSd\t\t16+20\t5C05\t\t28.5\t",
+    "\t\tG Pk\t16+25\t16.30\t2C06\t\t30.1\t",
+    "\t\tC St\t17.10\t17.20\t2C07\t\t42.8\t",
+    "\t\tG Pk\t18.00\t18+05\t5C08\t\t55.4\t",
+    "\t\tG Pk Dep\t18+10\t\t\t#\t56.0\t",
+    "Diagram:\tGN\t602\tSat", "Fleet:\t465/9", "From:\t01/08/2026",
+    "\t\tG Pk DnSd\t\t05+50\t5C01\t\t0.5\t601(1)\\602(2)",
+    "\t\tG Pk\t05+55\t06.00\t2C01\t\t2.1\t",
+    "\t\tC St\t06.40\t06.50\t2C02\t\t14.8\t",
+    "\t\tG Pk\t07.30\t07+35\t5C03\t\t27.4\t",
+    "\t\tG Pk UpSd\t07+40\t\t\t#\t28.0\t",
+  ];
+  const res = run([docx(lines, "prints.docx")]);
+  const metro = res.books.find(b => b.road === "Metro");
+  assert.equal(metro.kind, "metro", "the Metro road is the depot's document");
+  assert.equal(metro.name, "METRO_SHEETS_SAT_01_AUG.xlsx", "named the way the weekday one is");
+  // Grove Park takes an AM and a PM sheet, the way the depot's workbook has it
+  assert.deepEqual(Array.from(metro.sheets.map(s => s.name)),
+                   ["GROVE PARK AM", "GROVE PARK PM"]);
+  const at = new Map();
+  for (const c of metro.sheets[0].layout.cells) at.set(c.r + "," + c.c, String(c.v || ""));
+  const row = r => [1, 2, 5, 6, 8, 12, 15, 16].map(c => at.get(r + "," + c) || "");
+  assert.deepEqual(Array.from(at.get("1,1")),
+    Array.from("SERVICES STARTING GROVE PARK AM SATURDAY"),
+    "and says which day it is for, not MONDAY TO FRIDAY");
+  /* ROAD off the prints' own name for the road - "G Pk DnSd" is the down
+     carriage holding sidings, which the depot writes DOWNS. S because the
+     pair comes apart: 601 finishes in the depot, 602 on the up sidings.
+     MILES is the diagram's day total, out of column 7. */
+  assert.deepEqual(Array.from(row(3)),
+    ["5C01", "05+50", "1", "GN601", "DOWNS", "Y", "GP PM", "56"]);
+  assert.deepEqual(Array.from(row(4)),
+    ["", "", "2", "GN602", "", "Y", "GPU AM", "28"]);
+  // …and the afternoon re-departure comes off the UP sidings
+  const pm = new Map();
+  for (const c of metro.sheets[1].layout.cells) pm.set(c.r + "," + c.c, String(c.v || ""));
+  assert.equal(pm.get("3,8"), "UPS", "the prints' G Pk UpSd is the depot's UPS");
+  assert.equal(pm.get("3,2"), "16+20", "timed off the move off the road");
+});
+
+test("the weekend 395 book is the allocations sheet, mileage and all", () => {
+  const lines = [
+    "Diagram:\tAZ\t601\tSat", "Fleet:\t395/0", "From:\t01/08/2026",
+    "\t\tAshfrd DS\t\t07+10\t5R09\t\t0.82\t",
+    "\t\tAshford I\t07+36\t07.47\t2R09\t\t43.74\t",
+    "\t\tRam\t08.52\t09.08\t1L23\t\t86.66\t",
+    /* A row's figure is the total AFTER its own leg, so the last one to
+       carry a number is the leg INTO the depot and the terminal row is
+       blank - which is exactly how the real prints write it. */
+    "\t\tStPancInt\t10.54\t11.07\t1L26\t\t242.56\t",
+    "\t\tRam Depot\t12.40\t\t\t#\t\t",
+  ];
+  const res = run([docx(lines, "prints.docx")]);
+  const hs = res.books.find(b => b.road === "High Speed");
+  assert.equal(hs.kind, "hs", "the High Speed road is the allocations sheet");
+  assert.equal(hs.name, "HS_SHEETS_SAT_01_AUG.xlsx");
+  assert.equal(hs.sheets.length, 1, "a worksheet for the day");
+  const at = new Map();
+  for (const c of hs.sheets[0].layout.cells) at.set(c.r + "," + c.c, String(c.v || ""));
+  const vals = [...at.values()];
+  /* Timed off the FIRST MOVE, the way the operator's sheet is: 07+10 off the
+     down sidings as 5R09, not the 07.47 out of the platform as 2R09. */
+  assert.ok(vals.includes("07+10"), "the first move is the time: " + vals.join(" "));
+  assert.ok(!vals.includes("07 47"), "not the platform departure");
+  assert.ok(vals.includes("AZ601"), "under its own diagram");
+  // MG is what this working runs: 242.56 less the 0 it started on
+  assert.ok(vals.includes("243"), "with the working's mileage: " + vals.join(" "));
+  assert.ok(vals.some(v => /ASHFORD UNIT ALLOCATIONS Saturday/.test(v)),
+    "and the block is headed for the day it is: " + vals.join(" "));
+});
+
+test("a brief call at a shunt spur is a turnround, not a berthing", () => {
+  /* The Sunday 06/09/26 prints turn the Sidcup service back through Sidcup
+     Sidings: off the platform, two minutes in, nine to sixteen minutes
+     standing, two minutes back out to form the next working. The place is
+     named like a siding, so every one of those counted as putting the unit
+     away - twenty-seven Sidcup lines in the Metro book and eight in the
+     mainline one, for stands nobody berths a unit on.
+
+     Same rule as the weekday side: a shunt spur splits a diagram only when
+     the unit really stands there. A home berthing siding is not held to it -
+     those list every re-departure however short the sit - and neither is a
+     spur the unit stands PROPERLY on, which is a berthing like any other. */
+  const diag = (n, rows) =>
+    ["Diagram:\tGT\t" + n + "\tSat", "Fleet:\t375/6", "From:\t01/08/2026"].concat(rows);
+  const turnback = diag(501, [
+    "\t\tG Pk Dep\t\t07+03\t5N14\t\t6.8\t",
+    "\t\tSidcup Sd\t07+31\t07+40\t5D28\t\t7.3\t",   // 9 minutes: a turnround
+    "\t\tSidcup\t07+42\t07.48\t2D28\t\t19.2\t",
+    "\t\tCX\t08.24\t\t\t#\t33.5\t",
+  ]);
+  const stand = diag(502, [
+    "\t\tG Pk Dep\t\t07+03\t5N14\t\t6.8\t",
+    "\t\tSidcup Sd\t07+31\t09+40\t5D28\t\t7.3\t",   // two hours: a berthing
+    "\t\tSidcup\t09+42\t09.48\t2D28\t\t19.2\t",
+    "\t\tCX\t10.24\t\t\t#\t33.5\t",
+  ]);
+  const timesAt = (lines, sec) => {
+    const res = run([docx(lines, "prints.docx")]);
+    const main = res.books.find(b => b.road === "Mainline");
+    return { rows: col1(main).filter(v => /^\d\d[ +]\d\d/.test(v)),
+             report: main.report };
+  };
+  const brief = timesAt(turnback);
+  // the 07+03 off Grove Park stays - that is where the unit was put away.
+  // What goes is the 07+40 back out of the sidings nine minutes later.
+  assert.ok(brief.rows.some(v => /^07\+03/.test(v)),
+    "the departure off the depot is still there: " + brief.rows.join(" | "));
+  assert.ok(!brief.rows.some(v => /^07\+40/.test(v)),
+    "the nine-minute call is not a departure of its own: " + brief.rows.join(" | "));
+  assert.match(brief.report, /Sidcup Sd: 1 call of 9 min treated as a turnround/,
+    "and the review says so, gathered by place");
+  const long = timesAt(stand);
+  assert.ok(long.rows.some(v => /^09\+40/.test(v)),
+    "but two hours standing there is a berthing: " + long.rows.join(" | "));
 });

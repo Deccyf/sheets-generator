@@ -49,8 +49,11 @@ const COL = l => l.charCodeAt(0) - 64;              // "B" -> 2
 /* The weekday reports' day keys - the only days a Genius or Integrale pair
    ever carries. */
 const DAY_NAME = { M: "Monday", T: "Tuesday", W: "Wednesday", TH: "Thursday",
-                   F: "Friday" };
-const DAY_ORDER = ["M", "T", "W", "TH", "F"];
+                   F: "Friday", SA: "Saturday", SU: "Sunday" };
+/* The weekend build hands in one day of its own, so SA and SU are here
+   beside the weekday keys - a bank holiday Monday's prints come in on M
+   like any other Monday. */
+const DAY_ORDER = ["M", "T", "W", "TH", "F", "SA", "SU"];
 const longDate = (dayKey, date) =>
   (DAY_NAME[dayKey] || "") + " " + String(date || "");
 

@@ -15,10 +15,13 @@ test("High Speed is timed off the first move, the way their sheet is", async () 
   const hs = Array.from(D.PROFILES_G).find(p => p.bucket === "hs");
   assert.equal(hs.firstDepAll, true,
     "their 18/08 sheet has AZ601 at 04+19 where the platform departure is 05+03");
-  /* …on the reports side only. The weekend High Speed book is still a
-     berthing book and nobody has held one against a copy timed that way. */
+  /* …on both sides. The weekend High Speed road kept the platform departure
+     for as long as it was a BERTHING book, which nobody had held against a
+     copy timed off the first move. It builds this same allocations sheet
+     now, so it is timed the same way: AZ601 is its 07+10 off the down
+     sidings as 5R09, not the 07.47 out of the platform as 2R09. */
   const wk = Array.from(D.PROFILES).find(p => /395/.test(String(p.label || p.road)));
-  assert.equal(wk.first_dep_all, false, "the weekend book keeps the platform time");
+  assert.equal(wk.first_dep_all, true, "the weekend book is timed that way too");
 });
 
 test("the sheet uses the allocation sheet's own berth codes", () => {

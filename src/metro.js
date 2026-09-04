@@ -21,7 +21,7 @@
 const SHEETS_METRO = (() => {
 const X = SHEETS_XLSX;
 const { fmtTime } = SHEETS_CORE;
-const { DEST_TLC, DEPOT_ROAD } = SHEETS_DATA;
+const { DEST_TLC, DEPOT_ROAD, PRINT_ROAD } = SHEETS_DATA;
 const { DAY_ROLL } = SHEETS_RULEBOOK;
 /* Where the AM sheet ends and the PM sheet starts at the two depots.
    Read off the depot's own May 2026 workbook rather than picked: its AM
@@ -86,9 +86,13 @@ function sheetFor(sec, e) {
 /* The Dn / Up / Shed indicator for the ROAD column: which road at the depot
    this working comes off. Known for the two metro depots only, and blank
    where the entry starts in a platform rather than on a road. */
+/* Which road the working comes off. The two vocabularies name the same
+   roads differently - the weekday reports write GROVE PARK DOWN CHS, the
+   weekend prints write "G Pk DnSd" - so both tables are asked, and the
+   answer is the depot's own word either way. */
 function roadOf(e) {
   const origin = (e.pub && e.pub.sheet) || "";
-  return DEPOT_ROAD[String(origin).toUpperCase()] || "";
+  return PRINT_ROAD[origin] || DEPOT_ROAD[String(origin).toUpperCase()] || "";
 }
 
 /* looks: 1 = section title, 3 = centred body, 5 = right, 6 = bold centred */
@@ -103,7 +107,7 @@ const finite = v => v != null && v !== "" && Number.isFinite(+v);
 /* One location's worksheet: the cell layout writeWorkbook and previewHtml
    both read. name carries its AM/PM suffix; dateLbl is the banner ("MON
    03/08"), dateFull the sign-off's dd/mm/yy. */
-function layoutSection(name, entries, dateLbl, dateFull) {
+function layoutSection(name, entries, dateLbl, dateFull, days) {
   const issued = dated(dateFull);
   const cells = [], merges = [], rowHeights = new Map();
   /* noFit: a cell that must not stretch its column. The title and the
@@ -119,7 +123,10 @@ function layoutSection(name, entries, dateLbl, dateFull) {
                  look, sides: sides || [null, null, null, null],
                  noFit: !!noFit, num: !!num });
   let r = 1;
-  put(r, 1, "SERVICES STARTING " + name + " MONDAY TO FRIDAY", TITLE_LOOK);
+  /* The weekday book is one sheet for the whole week and says so; a
+     weekend one covers the single day it was built for. */
+  put(r, 1, "SERVICES STARTING " + name + " " + (days || "MONDAY TO FRIDAY"),
+      TITLE_LOOK);
   put(r, 13, dateLbl, 2);
   merges.push("A1:E1");
   rowHeights.set(r, 18); r++;
@@ -235,7 +242,7 @@ function fitWidths(cells) {
    the one tab, dated day one, listed Tuesday's 05+00 under Monday's date
    as if the unit left twice. The sheets array carries a `notes` list
    saying so for the review list. */
-function sheetsFor(secsByDay, dateLabels, order, dates) {
+function sheetsFor(secsByDay, dateLabels, order, dates, dayWords) {
   const bySheet = new Map();
   const days = Object.keys(dateLabels).filter(d => secsByDay[d]);
   const multi = days.length > 1;
@@ -269,7 +276,7 @@ function sheetsFor(secsByDay, dateLabels, order, dates) {
       // Excel will not take more than 31 characters in a tab name
       name: tab.slice(0, 31),
       layout: layoutSection(s.name, s.entries, dateLabels[s.day] || "",
-                            (dates || {})[s.day] || ""),
+                            (dates || {})[s.day] || "", dayWords),
     };
   });
   sheets.notes = multi
@@ -282,8 +289,8 @@ function sheetsFor(secsByDay, dateLabels, order, dates) {
 }
 /* The whole Metro workbook as bytes, or null when no day has any Metro
    entries. dates: day key -> dd/mm/yy, for the sign-off block. */
-function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates) {
-  const sheets = sheetsFor(secsByDay, dateLabels, order, dates);
+function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates, dayWords) {
+  const sheets = sheetsFor(secsByDay, dateLabels, order, dates, dayWords);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 

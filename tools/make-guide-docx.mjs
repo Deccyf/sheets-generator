@@ -563,9 +563,9 @@ const children = [
     "service it forms is going. A train that starts in the platform keeps " +
     "its platform time, because that *is* its first move. Mainline is timed " +
     "off the booked departure — except at **Grove Park** and **Slade Green**, " +
-    "where it too is the moment the unit first moves off the berth. The " +
-    "**weekend** High Speed book keeps the platform time; that one is a " +
-    "berthing sheet, not the allocations sheet."),
+    "where it too is the moment the unit first moves off the berth. This " +
+    "holds on a **weekend** as well: those two books are the same documents " +
+    "there, so they are timed the same way."),
   h3("The double lines"),
   p("Double lines rule off the breaks in the day's work: the **first** break " +
     "of **three hours or more**, and any later one where the work picks up " +

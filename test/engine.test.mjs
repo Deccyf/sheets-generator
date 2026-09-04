@@ -17,20 +17,28 @@ function run(ctx, withReissue) {
     b => ctx.fflate.unzipSync(b),
     f => ctx.fflate.zipSync(f, { level: 6 }));
 }
+/* A book's pages. The mainline roads are still berthing books and carry one
+   layout; Metro and High Speed are the depot's own documents - a worksheet
+   per location, or per day - and carry a `sheets` list instead. */
+const pagesOf = b => b.sheets ? b.sheets.map(s => s.layout)
+                   : (b.layout ? [b.layout] : []);
+const cellsOf = b => pagesOf(b).reduce((a, l) => a.concat(l.cells), []);
+const isBerthing = b => b.skipped || !b.sheets;
+const normLayout = l => ({
+  cells: l.cells
+    .map(c => [c.r, c.c, c.v, c.look === undefined ? c.xf : c.look, c.sides, c.f || null])
+    .sort((a, x) => (a[0] - x[0]) || (a[1] - x[1])),
+  merges: l.merges.slice().sort(),
+  rowHeights: [...l.rowHeights.entries()].sort((a, x) => a[0] - x[0]),
+  maxRow: l.maxRow,
+});
 function normBook(b) {
   if (b.skipped) return { road: b.road, label: b.label, skipped: true };
   return {
     road: b.road, label: b.label, name: b.name, report: b.report,
     entries: b.entries, sections: b.sections, reviews: b.reviews,
     sectionCounts: b.sectionCounts,
-    layout: {
-      cells: b.layout.cells
-        .map(c => [c.r, c.c, c.v, c.look, c.sides, c.f || null])
-        .sort((a, x) => (a[0] - x[0]) || (a[1] - x[1])),
-      merges: b.layout.merges.slice().sort(),
-      rowHeights: [...b.layout.rowHeights.entries()].sort((a, x) => a[0] - x[0]),
-      maxRow: b.layout.maxRow,
-    },
+    pages: pagesOf(b).map(normLayout),
   };
 }
 
@@ -41,10 +49,25 @@ test("docx paragraph extraction is unchanged", () => {
   assert.deepEqual(norm(N.SheetsEngine.docxParagraphs(xml)), norm(L.SheetsEngine.docxParagraphs(xml)));
 });
 
-test("parseDiagrams is unchanged", () => {
+test("parseDiagrams is unchanged, but for the mileage the legacy read past", () => {
   const L = legacy(), N = built();
-  assert.deepEqual(norm(N.SheetsEngine.parseDiagrams(PRINTS_LINES)),
-                   norm(L.SheetsEngine.parseDiagrams(PRINTS_LINES)));
+  /* One deliberate addition: `ml`, the running mileage in column 7. The
+     frozen build picked columns 2-6 and 8 and stepped over it, so every
+     weekend book came out with no mileage at all - and the Metro book's
+     MILES column and the 395 sheet's MG are made of exactly that figure.
+     Everything else about a row still has to match, so the field is dropped
+     here and pinned on its own in weekend-fixes.test.mjs. */
+  const drop = m => {
+    const out = new Map();
+    for (const [k, v] of m)
+      out.set(k, { ...v, rows: v.rows.map(r => { const c = { ...r }; delete c.ml; return c; }) });
+    return out;
+  };
+  assert.deepEqual(norm(drop(N.SheetsEngine.parseDiagrams(PRINTS_LINES))),
+                   norm(drop(L.SheetsEngine.parseDiagrams(PRINTS_LINES))));
+  // and it really is read now
+  const rows = [...N.SheetsEngine.parseDiagrams(PRINTS_LINES).values()][0].rows;
+  assert.ok(rows.some(r => r.ml !== undefined), "the column reaches the rows");
 });
 
 /* The weekend books follow the weekday rulebook now, so two things in the
@@ -68,19 +91,26 @@ function sameShape(b) {
   delete n.report;
   return {
     ...n,
-    layout: {
-      ...n.layout,
+    pages: n.pages.map(l => ({
+      ...l,
       // c = [r, c, v, look, sides, f]; sides[3] is the bottom border
-      cells: n.layout.cells.map(c => [c[0], c[1],
+      cells: l.cells.map(c => [c[0], c[1],
         // the notes column: a leading headcode comes and goes with the
         // headcode sections, which are the weekday ones now
         c[1] === 8 ? String(c[2] || "").replace(/^\d[A-Z]\d\d\s*/, "")
         : c[2], c[3],
         [c[4][0], c[4][1], c[4][2], c[4][3] === "double" ? "thin" : c[4][3]],
         c[5]]),
-    },
+    })),
   };
 }
+/* Only the mainline roads can be held against the frozen build at all. Metro
+   and High Speed are no longer berthing books - they are the depot's own
+   Metro document and its 395 Allocations Sheet, the same two the weekday
+   panel writes - so there is nothing in the legacy output to compare them
+   with. They are pinned on their own instead, in weekend-fixes.test.mjs. */
+const BERTHING_ROADS = new Set(["Mainline", "RAM SHEETS"]);
+const berthingBooks = books => books.filter(b => BERTHING_ROADS.has(b.road));
 
 test("weekend run matches the legacy build apart from headcodes and rules", () => {
   const L = legacy(), N = built();
@@ -89,26 +119,41 @@ test("weekend run matches the legacy build apart from headcodes and rules", () =
   assert.equal(rN.stamp, rL.stamp);
   assert.equal(rN.banner, rL.banner);
   assert.equal(rN.diagrams, rL.diagrams);
-  assert.deepEqual(norm(rN.books.map(sameShape)), norm(rL.books.map(sameShape)));
+  assert.deepEqual(norm(berthingBooks(rN.books).map(sameShape)),
+                   norm(berthingBooks(rL.books).map(sameShape)));
   assert.equal(rN.updated, rL.updated);
 });
 
-test("the weekend metro book quotes the weekday headcode sections", () => {
+test("the weekend Metro road builds the depot's document, not a berthing sheet", () => {
   const L = legacy(), N = built();
-  const noteAt = (books, road, re) => {
-    const b = books.find(x => x.road === road);
-    const c = b.layout.cells.find(x => x.c === 8 && re.test(String(x.v || "")));
-    return c ? String(c.v) : null;
-  };
   /* Slade Green was in the weekend metro book's headcode sections and in no
      weekday book's, so its rows carried a headcode the weekday sheets never
-     print. Same railway, same rule. */
-  assert.match(noteAt(run(L, false).books, "Metro", /^5C01/) || "", /^5C01/,
-    "the frozen build quoted it");
-  assert.equal(noteAt(run(N, false).books, "Metro", /^5C01/), null,
-    "this one does not");
+     print. The frozen build quoted it in the notes column of a berthing
+     sheet; there is no notes column any more, because the Metro road now
+     builds the depot's own sixteen-column document - the same one the
+     weekday panel writes. Both halves are checked: the fault is gone, and
+     the rule it came from still holds. */
+  const legacyMetro = run(L, false).books.find(x => x.road === "Metro");
+  assert.ok(legacyMetro.layout.cells.some(c => c.c === 8 && /^5C01/.test(String(c.v || ""))),
+    "the frozen build quoted it in a berthing sheet's notes");
+  const metro = run(N, false).books.find(x => x.road === "Metro");
+  assert.equal(metro.kind, "metro", "this one is the depot's document");
+  assert.ok(metro.sheets.length, "a worksheet per location");
+  assert.ok(!metro.layout, "and no single berthing page");
+  /* The headcode is not gone from the document - it is its TRAIN I.D., a
+     column of its own. What is gone is the notes column it used to be
+     tacked onto the front of, and with it the question of which sections
+     quote one. */
+  assert.ok(cellsOf(metro).some(c => c.c === 1 && String(c.v || "") === "5C01"),
+    "it is the TRAIN I.D. column instead");
+  assert.ok(!cellsOf(metro).some(c => /^5C01\s+\S/.test(String(c.v || ""))),
+    "and nothing carries it as a note in front of something else");
   assert.ok(!N.SHEETS_DATA.HEADCODE_SECTIONS.has("SLADE GREEN"),
     "because the weekday books do not");
+  // the headings are the depot's own, straight off SHEETS_METRO
+  const head = N.SHEETS_METRO.headings("SLADE GREEN");
+  assert.deepEqual(Array.from(head).slice(0, 6),
+    ["TRAIN I.D.", "SIDINGS", "SIGNAL", "DESTINATION", "POS", "DIAG"]);
 });
 
 test("a weekend page is only ruled off at a real break in its work", () => {
@@ -122,7 +167,9 @@ test("a weekend page is only ruled off at a real break in its work", () => {
     return c ? String(c.v).slice(0, 5) : null;
   };
   const mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
-  for (const b of rN.books) {
+  // a double rule is a berthing sheet's furniture; the depot documents rule
+  // every entry the same way and have none
+  for (const b of berthingBooks(rN.books)) {
     if (b.skipped) continue;
     for (const r of doubles(b)) {
       /* every double has a gap of at least BREAK_GAP under it: find the next
@@ -144,7 +191,8 @@ test("a weekend page is only ruled off at a real break in its work", () => {
 test("weekend run matches the legacy build (reissue merged)", () => {
   const L = legacy(), N = built();
   const rL = run(L, true), rN = run(N, true);
-  assert.deepEqual(norm(rN.books.map(sameShape)), norm(rL.books.map(sameShape)));
+  assert.deepEqual(norm(berthingBooks(rN.books).map(sameShape)),
+                   norm(berthingBooks(rL.books).map(sameShape)));
   assert.deepEqual(norm(rN.merge), norm(rL.merge));
   assert.equal(rN.updated.name, rL.updated.name);
   /* Deliberate divergence from the frozen build. Its paragraph pattern
@@ -187,13 +235,20 @@ test("weekend metro sheets are timed off the first move too", () => {
     [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(METRO_MOVE_PRINTS, N.fflate) }],
     b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 }));
   const metro = res.books.find(b => b.road === "Metro");
-  const times = metro.layout.cells
-    .filter(c => c.c === 1 && /^\d\d:\d\d/.test(String(c.v)))
-    .sort((a, b) => a.r - b.r).map(c => String(c.v));
-  // GN611 empty out of the up sidings at 05:52 for the 06:00 off the
+  /* The depot's document keeps the time in SIDINGS and the destination in
+     DESTINATION, spelt out, rather than running them together in one
+     column the way a berthing sheet does. */
+  const at = new Map();
+  for (const c of cellsOf(metro)) at.set(c.r + "," + c.c, String(c.v || ""));
+  const rows = [];
+  for (let r = 1; r <= 40; r++)
+    if (/^\d\d[ +]\d\d$/.test(at.get(r + ",2") || ""))
+      rows.push([at.get(r + ",2"), at.get(r + ",4"), at.get(r + ",6")].join(" "));
+  // GN611 empty out of the up sidings at 05 52 for the 06 00 off the
   // platform; GN612 starts in the platform and keeps its own time. Both
   // still show where the service they form is going.
-  assert.deepEqual(norm(times), ["05:52 CST", "06:20 CST"]);
+  assert.deepEqual(norm(rows),
+    ["05+52 CANNON STREET GN611", "06 20 CANNON STREET GN612"]);
 });
 
 test("all-headcodes toggle works per book on the weekend panel", () => {
@@ -204,11 +259,16 @@ test("all-headcodes toggle works per book on the weekend panel", () => {
   const off = N.SheetsEngine.run(docs, ...zipFns);
   const noteCells = book => book.layout.cells
     .filter(c => c.c === 8 && c.v).map(c => String(c.v)).join(" | ");
+  const road = (r, name) => r.books.find(b => b.road === name);
   // ASHFORD is not a mainline headcode section: 2A01 shows only when on.
-  assert.match(noteCells(on.books[0]), /2A01/, "Mainline notes gain the headcode");
-  assert.doesNotMatch(noteCells(off.books[0]), /2A01/, "off = house rules");
-  // The Metro book was not toggled and keeps its legacy notes exactly.
-  assert.equal(noteCells(on.books[1]), noteCells(off.books[1]),
+  assert.match(noteCells(road(on, "Mainline")), /2A01/, "Mainline notes gain the headcode");
+  assert.doesNotMatch(noteCells(road(off, "Mainline")), /2A01/, "off = house rules");
+  /* The Metro book was not toggled and comes out the same either way. It is
+     the depot's own document now, with a TRAIN I.D. column rather than a
+     notes one, so the whole page is compared rather than one column - which
+     is the stronger check anyway. */
+  const page = book => cellsOf(book).map(c => [c.r, c.c, c.v].join(":")).sort().join(" | ");
+  assert.equal(page(road(on, "Metro")), page(road(off, "Metro")),
     "untouched book unchanged");
 });
 
@@ -219,8 +279,9 @@ test("a diagram that starts stabled still gets berthed; one that never moves is 
     b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 }));
   const metro = res.books.find(b => b.road === "Metro");
   assert.ok(metro && !metro.skipped, "the metro book was built");
-  const col1 = metro.layout.cells.filter(c => c.c === 1).map(c => String(c.v || ""));
-  const diagCol = metro.layout.cells.filter(c => c.c === 3).map(c => String(c.v || ""));
+  // the depot's document: SIDINGS holds the time, DIAG the diagram number
+  const col1 = cellsOf(metro).filter(c => c.c === 2).map(c => String(c.v || ""));
+  const diagCol = cellsOf(metro).filter(c => c.c === 6).map(c => String(c.v || ""));
 
   /* GN621 stands in the Slade Green depot overnight and then works out of it
      at 00 45. The prints mark the road it stands in and list the work under
@@ -229,11 +290,11 @@ test("a diagram that starts stabled still gets berthed; one that never moves is 
      and 376 diagram 821 off Slade Green, none of them mentioned anywhere. */
   assert.ok(col1.some(v => /^00[:+ ]45/.test(v)),
     "the 00 45 off the depot is berthed: " + col1.filter(Boolean).join(" / "));
-  assert.ok(diagCol.includes("621"), "under its own diagram number");
+  assert.ok(diagCol.includes("GN621"), "under its own diagram number");
 
   // GN622 never moves, so it has nothing to berth - but it is left off out
   // loud, naming the road it is standing in
-  assert.ok(!diagCol.includes("622"), "the one that never moves is not berthed");
+  assert.ok(!diagCol.includes("GN622"), "the one that never moves is not berthed");
   assert.match(metro.report, /standing all day: 1 diagram stands all day and is not berthed/,
     "it is counted");
   assert.match(metro.report, /S Gn U Sd x1/, "with the road it stands in");

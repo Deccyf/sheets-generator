@@ -1336,8 +1336,14 @@ const panels = {};
         return;
       }
       const items = b.report.split("\n").filter(l => l.startsWith("- ")).map(l => l.slice(2));
+      /* Metro and High Speed are the depot's own documents on a weekend too,
+         drawn by the same code the weekday panel uses, so they get the same
+         picker over their sheets rather than one berthing page. */
       const panes = [
-        ["Sheet", () => X.previewHtml(b.layout)],
+        b.kind === "metro" || b.kind === "hs"
+          ? [b.kind === "metro" ? "Sheet" : "Allocations",
+             () => metroPane(b.sheets, b.kind === "metro" ? "Location" : "Day")]
+          : ["Sheet", () => X.previewHtml(b.layout)],
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
       roadsEl.appendChild(roadCard({

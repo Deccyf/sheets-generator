@@ -170,6 +170,30 @@ const SIDING_CLASS_RE = new RegExp(
     "SLADE GREEN UP C.H.S": "UPS",
     "SLADE GREEN DPT EAST HSHNT": "SHED",
   };
+  /* The same roads under the names the weekend PRINTS use for them, so the
+     weekend Metro book fills its ROAD column from the same knowledge as the
+     weekday one. Nothing here is a guess: each line joins two long names
+     this file already carries - LOC_LONG below spells the print code out,
+     and that spelling is the DEPOT_ROAD key beside it.
+
+       G Pk Dep   Grove Park Carriage Servicing Depot        = GROVE PARK C.S.D
+       G Pk DnSd  Grove Park Down Carriage Holding Sidings   = GROVE PARK DOWN CHS
+       G Pk UpSd  Grove Park Up Carriage Holding Sidings     = GROVE PARK UP C.H.S
+       Gvpuphs    Grove Park Up Headshunt                    = GROVE PARK UP HEADSHUNT
+       GrPkDCtEE  Grove Park Depot Country End Extension     = GROVE PARK DPT CTRY ED EXT
+       S Gn Dep   Slade Green Traction & R.S. Maintenance Depot = SLADE GREEN T&R.S.M.D
+       S Gn U Sd  Slade Green Up Carriage Holding Sidings    = SLADE GREEN UP C.H.S
+       SldGrDEHs  Slade Green Depot East Headshunt           = SLADE GREEN DPT EAST HSHNT
+
+     GROVE PARK DPT LNDN ED EXT - the L/END road - has no counterpart here:
+     no print seen has named it yet. A road with no line stays blank rather
+     than being guessed at, which is what the column does everywhere else
+     the tool does not know. */
+  const PRINT_ROAD = {
+    "G Pk Dep": "SHED",   "G Pk DnSd": "DOWNS", "G Pk UpSd": "UPS",
+    "Gvpuphs": "UPS",     "GrPkDCtEE": "C/END",
+    "S Gn Dep": "SHED",   "S Gn U Sd": "UPS",   "SldGrDEHs": "SHED",
+  };
   const SIDING_NOTES = { "ASHFORD EAST BTH SDGS": "EAST SIDINGS",
     "ASHFORD UP SIDINGS": "UP SIDINGS", "SLADE GREEN UP C.H.S": "UPS",
     "TONBRIDGE DM SIDING": "DNM", "TONBRIDGE JUB SDGS": "JUB" };
@@ -503,6 +527,25 @@ const SIDING_CLASS_RE = new RegExp(
   // need a stay of berthing length before they split.
 
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
+  /* The same spurs under the names the weekend PRINTS use for them, so the
+     weekend books read a brief call at one the same way the weekday books
+     do. Three are the ones above (LOC_LONG below spells each one out, and
+     that spelling is the tiploc beside it):
+
+       Gill US    Gillingham Up Sidings  = GLNGMUS
+       Hast Pk S  Hastings Park Sidings  = HASTPSD
+       Bell Sd    Bellingham Siding      = BELNGMS
+
+     Sidcup Sd is the fourth, off the Sunday 06/09/26 prints, where it is the
+     Sidcup service's turnback rather than anywhere a unit is put away: the
+     unit comes off the platform, runs the two minutes in, stands nine to
+     sixteen minutes and goes straight back out to form the next working.
+     SG801 does it four times over the day and SG706 five, and with every one
+     of them counted a berthing the Metro book carried twenty-seven Sidcup
+     lines and the mainline book eight, for stands nobody puts a unit away
+     on. A unit that stands there PROPERLY is still berthed there - the rule
+     is the stay, not the place. */
+  const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
      but only while it stays in the area: a unit shut in the St Leonards shed
@@ -839,12 +882,14 @@ const PROFILES = [
     fleets: g.fleets,
     headcode_sections: HEADCODE_SECTIONS,
     pos_asc: g.posAsc, road_pos_asc: g.roadPosAsc,
-    /* The weekend High Speed book is still a berthing book and nobody has
-       held one against a marked-up copy timed off the first move, so it
-       keeps the platform departure. The weekday side moved because the
-       operator's own allocation sheet is timed that way. */
+    /* Timed off the first move, the same as the weekday side. The weekend
+       High Speed road used to keep the platform departure because it was
+       still a BERTHING book and nobody had held one against a marked-up
+       copy; now it builds the operator's own 395 Allocations Sheet, which
+       is timed off the first move - so AZ601 is its 07+10 off the down
+       sidings as 5R09, not the 07.47 out of the platform as 2R09. */
     first_dep: g.firstDep,
-    first_dep_all: g.bucket === "hs" ? false : !!g.firstDepAll,
+    first_dep_all: !!g.firstDepAll,
     ecs_only_ok: g.ecsOnlyOk,
   };
 });
@@ -852,9 +897,10 @@ const PROFILES = [
 return {
   DEST_TLC, BERTH_SHEETS, NON_BERTH_VISIT, SIDING_CLASS_RE,
   MAIN_ORDER, METRO_ORDER, HS_ORDER, HEADCODE_SECTIONS, GP_ROAD, DEPOT_ROAD,
+  PRINT_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  PROFILES_G, MINOR_SPUR, MINOR_SPUR_PRINTS, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,

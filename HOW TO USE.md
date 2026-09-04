@@ -298,16 +298,19 @@ splice the reissue into.
 
 **Mainline**, **Ramsgate**, **Metro** and **High Speed** — one book per
 fleet for the day (`SHEETS_SAT_02_AUG.xlsx`, `RAM_SHEETS_SAT_02_AUG.xlsx`,
-`SHEETS_465_466_707_SAT_02_AUG.xlsx`, `SHEETS_395_SAT_02_AUG.xlsx`) — plus
-the updated prints document when a reissue was merged. All four weekend
-books are berthing sheets.
+`METRO_SHEETS_SAT_02_AUG.xlsx`, `HS_SHEETS_SAT_02_AUG.xlsx`) — plus the
+updated prints document when a reissue was merged.
+
+Mainline and Ramsgate are berthing sheets. Metro and High Speed are the
+depot's own two documents, the same ones a weekday build writes — see below.
 
 File names carry the date, so nothing gets mixed up in a folder.
 
-### Two weekday books are the depot's own documents
+### Two books are the depot's own documents
 
-On weekdays the Metro and High Speed books are not berthing sheets at all.
-They are the documents the depot already keeps, filled in from the reports:
+The Metro and High Speed books are not berthing sheets at all, on a weekday
+or a weekend. They are the documents the depot already keeps, filled in from
+whichever reports the day was built from:
 
 * The **Metro** book is a sheet per location rather than per day, landscape,
   sixteen columns, reading by Position — 1, 2, 3 straight down each
