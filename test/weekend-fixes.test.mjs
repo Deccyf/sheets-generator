@@ -322,3 +322,39 @@ test("the exports nothing used are gone, and the ones the tools use remain", () 
   assert.match(styles, /<fills count="2">/);
   assert.ok(!styles.includes("applyFill"));
 });
+
+test("a plus in the clock is a time, not an unreadable cell", () => {
+  /* The prints mark an EMPTY move with a plus where a passenger one has a
+     dot — "05+30" against "06.30" — and 972 of the 5,418 clock cells in one
+     Sunday's document are written that way. The reader's separator class was
+     ":. " and never had the plus in it, so every empty departure came back
+     null: sorted to the bottom of its section, its AM and PM berths worked
+     out from a missing time, and the run-round rule never fired against it.
+     The time itself always printed correctly, straight off the raw cell,
+     which is what made a failed parse look like a deliberate grouping.
+
+     The operator's own SUN 16/08 book settles the order: Ashford runs
+     06 35, 07+18, 07+29, 07 30 — the empties in among the rest, by the
+     clock, not gathered at the foot of the page. */
+  const diag = (n, rows) =>
+    ["Diagram:\tGT\t" + n + "\tSat", "Fleet:\t375/6", "From:\t01/08/2026"].concat(rows);
+  const empty = diag(501, [                      // out empty, then works back
+    "\t\tDover PSd\t\t05+20\t5B01\t\t\t",
+    "\t\tDover P\t05+25\t05+30\t5B01\t\t\t",
+    "\t\tAshford I\t06+10\t06.20\t1B01\t\t\t",
+    "\t\tCX\t08:00\t\t\t#\t\t",
+  ]);
+  const pax = diag(502, [                        // and a later passenger one
+    "\t\tDover PSd\t\t06.20\t1B03\t\t\t",
+    "\t\tDover P\t06.25\t06.30\t1B03\t\t\t",
+    "\t\tCX\t08:40\t\t\t#\t\t",
+  ]);
+  const timesOf = ls => Array.from(col1(run([docx(ls, "prints.docx")])
+    .books.find(b => b.road === "Mainline")).filter(v => /^\d\d[ +]\d\d/.test(v)));
+  assert.deepEqual(timesOf(empty.concat(pax)), ["05+30 AFK", "06 30 CHX"],
+    "the 05+30 empty is read as half past five and leads the section");
+  // the same two the other way round in the document still come out by the
+  // clock, so this is the time being read rather than the order they arrived
+  assert.deepEqual(timesOf(pax.concat(empty)), ["05+30 AFK", "06 30 CHX"],
+    "whichever order the prints list them in");
+});

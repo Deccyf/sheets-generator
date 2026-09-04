@@ -4,6 +4,41 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.0.5 — 4 September 2026 — the plus in a weekend clock cell
+
+**A regression from 3.0.0, reported as "the weekend sheets now show empties
+at the bottom".** They did, and the cause was one character.
+
+3.0.0 replaced the prints reader's clock parser. The old one read fixed
+character positions, which got `6:40` wrong by fifty minutes; the new one is
+a regex, `/^(\d{1,2})[:. ](\d{2})(?::\d{2})?$/`. Its separator class never
+had the **plus** in it — and a plus is how the prints mark an empty move.
+972 of the 5,418 clock cells in one Sunday's document are written that way,
+and every one came back `null`.
+
+A null time still *printed* correctly, because the sheet writes the raw cell
+and only the sort key is parsed. So nothing looked broken: the empties just
+sorted to one place at the foot of their section, in whatever order they had
+been read, which reads like a deliberate grouping rather than a parse that
+had failed.
+
+It was not only the order. Anything worked out from the clock was working
+from a hole. Against the operator's own **SUN 16/08** book, before and after:
+
+| | before | after |
+|---|---|---|
+| sections in the operator's order | 6 of 11 | **11 of 11** |
+| entries whose rows match exactly | 52 of 60 | **58 of 60** |
+| entries not built at all | 1 | **0** |
+
+The six that came right are Ashford's 301 (`RE`/`AFK` → blank/`RE`), three
+Hastings departures and one Tonbridge one whose PM berth read `HGS` where
+the book says `XSE`, and a 07 50 Hastings departure that was not on the
+sheet at all. Three run-round notes now appear on the review list too — the
+rule needs the times, so it had never fired on an empty move. The two
+entries that still differ are a separate, older question about Ramsgate's
+PM cell, untouched by this.
+
 ## 3.0.4 — 3 September 2026 — the Metro sheets' S column
 
 **S is the split column, and the tool fills it in.** It was ruled and left

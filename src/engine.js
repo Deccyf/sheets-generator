@@ -163,11 +163,18 @@ function parseDiagrams(lines, warn){
   }
   return diags;
 }
-/* A clock cell as the prints write it - "05:30", "05.30" - or as a
-   spreadsheet re-saves it, leading zero gone and seconds added ("5:30:00").
-   Fixed character positions read "6:40" as 06 04, and every rule timed off
-   it was up to fifty minutes out while the cell still printed the raw text. */
-const TIME_RE = /^(\d{1,2})[:. ](\d{2})(?::\d{2})?$/;
+/* A clock cell as the prints write it - "05:30", "05.30", and "05+30" for a
+   move made empty - or as a spreadsheet re-saves it, leading zero gone and
+   seconds added ("5:30:00"). Fixed character positions read "6:40" as 06 04,
+   and every rule timed off it was up to fifty minutes out while the cell
+   still printed the raw text.
+   The PLUS has to be in here. It is how the prints mark empty stock - 972 of
+   the 5,418 clock cells in one Sunday's document - and leaving it out of the
+   separators returned null for every one of them, which sorted the whole
+   day's empties to the bottom of their section in the order they happened to
+   be read. The time itself always printed correctly, which is what made it
+   look like a deliberate grouping rather than a parse that had failed. */
+const TIME_RE = /^(\d{1,2})[:.+ ](\d{2})(?::\d{2})?$/;
 const mins = t => {
   const m = TIME_RE.exec(String(t == null ? "" : t).trim());
   return m ? parseInt(m[1],10)*60 + parseInt(m[2],10) : null;
