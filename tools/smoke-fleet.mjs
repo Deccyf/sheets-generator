@@ -63,6 +63,31 @@ for (let i = 0; i < tabs.length; i++){
 console.log("every tab draws, " + rows + " rows between them \u2713");
 if (!rows) die("the card drew no rows at all");
 
+/* The four books are tabs of their own, and picking one moves EVERY card -
+   cards left on different books read as one answer and are four. The
+   mileage is the exception and must NOT move with them. */
+const days = await card.locator(".daytabs .daytab").allTextContents();
+console.log("day tabs:", days.join(" | "));
+if (days.length !== 4) die("expected four books, got " + days.length);
+const mIdx = tabs.findIndex(t => /Mileage/i.test(t));
+const milesOn = async () => {
+  await card.locator(".tabs .tab").nth(mIdx).click();
+  return (await card.locator(".stats .stat").first().textContent()).trim();
+};
+const baseline = await milesOn();
+for (const label of ["Friday", "Saturday", "Sunday"]) {
+  await card.locator(".daytabs .daytab", { hasText: label }).click();
+  await page.waitForTimeout(200);
+  const metas = await page.locator("#roads .road .meta").allTextContents();
+  if (!metas.every(m => m.indexOf(label.slice(0, 3)) !== -1))
+    die("a card stayed on another book when " + label + " was picked: " + metas.join(" / "));
+  if (await milesOn() !== baseline)
+    die("the mileage moved with the book, and it must not");
+}
+console.log("every card follows the book, and the mileage does not \u2713");
+await card.locator(".daytabs .daytab", { hasText: "Mon" }).click();
+await page.waitForTimeout(200);
+
 /* The place nothing coupled leaves must be called out in red. */
 const contain = tabs.findIndex(t => /cannot contain/i.test(t));
 await card.locator(".tabs .tab").nth(contain).click();

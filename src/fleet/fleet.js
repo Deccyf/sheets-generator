@@ -656,9 +656,28 @@ function mileage(all, fleet, monday, sizes){
           total: measure("All " + fleet, () => true, ownedAll)};
 }
 
+/* The day groups the books themselves come in: the Monday-to-Thursday book,
+   the Friday one, the Saturday one and the Sunday one. Every table except
+   the mileage is answered for one of these at a time, because they are
+   different plans - a Saturday's arrivals have nothing to do with a
+   Tuesday's, and adding them together answers neither. The mileage is the
+   exception on purpose: a unit's clock does not care which book it was
+   working, so that one stays a whole week. */
+const DAY_GROUPS = [
+  {id: "mtt", label: "Mon – Thu", days: ["Mon", "Tue", "Wed", "Thu"]},
+  {id: "fri", label: "Friday", days: ["Fri"]},
+  {id: "sat", label: "Saturday", days: ["Sat"]},
+  {id: "sun", label: "Sunday", days: ["Sun"]},
+];
+const groupById = id => DAY_GROUPS.filter(g => g.id === id)[0] || null;
+
 function analyse(all, fleet, cfg){
   const c = Object.assign({}, FLEETS[fleet], cfg && cfg[fleet]);
   const monday = (cfg && cfg.monday) || referenceMonday(all);
+  /* Which of the four books this is an answer for. Nothing given means the
+     whole week, which is what the mileage is always measured over. */
+  const grp = (cfg && cfg.group) ? groupById(cfg.group) : null;
+  const onlyDays = grp ? new Set(grp.days) : null;
   const mine = all.filter(d => fleetOf(d) === fleet);
   /* Home and repair are judged at the GROUP: a unit at Ramsgate platform,
      the depot or the New Sidings is at Ramsgate. */
@@ -668,9 +687,13 @@ function analyse(all, fleet, cfg){
   const atHome = inHome;
   const roads = depotSet(c.repair, "roads");
 
-  /* The reference Monday, for the one headline count that is genuinely a
-     single day's ("101 diagrams on a Monday"). */
-  const day = mine.filter(d => runsOn(d, monday)).map(roll);
+  /* The reference day, for the one headline count that is genuinely a single
+     day's ("101 diagrams on a Monday"). On a day group it is the first day
+     of that group, so the Saturday card counts a Saturday. */
+  const refMs = grp
+    ? weekFrom(monday).filter(ms => onlyDays.has(dayName(ms)))[0]
+    : monday;
+  const day = mine.filter(d => runsOn(d, refMs)).map(roll);
 
   /* …and the WHOLE WEEK for the tables, because a Monday is three days in
      seven of the plan. The FSX book is Monday to Thursday and the Friday,
@@ -696,6 +719,7 @@ function analyse(all, fleet, cfg){
   const inWeek = new Map();
   for (const ms of weekFrom(monday)){
     const nm = dayName(ms);
+    if (onlyDays && !onlyDays.has(nm)) continue;
     for (const d of mine){
       if (!runsOn(d, ms)) continue;
       const k = d.key + "|" + (d.days || "");
@@ -762,6 +786,7 @@ function analyse(all, fleet, cfg){
   const partingRows = [];
   for (const ms of weekFrom(monday)){
     const nm = dayName(ms);
+    if (onlyDays && !onlyDays.has(nm)) continue;
     const on = mine.filter(d => runsOn(d, ms)).map(roll).filter(d => !d.stabled);
     const byNum = new Map(on.map(d => [String(d.num), d]));
     for (const d of on)
@@ -812,7 +837,7 @@ function analyse(all, fleet, cfg){
   const back = daysHome(all, fleet, monday, target);
 
   return {
-    fleet, cfg: c, monday, all: mine, day, work, still,
+    fleet, cfg: c, monday, refMs, group: grp, all: mine, day, work, still,
     arrivals, home: bucket(atHome), homeArea: bucket(inHome),
     repair: bucket(atRepair), away: bucket(l => !atRepair(l)),
     attend, mo, moOk, containment,
@@ -860,7 +885,13 @@ function daysHome(all, fleet, monday, target){
       const r = roll(d);
       const from = groupOf(startsAt(r).loc), to = groupOf(endsAt(r).loc);
       if (!m.has(from)) m.set(from, []);
-      m.get(from).push({key: r.key, to});
+      /* The clock as well as the places: a diagram that gets IN at ten in
+         the morning leaves the unit free to take another one out of there
+         the same afternoon, and counting a whole day for every diagram
+         missed that. See the walk below. */
+      const t = arrivedAt(r);
+      m.get(from).push({key: r.key, to,
+                        dep: startsAt(r).t, arr: t != null ? t : endsAt(r).t});
     }
     return m;
   });
@@ -884,28 +915,59 @@ function daysHome(all, fleet, monday, target){
   for (const m of byDay)
     for (const e of m){ locs.add(e[0]); for (const x of e[1]) locs.add(x.to); }
 
+  /* Long enough to release a unit off one diagram and have it away on the
+     next. A diagram is not a day's work by definition - RM302 gets into
+     Faversham Back Road before lunch, and a unit off it can be out again
+     on somebody else's afternoon diagram from there. Counting a whole day
+     per diagram said three days back from Faversham Back Road when the
+     plan does it in one. */
+  const TURNROUND = 60;
+
+  /* A shortest walk over (place, day, time), counting DAYS rather than
+     diagrams: taking a second diagram the same afternoon costs nothing,
+     rolling over to tomorrow costs one. Ordered by days first so the first
+     answer out is the fewest days, and by time within a day so the earliest
+     way through is found first. */
   const walk = (start, day0) => {
     if (target.has(start)) return {days: 0, path: []};
-    const seen = new Set([start + "|" + day0]);
-    let q = [{loc: start, day: day0, n: 0, path: []}];
+    /* place|day -> the (days, time) pairs reached there that nothing else
+       beats. Both matter and neither alone will do: fewer days is better,
+       and earlier in the day is better because it catches more diagrams —
+       but a state that took a day longer and arrives EARLIER is not beaten,
+       it can take a working the quicker one had already missed. So a state
+       is dropped only when a stored one is at least as good on both. */
+    const best = new Map();
+    let q = [{loc: start, day: day0, at: 0, n: 0, path: []}];
+    const push = st => {
+      const k = st.loc + "|" + st.day;
+      const had = best.get(k) || [];
+      for (const h of had) if (h.n <= st.n && h.at <= st.at) return;
+      best.set(k, had.filter(h => !(st.n <= h.n && st.at <= h.at))
+                     .concat([{n: st.n, at: st.at}]));
+      q.push(st);
+    };
+    best.set(start + "|" + day0, [{n: 0, at: 0}]);
     while (q.length){
+      /* fewest days first, then earliest in the day */
+      q.sort((a, b) => (a.n - b.n) || (a.at - b.at));
       const cur = q.shift();
       if (cur.n >= REACH_CAP) continue;
       for (const o of byDay[cur.day].get(cur.loc) || []){
+        if (o.dep == null || o.dep < cur.at + (cur.at ? TURNROUND : 0)) continue;
         const path = cur.path.concat([{day: DAYS[cur.day], key: o.key, to: o.to}]);
+        /* Days from being LEFT to being home. A unit that takes one diagram
+           on the Tuesday and is home that night took a day; one that takes
+           a second diagram the same afternoon still took a day; one that
+           has to stand overnight and go again on the Wednesday took two. */
         if (target.has(o.to)) return {days: cur.n + 1, path};
-        const k = o.to + "|" + ((cur.day + 1) % 7);
-        if (seen.has(k)) continue;
-        seen.add(k);
-        q.push({loc: o.to, day: (cur.day + 1) % 7, n: cur.n + 1, path});
+        /* still the same day, and free again from the moment it gets in */
+        if (o.arr != null) push({loc: o.to, day: cur.day, at: o.arr, n: cur.n, path});
+        /* …or stand overnight where that diagram left it */
+        push({loc: o.to, day: (cur.day + 1) % 7, at: 0, n: cur.n + 1, path});
       }
-      /* nothing taken: the unit is still there tomorrow */
-      const k = cur.loc + "|" + ((cur.day + 1) % 7);
-      if (!seen.has(k)){
-        seen.add(k);
-        q.push({loc: cur.loc, day: (cur.day + 1) % 7, n: cur.n + 1,
-                path: cur.path.concat([{day: DAYS[cur.day], key: null, to: cur.loc}])});
-      }
+      /* nothing taken today: the unit is still there tomorrow */
+      push({loc: cur.loc, day: (cur.day + 1) % 7, at: 0, n: cur.n + 1,
+            path: cur.path.concat([{day: DAYS[cur.day], key: null, to: cur.loc}])});
     }
     return null;
   };
@@ -1009,7 +1071,7 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               coupling, moCapable, splitsOf, partings, formOf,
               dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
-              FLEET_SIZES, RUNNING_DAYS, WEEKS,
+              FLEET_SIZES, RUNNING_DAYS, WEEKS, DAY_GROUPS,
               balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -61,6 +61,19 @@
   background:#FDF1E7; border-bottom:1px solid #E9C9AE;
 }
 .road .panel{padding:0}
+/* which of the four books, above the questions */
+.road .daytabs{display:flex; flex-wrap:wrap; gap:6px; padding:10px 18px;
+  background:var(--steel); border-bottom:1px solid var(--rule)}
+.road .daytab{
+  font:inherit; font-family:var(--mono); font-size:12px; letter-spacing:.06em;
+  text-transform:uppercase; padding:6px 14px; border:1px solid rgba(255,255,255,.28);
+  background:transparent; color:var(--paper); opacity:.72; cursor:pointer;
+}
+.road .daytab:hover{opacity:1; border-color:var(--flag)}
+.road .daytab[aria-selected="true"]{
+  background:var(--flag); border-color:var(--flag); color:var(--steel);
+  font-weight:700; opacity:1;
+}
 .road .tabs{display:flex; flex-wrap:wrap; gap:0; border-bottom:1px solid var(--rule);
   background:var(--paper)}
 .road .tab{

@@ -649,3 +649,84 @@ test("mileage per unit is divided by the FLEET, not by the diagram book", () => 
   assert.equal(F.FLEET_SIZES["465/9"], 119,
     "every 465 diagram is labelled /9: 94 of the /0 and /1 plus 25 of the /9");
 });
+
+test("each of the four books is answered on its own, and the mileage is not", () => {
+  /* Mon–Thu, Friday, Saturday and Sunday are different plans: a Saturday's
+     arrivals have nothing to do with a Tuesday's, and adding them together
+     answers neither. Every table is answered for one book at a time — but
+     the MILEAGE is deliberately not, because a unit's clock does not care
+     which book it was working. */
+  const whole = F.analyse(DS, "375", { monday: MONDAY });
+  const ids = Array.from(F.DAY_GROUPS).map(g => g.id);
+  assert.deepEqual(ids, ["mtt", "fri", "sat", "sun"]);
+  const parts = ids.map(id => F.analyse(DS, "375", { monday: MONDAY, group: id }));
+  // the four books partition the week: every diagram in exactly one of them
+  const sum = parts.reduce((t, a) => t + a.week.length, 0);
+  assert.equal(sum, whole.week.length,
+    "the four books add up to the week: " + parts.map(a => a.week.length).join("+"));
+  const seen = new Set();
+  for (const a of parts)
+    for (const d of a.week){
+      const k = d.key + "|" + d.days;
+      assert.ok(!seen.has(k), k + " is in two books at once");
+      seen.add(k);
+    }
+  // the Mon–Thu book carries the FSX and the Mondays-only diagrams…
+  const mtt = parts[0].week.map(d => d.key);
+  assert.ok(Array.from(mtt).indexOf("XX104") !== -1, "the Mondays-only one is Mon–Thu");
+  assert.ok(Array.from(mtt).indexOf("XX105") !== -1, "and the Thursdays-only one");
+  // …and the reference day of a book is a day IN it
+  assert.equal(F.dayName(parts[2].refMs), "Sat", "the Saturday book counts a Saturday");
+  /* The mileage is identical on all four, because it is measured over the
+     whole week whichever book is being looked at. */
+  const miles = a => a.miles.rows.map(r => Math.round(r.annualPerUnit)).join(",");
+  for (const a of parts)
+    assert.equal(miles(a), miles(whole),
+      "the mileage moved with the book, and it must not");
+});
+
+test("a unit that gets in during the morning can take an afternoon diagram home", () => {
+  /* A diagram is not a day's work by definition. If one gets a unit into a
+     place before lunch, the unit can be away again on somebody else's
+     afternoon diagram out of there, and it is home the same day. Counting a
+     whole day per diagram made every two-hop journey two days. */
+  const one = (n, days, from, out, to, arr) => [
+    "Diagram:\tZZ\t" + n + "\t" + days, "Fleet:\t375/6",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\t" + from + "\t\t" + out + "\t5Z" + n + "\t\t0.0\t",
+    "\t\t" + to + "\t" + arr + "\t\t\t\t50.0\t",
+    "Total miles:\t50.0",
+  ];
+  /* Left at Far Sd. 601 takes it to Mid Sd, in at 10.30; 602 leaves Mid Sd
+     at 14.00 for the depot. Both on the same Tuesday. */
+  const ds = FP.parsePrints(
+    one(601, "TO", "Far Sd", "06.00", "Mid Sd", "10.30")
+      .concat(one(602, "TO", "Mid Sd", "14.00", "Home Dep", "17.00"))
+      /* …and something that leaves a unit at Far Sd on the Monday night, so
+         the walk has a morning to start from */
+      .concat(one(603, "MO", "Home Dep", "06.00", "Far Sd", "20.00")));
+  const home = new Set([F.groupOf("Home Dep")]);
+  const back = F.daysHome(ds, "375", MONDAY, home);
+  const far = back.find(r => r.loc === F.groupOf("Far Sd"));
+  assert.ok(far, "Far Sd is on the list: " + back.map(r => r.loc).join(", "));
+  assert.equal(far.days, 1,
+    "both hops are the same Tuesday, so it is home in a day, not two: " +
+    (far.path || []).map(p => p.key + " " + p.day).join(" → "));
+  assert.deepEqual(arr((far.path || []).map(p => p.key)), ["ZZ601", "ZZ602"],
+    "and it is those two diagrams");
+  /* …but move the second one to the morning and it cannot be caught: the
+     unit is not there until 10.30 and 602 went at 09.00. Both are Tuesdays
+     only, so the next chance is a week away — which is the answer, and the
+     path says so rather than quietly pretending it was two days. */
+  const late = FP.parsePrints(
+    one(601, "TO", "Far Sd", "06.00", "Mid Sd", "10.30")
+      .concat(one(602, "TO", "Mid Sd", "09.00", "Home Dep", "11.00"))
+      .concat(one(603, "MO", "Home Dep", "06.00", "Far Sd", "20.00")));
+  const far2 = F.daysHome(late, "375", MONDAY, home)
+    .find(r => r.loc === F.groupOf("Far Sd"));
+  assert.equal(far2.days, 8,
+    "a diagram that has already gone cannot be taken: " +
+    (far2.path || []).map(p => (p.key || "wait") + " " + p.day).join(" → "));
+  assert.equal((far2.path || []).filter(p => !p.key).length, 6,
+    "six nights standing about, spelt out on the path");
+});

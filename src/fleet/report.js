@@ -72,10 +72,10 @@ function build(all, fleet, cfg){
         `zero because of where the depot is, not because of the plan. See ` +
         `<em>Getting units to ${c.home}</em> for what the plan can say. `
       : (a.home.AM.length === 0
-          ? `On a ${longDay(a.monday)}, <b>no unit is done for the day at ` +
+          ? `On a ${longDay(a.refMs)}, <b>no unit is done for the day at ` +
             `${c.home} before noon</b> — anything in during the morning goes ` +
             `back out for PM service. `
-          : `On a ${longDay(a.monday)}, <b>${a.home.AM.length}</b> unit` +
+          : `On a ${longDay(a.refMs)}, <b>${a.home.AM.length}</b> unit` +
             `${a.home.AM.length === 1 ? " is" : "s are"} done for the day at ` +
             `${c.home} before noon — in, and not out again for PM service. `) +
         `<b>${a.home.PM.length}</b> are done there in the afternoon or ` +
@@ -210,9 +210,14 @@ function build(all, fleet, cfg){
           `${never.map(r => r.loc).join(", ")}.`
         : ""),
     how: `A unit can only take a diagram that <em>starts</em> where it is ` +
-      `standing, and a diagram is a day's work — so this is the shortest way ` +
-      `home through the plan itself, counting a day for each diagram and a day ` +
-      `for standing where nothing leaves. It counts as back only when a diagram ` +
+      `standing, so this is the shortest way home through the plan itself. ` +
+      `A diagram is <em>not</em> a day's work by definition: one that gets the ` +
+      `unit somewhere before lunch leaves it free to be away again on somebody ` +
+      `else's afternoon diagram out of there, and it is home the same day. So ` +
+      `the count is DAYS — a night standing about costs one, a second diagram ` +
+      `the same day costs nothing — and a diagram can only be taken if it ` +
+      `leaves at least an hour after the unit got in. ` +
+      `It counts as back only when a diagram ` +
       `<em>ends</em> at the depot; one that calls in on its way past takes the ` +
       `unit with it. Each place is measured from the morning after the plan ` +
       `really does leave a unit there — the only night a 375 is left at ` +
@@ -305,7 +310,10 @@ function build(all, fleet, cfg){
       `unit is what a unit on the books accrues — and the second is the one to ` +
       `plan off. Annualised on <b>${a.runningDays} running days</b>: 52 weeks ` +
       `less Christmas Day and Boxing Day, which is how the depot's own sheets ` +
-      `count the year.`,
+      `count the year. <b>This one table is the WHOLE WEEK</b> whichever book ` +
+      `is picked above — all four of them, Monday to Sunday. A unit's clock ` +
+      `does not care which book it was working, so splitting the mileage by ` +
+      `book would answer a question nobody asks.`,
     stat: [["Miles per unit per day", n0(perDay(M.total))],
            ["Miles per unit per year", n0(per(M.total))],
            [sized ? "Units the depot owns" : "Units the plan needs",
@@ -441,7 +449,7 @@ function build(all, fleet, cfg){
       tab: "To " + c.home,
       title: "Getting units to " + c.home,
       lede: `${c.home} is off this network, so units get there by being handed ` +
-        `over at <b>${v.label}</b>. On a ${longDay(a.monday)} there are ` +
+        `over at <b>${v.label}</b>. On a ${longDay(a.refMs)} there are ` +
         `<b>${fin} finisher${fin === 1 ? "" : "s"}</b> — work done, free to ` +
         `take — and <b>${std} parked unit${std === 1 ? "" : "s"}</b>, there and ` +
         `idle but still wanted by their diagrams. ` +

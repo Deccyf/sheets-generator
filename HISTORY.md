@@ -4,6 +4,57 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## Diagram analyser 1.8.0 — 8 September 2026 — a diagram is not a day
+
+**"Days back to depot" counted a day for every diagram.** A unit that took
+one diagram into a place at ten in the morning and another out of it at two
+in the afternoon was charged two days for what the plan does in one. It
+counts DAYS now: a night standing about costs one, a second diagram the same
+day costs nothing, and a diagram can only be taken if it leaves at least an
+hour after the unit got in.
+
+Two things that took a second attempt. The dominance test that stops the
+walk going round in circles has to compare **both** the days and the time —
+a route that took a day longer but gets in EARLIER is not beaten, because it
+can catch a working the quicker one had already missed. Pruning on the time
+alone lost routes; pruning on the days alone lost more. And the count is
+days from being *left* to being *home*, so a single diagram is one day, not
+nought.
+
+On the MAY26 books this changes none of the answers — no route home there
+benefits from a same-day second diagram — but the mechanism is right and
+pinned, with the case that needs it and the case that cannot use it.
+
+**And a note on RM302**, which prompted this. It really can get from
+Faversham Back Road to Ramsgate in one diagram, arriving 10:23 — but that
+printing is valid **11/09/2026 to 09/10/2026**, and the reference week the
+prints resolve to is the week of 24 August. On that week the Friday RM302
+goes to Gillingham and the Sunday one to Ashford, so three days is the right
+answer *for that week*. Answering it for a later week needs the reference
+week to be choosable, which it is not yet.
+
+## Diagram analyser 1.7.0 — 8 September 2026 — a tab per book
+
+**The four books are tabs of their own** — **Mon – Thu**, **Friday**,
+**Saturday**, **Sunday** — above the questions on every fleet card. They are
+different plans: a Saturday's arrivals have nothing to do with a Tuesday's,
+and 1.6.0 put them in one table where they answered neither.
+
+Picking a book moves **every** card, because somebody working through a
+Saturday wants every fleet's Saturday, and cards left on different books read
+as one answer and are four. The question stays where it was — the reader is
+asking the same thing of a different day. The four partition the week
+exactly: for the 375, 119 + 101 + 101 + 101 = the 422 the whole week holds.
+
+**The mileage is deliberately not split**, and says so on itself. A unit's
+clock does not care which book it was working, so that one table stays the
+whole week whichever tab is picked — checked on all four in the browser
+smoke, because it is the kind of thing that would drift silently.
+
+Two things the split showed up: the ledes said "On a Monday" whatever book
+was open, and the reference day for a book has to be a day inside it, or the
+Saturday card counts a Monday.
+
 ## Diagram analyser 1.6.0 — 8 September 2026 — the whole week, and the sum shown
 
 **The tables were one reference Monday.** Every one of them — arrivals home,

@@ -234,6 +234,19 @@ function tabbed(panes){
   return {tabs, view, select};
 }
 
+/* One report per fleet PER DAY GROUP, built when the group is first asked
+   for rather than all four up front - four books for five fleets is twenty
+   analyses and only one of them is ever on screen. */
+const CACHE = {};
+function reportFor(k, gid){
+  const key = k + "|" + gid;
+  if (!CACHE[key]){
+    try { CACHE[key] = R.build(ALL, k, Object.assign({}, cfg, {group: gid})); }
+    catch (e){ console.error("fleet " + k + " " + gid, e); return null; }
+  }
+  return CACHE[key];
+}
+
 function fleetCard(k, rep){
   const art = el("article", "road");
   art.dataset.road = k;
@@ -246,13 +259,7 @@ function fleetCard(k, rep){
   const who = el("div", "who");
   who.appendChild(el("h2", null, "Class " + rep.cfg.label));
   const meta = el("p", "meta");
-  /* Both counts, because they answer different questions: how many are out
-     on a given day, and how many diagrams the week holds altogether. */
-  meta.innerHTML = "<b>" + rep.a.day.length + "</b> diagrams on a " +
-    LONG[F.dayName(rep.monday)] + " · <b>" + rep.a.week.length +
-    "</b> over the week · home <b>" + rep.cfg.home + "</b> · week of " +
-    new Date(rep.monday).toLocaleDateString("en-GB",
-      {day: "numeric", month: "long", year: "numeric"});
+  meta.innerHTML = metaFor(rep);
   who.appendChild(meta);
   head.appendChild(who);
 
@@ -282,10 +289,68 @@ function fleetCard(k, rep){
 
   const panel = el("div", "panel");
   panel.id = "fpanel-" + (++tabSeq);
-  const {tabs, view, select} = tabbed(rep.secs.map(sec => [sec.tab, () => section(sec)]));
-  panel.appendChild(tabs);
-  panel.appendChild(view);
+
+  /* The four books, as a row of their own above the questions. They are
+     different plans - a Saturday's arrivals have nothing to do with a
+     Tuesday's - so every question is answered for one book at a time. The
+     mileage is the exception and says so on itself: a unit's clock does not
+     care which book it was working, so that one stays a whole week. */
+  const daybar = el("div", "daytabs");
+  daybar.setAttribute("role", "tablist");
+  daybar.setAttribute("aria-label", "Which book");
+  const dayBtns = [];
+  let gid = CURRENT_GROUP;
+  let qIndex = 0;
+
+  const drawQuestions = r => {
+    const old = panel.querySelector(".tabs");
+    const oldView = panel.querySelector(".view");
+    if (old) old.remove();
+    if (oldView) oldView.remove();
+    const t = tabbed(r.secs.map(sec => [sec.tab, () => section(sec)]));
+    panel.appendChild(t.tabs);
+    panel.appendChild(t.view);
+    /* Keep the question the reader was on when they change book - they are
+       asking the same question of a different day. */
+    t.select(Math.min(qIndex, r.secs.length - 1));
+    t.tabs.addEventListener("click", e => {
+      const i = Array.prototype.indexOf.call(t.tabs.children, e.target);
+      if (i >= 0) qIndex = i;
+    });
+  };
+
+  /* Draw THIS card for a book. */
+  const showGroup = id => {
+    const r = reportFor(k, id);
+    if (!r) return;
+    gid = id;
+    dayBtns.forEach(b => b.setAttribute("aria-selected",
+      b.dataset.gid === id ? "true" : "false"));
+    meta.innerHTML = metaFor(r);
+    drawQuestions(r);
+  };
+  art.showGroup = showGroup;
+  /* …and picking one moves EVERY card. Somebody working through a Saturday
+     wants every fleet's Saturday; cards left on different books read as one
+     answer and are four. */
+  const pickGroup = id => {
+    CURRENT_GROUP = id;
+    const cards = document.querySelectorAll("#roads .road");
+    for (const c of cards) if (c.showGroup) c.showGroup(id);
+  };
+
+  for (const g of Array.from(F.DAY_GROUPS)){
+    const b = el("button", "daytab", g.label);
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.dataset.gid = g.id;
+    b.addEventListener("click", () => pickGroup(g.id));
+    dayBtns.push(b);
+    daybar.appendChild(b);
+  }
+  panel.appendChild(daybar);
   art.appendChild(panel);
+  showGroup(gid);
 
   let open = true;
   const show = o => {
@@ -296,20 +361,38 @@ function fleetCard(k, rep){
   };
   bp.setAttribute("aria-controls", panel.id);
   bp.addEventListener("click", () => show(!open));
-  select(0);
   show(true);
   return art;
 }
 
 const SPRITE_FOR = {"375": "375", "376": "376", "377": "377",
                     "395": "395", "Metro": "465"};
+/* The book the reader last looked at, kept across cards and across a
+   rebuild - somebody working through a Saturday wants every fleet's
+   Saturday. */
+let CURRENT_GROUP = "mtt";
+
+/* Both counts, because they answer different questions: how many are out on
+   one day of this book, and how many diagrams the book holds. */
+function metaFor(r){
+  const g = r.a.group;
+  return "<b>" + r.a.day.length + "</b> diagrams on a " +
+    LONG[F.dayName(r.a.refMs)] + " · <b>" + r.a.week.length + "</b> in the " +
+    (g ? g.label.replace(/ – /, "–") : "week") + " book · home <b>" +
+    r.cfg.home + "</b> · week of " +
+    new Date(r.monday).toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric"});
+}
 
 function rebuild(){
   REP = {};
+  /* A depot or a fleet size has changed, or new prints have been dropped:
+     every stored answer is out of date. */
+  for (const key of Object.keys(CACHE)) delete CACHE[key];
   const keys = fleetsPresent();
   for (const k of keys){
-    try { REP[k] = R.build(ALL, k, cfg); }
-    catch (e){ console.error("fleet " + k, e); }
+    const r = reportFor(k, CURRENT_GROUP);
+    if (r) REP[k] = r;
   }
   const box = $("roads");
   box.textContent = "";
