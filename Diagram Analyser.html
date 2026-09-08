@@ -2282,13 +2282,20 @@ function fleetOf(d){
    not something the prints state, so they are settings the tool carries
    and the user can change - a fleet moving depot must not need a new
    version of this file. */
+/* `sizes` is how many units the depot OWNS of each sub-fleet, which the
+   prints cannot say - a unit spare all week never appears in them - and
+   which the mileage per unit has to be divided by. Empty here on purpose:
+   a wrong default would read as fact and quietly skew every figure, so
+   until the depot fills them in the page shows the per-diagram figure and
+   says that is what it is. */
 const FLEETS = {
-  "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"]},
+  "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"], sizes: {}},
   "376": {label: "376", home: "Gillingham",
-          repair: ["Gillingham", "Ramsgate", "Slade Green"]},
-  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"]},
-  "395": {label: "395", home: "Ashford", repair: ["Ashford"]},
-  "Metro": {label: "465/466/707", home: "Slade Green", repair: ["Slade Green"]},
+          repair: ["Gillingham", "Ramsgate", "Slade Green"], sizes: {}},
+  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"], sizes: {}},
+  "395": {label: "395", home: "Ashford", repair: ["Ashford"], sizes: {}},
+  "Metro": {label: "465/466/707", home: "Slade Green",
+            repair: ["Slade Green"], sizes: {}},
 };
 
 function depotSet(names, which){
@@ -2405,8 +2412,102 @@ const moCapable = d => coupling(d).moCapable;
    left behind by one of these, so the places they happen are the places a
    restriction cannot be contained. */
 const SPLIT = /^(DETACH|DETTT)$/i;
+const JOIN = /^(ATTACH|ATTTT)$/i;
 const splitsOf = d => d.rows.filter(r => SPLIT.test(r.act || ""))
   .map(r => ({loc: r.loc, t: r.arr ?? r.dep}));
+
+/* ---- who a diagram runs with, and where they come apart ----------------
+
+   The berthing sheets settle this already, and the two tools have to give
+   the same answer, so the rules here are theirs:
+
+     - A pair that attaches and detaches but runs the SAME PATH to the same
+       berth never really parted. They travel as one train and the events
+       are the plan writing down a re-marshalling - flagging that as a split
+       would only mislead. Same exception the berthing sheets make.
+     - WHO parts from whom. A detach out of a train of three leaves two of
+       them still coupled; the unit that leaves is the one that drops out of
+       the formation column, not "everybody at that place".
+     - WHEN, in the berthing sheets' sense. "PM" there is not a time of day,
+       it is a place in the diagram: the units are put away together first
+       and the parting comes after that. A pair that parts on the working it
+       leaves the depot on is a plain split; one that goes out together,
+       works coupled and comes apart later is the depot's SPLITS PM.        */
+
+/* The units named in a formation cell: "601(1)\604(2)" is 601 and 604. */
+function formOf(row){
+  const out = new Set();
+  const re = /(\d+)\s*\(\d+\)/g;
+  let m;
+  while ((m = re.exec(row.form || "")) !== null) out.add(m[1]);
+  return out;
+}
+/* The formation carried down the diagram, because the column is only
+   written where it changes. Each row gets the train it is part of. */
+function formationRun(d){
+  const me = String(d.num);
+  let cur = new Set([me]);
+  return d.rows.map(r => {
+    const f = formOf(r);
+    if (f.size) cur = f;
+    return cur;
+  });
+}
+/* Every stop this diagram makes, as "where@when", so two diagrams can be
+   asked whether they went the same way. */
+const pathOf = (d, from, to) => d.rows.slice(from, to + 1)
+  .map(r => r.loc + "@" + (r.arr ?? "") + "/" + (r.dep ?? "")).join(">");
+
+/* One diagram's coupling story: who it joins, who it parts from, where and
+   when, and whether the parting is a plain split or the PM kind. `byNum`
+   maps a diagram number to its diagram, for the same-path test. */
+function partings(d, byNum){
+  const run = formationRun(d);
+  const me = String(d.num);
+  const berths = berthsOf(d);
+  /* The first time this diagram is put away AFTER it first runs with
+     somebody: the line between a split and a PM one. A stand of berthing
+     length is what counts - a two-minute call is not putting a unit away. */
+  const out = [];
+  let joinedAt = null;
+  for (let i = 0; i < d.rows.length; i++){
+    const r = d.rows[i], act = r.act || "";
+    const with_ = new Set(Array.from(run[i]).filter(n => n !== me));
+    /* The MOST RECENT join, not the first: "were they put away together
+       since they last coupled up" is the question, so a berth from an
+       earlier coupling must not answer it for a later one. A diagram that
+       starts coupled has no join event and leaves this null, which means
+       coupled from the off and any berth counts. */
+    if (JOIN.test(act) && with_.size) joinedAt = r.arr ?? r.dep;
+    if (!SPLIT.test(act)) continue;
+    const before = run[i];
+    const after = i + 1 < run.length ? run[i + 1] : new Set([me]);
+    // whoever was in the train and is not any more
+    const lost = Array.from(before).filter(n => n !== me && !after.has(n)).sort();
+    if (!lost.length) continue;
+    const t = r.arr ?? r.dep;
+    /* Put away together first? A berth of attendable length before this
+       parting, with somebody else still in the train, is the units being
+       stabled as one - and then the parting is the PM kind. */
+    let stabledTogether = false;
+    for (const b of berths){
+      if (b.to == null || t == null || b.to > t) break;
+      if (b.mins != null && b.mins >= ATTENDABLE &&
+          (joinedAt == null || b.from >= joinedAt)) stabledTogether = true;
+    }
+    out.push({loc: r.loc, t, lost, kind: stabledTogether ? "pm" : "split", i});
+  }
+  /* …and the exception: a partner that leaves and comes back having gone
+     exactly where this diagram went never really parted from it. */
+  return out.filter(x => {
+    x.lost = x.lost.filter(n => {
+      const o = byNum && byNum.get(n);
+      if (!o) return true;
+      return pathOf(d, x.i, d.rows.length - 1) !== pathOf(o, 0, o.rows.length - 1);
+    });
+    return x.lost.length > 0;
+  });
+}
 
 /* ---- which diagrams are in force, and when -----------------------------
    Counting every printed diagram counts a re-issued one twice, so
@@ -2499,43 +2600,74 @@ function deliveries(work, home, windows){
    unit, and no allowance has to be made for the formation.
 
    What the depot needs is the mileage a UNIT does, not what the fleet
-   racks up between them: exams fall due on a unit's clock. So each day's
-   miles are divided by the diagrams in force that day, and those daily
-   averages are added across a week. A unit works one diagram a day, so the
-   week's figure is what one unit covers in a week, and annualising it
-   gives the mileage a unit accrues in a year.
+   racks up between them: exams fall due on a unit's clock. So the day's
+   miles are shared over the units that could be working them, and those
+   daily figures are added across a week and annualised.
+
+   WHICH UNITS, though, is the whole question, and the answer is the FLEET,
+   not the diagram book. A diagram book has no spare and no exam float in
+   it: the plan needs 27 diagrams and the depot owns 30 units, and all 30
+   take their turn through those diagrams. Divide by the diagrams and every
+   figure comes out about a ninth too high, which is what the manual sheets
+   disagreed with. So the fleet size is a SETTING - the prints cannot know
+   it, because a unit standing spare all week never appears in them - and
+   the divisor is the size where one is set.
+
+   Both are worth having and both are shown. Per DIAGRAMMED unit answers
+   "what does a unit in traffic do"; per FLEET unit answers "what does a
+   unit on the books accrue", which is the one exams are planned off.
+   Without a fleet size the two are the same figure, and the page says so
+   rather than quietly presenting the smaller fleet as the real one.
 
    Sub-fleet matters because they are not worked alike - within the 375s
    the /6s do a fifth more than the /3s and /9s.                          */
 const WEEKS = 365.25 / 7;
 
-function mileage(all, fleet, monday){
+function mileage(all, fleet, monday, sizes){
   const mine = all.filter(d => fleetOf(d) === fleet);
   const week = weekFrom(monday);
   const subs = Array.from(new Set(mine.map(d => d.fleet))).sort();
+  const sizeOf = sub => {
+    const v = sizes && sizes[sub];
+    return Number.isFinite(+v) && +v > 0 ? +v : null;
+  };
 
-  const measure = (label, pick) => {
+  const measure = (label, pick, owned) => {
     const perDay = week.map((ms, i) => {
       const ds = mine.filter(d => pick(d) && runsOn(d, ms));
       const miles = ds.reduce((t, d) => t + (d.totalMiles || 0), 0);
       const idle = ds.filter(d => d.stabled).length;
       return {day: DAYS[i], diagrams: ds.length, idle, miles,
-              perUnit: ds.length ? miles / ds.length : 0};
+              // what a unit IN TRAFFIC covers that day
+              perUnit: ds.length ? miles / ds.length : 0,
+              // …and what a unit ON THE BOOKS accrues, spares and all
+              perOwned: owned ? miles / owned : null};
     });
     const weeklyPerUnit = perDay.reduce((t, x) => t + x.perUnit, 0);
     const weeklyTotal = perDay.reduce((t, x) => t + x.miles, 0);
     /* The units the PLAN needs, which is the busiest day's diagram count.
        It is not the fleet as owned - there is no spare or exam float in a
-       diagram book, so the real fleet is always larger. */
+       diagram book, so the real fleet is always larger, and `owned` is
+       that larger number where the depot has told the tool what it is. */
     const units = perDay.reduce((m, x) => Math.max(m, x.diagrams), 0);
-    return {sub: label, perDay, units,
+    const weeklyPerOwned = owned ? weeklyTotal / owned : null;
+    return {sub: label, perDay, units, owned,
             dailyPerUnit: weeklyPerUnit / 7, weeklyPerUnit,
             annualPerUnit: weeklyPerUnit * WEEKS,
+            dailyPerOwned: owned ? weeklyPerOwned / 7 : null,
+            weeklyPerOwned,
+            annualPerOwned: owned ? weeklyPerOwned * WEEKS : null,
             weeklyTotal, annualTotal: weeklyTotal * WEEKS};
   };
 
-  return {rows: subs.map(s => measure(s, d => d.fleet === s)),
-          total: measure("All " + fleet, () => true)};
+  const rows = subs.map(s => measure(s, d => d.fleet === s, sizeOf(s)));
+  /* The fleet's own size is the sub-fleets added up, and only where every
+     one of them has been given a size: a part-filled total would read as
+     the whole fleet and be wrong by however many are missing. */
+  const allSized = subs.length && subs.every(s => sizeOf(s) !== null);
+  const ownedAll = allSized ? subs.reduce((t, s) => t + sizeOf(s), 0) : null;
+  return {rows, sized: subs.filter(s => sizeOf(s) !== null).length, subs,
+          total: measure("All " + fleet, () => true, ownedAll)};
 }
 
 function analyse(all, fleet, cfg){
@@ -2601,16 +2733,37 @@ function analyse(all, fleet, cfg){
   }
   const containment = Array.from(byStart.values()).sort((a, b) => b.n - a.n);
 
-  /* Where diagrams actually come apart. */
+  /* Where diagrams actually come apart - over the WHOLE week, not one
+     Monday. An FSX book is Monday to Thursday and the Friday, Saturday and
+     Sunday books are different diagrams entirely, so a Monday-only answer
+     is silent about three days in seven. Every day is walked and each
+     parting is recorded against the days it happens on. */
   const splitAt = new Map();
-  for (const d of work)
-    for (const s of splitsOf(d)){
-      const g = groupOf(s.loc);
-      if (!splitAt.has(g)) splitAt.set(g, {loc: g, n: 0, ds: new Set()});
-      const r = splitAt.get(g);
-      r.n++;
-      r.ds.add(d.key);
-    }
+  const partingRows = [];
+  for (const ms of weekFrom(monday)){
+    const nm = dayName(ms);
+    const on = mine.filter(d => runsOn(d, ms)).map(roll).filter(d => !d.stabled);
+    const byNum = new Map(on.map(d => [String(d.num), d]));
+    for (const d of on)
+      for (const s of partings(d, byNum)){
+        const g = groupOf(s.loc);
+        if (!splitAt.has(g))
+          splitAt.set(g, {loc: g, n: 0, ds: new Set(), days: new Set(),
+                          split: 0, pm: 0});
+        const r = splitAt.get(g);
+        r.n++; r.ds.add(d.key); r.days.add(nm);
+        if (s.kind === "pm") r.pm++; else r.split++;
+        partingRows.push({day: nm, d: d.key, num: String(d.num), loc: g,
+                          raw: s.loc, t: s.t, lost: s.lost, kind: s.kind});
+      }
+  }
+  /* The AM/PM question the depot asks: which pairs go out together in the
+     morning, work the day coupled, and only come apart later. That is the
+     berthing sheets' SPLITS PM - the units are put away as one first and
+     the parting is still to come - and it is the case a planner has to
+     watch, because the unit is not free until the afternoon. */
+  const pmSplits = partingRows.filter(x => x.kind === "pm");
+  const amSplits = partingRows.filter(x => x.kind === "split");
 
   /* Mileage over one real week, then annualised. */
   const perDay = {};
@@ -2627,7 +2780,7 @@ function analyse(all, fleet, cfg){
     for (const e of seen) if (e[1] > 1) dupes.push(nm + " " + e[0] + " ×" + e[1]);
   }
   const weekly = DAYS.reduce((t, nm) => t + perDay[nm].miles, 0);
-  const miles = mileage(all, fleet, monday);
+  const miles = mileage(all, fleet, monday, c.sizes);
   const deliver = deliveries(work, c.home, c.windows);
   /* Where a unit has to reach to be worked on - the home GROUP, or for a
      depot off this network the handover point, which is as far as the
@@ -2644,6 +2797,7 @@ function analyse(all, fleet, cfg){
     repair: bucket(atRepair), away: bucket(l => !atRepair(l)),
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
+    partings: partingRows, pmSplits, amSplits,
     perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
     miles, deliver, back, target,
     offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
@@ -2831,7 +2985,8 @@ function moWeek(all, fleet, monday){
 root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               placeName, places, isShunt, groupOf, arrivedAt,
               roll, hm, berthsOf, ATTENDABLE, startsAt, endsAt, legsOf,
-              coupling, moCapable, splitsOf, dayName, validOn, runsOn,
+              coupling, moCapable, splitsOf, partings, formOf,
+              dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
               balance, week,
               moBalance, moWeek};
@@ -2885,6 +3040,8 @@ const longDay = ms => LONG[F.dayName(ms)] || F.dayName(ms);
 function bucketLabel(t){
   return t == null ? "—" : t < 720 ? "AM" : t < 1440 ? "PM" : "after midnight";
 }
+
+const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function build(all, fleet, cfg){
   const a = F.analyse(all, fleet, cfg);
@@ -3244,6 +3401,87 @@ function build(all, fleet, cfg){
      duplication. Signals, headshunts and turnbacks are kept apart from
      the rest: a unit draws up to one and goes on, and the berthing sheets
      leave them out of the books for exactly that reason. */
+  /* ---- 7. where a restriction cannot be contained ---- */
+  const contRows = a.containment.map(r => [
+    r.loc, r.n, r.ok, r.n - r.ok,
+    r.ok === 0 ? "NO — nothing stays coupled"
+      : r.ok === r.n ? "yes, every diagram" : "yes, " + r.ok + " of " + r.n,
+    few(r.okD, 3),
+  ]);
+  const none = a.containment.filter(r => r.ok === 0);
+  secs.push({
+    id: "contain",
+    tab: "Cannot contain",
+    title: "Where a restricted unit cannot be contained",
+    lede: (none.length
+        ? `A restricted unit left at one of these has nothing it can work — ` +
+          `every diagram out of there leaves it on its own at some point, so it ` +
+          `must be moved first. <b>${none.length} of ${a.containment.length}</b> ` +
+          `places are like this: ${none.map(r => r.loc).join(", ")}.`
+        : `Every place has at least one diagram that stays coupled, so a ` +
+          `restricted unit can be worked from anywhere.`),
+    how: `Grouped by where a diagram <em>starts</em>, because that is where a ` +
+      `unit has to be standing to take it up. "Stay coupled" counts the ` +
+      `diagrams from that place that never leave a unit running alone.`,
+    head: ["A unit standing at", "Diagrams out of here", "Stay coupled",
+           "Run alone at some point", "Can a restricted unit work from here?",
+           "Which diagrams"],
+    rows: contRows,
+    extra: {
+      tab: "Split locations",
+      title: "Where diagrams actually come apart",
+      head: ["Place", "Partings", "Of those, PM", "Diagrams", "Days", "Kind"],
+      rows: a.splits.map(s => [s.loc, s.n, s.pm, s.ds.size,
+        DAY_ORDER.filter(d => s.days.has(d)).join(" "),
+        a.atRepair(s.loc) ? "repair depot" : "outstation"]),
+    },
+  });
+
+  /* ---- 8. joining and coming apart, AM and PM ---- */
+  const pmRows = a.pmSplits.map(x =>
+    [x.day, x.d, x.lost.join(" + "), x.loc, at(x.t)]);
+  const amRows = a.amSplits.map(x =>
+    [x.day, x.d, x.lost.join(" + "), x.loc, at(x.t)]);
+  const pmDays = new Set(a.pmSplits.map(x => x.day));
+  secs.push({
+    id: "apart",
+    tab: "Together AM, apart PM",
+    title: "Units that go out together and come apart later",
+    lede: (pmRows.length
+      ? `<b>${pmRows.length}</b> partings over the week are the PM kind: the ` +
+        `units leave the depot as one, are put away together, and only come ` +
+        `apart after that — so neither unit is free until the afternoon. They ` +
+        `fall on ${DAY_ORDER.filter(d => pmDays.has(d)).join(", ")}. The other ` +
+        `<b>${amRows.length}</b> part on the working they leave on.`
+      : `Nothing over the week goes out coupled, berths as one and parts ` +
+        `later — every parting happens on the working the units leave on.`),
+    how: `The same rule the berthing sheets use, so the two tools cannot ` +
+      `disagree. Who parts from whom is read off the FORMATION column — the ` +
+      `unit that drops out of it is the one that leaves, not everybody ` +
+      `standing at that place. A pair that detaches and re-attaches but runs ` +
+      `the same path to the same berth never really parted, and is left out. ` +
+      `"PM" is the berthing sheets' sense of it: not a time of day, but the ` +
+      `units being put away together <em>first</em> and the parting coming ` +
+      `after that. Every day of the week is walked, not one Monday — the ` +
+      `Friday, Saturday and Sunday books are different diagrams entirely.`,
+    stat: [["Partings over the week", a.partings.length],
+           ["Together out, apart later (PM)", pmRows.length],
+           ["Apart on the working they leave on", amRows.length],
+           ["Places they happen", a.splits.length]],
+    head: ["Day", "Diagram", "Parts from", "Where", "When"],
+    rows: pmRows.length ? pmRows : amRows,
+    extra: pmRows.length && amRows.length ? {
+      tab: "Apart on the day",
+      title: "Partings on the working the units leave on",
+      head: ["Day", "Diagram", "Parts from", "Where", "When"],
+      rows: amRows,
+    } : null,
+  });
+
+  /* ---- last of all: what the codes mean ----
+     A key belongs at the BACK of a document, not in the middle of it. It is
+     the thing a reader turns to when a code on one of the tables above is
+     unfamiliar, so it sits under them all. */
   const berths = a.places.filter(p => !p.shunt);
   const shunts = a.places.filter(p => p.shunt);
   const roads = berths.filter(p => p.kind === "road");
@@ -3291,40 +3529,6 @@ function build(all, fleet, cfg){
     } : null,
   });
 
-  /* ---- 7. where a restriction cannot be contained ---- */
-  const contRows = a.containment.map(r => [
-    r.loc, r.n, r.ok, r.n - r.ok,
-    r.ok === 0 ? "NO — nothing stays coupled"
-      : r.ok === r.n ? "yes, every diagram" : "yes, " + r.ok + " of " + r.n,
-    few(r.okD, 3),
-  ]);
-  const none = a.containment.filter(r => r.ok === 0);
-  secs.push({
-    id: "contain",
-    tab: "Cannot contain",
-    title: "Where a restricted unit cannot be contained",
-    lede: (none.length
-        ? `A restricted unit left at one of these has nothing it can work — ` +
-          `every diagram out of there leaves it on its own at some point, so it ` +
-          `must be moved first. <b>${none.length} of ${a.containment.length}</b> ` +
-          `places are like this: ${none.map(r => r.loc).join(", ")}.`
-        : `Every place has at least one diagram that stays coupled, so a ` +
-          `restricted unit can be worked from anywhere.`),
-    how: `Grouped by where a diagram <em>starts</em>, because that is where a ` +
-      `unit has to be standing to take it up. "Stay coupled" counts the ` +
-      `diagrams from that place that never leave a unit running alone.`,
-    head: ["A unit standing at", "Diagrams out of here", "Stay coupled",
-           "Run alone at some point", "Can a restricted unit work from here?",
-           "Which diagrams"],
-    rows: contRows,
-    extra: {
-      tab: "Split locations",
-      title: "Where diagrams actually come apart",
-      head: ["Place", "Splits", "Diagrams", "Kind"],
-      rows: a.splits.map(s => [s.loc, s.n, s.ds.size,
-        a.atRepair(s.loc) ? "repair depot" : "outstation"]),
-    },
-  });
 
   return {fleet, cfg: c, a, secs, monday: a.monday};
 }

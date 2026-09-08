@@ -46,6 +46,8 @@ function bucketLabel(t){
   return t == null ? "—" : t < 720 ? "AM" : t < 1440 ? "PM" : "after midnight";
 }
 
+const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 function build(all, fleet, cfg){
   const a = F.analyse(all, fleet, cfg);
   const c = a.cfg;
@@ -404,6 +406,87 @@ function build(all, fleet, cfg){
      duplication. Signals, headshunts and turnbacks are kept apart from
      the rest: a unit draws up to one and goes on, and the berthing sheets
      leave them out of the books for exactly that reason. */
+  /* ---- 7. where a restriction cannot be contained ---- */
+  const contRows = a.containment.map(r => [
+    r.loc, r.n, r.ok, r.n - r.ok,
+    r.ok === 0 ? "NO — nothing stays coupled"
+      : r.ok === r.n ? "yes, every diagram" : "yes, " + r.ok + " of " + r.n,
+    few(r.okD, 3),
+  ]);
+  const none = a.containment.filter(r => r.ok === 0);
+  secs.push({
+    id: "contain",
+    tab: "Cannot contain",
+    title: "Where a restricted unit cannot be contained",
+    lede: (none.length
+        ? `A restricted unit left at one of these has nothing it can work — ` +
+          `every diagram out of there leaves it on its own at some point, so it ` +
+          `must be moved first. <b>${none.length} of ${a.containment.length}</b> ` +
+          `places are like this: ${none.map(r => r.loc).join(", ")}.`
+        : `Every place has at least one diagram that stays coupled, so a ` +
+          `restricted unit can be worked from anywhere.`),
+    how: `Grouped by where a diagram <em>starts</em>, because that is where a ` +
+      `unit has to be standing to take it up. "Stay coupled" counts the ` +
+      `diagrams from that place that never leave a unit running alone.`,
+    head: ["A unit standing at", "Diagrams out of here", "Stay coupled",
+           "Run alone at some point", "Can a restricted unit work from here?",
+           "Which diagrams"],
+    rows: contRows,
+    extra: {
+      tab: "Split locations",
+      title: "Where diagrams actually come apart",
+      head: ["Place", "Partings", "Of those, PM", "Diagrams", "Days", "Kind"],
+      rows: a.splits.map(s => [s.loc, s.n, s.pm, s.ds.size,
+        DAY_ORDER.filter(d => s.days.has(d)).join(" "),
+        a.atRepair(s.loc) ? "repair depot" : "outstation"]),
+    },
+  });
+
+  /* ---- 8. joining and coming apart, AM and PM ---- */
+  const pmRows = a.pmSplits.map(x =>
+    [x.day, x.d, x.lost.join(" + "), x.loc, at(x.t)]);
+  const amRows = a.amSplits.map(x =>
+    [x.day, x.d, x.lost.join(" + "), x.loc, at(x.t)]);
+  const pmDays = new Set(a.pmSplits.map(x => x.day));
+  secs.push({
+    id: "apart",
+    tab: "Together AM, apart PM",
+    title: "Units that go out together and come apart later",
+    lede: (pmRows.length
+      ? `<b>${pmRows.length}</b> partings over the week are the PM kind: the ` +
+        `units leave the depot as one, are put away together, and only come ` +
+        `apart after that — so neither unit is free until the afternoon. They ` +
+        `fall on ${DAY_ORDER.filter(d => pmDays.has(d)).join(", ")}. The other ` +
+        `<b>${amRows.length}</b> part on the working they leave on.`
+      : `Nothing over the week goes out coupled, berths as one and parts ` +
+        `later — every parting happens on the working the units leave on.`),
+    how: `The same rule the berthing sheets use, so the two tools cannot ` +
+      `disagree. Who parts from whom is read off the FORMATION column — the ` +
+      `unit that drops out of it is the one that leaves, not everybody ` +
+      `standing at that place. A pair that detaches and re-attaches but runs ` +
+      `the same path to the same berth never really parted, and is left out. ` +
+      `"PM" is the berthing sheets' sense of it: not a time of day, but the ` +
+      `units being put away together <em>first</em> and the parting coming ` +
+      `after that. Every day of the week is walked, not one Monday — the ` +
+      `Friday, Saturday and Sunday books are different diagrams entirely.`,
+    stat: [["Partings over the week", a.partings.length],
+           ["Together out, apart later (PM)", pmRows.length],
+           ["Apart on the working they leave on", amRows.length],
+           ["Places they happen", a.splits.length]],
+    head: ["Day", "Diagram", "Parts from", "Where", "When"],
+    rows: pmRows.length ? pmRows : amRows,
+    extra: pmRows.length && amRows.length ? {
+      tab: "Apart on the day",
+      title: "Partings on the working the units leave on",
+      head: ["Day", "Diagram", "Parts from", "Where", "When"],
+      rows: amRows,
+    } : null,
+  });
+
+  /* ---- last of all: what the codes mean ----
+     A key belongs at the BACK of a document, not in the middle of it. It is
+     the thing a reader turns to when a code on one of the tables above is
+     unfamiliar, so it sits under them all. */
   const berths = a.places.filter(p => !p.shunt);
   const shunts = a.places.filter(p => p.shunt);
   const roads = berths.filter(p => p.kind === "road");
@@ -451,40 +534,6 @@ function build(all, fleet, cfg){
     } : null,
   });
 
-  /* ---- 7. where a restriction cannot be contained ---- */
-  const contRows = a.containment.map(r => [
-    r.loc, r.n, r.ok, r.n - r.ok,
-    r.ok === 0 ? "NO — nothing stays coupled"
-      : r.ok === r.n ? "yes, every diagram" : "yes, " + r.ok + " of " + r.n,
-    few(r.okD, 3),
-  ]);
-  const none = a.containment.filter(r => r.ok === 0);
-  secs.push({
-    id: "contain",
-    tab: "Cannot contain",
-    title: "Where a restricted unit cannot be contained",
-    lede: (none.length
-        ? `A restricted unit left at one of these has nothing it can work — ` +
-          `every diagram out of there leaves it on its own at some point, so it ` +
-          `must be moved first. <b>${none.length} of ${a.containment.length}</b> ` +
-          `places are like this: ${none.map(r => r.loc).join(", ")}.`
-        : `Every place has at least one diagram that stays coupled, so a ` +
-          `restricted unit can be worked from anywhere.`),
-    how: `Grouped by where a diagram <em>starts</em>, because that is where a ` +
-      `unit has to be standing to take it up. "Stay coupled" counts the ` +
-      `diagrams from that place that never leave a unit running alone.`,
-    head: ["A unit standing at", "Diagrams out of here", "Stay coupled",
-           "Run alone at some point", "Can a restricted unit work from here?",
-           "Which diagrams"],
-    rows: contRows,
-    extra: {
-      tab: "Split locations",
-      title: "Where diagrams actually come apart",
-      head: ["Place", "Splits", "Diagrams", "Kind"],
-      rows: a.splits.map(s => [s.loc, s.n, s.ds.size,
-        a.atRepair(s.loc) ? "repair depot" : "outstation"]),
-    },
-  });
 
   return {fleet, cfg: c, a, secs, monday: a.monday};
 }

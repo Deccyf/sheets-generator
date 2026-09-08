@@ -389,13 +389,17 @@ test("no rolled time reaches the page: 25:26 is shown as 01:26 (+1)", () => {
 test("the report answers every question and the workbook matches it", () => {
   const rep = R.build(DS, "375", { monday: MONDAY });
   assert.deepEqual(arr(rep.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "back", "miles", "stands", "places", "contain"]);
+    /* The place-codes key is LAST: it is what a reader turns to when a code
+       on one of the tables above is unfamiliar, so it belongs at the back
+       of the document rather than in the middle of it. */
+    ["arrivals", "early", "mo", "back", "miles", "stands", "contain", "apart",
+     "places"]);
   /* A fleet handed over off-network gets one more again. */
   const off = R.build(DS, "377", { monday: MONDAY,
     "377": { home: "Selhurst", repair: ["Selhurst"] } });
   assert.deepEqual(arr(off.secs.map(s => s.id)),
-    ["arrivals", "early", "mo", "back", "miles", "stands", "deliver", "places",
-     "contain"]);
+    ["arrivals", "early", "mo", "back", "miles", "stands", "deliver",
+     "contain", "apart", "places"]);
   for (const s of rep.secs){
     assert.ok(s.tab && s.tab.length <= 31, s.id + " needs a short tab name");
     assert.ok(s.how && s.how.length > 20,
