@@ -4,6 +4,43 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## Diagram analyser 1.6.0 — 8 September 2026 — the whole week, and the sum shown
+
+**The tables were one reference Monday.** Every one of them — arrivals home,
+home before eight, attendable stands, restricted units, cannot-contain, the
+place codes, the full diagram list — was built from the diagrams running on
+one Monday. The Friday, Saturday and Sunday books were never on the page at
+all: a unit that only comes home on a Saturday was missing from arrivals, a
+stand long enough to work on that only happens on a Sunday was missing from
+the attendable list. They are built from the whole week now, and each row
+says which days it runs, which is what the Runs column has always shown.
+
+**And a diagram number is not a day's work.** Folding the week together by
+diagram number looked right and was not: in the MAY26 books **322 of the 324
+numbers are printed several times over** — AZ601 has an FSX version, an FO
+version, an SO version and a Sunday one, four different days under one
+number — so keying on the number kept whichever was read first and lost the
+other three. Keyed on the number *and its day code*, the 375 goes from 101
+rows to 422, the Metro from 134 to 604. A code that covers several days is
+still one row: an FSX diagram does the same thing on each of Monday to
+Thursday.
+
+**The sum is on the page.** A new working under the mileage section, six
+numbered steps with this week's own figures in them, so the arithmetic can
+be followed by hand or held against a sheet worked out another way:
+
+| | | 375/6 |
+|---|---|---|
+| 1 | Miles the sub-fleet runs in the week | 193,305 |
+| 2 | Units the depot owns *(a setting)* | 75 |
+| 3 | Miles per unit in the week — 1 ÷ 2 | 2,577 |
+| 4 | Running days in a year — 52 weeks less Christmas Day and Boxing Day | 362 |
+| 5 | Weeks in a year — 4 ÷ 7 | 51.7143 |
+| 6 | **Miles per unit a year — 3 × 5** | **133,288** |
+
+with the per-diagrammed-unit figure beside it for comparison, and the check
+that the plan cannot need more diagrams than the depot owns units.
+
 ## Diagram analyser 1.5.0 — 8 September 2026 — the maths, the rules, and a new page
 
 The analyser carries its own version. This is the overhaul asked for on it.

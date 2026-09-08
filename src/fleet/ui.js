@@ -246,8 +246,11 @@ function fleetCard(k, rep){
   const who = el("div", "who");
   who.appendChild(el("h2", null, "Class " + rep.cfg.label));
   const meta = el("p", "meta");
+  /* Both counts, because they answer different questions: how many are out
+     on a given day, and how many diagrams the week holds altogether. */
   meta.innerHTML = "<b>" + rep.a.day.length + "</b> diagrams on a " +
-    LONG[F.dayName(rep.monday)] + " · home <b>" + rep.cfg.home + "</b> · week of " +
+    LONG[F.dayName(rep.monday)] + " · <b>" + rep.a.week.length +
+    "</b> over the week · home <b>" + rep.cfg.home + "</b> · week of " +
     new Date(rep.monday).toLocaleDateString("en-GB",
       {day: "numeric", month: "long", year: "numeric"});
   who.appendChild(meta);
@@ -369,7 +372,8 @@ function section(s){
     wrap.appendChild(el("p", "rowcount", "Nothing to list."));
   }
   if (s.extra) wrap.appendChild(more(s.extra.title, s.extra.head, s.extra.rows));
-  for (const d of s.detail || []) wrap.appendChild(more(d.title, d.head, d.rows));
+  for (const d of s.detail || [])
+    wrap.appendChild(more(d.title, d.head, d.rows, d.note));
   return wrap;
 }
 /* Place codes carry their meaning on a hover, so the tables can stay in the
@@ -414,9 +418,16 @@ function table(head, rows){
   tw.appendChild(t);
   return tw;
 }
-function more(title, head, rows){
+function more(title, head, rows, note){
   const d = el("details", "more");
   d.appendChild(el("summary", null, title));
+  /* A working needs a line saying what it is for before the numbers; the
+     other detail tables do not, so it is optional. */
+  if (note){
+    const p = el("p", "morenote");
+    p.innerHTML = note;
+    d.appendChild(p);
+  }
   d.appendChild(table(head, rows));
   return d;
 }

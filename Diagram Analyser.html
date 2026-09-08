@@ -435,7 +435,10 @@
    colours, header and drop zone; what follows is the report itself, which
    the berthing sheets have no equivalent of. */
 
-.wrap{max-width:960px}
+/* The berthing sheets' width. These cards carry wide tables - the mileage
+   working is nine columns on a five-sub-fleet fleet - so the analyser takes
+   the same room the shared stylesheet gives the books rather than the
+   narrower measure it used when it was one column of prose. */
 
 .sech{
   font-family:var(--mono); font-size:13px; letter-spacing:.16em;
@@ -641,6 +644,9 @@ details.setup>summary:focus-visible{outline:3px solid var(--steel); outline-offs
 details.setup .secn{margin:0 16px 14px; max-width:74ch}
 details.setup[open]>summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
 details.setup .depots{padding:0 16px}
+
+/* the line above a working, saying what it is for */
+.more .morenote{margin:10px 0 12px; font-size:13.5px; color:#3C464D; max-width:74ch}
 </style>
 </head>
 <body>
@@ -665,7 +671,7 @@ details.setup .depots{padding:0 16px}
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>1.5.0</b> · 8 September 2026</span>
+      <span class="ver">Version <b>1.6.0</b> · 8 September 2026</span>
     </div>
   </header>
 
@@ -781,7 +787,7 @@ details.setup .depots{padding:0 16px}
     <p class="small">Reads the diagram prints only — the Word documents the plan is
       published as. Everything is worked out in this page; no file is uploaded and
       nothing is sent anywhere.</p>
-    <p class="small">Version <b>1.5.0</b> &middot; 8 September 2026</p>
+    <p class="small">Version <b>1.6.0</b> &middot; 8 September 2026</p>
   </footer>
 </div>
 <script>
@@ -2962,10 +2968,44 @@ function analyse(all, fleet, cfg){
   const atHome = inHome;
   const roads = depotSet(c.repair, "roads");
 
-  /* one weekday, so the counts read as "on a typical Monday" */
+  /* The reference Monday, for the one headline count that is genuinely a
+     single day's ("101 diagrams on a Monday"). */
   const day = mine.filter(d => runsOn(d, monday)).map(roll);
-  const work = day.filter(d => !d.stabled);
-  const still = day.filter(d => d.stabled);
+
+  /* …and the WHOLE WEEK for the tables, because a Monday is three days in
+     seven of the plan. The FSX book is Monday to Thursday and the Friday,
+     Saturday and Sunday books are different diagrams entirely, so a
+     Monday-only table never showed them at all - a unit that only ever
+     comes home on a Saturday was missing from "arrivals home", and a stand
+     long enough to work on that only happens on a Sunday was missing from
+     the attendable list.
+
+     One row per diagram PER DAY CODE, which is not the same as one row per
+     diagram number. The number is an identity, not a day's work: in the
+     MAY26 books 322 of the 324 numbers are printed several times over -
+     AZ601 has an FSX version, an FO version, an SO version and a Sunday
+     one, four different days' work under one number. Keying on the number
+     alone folded all four into whichever was read first and lost the other
+     three, which is the very thing this was meant to fix.
+
+     What is NOT split is a day code that covers several days: an FSX
+     diagram does the same thing on each of Monday to Thursday, so it is one
+     row carrying all four - four identical rows would be four times the
+     page and no more answer. Each row says which days it runs, which is
+     what the Runs column has always shown. */
+  const inWeek = new Map();
+  for (const ms of weekFrom(monday)){
+    const nm = dayName(ms);
+    for (const d of mine){
+      if (!runsOn(d, ms)) continue;
+      const k = d.key + "|" + (d.days || "");
+      if (!inWeek.has(k)) inWeek.set(k, Object.assign(roll(d), {onDays: []}));
+      inWeek.get(k).onDays.push(nm);
+    }
+  }
+  const wk = Array.from(inWeek.values());
+  const work = wk.filter(d => !d.stabled);
+  const still = wk.filter(d => d.stabled);
 
   /* An arrival is the END of a diagram and nothing else. A unit that
      calls somewhere and goes out again the same day has not arrived - it
@@ -3082,7 +3122,7 @@ function analyse(all, fleet, cfg){
     runningDays: RUNNING_DAYS,
     miles, deliver, back, target,
     offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
-    places: places(day),
+    week: wk, places: places(wk),
     dupes, atHome, inHome, atRepair,
   };
 }
@@ -3593,6 +3633,53 @@ function build(all, fleet, cfg){
            "Per fleet unit a year", "Whole sub-fleet a year"],
     rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
     detail: [{
+      tab: "How the mileage is worked out",
+      title: "The sum, step by step — every figure above, in order",
+      note: `Nothing here is hidden in the code: these are the six steps, with ` +
+        `this week's own numbers in them, so the arithmetic can be checked by ` +
+        `hand or against a sheet that was worked out another way. Step 2 is the ` +
+        `only one the prints cannot supply — it is the fleet size, and it is a ` +
+        `setting.`,
+      head: ["Step", "What it is", "How it is got"]
+        .concat(M.rows.map(r => r.sub))
+        .concat(M.rows.length > 1 ? ["All " + c.label] : []),
+      rows: (() => {
+        const cols = M.rows.concat(M.rows.length > 1 ? [M.total] : []);
+        const n2 = v => v == null ? "—" : Math.round(v).toLocaleString("en-GB");
+        const line = (n, what, how, pick) =>
+          [n, what, how].concat(cols.map(pick));
+        return [
+          line(1, "Miles the sub-fleet runs in the week",
+               "Every diagram's Total miles, added over the seven days",
+               r => n2(r.weeklyTotal)),
+          line(2, "Units the depot owns",
+               "A setting — the prints never show a spare unit",
+               r => r.owned == null ? "— not set —" : r.owned),
+          line(3, "Miles per unit in the week",
+               "Step 1 ÷ step 2",
+               r => n2(r.weeklyPerOwned)),
+          line(4, "Running days in a year",
+               "52 weeks (364) less Christmas Day and Boxing Day",
+               () => a.runningDays),
+          line(5, "Weeks in a year",
+               "Step 4 ÷ 7",
+               () => (a.runningDays / 7).toFixed(4)),
+          line(6, "MILES PER UNIT A YEAR",
+               "Step 3 × step 5",
+               r => n2(r.annualPerOwned)),
+          line("—", "…and per unit a day", "Step 6 ÷ step 4",
+               r => n2(r.dailyPerOwned)),
+          line("—", "For comparison: per DIAGRAMMED unit a year",
+               "Step 1 ÷ the diagrams running each day, × step 5 — what a " +
+               "unit in traffic does, with no spare or exam float in it",
+               r => n2(r.annualPerUnit)),
+          line("—", "Diagrams the plan needs on its busiest day",
+               "Cannot exceed step 2 — if it does, the size is wrong or the " +
+               "prints label more than one sub-fleet the same way",
+               r => r.units),
+        ];
+      })(),
+    }, {
       tab: "Mileage by day",
       title: "Day by day, per sub-fleet",
       head: ["Sub-fleet", "Day", "Diagrams", "Standing all day", "Total miles",
@@ -3853,7 +3940,7 @@ function sheets(rep){
     name: "All diagrams",
     rows: [["Diagram", "Days", "Fleet", "From", "Until", "Starts at", "Starts",
             "Ends at", "Ends", "Legs", "Coupled every leg", "Splits", "Miles"]]
-      .concat(a.day.map(d => {
+      .concat(a.week.map(d => {
         const c = F.coupling(d), s = F.startsAt(d), e = F.endsAt(d);
         return [d.key, F.daysLabel(d.days), d.fleet, d.from, d.until,
                 s.loc, at(s.t), e.loc, at(e.t), c.legs,
@@ -4243,8 +4330,11 @@ function fleetCard(k, rep){
   const who = el("div", "who");
   who.appendChild(el("h2", null, "Class " + rep.cfg.label));
   const meta = el("p", "meta");
+  /* Both counts, because they answer different questions: how many are out
+     on a given day, and how many diagrams the week holds altogether. */
   meta.innerHTML = "<b>" + rep.a.day.length + "</b> diagrams on a " +
-    LONG[F.dayName(rep.monday)] + " · home <b>" + rep.cfg.home + "</b> · week of " +
+    LONG[F.dayName(rep.monday)] + " · <b>" + rep.a.week.length +
+    "</b> over the week · home <b>" + rep.cfg.home + "</b> · week of " +
     new Date(rep.monday).toLocaleDateString("en-GB",
       {day: "numeric", month: "long", year: "numeric"});
   who.appendChild(meta);
@@ -4366,7 +4456,8 @@ function section(s){
     wrap.appendChild(el("p", "rowcount", "Nothing to list."));
   }
   if (s.extra) wrap.appendChild(more(s.extra.title, s.extra.head, s.extra.rows));
-  for (const d of s.detail || []) wrap.appendChild(more(d.title, d.head, d.rows));
+  for (const d of s.detail || [])
+    wrap.appendChild(more(d.title, d.head, d.rows, d.note));
   return wrap;
 }
 /* Place codes carry their meaning on a hover, so the tables can stay in the
@@ -4411,9 +4502,16 @@ function table(head, rows){
   tw.appendChild(t);
   return tw;
 }
-function more(title, head, rows){
+function more(title, head, rows, note){
   const d = el("details", "more");
   d.appendChild(el("summary", null, title));
+  /* A working needs a line saying what it is for before the numbers; the
+     other detail tables do not, so it is optional. */
+  if (note){
+    const p = el("p", "morenote");
+    p.innerHTML = note;
+    d.appendChild(p);
+  }
   d.appendChild(table(head, rows));
   return d;
 }

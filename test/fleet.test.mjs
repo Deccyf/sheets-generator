@@ -94,13 +94,37 @@ test("a fleet is taken off the Fleet line, not off the diagram prefix", () => {
 
 const MONDAY = Date.UTC(2026, 7, 24);      // a Monday inside the validity
 
-test("only the diagrams in force on the day are counted", () => {
+test("the day count is one day; the tables are the whole week", () => {
   const a = F.analyse(DS, "375", { monday: MONDAY });
   /* Monday: the four FSX diagrams plus the Mondays-only one. Not Thursday's. */
   assert.deepEqual(arr(a.day.map(d => d.key)).sort(),
     ["XX101", "XX102", "XX103", "XX104", "XX106"]);
-  assert.equal(a.still.length, 1);
-  assert.equal(a.work.length, 4);
+  /* …but the tables are built off the WEEK, because a Monday is three days
+     in seven of the plan: the Thursday-only diagram is on the page now, and
+     a Friday, Saturday or Sunday book would be too. One row per diagram,
+     each carrying the days it runs — four identical rows for an FSX diagram
+     would be four times the page and no more answer. */
+  const wk = arr(a.week.map(d => d.key)).sort();
+  assert.ok(wk.indexOf("XX105") !== -1,
+    "the Thursday-only diagram is on the page: " + wk.join(" "));
+  assert.ok(wk.length > a.day.length, "the week is more than the Monday");
+  /* One row per diagram PER DAY CODE. A number is an identity, not a day's
+     work: in the real books 322 of 324 numbers are printed several times
+     over — an FSX version, an FO one, an SO one and a Sunday one — and
+     keying on the number alone folded all four into whichever was read
+     first. An FSX diagram is still ONE row for its four days, because it
+     does the same thing on each of them. */
+  const keyed = arr(a.week.map(d => d.key + "|" + d.days));
+  assert.equal(new Set(keyed).size, keyed.length,
+    "one row per diagram per day code");
+  const mon = a.week.find(d => d.key === "XX104");
+  assert.deepEqual(arr(mon.onDays), ["Mon"], "a Mondays-only diagram runs Mondays");
+  const thu = a.week.find(d => d.key === "XX105");
+  assert.deepEqual(arr(thu.onDays), ["Thu"], "and a Thursdays-only one Thursdays");
+  const fsx = a.week.find(d => d.key === "XX101");
+  assert.deepEqual(arr(fsx.onDays), ["Mon", "Tue", "Wed", "Thu"],
+    "and an FSX one runs Monday to Thursday");
+  assert.equal(a.still.length + a.work.length, a.week.length);
 });
 
 test("mileage is measured over a week, so a re-issue cannot count twice", () => {
@@ -422,8 +446,10 @@ test("the report answers every question and the workbook matches it", () => {
   /* Every question on screen is a tab, and the last one lists the lot. */
   assert.ok(names.includes("Restricted units"));
   assert.ok(names.includes("All diagrams"));
+  /* The last tab lists every diagram in the WEEK, not just the reference
+     Monday's — the Friday, Saturday and Sunday books are on it too. */
   assert.equal(sheets.find(s => s.name === "All diagrams").rows.length,
-               rep.a.day.length + 1);
+               rep.a.week.length + 1);
 });
 
 test("place codes are spelt out, and an unknown road is not guessed at", () => {

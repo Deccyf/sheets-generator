@@ -668,10 +668,44 @@ function analyse(all, fleet, cfg){
   const atHome = inHome;
   const roads = depotSet(c.repair, "roads");
 
-  /* one weekday, so the counts read as "on a typical Monday" */
+  /* The reference Monday, for the one headline count that is genuinely a
+     single day's ("101 diagrams on a Monday"). */
   const day = mine.filter(d => runsOn(d, monday)).map(roll);
-  const work = day.filter(d => !d.stabled);
-  const still = day.filter(d => d.stabled);
+
+  /* …and the WHOLE WEEK for the tables, because a Monday is three days in
+     seven of the plan. The FSX book is Monday to Thursday and the Friday,
+     Saturday and Sunday books are different diagrams entirely, so a
+     Monday-only table never showed them at all - a unit that only ever
+     comes home on a Saturday was missing from "arrivals home", and a stand
+     long enough to work on that only happens on a Sunday was missing from
+     the attendable list.
+
+     One row per diagram PER DAY CODE, which is not the same as one row per
+     diagram number. The number is an identity, not a day's work: in the
+     MAY26 books 322 of the 324 numbers are printed several times over -
+     AZ601 has an FSX version, an FO version, an SO version and a Sunday
+     one, four different days' work under one number. Keying on the number
+     alone folded all four into whichever was read first and lost the other
+     three, which is the very thing this was meant to fix.
+
+     What is NOT split is a day code that covers several days: an FSX
+     diagram does the same thing on each of Monday to Thursday, so it is one
+     row carrying all four - four identical rows would be four times the
+     page and no more answer. Each row says which days it runs, which is
+     what the Runs column has always shown. */
+  const inWeek = new Map();
+  for (const ms of weekFrom(monday)){
+    const nm = dayName(ms);
+    for (const d of mine){
+      if (!runsOn(d, ms)) continue;
+      const k = d.key + "|" + (d.days || "");
+      if (!inWeek.has(k)) inWeek.set(k, Object.assign(roll(d), {onDays: []}));
+      inWeek.get(k).onDays.push(nm);
+    }
+  }
+  const wk = Array.from(inWeek.values());
+  const work = wk.filter(d => !d.stabled);
+  const still = wk.filter(d => d.stabled);
 
   /* An arrival is the END of a diagram and nothing else. A unit that
      calls somewhere and goes out again the same day has not arrived - it
@@ -788,7 +822,7 @@ function analyse(all, fleet, cfg){
     runningDays: RUNNING_DAYS,
     miles, deliver, back, target,
     offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
-    places: places(day),
+    week: wk, places: places(wk),
     dupes, atHome, inHome, atRepair,
   };
 }

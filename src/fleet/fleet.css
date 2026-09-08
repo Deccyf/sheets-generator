@@ -2,7 +2,10 @@
    colours, header and drop zone; what follows is the report itself, which
    the berthing sheets have no equivalent of. */
 
-.wrap{max-width:960px}
+/* The berthing sheets' width. These cards carry wide tables - the mileage
+   working is nine columns on a five-sub-fleet fleet - so the analyser takes
+   the same room the shared stylesheet gives the books rather than the
+   narrower measure it used when it was one column of prose. */
 
 .sech{
   font-family:var(--mono); font-size:13px; letter-spacing:.16em;
@@ -208,3 +211,6 @@ details.setup>summary:focus-visible{outline:3px solid var(--steel); outline-offs
 details.setup .secn{margin:0 16px 14px; max-width:74ch}
 details.setup[open]>summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
 details.setup .depots{padding:0 16px}
+
+/* the line above a working, saying what it is for */
+.more .morenote{margin:10px 0 12px; font-size:13.5px; color:#3C464D; max-width:74ch}

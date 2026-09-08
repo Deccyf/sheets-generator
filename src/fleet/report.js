@@ -316,6 +316,53 @@ function build(all, fleet, cfg){
            "Per fleet unit a year", "Whole sub-fleet a year"],
     rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
     detail: [{
+      tab: "How the mileage is worked out",
+      title: "The sum, step by step — every figure above, in order",
+      note: `Nothing here is hidden in the code: these are the six steps, with ` +
+        `this week's own numbers in them, so the arithmetic can be checked by ` +
+        `hand or against a sheet that was worked out another way. Step 2 is the ` +
+        `only one the prints cannot supply — it is the fleet size, and it is a ` +
+        `setting.`,
+      head: ["Step", "What it is", "How it is got"]
+        .concat(M.rows.map(r => r.sub))
+        .concat(M.rows.length > 1 ? ["All " + c.label] : []),
+      rows: (() => {
+        const cols = M.rows.concat(M.rows.length > 1 ? [M.total] : []);
+        const n2 = v => v == null ? "—" : Math.round(v).toLocaleString("en-GB");
+        const line = (n, what, how, pick) =>
+          [n, what, how].concat(cols.map(pick));
+        return [
+          line(1, "Miles the sub-fleet runs in the week",
+               "Every diagram's Total miles, added over the seven days",
+               r => n2(r.weeklyTotal)),
+          line(2, "Units the depot owns",
+               "A setting — the prints never show a spare unit",
+               r => r.owned == null ? "— not set —" : r.owned),
+          line(3, "Miles per unit in the week",
+               "Step 1 ÷ step 2",
+               r => n2(r.weeklyPerOwned)),
+          line(4, "Running days in a year",
+               "52 weeks (364) less Christmas Day and Boxing Day",
+               () => a.runningDays),
+          line(5, "Weeks in a year",
+               "Step 4 ÷ 7",
+               () => (a.runningDays / 7).toFixed(4)),
+          line(6, "MILES PER UNIT A YEAR",
+               "Step 3 × step 5",
+               r => n2(r.annualPerOwned)),
+          line("—", "…and per unit a day", "Step 6 ÷ step 4",
+               r => n2(r.dailyPerOwned)),
+          line("—", "For comparison: per DIAGRAMMED unit a year",
+               "Step 1 ÷ the diagrams running each day, × step 5 — what a " +
+               "unit in traffic does, with no spare or exam float in it",
+               r => n2(r.annualPerUnit)),
+          line("—", "Diagrams the plan needs on its busiest day",
+               "Cannot exceed step 2 — if it does, the size is wrong or the " +
+               "prints label more than one sub-fleet the same way",
+               r => r.units),
+        ];
+      })(),
+    }, {
       tab: "Mileage by day",
       title: "Day by day, per sub-fleet",
       head: ["Sub-fleet", "Day", "Diagrams", "Standing all day", "Total miles",
@@ -576,7 +623,7 @@ function sheets(rep){
     name: "All diagrams",
     rows: [["Diagram", "Days", "Fleet", "From", "Until", "Starts at", "Starts",
             "Ends at", "Ends", "Legs", "Coupled every leg", "Splits", "Miles"]]
-      .concat(a.day.map(d => {
+      .concat(a.week.map(d => {
         const c = F.coupling(d), s = F.startsAt(d), e = F.endsAt(d);
         return [d.key, F.daysLabel(d.days), d.fleet, d.from, d.until,
                 s.loc, at(s.t), e.loc, at(e.t), c.legs,
