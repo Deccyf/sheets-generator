@@ -575,3 +575,46 @@ test("both tools read the prints through the one reader", () => {
   assert.equal(P.looksLikePrints(lines.join("\n")), true);
   assert.equal(P.looksLikePrints("nothing like a diagram print"), false);
 });
+
+test("mileage per unit is divided by the FLEET, not by the diagram book", () => {
+  /* The figure a maintenance planner works to is what a unit on the books
+     accrues, and every unit on the books takes its turn through the
+     diagrams — including the spares and the ones on exam, which no diagram
+     print ever mentions. Dividing by the diagrams in force instead made
+     every figure too high by the float: the 375/6 came out at 148,000 miles
+     a year against 134,000, which is what the depot's own sheets disagreed
+     with. */
+  const one = (n, hc) => [
+    "Diagram:\tZZ\t" + n + "\tFSX", "Fleet:\t375/6",
+    "From:\t01/06/2026\tUntil:\t31/12/2026",
+    "\t\tHome Dep\t\t05.00\t" + hc + "\t\t0.0\t",
+    "\t\tFar Stn\t09.00\t\t\t\t100.0\t",
+    "Total miles:\t100.0",
+  ];
+  const ds = FP.parsePrints(one(801, "5Z01").concat(one(802, "5Z02")));
+  assert.equal(ds.length, 2, "two diagrams of 100 miles each");
+  const nosize = F.mileage(ds, "375", MONDAY, {});
+  const sized = F.mileage(ds, "375", MONDAY, { "375/6": 4 });
+  const r0 = nosize.rows[0], r1 = sized.rows[0];
+  assert.equal(r0.units, 2, "the plan needs two diagrams");
+  assert.equal(r0.owned, null, "with no size set the fleet is unknown");
+  assert.equal(r0.annualPerOwned, null, "and there is no per-fleet figure to give");
+  assert.equal(r1.owned, 4, "the depot owns four of them");
+  // 200 miles a day over four units is half what it is over two
+  assert.ok(Math.abs(r1.annualPerOwned - r0.annualPerUnit / 2) < 1e-6,
+    "four units share what two diagrams run: " + r1.annualPerOwned +
+    " against " + r0.annualPerUnit);
+  // the per-diagram figure is still there, because both are worth having
+  assert.equal(r1.annualPerUnit, r0.annualPerUnit, "the traffic figure is unchanged");
+  /* A plan can never need more diagrams than the depot owns units. Where it
+     seems to, the size is wrong or the print's label covers more than one
+     sub-fleet — which is how the 465s were caught: the prints call every
+     one of them 465/9, and the busiest day needs 97 of those diagrams. */
+  assert.equal(r1.over, false, "four units cover two diagrams");
+  assert.equal(F.mileage(ds, "375", MONDAY, { "375/6": 1 }).rows[0].over, true,
+    "one unit cannot work two diagrams at once, and the page says so");
+  // the depot's own figures ship as the defaults, keyed by the print's label
+  assert.equal(F.FLEET_SIZES["375/6"], 75, "the 375/6/7/8 group, 75 between them");
+  assert.equal(F.FLEET_SIZES["465/9"], 119,
+    "every 465 diagram is labelled /9: 94 of the /0 and /1 plus 25 of the /9");
+});

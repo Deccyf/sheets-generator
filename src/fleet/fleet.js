@@ -223,20 +223,49 @@ function fleetOf(d){
    not something the prints state, so they are settings the tool carries
    and the user can change - a fleet moving depot must not need a new
    version of this file. */
-/* `sizes` is how many units the depot OWNS of each sub-fleet, which the
-   prints cannot say - a unit spare all week never appears in them - and
-   which the mileage per unit has to be divided by. Empty here on purpose:
-   a wrong default would read as fact and quietly skew every figure, so
-   until the depot fills them in the page shows the per-diagram figure and
-   says that is what it is. */
+/* `sizes` is how many units the depot OWNS of each sub-fleet - what the
+   mileage per unit has to be divided by, and the one number the prints
+   cannot supply, because a unit standing spare all week never appears in
+   one. These are the depot's own figures, and they are a SETTING like the
+   depots above: a fleet that gains or loses units must not need a new
+   version of this file.
+
+   The keys are the strings the prints use on their Fleet line, which are
+   not quite the strings the depot's own list uses:
+
+     375/6   is the depot's 375/6/7/8 group, 75 units between them
+     465/9   is EVERY 465 diagram. The depot owns 94 of the /0 and /1 and
+             25 of the /9, and the prints label all of their work 465/9 -
+             which has to be so, because the busiest day needs 97 of those
+             diagrams and 25 units cannot work 97. So the size here is the
+             119 of them, and the sanity check below is what found it.
+
+   Every other sub-fleet maps one to one. The check that the busiest day's
+   diagram count fits inside the fleet holds for all nine once it does:
+   9 of 10, 68 of 75, 24 of 27, 30 of 36, 32 of 36, 25 of 29, 97 of 119,
+   11 of 16, 26 of 30. */
+const FLEET_SIZES = {
+  "375/3": 10, "375/6": 75, "375/9": 27,
+  "376/0": 36, "377/5": 36, "395/0": 29,
+  "465/9": 119, "466/0": 16, "707/0": 30,
+};
+const sizesFor = subs => {
+  const out = {};
+  for (const k of subs) if (FLEET_SIZES[k] != null) out[k] = FLEET_SIZES[k];
+  return out;
+};
 const FLEETS = {
-  "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"], sizes: {}},
+  "375": {label: "375", home: "Ramsgate", repair: ["Ramsgate"],
+          sizes: sizesFor(["375/3", "375/6", "375/9"])},
   "376": {label: "376", home: "Gillingham",
-          repair: ["Gillingham", "Ramsgate", "Slade Green"], sizes: {}},
-  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"], sizes: {}},
-  "395": {label: "395", home: "Ashford", repair: ["Ashford"], sizes: {}},
-  "Metro": {label: "465/466/707", home: "Slade Green",
-            repair: ["Slade Green"], sizes: {}},
+          repair: ["Gillingham", "Ramsgate", "Slade Green"],
+          sizes: sizesFor(["376/0"])},
+  "377": {label: "377", home: "Selhurst", repair: ["Selhurst"],
+          sizes: sizesFor(["377/5"])},
+  "395": {label: "395", home: "Ashford", repair: ["Ashford"],
+          sizes: sizesFor(["395/0"])},
+  "Metro": {label: "465/466/707", home: "Slade Green", repair: ["Slade Green"],
+            sizes: sizesFor(["465/9", "466/0", "707/0"])},
 };
 
 function depotSet(names, which){
@@ -592,7 +621,13 @@ function mileage(all, fleet, monday, sizes){
        that larger number where the depot has told the tool what it is. */
     const units = perDay.reduce((m, x) => Math.max(m, x.diagrams), 0);
     const weeklyPerOwned = owned ? weeklyTotal / owned : null;
-    return {sub: label, perDay, units, owned,
+    /* A plan can never need more diagrams than the depot owns units. Where
+       it seems to, the size is wrong or the print's label covers more than
+       one sub-fleet - which is exactly how the 465s were caught, the prints
+       calling every one of them 465/9. Said out loud rather than divided
+       by a number that cannot be right. */
+    const over = owned != null && units > owned;
+    return {sub: label, perDay, units, owned, over,
             dailyPerUnit: weeklyPerUnit / 7, weeklyPerUnit,
             annualPerUnit: weeklyPerUnit * WEEKS,
             dailyPerOwned: owned ? weeklyPerOwned / 7 : null,
@@ -929,6 +964,7 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               coupling, moCapable, splitsOf, partings, formOf,
               dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
+              FLEET_SIZES,
               balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);
