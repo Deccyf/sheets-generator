@@ -27,7 +27,54 @@
   color:var(--steel)}
 .dep .derived{color:var(--warn); font-size:12px; margin:8px 0 0}
 
-/* ---------- fleet tabs ---------- */
+/* ---------- the fleet-size fields ---------- */
+.dep .sizes{display:grid; gap:6px 10px; margin-top:4px;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.dep .sizes label{display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin:0; font-family:var(--mono); font-size:12px; color:var(--steel)}
+.dep .sizes input{width:5.5em; font:inherit; font-size:13px; text-align:right;
+  padding:4px 6px; border:1px solid var(--rule); background:#fff; color:var(--steel)}
+
+/* ---------- a fleet card ---------- */
+/* The berthing sheets' road card, the same furniture: the unit drawn on it,
+   what it is, and its questions on tabs underneath. */
+/* One card across, always. The berthing sheets put two books side by side
+   on a wide screen because a berthing page is narrow; these carry wide
+   tables - seven columns on the mileage one - and two up cuts them off. */
+.roads{display:grid; gap:18px; margin:26px 0 0; grid-template-columns:minmax(0,1fr)}
+@media (min-width:1100px){ .roads{grid-template-columns:minmax(0,1fr)} }
+.road{border:1px solid var(--rule); background:#fff}
+.road-head{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:14px 18px; border-bottom:1px solid var(--rule); background:var(--paper)}
+.road-head .sprite{flex:0 0 132px; line-height:0}
+.road-head .sprite svg{width:132px; height:32px}
+.road-head .who{flex:1 1 240px; min-width:0}
+.road-head h2{margin:0; font-family:var(--mono); font-size:17px; letter-spacing:.02em}
+.road-head .meta{margin:3px 0 0; font-size:13px; color:var(--chalk)}
+.road-head .meta b{color:var(--steel); font-weight:600}
+.road-head .acts{display:flex; gap:8px; flex-wrap:wrap}
+.road .cardwarn{
+  margin:0; padding:11px 18px; font-size:13.5px; color:#7A2E12;
+  background:#FDF1E7; border-bottom:1px solid #E9C9AE;
+}
+.road .panel{padding:0}
+.road .tabs{display:flex; flex-wrap:wrap; gap:0; border-bottom:1px solid var(--rule);
+  background:var(--paper)}
+.road .tab{
+  font:inherit; font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  padding:9px 14px; border:0; border-right:1px solid var(--rule);
+  background:transparent; color:var(--chalk); cursor:pointer;
+}
+.road .tab:hover{color:var(--steel); background:#fff}
+.road .tab[aria-selected="true"]{background:#fff; color:var(--steel); font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--flag)}
+.road .view{padding:4px 18px 18px}
+/* A wide table scrolls inside its own box rather than pushing the card out
+   of the page. */
+.road .view table.rep{display:block; overflow-x:auto; max-width:100%}
+.road .view .sech{margin-top:20px}
+
+/* ---------- fleet tabs (kept for the settings panel's own use) ---------- */
 .fleetbar{display:flex; flex-wrap:wrap; gap:6px; margin:34px 0 0}
 .ftab{
   font:inherit; font-family:var(--mono); font-size:14px; letter-spacing:.04em;

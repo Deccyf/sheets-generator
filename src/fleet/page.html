@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagram analyser — what the prints say about looking after the units</title>
+<title>Diagram analyser</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2324346E'/%3E%3Crect x='5' y='20' width='4' height='6' fill='%23F5C400'/%3E%3Crect x='12' y='14' width='4' height='12' fill='%239DACD9'/%3E%3Crect x='19' y='9' width='4' height='17' fill='%239DACD9'/%3E%3Crect x='26' y='5' width='3' height='21' fill='%23F5C400'/%3E%3C/svg%3E">
 <style>
 {{CSS}}
 </style>
@@ -18,54 +19,128 @@
     prints. Right-click the file, choose Open with, and pick Edge, Chrome or
     Firefox.</p>
 
-  <header>
-    <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
-    <h1>Diagram analyser <span class="sub">what the prints say about looking after the units</span></h1>
-    <p class="lede">Drop the diagram print books on the road below — all of them at
-      once — and the questions maintenance planning keeps asking come back answered:
-      when each fleet comes home, what stands still long enough to be worked on,
-      what can carry a restricted unit, and where a diagram comes apart.
-      Nothing leaves this computer.</p>
+  <header class="mast">
+    <div class="mast-text">
+      <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
+      <h1>Diagram analyser</h1>
+      <p class="lede">Drop the whole set of diagram prints below and the questions
+        maintenance planning keeps asking come back answered: when each fleet comes
+        home, what stands still long enough to be worked on, what a restricted unit
+        can take, where diagrams come apart, and what a unit actually runs in a year.
+        Nothing leaves this computer.</p>
+    </div>
+    <div class="lineup" id="lineup" aria-hidden="true"></div>
+    <div class="mast-meta">
+      <span class="ver">Version <b>{{VERSION}}</b> · {{RELEASED}}</span>
+    </div>
   </header>
 
-  <button type="button" class="berth" id="zone">
-    <span class="berth-inner">
-      <span class="buffer"></span>
-      <span class="berth-txt">
-        <strong>Drop the diagram prints here</strong>
-        <span id="zonehint">The Word documents straight off the planning system — FSX,
-          FO, SO and Sun together. A text or CSV save of the same works too.</span>
-      </span>
-    </span>
-  </button>
-  <input type="file" id="file" multiple hidden
-         accept=".doc,.docx,.txt,.csv,application/msword">
-  <div class="statusrow">
-    <p class="status" id="status" role="status" aria-live="polite"></p>
-    <button type="button" class="btn ghost tight" id="startover" hidden
-      title="Clear the prints and the report. Your depot settings are kept.">
-      Start over</button>
-  </div>
+  <details class="howto" id="howto">
+    <summary>How to use this page</summary>
+    <div class="howto-body">
+      <h2>Quick start</h2>
+      <ol class="steps">
+        <li><strong>Get the whole set of prints.</strong> The Word documents the
+          plan is published as — the Monday-to-Thursday book (FSX) and the Friday,
+          Saturday and Sunday ones. Drop them <em>together</em>: each covers days
+          the others do not, and the answers below are worked out over a whole
+          week.</li>
+        <li><strong>Drop them on the road.</strong> Or click it to browse. A text
+          or CSV save of the same document works just as well — the page reads
+          what is inside the file, not what it is called.</li>
+        <li><strong>Check the fleet sizes.</strong> How many units the depot owns
+          is the one thing the prints cannot say, and every mileage per unit is
+          divided by it. They are under <em>Fleets &amp; depots</em> below.</li>
+        <li><strong>Read a fleet's card.</strong> One per fleet, each with its
+          questions on tabs. <em>Save this fleet as a spreadsheet</em> puts the
+          same answers in a workbook, a tab per question.</li>
+      </ol>
 
-  <details id="setup" class="setup" hidden>
-    <summary><b>Depots</b> — which depot owns each fleet, and where it can be
-      repaired</summary>
-    <p class="secn">These are your arrangements, not something the prints state,
-      so set them here rather than waiting on a new version of this file. They
-      are remembered on this computer, and everything below redraws as soon as
-      you change one.</p>
-    <div id="depots" class="depots"></div>
-    <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
-      the depots back to the defaults</button></p>
+      <h2>What it answers</h2>
+      <dl class="faq">
+        <dt>When does the fleet come home?</dt>
+        <dd>Every diagram that <em>ends</em> at the home depot, and how many are
+          in before eight in the evening — the ones a late shift can start on.</dd>
+        <dt>What can be worked on, and where?</dt>
+        <dd>Every place a unit stands still for two hours or more during the day,
+          which is long enough for somebody to get to it.</dd>
+        <dt>What can carry a restricted unit?</dt>
+        <dd>A restricted unit may never run on its own, so it can only take a
+          diagram that is coupled on every leg. Also where one cannot be
+          contained — a place with no such diagram out of it.</dd>
+        <dt>Where do diagrams come apart?</dt>
+        <dd>Read off the formation column, the same way the berthing sheets read
+          it, and split into the ones that part on the working they leave on and
+          the ones that go out together and come apart later.</dd>
+        <dt>What does a unit run?</dt>
+        <dd>Per day, per week and per year, by sub-fleet — divided by the units
+          the depot owns, not by the diagrams, because the spares and the ones on
+          exam take their turn through the same work.</dd>
+      </dl>
+
+      <h2>If something looks wrong</h2>
+      <dl class="faq">
+        <dt>A fleet has no card</dt>
+        <dd>No diagram in the prints carries that Fleet line. Check the right
+          books were dropped — the fleet may be in a document that was left out.</dd>
+        <dt>“The plan needs more diagrams than the fleet has units”</dt>
+        <dd>The fleet size is wrong, or the prints label more than one sub-fleet
+          the same way. Both are fixed under Fleets &amp; depots.</dd>
+        <dt>A place shows as a raw code</dt>
+        <dd>It has no name in the tool yet. It is listed under
+          <em>What the place codes mean</em>, at the foot of each card, and a
+          guess would read as fact — so it is left as it came.</dd>
+      </dl>
+    </div>
   </details>
 
+  <section class="platform">
+    <p class="whatfor">Needs the <strong>whole set</strong> of prints for the
+      timetable — FSX, FO, SO and Sun together. Each covers days the others do
+      not, and every table below is worked out across all seven.</p>
+
+    <button type="button" class="berth" id="zone">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the diagram prints here</strong>
+          <span id="zonehint">.doc or .docx straight off the planning system ·
+            all of them at once · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="file" multiple hidden
+           accept=".doc,.docx,.txt,.csv,application/msword">
+
+    <div class="board">
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="board-acts" id="allbar" hidden>
+        <button type="button" class="btn" id="saveall">Save every fleet (.zip)</button>
+        <button type="button" class="btn ghost" id="startover">Start over</button>
+      </div>
+    </div>
+
+    <details id="setup" class="setup" hidden>
+      <summary><b>Fleets &amp; depots</b> — how many units each sub-fleet has,
+        which depot owns it, and where it can be repaired</summary>
+      <p class="secn">These are your arrangements, not something the prints
+        state, so they are set here rather than waiting on a new version of this
+        file. They are remembered on this computer, and every card redraws as
+        soon as you change one.</p>
+      <p class="secn"><b>Fleet size</b> is the one figure the prints cannot
+        supply — a unit standing spare all week never appears in one — and every
+        mileage per unit is divided by it. The numbers that ship are the depot's
+        own, keyed to the labels the prints use: <code>375/6</code> is the
+        375/6/7/8 group, and <code>465/9</code> is every 465 diagram, because
+        that is how the prints label them.</p>
+      <div id="depots" class="depots"></div>
+      <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
+        the fleets and depots back to the defaults</button></p>
+    </details>
+  </section>
+
   <section id="out" hidden>
-    <div class="fleetbar" id="fleetbar" role="tablist"></div>
-    <div id="report"></div>
-    <p class="actions">
-      <button type="button" class="btn" id="save">Save this fleet as a spreadsheet</button>
-      <button type="button" class="btn ghost" id="saveall">Save every fleet</button>
-    </p>
+    <div id="roads" class="roads"></div>
   </section>
 
   <footer>

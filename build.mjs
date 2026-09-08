@@ -64,6 +64,7 @@ const modules = [
   "src/hs.js",
   "src/engine.js",
   "src/genius.js",
+  "src/sprites.js",
   "src/ui.js",
 ];
 
@@ -88,6 +89,7 @@ const fleetModules = [
      keeping a second table that would drift. */
   "src/data.js",
   "src/prints-read.js",
+  "src/sprites.js",
   "src/fleet/prints.js",
   "src/fleet/fleet.js",
   "src/fleet/report.js",

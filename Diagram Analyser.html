@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagram analyser — what the prints say about looking after the units</title>
+<title>Diagram analyser</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2324346E'/%3E%3Crect x='5' y='20' width='4' height='6' fill='%23F5C400'/%3E%3Crect x='12' y='14' width='4' height='12' fill='%239DACD9'/%3E%3Crect x='19' y='9' width='4' height='17' fill='%239DACD9'/%3E%3Crect x='26' y='5' width='3' height='21' fill='%23F5C400'/%3E%3C/svg%3E">
 <style>
   :root{
     /* the apron: a concrete grey with a little green in it, never a flat mid-grey */
@@ -459,7 +460,54 @@
   color:var(--steel)}
 .dep .derived{color:var(--warn); font-size:12px; margin:8px 0 0}
 
-/* ---------- fleet tabs ---------- */
+/* ---------- the fleet-size fields ---------- */
+.dep .sizes{display:grid; gap:6px 10px; margin-top:4px;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.dep .sizes label{display:flex; align-items:center; justify-content:space-between;
+  gap:8px; margin:0; font-family:var(--mono); font-size:12px; color:var(--steel)}
+.dep .sizes input{width:5.5em; font:inherit; font-size:13px; text-align:right;
+  padding:4px 6px; border:1px solid var(--rule); background:#fff; color:var(--steel)}
+
+/* ---------- a fleet card ---------- */
+/* The berthing sheets' road card, the same furniture: the unit drawn on it,
+   what it is, and its questions on tabs underneath. */
+/* One card across, always. The berthing sheets put two books side by side
+   on a wide screen because a berthing page is narrow; these carry wide
+   tables - seven columns on the mileage one - and two up cuts them off. */
+.roads{display:grid; gap:18px; margin:26px 0 0; grid-template-columns:minmax(0,1fr)}
+@media (min-width:1100px){ .roads{grid-template-columns:minmax(0,1fr)} }
+.road{border:1px solid var(--rule); background:#fff}
+.road-head{display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:14px 18px; border-bottom:1px solid var(--rule); background:var(--paper)}
+.road-head .sprite{flex:0 0 132px; line-height:0}
+.road-head .sprite svg{width:132px; height:32px}
+.road-head .who{flex:1 1 240px; min-width:0}
+.road-head h2{margin:0; font-family:var(--mono); font-size:17px; letter-spacing:.02em}
+.road-head .meta{margin:3px 0 0; font-size:13px; color:var(--chalk)}
+.road-head .meta b{color:var(--steel); font-weight:600}
+.road-head .acts{display:flex; gap:8px; flex-wrap:wrap}
+.road .cardwarn{
+  margin:0; padding:11px 18px; font-size:13.5px; color:#7A2E12;
+  background:#FDF1E7; border-bottom:1px solid #E9C9AE;
+}
+.road .panel{padding:0}
+.road .tabs{display:flex; flex-wrap:wrap; gap:0; border-bottom:1px solid var(--rule);
+  background:var(--paper)}
+.road .tab{
+  font:inherit; font-family:var(--mono); font-size:12.5px; letter-spacing:.03em;
+  padding:9px 14px; border:0; border-right:1px solid var(--rule);
+  background:transparent; color:var(--chalk); cursor:pointer;
+}
+.road .tab:hover{color:var(--steel); background:#fff}
+.road .tab[aria-selected="true"]{background:#fff; color:var(--steel); font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--flag)}
+.road .view{padding:4px 18px 18px}
+/* A wide table scrolls inside its own box rather than pushing the card out
+   of the page. */
+.road .view table.rep{display:block; overflow-x:auto; max-width:100%}
+.road .view .sech{margin-top:20px}
+
+/* ---------- fleet tabs (kept for the settings panel's own use) ---------- */
 .fleetbar{display:flex; flex-wrap:wrap; gap:6px; margin:34px 0 0}
 .ftab{
   font:inherit; font-family:var(--mono); font-size:14px; letter-spacing:.04em;
@@ -605,54 +653,128 @@ details.setup .depots{padding:0 16px}
     prints. Right-click the file, choose Open with, and pick Edge, Chrome or
     Firefox.</p>
 
-  <header>
-    <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
-    <h1>Diagram analyser <span class="sub">what the prints say about looking after the units</span></h1>
-    <p class="lede">Drop the diagram print books on the road below — all of them at
-      once — and the questions maintenance planning keeps asking come back answered:
-      when each fleet comes home, what stands still long enough to be worked on,
-      what can carry a restricted unit, and where a diagram comes apart.
-      Nothing leaves this computer.</p>
+  <header class="mast">
+    <div class="mast-text">
+      <p class="eyebrow">Fleet &amp; depot · diagram prints</p>
+      <h1>Diagram analyser</h1>
+      <p class="lede">Drop the whole set of diagram prints below and the questions
+        maintenance planning keeps asking come back answered: when each fleet comes
+        home, what stands still long enough to be worked on, what a restricted unit
+        can take, where diagrams come apart, and what a unit actually runs in a year.
+        Nothing leaves this computer.</p>
+    </div>
+    <div class="lineup" id="lineup" aria-hidden="true"></div>
+    <div class="mast-meta">
+      <span class="ver">Version <b>1.5.0</b> · 8 September 2026</span>
+    </div>
   </header>
 
-  <button type="button" class="berth" id="zone">
-    <span class="berth-inner">
-      <span class="buffer"></span>
-      <span class="berth-txt">
-        <strong>Drop the diagram prints here</strong>
-        <span id="zonehint">The Word documents straight off the planning system — FSX,
-          FO, SO and Sun together. A text or CSV save of the same works too.</span>
-      </span>
-    </span>
-  </button>
-  <input type="file" id="file" multiple hidden
-         accept=".doc,.docx,.txt,.csv,application/msword">
-  <div class="statusrow">
-    <p class="status" id="status" role="status" aria-live="polite"></p>
-    <button type="button" class="btn ghost tight" id="startover" hidden
-      title="Clear the prints and the report. Your depot settings are kept.">
-      Start over</button>
-  </div>
+  <details class="howto" id="howto">
+    <summary>How to use this page</summary>
+    <div class="howto-body">
+      <h2>Quick start</h2>
+      <ol class="steps">
+        <li><strong>Get the whole set of prints.</strong> The Word documents the
+          plan is published as — the Monday-to-Thursday book (FSX) and the Friday,
+          Saturday and Sunday ones. Drop them <em>together</em>: each covers days
+          the others do not, and the answers below are worked out over a whole
+          week.</li>
+        <li><strong>Drop them on the road.</strong> Or click it to browse. A text
+          or CSV save of the same document works just as well — the page reads
+          what is inside the file, not what it is called.</li>
+        <li><strong>Check the fleet sizes.</strong> How many units the depot owns
+          is the one thing the prints cannot say, and every mileage per unit is
+          divided by it. They are under <em>Fleets &amp; depots</em> below.</li>
+        <li><strong>Read a fleet's card.</strong> One per fleet, each with its
+          questions on tabs. <em>Save this fleet as a spreadsheet</em> puts the
+          same answers in a workbook, a tab per question.</li>
+      </ol>
 
-  <details id="setup" class="setup" hidden>
-    <summary><b>Depots</b> — which depot owns each fleet, and where it can be
-      repaired</summary>
-    <p class="secn">These are your arrangements, not something the prints state,
-      so set them here rather than waiting on a new version of this file. They
-      are remembered on this computer, and everything below redraws as soon as
-      you change one.</p>
-    <div id="depots" class="depots"></div>
-    <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
-      the depots back to the defaults</button></p>
+      <h2>What it answers</h2>
+      <dl class="faq">
+        <dt>When does the fleet come home?</dt>
+        <dd>Every diagram that <em>ends</em> at the home depot, and how many are
+          in before eight in the evening — the ones a late shift can start on.</dd>
+        <dt>What can be worked on, and where?</dt>
+        <dd>Every place a unit stands still for two hours or more during the day,
+          which is long enough for somebody to get to it.</dd>
+        <dt>What can carry a restricted unit?</dt>
+        <dd>A restricted unit may never run on its own, so it can only take a
+          diagram that is coupled on every leg. Also where one cannot be
+          contained — a place with no such diagram out of it.</dd>
+        <dt>Where do diagrams come apart?</dt>
+        <dd>Read off the formation column, the same way the berthing sheets read
+          it, and split into the ones that part on the working they leave on and
+          the ones that go out together and come apart later.</dd>
+        <dt>What does a unit run?</dt>
+        <dd>Per day, per week and per year, by sub-fleet — divided by the units
+          the depot owns, not by the diagrams, because the spares and the ones on
+          exam take their turn through the same work.</dd>
+      </dl>
+
+      <h2>If something looks wrong</h2>
+      <dl class="faq">
+        <dt>A fleet has no card</dt>
+        <dd>No diagram in the prints carries that Fleet line. Check the right
+          books were dropped — the fleet may be in a document that was left out.</dd>
+        <dt>“The plan needs more diagrams than the fleet has units”</dt>
+        <dd>The fleet size is wrong, or the prints label more than one sub-fleet
+          the same way. Both are fixed under Fleets &amp; depots.</dd>
+        <dt>A place shows as a raw code</dt>
+        <dd>It has no name in the tool yet. It is listed under
+          <em>What the place codes mean</em>, at the foot of each card, and a
+          guess would read as fact — so it is left as it came.</dd>
+      </dl>
+    </div>
   </details>
 
+  <section class="platform">
+    <p class="whatfor">Needs the <strong>whole set</strong> of prints for the
+      timetable — FSX, FO, SO and Sun together. Each covers days the others do
+      not, and every table below is worked out across all seven.</p>
+
+    <button type="button" class="berth" id="zone">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the diagram prints here</strong>
+          <span id="zonehint">.doc or .docx straight off the planning system ·
+            all of them at once · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="file" multiple hidden
+           accept=".doc,.docx,.txt,.csv,application/msword">
+
+    <div class="board">
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div class="board-acts" id="allbar" hidden>
+        <button type="button" class="btn" id="saveall">Save every fleet (.zip)</button>
+        <button type="button" class="btn ghost" id="startover">Start over</button>
+      </div>
+    </div>
+
+    <details id="setup" class="setup" hidden>
+      <summary><b>Fleets &amp; depots</b> — how many units each sub-fleet has,
+        which depot owns it, and where it can be repaired</summary>
+      <p class="secn">These are your arrangements, not something the prints
+        state, so they are set here rather than waiting on a new version of this
+        file. They are remembered on this computer, and every card redraws as
+        soon as you change one.</p>
+      <p class="secn"><b>Fleet size</b> is the one figure the prints cannot
+        supply — a unit standing spare all week never appears in one — and every
+        mileage per unit is divided by it. The numbers that ship are the depot's
+        own, keyed to the labels the prints use: <code>375/6</code> is the
+        375/6/7/8 group, and <code>465/9</code> is every 465 diagram, because
+        that is how the prints label them.</p>
+      <div id="depots" class="depots"></div>
+      <p class="secn"><button type="button" class="btn ghost tight" id="resetcfg">Put
+        the fleets and depots back to the defaults</button></p>
+    </details>
+  </section>
+
   <section id="out" hidden>
-    <div class="fleetbar" id="fleetbar" role="tablist"></div>
-    <div id="report"></div>
-    <p class="actions">
-      <button type="button" class="btn" id="save">Save this fleet as a spreadsheet</button>
-      <button type="button" class="btn ghost" id="saveall">Save every fleet</button>
-    </p>
+    <div id="roads" class="roads"></div>
   </section>
 
   <footer>
@@ -1940,6 +2062,119 @@ root.SHEETS_PRINTS = {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
 <script>
+/* SHEETS_SPRITES — the unit drawings the two tools letter their pages with.
+
+   Both the berthing sheets and the diagram analyser show the fleet at the
+   top of the page, and a second copy of six kilobytes of SVG would drift
+   from the first the moment one of them was corrected. So they live here
+   and both builds include this file.
+
+   One <svg> per class, drawn to the same 132x32 box so a row of them lines
+   up on the rail. Nothing here knows anything about either page: it is
+   handed a class and gives back markup. */
+"use strict";
+const SHEETS_SPRITES = (() => {
+function sprite(cls) {
+  const wheels =
+    '<circle cx="20" cy="27" r="3" fill="#23282C"/>' +
+    '<circle cx="32" cy="27" r="3" fill="#23282C"/>' +
+    '<circle cx="100" cy="27" r="3" fill="#23282C"/>' +
+    '<circle cx="112" cy="27" r="3" fill="#23282C"/>';
+  const rail = '<rect x="0" y="30" width="132" height="1.2" fill="#5A6169"/>';
+  if (cls === "395") {
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 395 Javelin">' +
+      '<path d="M4 6 a3 3 0 0 1 3-3 h103 l18 15 v5 a1.5 1.5 0 0 1-1.5 1.5 h-119.5 a3 3 0 0 1-3-3 z" fill="#26356B" stroke="#8FA0CE" stroke-width="0.9"/>' +
+      '<path d="M113 3 l15 15 v4.6 a1.5 1.5 0 0 1-1.5 1.5 h-6.5 l-16-21 z" fill="#F5C400"/>' +
+      '<rect x="10" y="8" width="92" height="5.4" rx="1.4" fill="#8FA0CE"/>' +
+      '<rect x="4" y="19" width="110" height="2.4" fill="#E8EAF2"/>' +
+      '<rect x="46" y="7" width="5" height="14" fill="#1B2751"/>' +
+      '<rect x="78" y="7" width="5" height="14" fill="#1B2751"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "377") {
+    // 377 Electrostar in Southern's white and green, as the 377/5s run here
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 377 Electrostar">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+      '<path d="M4.5 17.5 h113.5 l6 4.2 v1.3 a3 3 0 0 1-3 3 h-116.5 a4 4 0 0 1-4-4 z" fill="#2F8A4C"/>' +
+      '<rect x="4.5" y="16.2" width="113" height="1.6" fill="#8CCB9B"/>' +
+      '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
+      '<rect x="4" y="6" width="112" height="2.4" fill="#C8CBC4"/>' +
+      '<rect x="10" y="9.6" width="102" height="6" rx="1.6" fill="#3A4348"/>' +
+      '<rect x="40" y="9" width="8" height="15" fill="#5FAF7A"/>' +
+      '<rect x="88" y="9" width="8" height="15" fill="#5FAF7A"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "376") {
+    // 376 metro Electrostar: the flatter cab, a lighter window band, doors everywhere
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 376 Electrostar">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h114 l6 4 v13 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
+      '<path d="M120 4 l6 4 v13 a3 3 0 0 1-3 3 h-3 v-20 z" fill="#FFD335"/>' +
+      '<rect x="4" y="6" width="116" height="2.6" fill="#18244F"/>' +
+      '<rect x="10" y="10" width="108" height="6.4" rx="1.6" fill="#B3C0E6"/>' +
+      '<rect x="26" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="50" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="74" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      '<rect x="98" y="9" width="7" height="15" fill="#3D4F94"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "466") {
+    // 466 Networker: the two-car, so a shorter body than the 465
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 466 Networker">' +
+      '<path d="M18 8 a4 4 0 0 1 4-4 h98 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-103 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+      '<path d="M120 4 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-7 v-21 z" fill="#FFD335"/>' +
+      '<rect x="18" y="6" width="100" height="2.6" fill="#C8CBC4"/>' +
+      '<rect x="24" y="10" width="90" height="6" rx="1.6" fill="#3A4348"/>' +
+      '<rect x="44" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="54" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="84" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="94" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<circle cx="34" cy="27" r="3" fill="#23282C"/><circle cx="46" cy="27" r="3" fill="#23282C"/>' +
+      '<circle cx="100" cy="27" r="3" fill="#23282C"/><circle cx="112" cy="27" r="3" fill="#23282C"/>' +
+      rail + "</svg>";
+  }
+  if (cls === "707") {
+    // 707 Desiro City: the big curved windscreen and no yellow panel; pale doors
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 707 Desiro City">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h102 c10 0 18 6 18 15 v2 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
+      '<path d="M107 7 c9 .5 15.5 6 16.5 13 h-3.8 c-1 -5.4 -6.2 -9.2 -12.7 -9.2 z" fill="#9DACD9"/>' +
+      '<rect x="4" y="6" width="103" height="2.6" fill="#18244F"/>' +
+      '<rect x="10" y="10" width="97" height="6.4" rx="1.6" fill="#9DACD9"/>' +
+      '<rect x="28" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="52" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="76" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="98" y="9" width="7" height="15" fill="#F0D66A"/>' +
+      '<rect x="112" y="19.5" width="9" height="1.8" fill="#F5C400"/>' +
+      wheels + rail + "</svg>";
+  }
+  if (cls === "465") {
+    return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 465 Networker">' +
+      '<path d="M4 8 a4 4 0 0 1 4-4 h112 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#F2F3F1" stroke="#B9BDB6" stroke-width="1"/>' +
+      '<path d="M120 4 a8 8 0 0 1 8 8 v10 a3 3 0 0 1-3 3 h-7 v-21 z" fill="#FFD335"/>' +
+      '<rect x="4" y="6" width="114" height="2.6" fill="#C8CBC4"/>' +
+      '<rect x="10" y="10" width="104" height="6" rx="1.6" fill="#3A4348"/>' +
+      '<rect x="34" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="44" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="84" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      '<rect x="94" y="9" width="9" height="15" fill="#AEB4AE"/>' +
+      wheels + rail + "</svg>";
+  }
+  // 375 Electrostar - Southeastern's dark blue livery, yellow warning end
+  return '<svg viewBox="0 0 132 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class 375 Electrostar">' +
+    '<path d="M4 8 a4 4 0 0 1 4-4 h110 l10 7 v10 a3 3 0 0 1-3 3 h-117 a4 4 0 0 1-4-4 z" fill="#24346E" stroke="#8FA0CE" stroke-width="0.9"/>' +
+    '<path d="M118 4 l10 7 v10 a3 3 0 0 1-3 3 h-7 v-20 z" fill="#FFD335"/>' +
+    '<rect x="4" y="6" width="112" height="2.6" fill="#18244F"/>' +
+    '<rect x="10" y="10" width="102" height="6.4" rx="1.6" fill="#9DACD9"/>' +
+    '<rect x="40" y="9" width="8" height="15" fill="#3D4F94"/>' +
+    '<rect x="88" y="9" width="8" height="15" fill="#3D4F94"/>' +
+    wheels + rail + "</svg>";
+}
+
+return { sprite };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_SPRITES;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_SPRITES = SHEETS_SPRITES;
+</script>
+<script>
 /* The diagram prints, read for the fleet's sake rather than the berth's.
 
    SHEETS_PRINTS opens the file and hands back the paragraphs. The berthing
@@ -2650,7 +2885,17 @@ function deliveries(work, home, windows){
 
    Sub-fleet matters because they are not worked alike - within the 375s
    the /6s do a fifth more than the /3s and /9s.                          */
-const WEEKS = 365.25 / 7;
+/* How much of the year the diagrams actually run. The railway does not
+   work Christmas Day at all and Boxing Day is a shell of a service, so the
+   depot's own sheets annualise on 52 weeks less those two days - 362 - and
+   these figures have to be comparable with those. It was 365.25 here, the
+   whole calendar year with the leap day's quarter in it, which is 0.9%
+   more year than the plan is ever asked to cover.
+
+   One number, named, because it is a convention rather than a fact: a
+   depot that counts the year differently changes it here. */
+const RUNNING_DAYS = 52 * 7 - 2;      // 362
+const WEEKS = RUNNING_DAYS / 7;
 
 function mileage(all, fleet, monday, sizes){
   const mine = all.filter(d => fleetOf(d) === fleet);
@@ -2833,7 +3078,8 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     partings: partingRows, pmSplits, amSplits,
-    perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
+    perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / RUNNING_DAYS,
+    runningDays: RUNNING_DAYS,
     miles, deliver, back, target,
     offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     places: places(day),
@@ -3023,7 +3269,7 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               coupling, moCapable, splitsOf, partings, formOf,
               dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
-              FLEET_SIZES,
+              FLEET_SIZES, RUNNING_DAYS, WEEKS,
               balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);
@@ -3291,38 +3537,60 @@ function build(all, fleet, cfg){
      alike - see mileage() in fleet.js for why miles per diagram is miles
      per unit. */
   const M = a.miles;
-  const mRow = r => [r.sub, r.units, Math.round(r.dailyPerUnit),
-                     Math.round(r.weeklyPerUnit), Math.round(r.annualPerUnit),
+  /* The figure that leads is the one exams are planned off: what a unit ON
+     THE BOOKS accrues, spares and all. Where no fleet size is set there is
+     no such figure, and the per-diagram one stands in - said out loud, not
+     quietly passed off as the same thing. */
+  const per = r => r.annualPerOwned != null ? r.annualPerOwned : r.annualPerUnit;
+  const perDay = r => r.annualPerOwned != null ? r.dailyPerOwned : r.dailyPerUnit;
+  const dash = v => v == null ? "—" : Math.round(v);
+  const mRow = r => [r.sub, r.owned == null ? "—" : r.owned, r.units,
+                     dash(perDay(r)), dash(r.annualPerUnit), dash(r.annualPerOwned),
                      Math.round(r.annualTotal)];
   const spread = M.rows.length > 1
-    ? M.rows.slice().sort((x, y) => y.annualPerUnit - x.annualPerUnit) : [];
+    ? M.rows.slice().sort((x, y) => per(y) - per(x)) : [];
+  const sized = M.total.owned != null;
   secs.push({
     id: "miles",
     tab: "Mileage",
     title: "Mileage per unit",
     lede: `On these diagrams a ${c.label} unit averages ` +
-      `<b>${n0(M.total.dailyPerUnit)} miles a day</b> and ` +
-      `<b>${n0(M.total.annualPerUnit)} a year</b>.` +
+      `<b>${n0(perDay(M.total))} miles a day</b> and ` +
+      `<b>${n0(per(M.total))} a year</b>` +
+      (sized
+        ? ` across the <b>${M.total.owned}</b> the depot owns.`
+        : ` — but that is per DIAGRAMMED unit, because no fleet size is set. ` +
+          `The real figure is lower: the spares and the ones on exam take ` +
+          `their turn through the same work. Set the sizes under Fleets &amp; ` +
+          `depots.`) +
       (spread.length > 1
         ? ` The sub-fleets are not worked alike: a <b>${spread[0].sub}</b> covers ` +
-          `${n0(spread[0].annualPerUnit)} a year against ` +
-          `${n0(spread[spread.length - 1].annualPerUnit)} for a ` +
+          `${n0(per(spread[0]))} a year against ` +
+          `${n0(per(spread[spread.length - 1]))} for a ` +
           `<b>${spread[spread.length - 1].sub}</b>.` : ""),
-    how: `Exams fall due on a unit's clock, so this is what one unit covers, ` +
+    how: `Exams fall due on a unit's clock, so this is what ONE UNIT covers, ` +
       `not what the fleet racks up between them. A diagram is worked by one ` +
       `unit and its <em>Total miles</em> is the distance that unit covers — two ` +
-      `units coupled are two diagrams, each carrying the whole distance — so ` +
-      `miles per diagram is miles per unit. Each day's miles are divided by the ` +
-      `diagrams running that day, and the daily averages added across a week. ` +
-      `<b>Units</b> is what the <em>plan</em> needs on its busiest day: a ` +
-      `diagram book carries no spare or exam float, so the fleet as owned is ` +
-      `larger and the real per-unit mileage lower.`,
-    stat: [["Miles per unit per day", n0(M.total.dailyPerUnit)],
-           ["Miles per unit per year", n0(M.total.annualPerUnit)],
-           ["Units the plan needs", M.total.units],
+      `units coupled are two diagrams, each carrying the whole distance. ` +
+      `The day's miles are then shared over the units that could be working ` +
+      `them, and the daily figures added across a week. ` +
+      `<b>Which units</b> is the whole question, and the answer is the FLEET: ` +
+      `a diagram book carries no spare and no exam float, so a plan needing ` +
+      `27 diagrams is worked by the 30 units the depot owns, and dividing by ` +
+      `the diagrams instead makes every figure too high by the float. Both are ` +
+      `shown — per diagrammed unit is what a unit in traffic does, per fleet ` +
+      `unit is what a unit on the books accrues — and the second is the one to ` +
+      `plan off. Annualised on <b>${a.runningDays} running days</b>: 52 weeks ` +
+      `less Christmas Day and Boxing Day, which is how the depot's own sheets ` +
+      `count the year.`,
+    stat: [["Miles per unit per day", n0(perDay(M.total))],
+           ["Miles per unit per year", n0(per(M.total))],
+           [sized ? "Units the depot owns" : "Units the plan needs",
+            sized ? M.total.owned : M.total.units],
            ["Whole fleet per year", n0(M.total.annualTotal)]],
-    head: ["Sub-fleet", "Units the plan needs", "Miles per unit a day",
-           "Per unit a week", "Per unit a year", "Whole sub-fleet a year"],
+    head: ["Sub-fleet", "Units owned", "Units the plan needs",
+           "Miles per unit a day", "Per diagrammed unit a year",
+           "Per fleet unit a year", "Whole sub-fleet a year"],
     rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
     detail: [{
       tab: "Mileage by day",
@@ -3818,6 +4086,36 @@ function drawSetup(){
     card.appendChild(el("h3", null, "Class " + c.label));
     card.appendChild(el("p", "who", countOf(k) + " diagrams in these prints"));
 
+    /* How many units the depot OWNS, per sub-fleet. The prints cannot say -
+       a unit spare all week never appears in one - and every mileage per
+       unit is divided by it, so it is the first thing on the card. */
+    const subs = Array.from(new Set(ALL.filter(d => F.fleetOf(d) === k)
+      .map(d => d.fleet).filter(Boolean))).sort();
+    if (subs.length){
+      card.appendChild(el("label", null,
+        subs.length === 1 ? "Units owned" : "Units owned, per sub-fleet"));
+      const grid = el("div", "sizes");
+      for (const sub of subs){
+        const lab = el("label");
+        lab.appendChild(el("span", null, sub));
+        const inp = el("input");
+        inp.type = "number"; inp.min = "1"; inp.step = "1";
+        inp.placeholder = "—";
+        const cur = (c.sizes || {})[sub];
+        if (cur != null) inp.value = String(cur);
+        inp.addEventListener("change", () => {
+          const n = parseInt(inp.value, 10);
+          const sizes = Object.assign({}, cfgFor(k).sizes);
+          if (Number.isFinite(n) && n > 0) sizes[sub] = n; else delete sizes[sub];
+          cfg[k] = Object.assign({}, cfg[k], {sizes});
+          save(); rebuild();
+        });
+        lab.appendChild(inp);
+        grid.appendChild(lab);
+      }
+      card.appendChild(grid);
+    }
+
     const hl = el("label", null, "Home depot");
     hl.htmlFor = "home-" + k;
     card.appendChild(hl);
@@ -3904,7 +4202,102 @@ const fleetsPresent = () =>
   Object.keys(F.FLEETS).filter(k => ALL.some(d => F.fleetOf(d) === k));
 const countOf = k => ALL.filter(d => F.fleetOf(d) === k).length;
 
-/* ---- the report ---- */
+/* ---- the report ----
+   One CARD per fleet, the way the berthing sheets give one per book: the
+   fleet drawn on it, the headline counts, and its questions on tabs rather
+   than nine sections down a page nobody scrolls to the end of. The card
+   furniture is the shared stylesheet's, so the two tools look like two
+   halves of one thing. */
+let tabSeq = 0;
+
+function tabbed(panes){
+  const tabs = el("div", "tabs");
+  tabs.setAttribute("role", "tablist");
+  const view = el("div", "view");
+  const btns = [];
+  const select = i => {
+    btns.forEach((b, j) => b.setAttribute("aria-selected", i === j ? "true" : "false"));
+    view.textContent = "";
+    view.appendChild(panes[i][1]());
+  };
+  panes.forEach(([label], i) => {
+    const b = el("button", "tab", label);
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.addEventListener("click", () => select(i));
+    btns.push(b);
+    tabs.appendChild(b);
+  });
+  return {tabs, view, select};
+}
+
+function fleetCard(k, rep){
+  const art = el("article", "road");
+  art.dataset.road = k;
+
+  const head = el("div", "road-head");
+  const sp = el("div", "sprite");
+  sp.innerHTML = SHEETS_SPRITES.sprite(SPRITE_FOR[k] || "375");
+  head.appendChild(sp);
+
+  const who = el("div", "who");
+  who.appendChild(el("h2", null, "Class " + rep.cfg.label));
+  const meta = el("p", "meta");
+  meta.innerHTML = "<b>" + rep.a.day.length + "</b> diagrams on a " +
+    LONG[F.dayName(rep.monday)] + " · home <b>" + rep.cfg.home + "</b> · week of " +
+    new Date(rep.monday).toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric"});
+  who.appendChild(meta);
+  head.appendChild(who);
+
+  const acts = el("div", "acts");
+  const bp = el("button", "btn ghost", "Close");
+  bp.type = "button";
+  const bs = el("button", "btn", "Save this fleet");
+  bs.type = "button";
+  bs.addEventListener("click", () => saveOne(k));
+  acts.appendChild(bp);
+  acts.appendChild(bs);
+  head.appendChild(acts);
+  art.appendChild(head);
+
+  /* A warning belongs where it is read, not on a tab somebody has to find:
+     a fleet size that cannot be right makes every mileage on the card
+     wrong, so it goes on the front of it. */
+  const over = (rep.a.miles.rows || []).filter(r => r.over);
+  if (over.length){
+    const w = el("p", "cardwarn");
+    w.innerHTML = "The plan needs more diagrams than the fleet has units — " +
+      over.map(r => "<b>" + r.sub + "</b> needs " + r.units + " of " + r.owned).join(", ") +
+      ". Either the size is wrong, or the prints label more than one sub-fleet " +
+      "that way. Both are set under Fleets &amp; depots.";
+    art.appendChild(w);
+  }
+
+  const panel = el("div", "panel");
+  panel.id = "fpanel-" + (++tabSeq);
+  const {tabs, view, select} = tabbed(rep.secs.map(sec => [sec.tab, () => section(sec)]));
+  panel.appendChild(tabs);
+  panel.appendChild(view);
+  art.appendChild(panel);
+
+  let open = true;
+  const show = o => {
+    open = o;
+    panel.hidden = !o;
+    bp.textContent = o ? "Close" : "Open";
+    bp.setAttribute("aria-expanded", o ? "true" : "false");
+  };
+  bp.setAttribute("aria-controls", panel.id);
+  bp.addEventListener("click", () => show(!open));
+  select(0);
+  show(true);
+  return art;
+}
+
+const SPRITE_FOR = {"375": "375", "376": "376", "377": "377",
+                    "395": "395", "Metro": "465"};
+
 function rebuild(){
   REP = {};
   const keys = fleetsPresent();
@@ -3912,55 +4305,28 @@ function rebuild(){
     try { REP[k] = R.build(ALL, k, cfg); }
     catch (e){ console.error("fleet " + k, e); }
   }
-  const bar = $("fleetbar");
-  bar.textContent = "";
-  for (const k of keys){
-    if (!REP[k]) continue;
-    const b = el("button", "ftab");
-    b.type = "button";
-    b.setAttribute("role", "tab");
-    b.appendChild(el("span", null, "Class " + REP[k].cfg.label));
-    b.appendChild(el("span", "n", REP[k].a.day.length + " a day · " + REP[k].cfg.home));
-    b.addEventListener("click", () => show(k));
-    bar.appendChild(b);
-  }
-  $("out").hidden = false;
-  show(keys.indexOf(CURRENT) !== -1 ? CURRENT : keys[0]);
-}
-
-function show(k){
-  if (!REP[k]) return;
-  CURRENT = k;
-  const keys = fleetsPresent().filter(x => REP[x]);
-  Array.prototype.forEach.call($("fleetbar").children, (b, i) =>
-    b.setAttribute("aria-selected", keys[i] === k ? "true" : "false"));
-  const rep = REP[k], box = $("report");
+  const box = $("roads");
   box.textContent = "";
-
-  /* One line saying what is being looked at, so a printed page or a
-     screenshot still says which fleet and which week it came from. */
-  const sum = el("p", "summary");
-  sum.appendChild(el("b", null, "Class " + rep.cfg.label));
-  for (const bit of [
-    rep.a.day.length + " diagrams on a " + LONG[F.dayName(rep.monday)],
-    "home " + rep.cfg.home,
-    "week of " + new Date(rep.monday).toLocaleDateString("en-GB",
-      {day: "numeric", month: "long", year: "numeric"}),
-  ]) sum.appendChild(el("span", null, bit));
-  box.appendChild(sum);
-
-  /* Nine sections is more than fits on a screen, so they get a contents. */
-  const nav = el("nav", "jump");
-  nav.setAttribute("aria-label", "Jump to a section");
-  for (const sec of rep.secs){
-    const a = el("a", null, sec.tab);
-    a.href = "#sec-" + sec.id;
-    nav.appendChild(a);
-  }
-  box.appendChild(nav);
-
-  for (const s of rep.secs) box.appendChild(section(s));
+  for (const k of keys) if (REP[k]) box.appendChild(fleetCard(k, REP[k]));
+  drawLineup(keys.filter(x => REP[x]));
+  $("out").hidden = false;
+  const bar = $("allbar");
+  if (bar) bar.hidden = false;
 }
+
+/* The fleets actually in these prints, drawn on the rail at the top - so
+   the masthead says what was dropped rather than what the tool can read.
+   The same figure/figcaption the berthing sheets' lineup uses, because it
+   is the same stylesheet. */
+function drawLineup(keys){
+  const box = $("lineup");
+  if (!box) return;
+  box.innerHTML = keys.map(k =>
+    "<figure>" + SHEETS_SPRITES.sprite(SPRITE_FOR[k] || "375") +
+    "<figcaption>" + (REP[k] ? REP[k].cfg.label : k) + " · " +
+    (REP[k] ? REP[k].cfg.home : "") + "</figcaption></figure>").join("");
+}
+
 const LONG = {Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
               Fri: "Friday", Sat: "Saturday", Sun: "Sunday"};
 
@@ -4064,8 +4430,8 @@ function download(name, bytes){
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
 }
 const stamp = ms => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
-function saveOne(){
-  const rep = REP[CURRENT];
+function saveOne(k){
+  const rep = REP[k || CURRENT];
   if (!rep) return;
   const bytes = FLEET_XLSX.writeWorkbook(R.sheets(rep),
     f => fflate.zipSync(f, {level: 6}));
@@ -4095,12 +4461,12 @@ function startOver(){
   ALL = [];
   REP = {};
   CURRENT = null;
-  $("report").textContent = "";
-  $("fleetbar").textContent = "";
+  $("roads").textContent = "";
+  const lu = $("lineup"); if (lu) lu.textContent = "";
   $("depots").textContent = "";
   $("out").hidden = true;
   $("setup").hidden = true;
-  $("startover").hidden = true;
+  const bar = $("allbar"); if (bar) bar.hidden = true;
   $("file").value = "";
   openedSetup = false;
   say("");
@@ -4128,7 +4494,6 @@ function wire(){
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => e.preventDefault());
   $("startover").addEventListener("click", startOver);
-  $("save").addEventListener("click", saveOne);
   $("saveall").addEventListener("click", saveAll);
   $("resetcfg").addEventListener("click", () => {
     cfg = {};

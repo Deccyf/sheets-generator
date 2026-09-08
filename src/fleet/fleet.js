@@ -591,7 +591,17 @@ function deliveries(work, home, windows){
 
    Sub-fleet matters because they are not worked alike - within the 375s
    the /6s do a fifth more than the /3s and /9s.                          */
-const WEEKS = 365.25 / 7;
+/* How much of the year the diagrams actually run. The railway does not
+   work Christmas Day at all and Boxing Day is a shell of a service, so the
+   depot's own sheets annualise on 52 weeks less those two days - 362 - and
+   these figures have to be comparable with those. It was 365.25 here, the
+   whole calendar year with the leap day's quarter in it, which is 0.9%
+   more year than the plan is ever asked to cover.
+
+   One number, named, because it is a convention rather than a fact: a
+   depot that counts the year differently changes it here. */
+const RUNNING_DAYS = 52 * 7 - 2;      // 362
+const WEEKS = RUNNING_DAYS / 7;
 
 function mileage(all, fleet, monday, sizes){
   const mine = all.filter(d => fleetOf(d) === fleet);
@@ -774,7 +784,8 @@ function analyse(all, fleet, cfg){
     attend, mo, moOk, containment,
     splits: Array.from(splitAt.values()).sort((a, b) => b.n - a.n),
     partings: partingRows, pmSplits, amSplits,
-    perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / 365.25,
+    perDay, weekly, annual: weekly * WEEKS, daily: weekly * WEEKS / RUNNING_DAYS,
+    runningDays: RUNNING_DAYS,
     miles, deliver, back, target,
     offNetwork: !!(DEPOTS[c.home] || {}).offNetwork,
     places: places(day),
@@ -964,7 +975,7 @@ root.FLEET = {DAYS, DEPOTS, FLEETS, daysOf, daysLabel, fleetOf, depotSet,
               coupling, moCapable, splitsOf, partings, formOf,
               dayName, validOn, runsOn,
               weekFrom, referenceMonday, mileage, deliveries, daysHome, analyse,
-              FLEET_SIZES,
+              FLEET_SIZES, RUNNING_DAYS, WEEKS,
               balance, week,
               moBalance, moWeek};
 })(typeof globalThis !== "undefined" ? globalThis : this);

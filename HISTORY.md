@@ -4,6 +4,54 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## Diagram analyser 1.5.0 — 8 September 2026 — the maths, the rules, and a new page
+
+The analyser carries its own version. This is the overhaul asked for on it.
+
+**Mileage was divided by the diagram book, not the fleet.** A diagram book
+has no spare and no exam float in it, so a plan needing 27 diagrams is
+worked by the 30 units the depot owns, and every per-unit figure came out
+too high by the float. The depot's own sizes now ship as the divisor, and
+both figures are shown — per diagrammed unit is what a unit in traffic
+does, per fleet unit is what a unit on the books accrues, and the second is
+the one exams are planned off.
+
+Two of the depot's rows do not map one-to-one onto the labels the prints
+use. `375/6` is the 375/6/7/8 group. And `465/9` is every 465 diagram: the
+depot owns 94 of the /0 and /1 and 25 of the /9, but the busiest day needs
+97 diagrams labelled 465/9, and 25 units cannot work 97. That check — a
+plan can never need more diagrams than the depot owns units — is now in the
+tool, on the front of the card where it is read.
+
+**Annualised on 362 running days**, not 365.25: 52 weeks less Christmas Day
+and Boxing Day, which is how the depot's own sheets count the year. Worth
+0.9% on every annual figure.
+
+**Splits and attaches, to the berthing sheets' rules.** The analyser scanned
+for DETACH rows and counted the place. It reads the formation column now, so
+who parts from whom is the unit that drops out of it — RM007 parts from
+RM006 at Victoria and again at Dover Priory while RM008 stays coupled
+throughout. A pair that detaches and re-attaches but runs the same path to
+the same berth never really parted and is left out.
+
+**A section of its own for the AM/PM case**: units that leave the depot as
+one, are put away together, and only come apart after that. 34 of the 298
+partings in the MAY26 books are that kind.
+
+**The whole week.** Partings are walked over all seven days rather than one
+reference Monday — 17 on the Friday, 40 on the Saturday and 21 on the Sunday
+were not on the page at all.
+
+**A new page.** The same furniture as the berthing sheets, because they are
+two halves of one thing: the navy masthead with the fleets actually dropped
+drawn on the rail, the departure-board status strip, and a card per fleet
+with its questions on tabs instead of nine sections down a page nobody
+scrolls to the end of. Fleet sizes are editable beside the depots. The
+place-codes key is the last tab — it is what a reader turns to when a code
+on one of the others is unfamiliar. The unit drawings now live in
+`src/sprites.js` and both builds include them, rather than a second copy
+drifting from the first.
+
 ## 3.1.0 — 4 September 2026 — the weekend builds the depot's own documents
 
 **The weekend panel drew all three roads with one layout.** Mainline, Metro

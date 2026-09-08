@@ -123,7 +123,12 @@ test("mileage is measured over a week, so a re-issue cannot count twice", () => 
   assert.equal(a.perDay.Thu.miles, 470);
   assert.equal(a.perDay.Sat.miles, 0);
   assert.equal(a.weekly, 490 + 420 + 420 + 470);
-  assert.equal(Math.round(a.annual), Math.round(a.weekly * 365.25 / 7));
+  /* Annualised on RUNNING days, not calendar ones: the railway does not
+     work Christmas Day and Boxing Day is a shell of a service, so the
+     depot's sheets use 52 weeks less those two and these have to be
+     comparable with them. */
+  assert.equal(F.RUNNING_DAYS, 362, "52 weeks less Christmas Day and Boxing Day");
+  assert.equal(Math.round(a.annual), Math.round(a.weekly * F.RUNNING_DAYS / 7));
 });
 
 test("mileage is per UNIT, and split by sub-fleet", () => {
@@ -146,7 +151,7 @@ test("mileage is per UNIT, and split by sub-fleet", () => {
   assert.equal(Math.round(m.total.weeklyPerUnit),
                Math.round(expect.reduce((t, x) => t + x, 0)));
   assert.equal(Math.round(m.total.annualPerUnit),
-               Math.round(m.total.weeklyPerUnit * 365.25 / 7));
+               Math.round(m.total.weeklyPerUnit * F.RUNNING_DAYS / 7));
   /* Units is the busiest day's diagram count, not the fleet as owned. */
   assert.equal(m.total.units, 5);
   /* And the fleet total is still the fleet total. */

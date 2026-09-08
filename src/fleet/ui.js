@@ -89,6 +89,36 @@ function drawSetup(){
     card.appendChild(el("h3", null, "Class " + c.label));
     card.appendChild(el("p", "who", countOf(k) + " diagrams in these prints"));
 
+    /* How many units the depot OWNS, per sub-fleet. The prints cannot say -
+       a unit spare all week never appears in one - and every mileage per
+       unit is divided by it, so it is the first thing on the card. */
+    const subs = Array.from(new Set(ALL.filter(d => F.fleetOf(d) === k)
+      .map(d => d.fleet).filter(Boolean))).sort();
+    if (subs.length){
+      card.appendChild(el("label", null,
+        subs.length === 1 ? "Units owned" : "Units owned, per sub-fleet"));
+      const grid = el("div", "sizes");
+      for (const sub of subs){
+        const lab = el("label");
+        lab.appendChild(el("span", null, sub));
+        const inp = el("input");
+        inp.type = "number"; inp.min = "1"; inp.step = "1";
+        inp.placeholder = "—";
+        const cur = (c.sizes || {})[sub];
+        if (cur != null) inp.value = String(cur);
+        inp.addEventListener("change", () => {
+          const n = parseInt(inp.value, 10);
+          const sizes = Object.assign({}, cfgFor(k).sizes);
+          if (Number.isFinite(n) && n > 0) sizes[sub] = n; else delete sizes[sub];
+          cfg[k] = Object.assign({}, cfg[k], {sizes});
+          save(); rebuild();
+        });
+        lab.appendChild(inp);
+        grid.appendChild(lab);
+      }
+      card.appendChild(grid);
+    }
+
     const hl = el("label", null, "Home depot");
     hl.htmlFor = "home-" + k;
     card.appendChild(hl);
@@ -175,7 +205,102 @@ const fleetsPresent = () =>
   Object.keys(F.FLEETS).filter(k => ALL.some(d => F.fleetOf(d) === k));
 const countOf = k => ALL.filter(d => F.fleetOf(d) === k).length;
 
-/* ---- the report ---- */
+/* ---- the report ----
+   One CARD per fleet, the way the berthing sheets give one per book: the
+   fleet drawn on it, the headline counts, and its questions on tabs rather
+   than nine sections down a page nobody scrolls to the end of. The card
+   furniture is the shared stylesheet's, so the two tools look like two
+   halves of one thing. */
+let tabSeq = 0;
+
+function tabbed(panes){
+  const tabs = el("div", "tabs");
+  tabs.setAttribute("role", "tablist");
+  const view = el("div", "view");
+  const btns = [];
+  const select = i => {
+    btns.forEach((b, j) => b.setAttribute("aria-selected", i === j ? "true" : "false"));
+    view.textContent = "";
+    view.appendChild(panes[i][1]());
+  };
+  panes.forEach(([label], i) => {
+    const b = el("button", "tab", label);
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.addEventListener("click", () => select(i));
+    btns.push(b);
+    tabs.appendChild(b);
+  });
+  return {tabs, view, select};
+}
+
+function fleetCard(k, rep){
+  const art = el("article", "road");
+  art.dataset.road = k;
+
+  const head = el("div", "road-head");
+  const sp = el("div", "sprite");
+  sp.innerHTML = SHEETS_SPRITES.sprite(SPRITE_FOR[k] || "375");
+  head.appendChild(sp);
+
+  const who = el("div", "who");
+  who.appendChild(el("h2", null, "Class " + rep.cfg.label));
+  const meta = el("p", "meta");
+  meta.innerHTML = "<b>" + rep.a.day.length + "</b> diagrams on a " +
+    LONG[F.dayName(rep.monday)] + " · home <b>" + rep.cfg.home + "</b> · week of " +
+    new Date(rep.monday).toLocaleDateString("en-GB",
+      {day: "numeric", month: "long", year: "numeric"});
+  who.appendChild(meta);
+  head.appendChild(who);
+
+  const acts = el("div", "acts");
+  const bp = el("button", "btn ghost", "Close");
+  bp.type = "button";
+  const bs = el("button", "btn", "Save this fleet");
+  bs.type = "button";
+  bs.addEventListener("click", () => saveOne(k));
+  acts.appendChild(bp);
+  acts.appendChild(bs);
+  head.appendChild(acts);
+  art.appendChild(head);
+
+  /* A warning belongs where it is read, not on a tab somebody has to find:
+     a fleet size that cannot be right makes every mileage on the card
+     wrong, so it goes on the front of it. */
+  const over = (rep.a.miles.rows || []).filter(r => r.over);
+  if (over.length){
+    const w = el("p", "cardwarn");
+    w.innerHTML = "The plan needs more diagrams than the fleet has units — " +
+      over.map(r => "<b>" + r.sub + "</b> needs " + r.units + " of " + r.owned).join(", ") +
+      ". Either the size is wrong, or the prints label more than one sub-fleet " +
+      "that way. Both are set under Fleets &amp; depots.";
+    art.appendChild(w);
+  }
+
+  const panel = el("div", "panel");
+  panel.id = "fpanel-" + (++tabSeq);
+  const {tabs, view, select} = tabbed(rep.secs.map(sec => [sec.tab, () => section(sec)]));
+  panel.appendChild(tabs);
+  panel.appendChild(view);
+  art.appendChild(panel);
+
+  let open = true;
+  const show = o => {
+    open = o;
+    panel.hidden = !o;
+    bp.textContent = o ? "Close" : "Open";
+    bp.setAttribute("aria-expanded", o ? "true" : "false");
+  };
+  bp.setAttribute("aria-controls", panel.id);
+  bp.addEventListener("click", () => show(!open));
+  select(0);
+  show(true);
+  return art;
+}
+
+const SPRITE_FOR = {"375": "375", "376": "376", "377": "377",
+                    "395": "395", "Metro": "465"};
+
 function rebuild(){
   REP = {};
   const keys = fleetsPresent();
@@ -183,55 +308,28 @@ function rebuild(){
     try { REP[k] = R.build(ALL, k, cfg); }
     catch (e){ console.error("fleet " + k, e); }
   }
-  const bar = $("fleetbar");
-  bar.textContent = "";
-  for (const k of keys){
-    if (!REP[k]) continue;
-    const b = el("button", "ftab");
-    b.type = "button";
-    b.setAttribute("role", "tab");
-    b.appendChild(el("span", null, "Class " + REP[k].cfg.label));
-    b.appendChild(el("span", "n", REP[k].a.day.length + " a day · " + REP[k].cfg.home));
-    b.addEventListener("click", () => show(k));
-    bar.appendChild(b);
-  }
-  $("out").hidden = false;
-  show(keys.indexOf(CURRENT) !== -1 ? CURRENT : keys[0]);
-}
-
-function show(k){
-  if (!REP[k]) return;
-  CURRENT = k;
-  const keys = fleetsPresent().filter(x => REP[x]);
-  Array.prototype.forEach.call($("fleetbar").children, (b, i) =>
-    b.setAttribute("aria-selected", keys[i] === k ? "true" : "false"));
-  const rep = REP[k], box = $("report");
+  const box = $("roads");
   box.textContent = "";
-
-  /* One line saying what is being looked at, so a printed page or a
-     screenshot still says which fleet and which week it came from. */
-  const sum = el("p", "summary");
-  sum.appendChild(el("b", null, "Class " + rep.cfg.label));
-  for (const bit of [
-    rep.a.day.length + " diagrams on a " + LONG[F.dayName(rep.monday)],
-    "home " + rep.cfg.home,
-    "week of " + new Date(rep.monday).toLocaleDateString("en-GB",
-      {day: "numeric", month: "long", year: "numeric"}),
-  ]) sum.appendChild(el("span", null, bit));
-  box.appendChild(sum);
-
-  /* Nine sections is more than fits on a screen, so they get a contents. */
-  const nav = el("nav", "jump");
-  nav.setAttribute("aria-label", "Jump to a section");
-  for (const sec of rep.secs){
-    const a = el("a", null, sec.tab);
-    a.href = "#sec-" + sec.id;
-    nav.appendChild(a);
-  }
-  box.appendChild(nav);
-
-  for (const s of rep.secs) box.appendChild(section(s));
+  for (const k of keys) if (REP[k]) box.appendChild(fleetCard(k, REP[k]));
+  drawLineup(keys.filter(x => REP[x]));
+  $("out").hidden = false;
+  const bar = $("allbar");
+  if (bar) bar.hidden = false;
 }
+
+/* The fleets actually in these prints, drawn on the rail at the top - so
+   the masthead says what was dropped rather than what the tool can read.
+   The same figure/figcaption the berthing sheets' lineup uses, because it
+   is the same stylesheet. */
+function drawLineup(keys){
+  const box = $("lineup");
+  if (!box) return;
+  box.innerHTML = keys.map(k =>
+    "<figure>" + SHEETS_SPRITES.sprite(SPRITE_FOR[k] || "375") +
+    "<figcaption>" + (REP[k] ? REP[k].cfg.label : k) + " · " +
+    (REP[k] ? REP[k].cfg.home : "") + "</figcaption></figure>").join("");
+}
+
 const LONG = {Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
               Fri: "Friday", Sat: "Saturday", Sun: "Sunday"};
 
@@ -335,8 +433,8 @@ function download(name, bytes){
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
 }
 const stamp = ms => new Date(ms).toISOString().slice(0, 10).replace(/-/g, "");
-function saveOne(){
-  const rep = REP[CURRENT];
+function saveOne(k){
+  const rep = REP[k || CURRENT];
   if (!rep) return;
   const bytes = FLEET_XLSX.writeWorkbook(R.sheets(rep),
     f => fflate.zipSync(f, {level: 6}));
@@ -366,12 +464,12 @@ function startOver(){
   ALL = [];
   REP = {};
   CURRENT = null;
-  $("report").textContent = "";
-  $("fleetbar").textContent = "";
+  $("roads").textContent = "";
+  const lu = $("lineup"); if (lu) lu.textContent = "";
   $("depots").textContent = "";
   $("out").hidden = true;
   $("setup").hidden = true;
-  $("startover").hidden = true;
+  const bar = $("allbar"); if (bar) bar.hidden = true;
   $("file").value = "";
   openedSetup = false;
   say("");
@@ -399,7 +497,6 @@ function wire(){
   document.addEventListener("dragover", e => e.preventDefault());
   document.addEventListener("drop", e => e.preventDefault());
   $("startover").addEventListener("click", startOver);
-  $("save").addEventListener("click", saveOne);
   $("saveall").addEventListener("click", saveAll);
   $("resetcfg").addEventListener("click", () => {
     cfg = {};

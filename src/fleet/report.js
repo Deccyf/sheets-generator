@@ -260,38 +260,60 @@ function build(all, fleet, cfg){
      alike - see mileage() in fleet.js for why miles per diagram is miles
      per unit. */
   const M = a.miles;
-  const mRow = r => [r.sub, r.units, Math.round(r.dailyPerUnit),
-                     Math.round(r.weeklyPerUnit), Math.round(r.annualPerUnit),
+  /* The figure that leads is the one exams are planned off: what a unit ON
+     THE BOOKS accrues, spares and all. Where no fleet size is set there is
+     no such figure, and the per-diagram one stands in - said out loud, not
+     quietly passed off as the same thing. */
+  const per = r => r.annualPerOwned != null ? r.annualPerOwned : r.annualPerUnit;
+  const perDay = r => r.annualPerOwned != null ? r.dailyPerOwned : r.dailyPerUnit;
+  const dash = v => v == null ? "—" : Math.round(v);
+  const mRow = r => [r.sub, r.owned == null ? "—" : r.owned, r.units,
+                     dash(perDay(r)), dash(r.annualPerUnit), dash(r.annualPerOwned),
                      Math.round(r.annualTotal)];
   const spread = M.rows.length > 1
-    ? M.rows.slice().sort((x, y) => y.annualPerUnit - x.annualPerUnit) : [];
+    ? M.rows.slice().sort((x, y) => per(y) - per(x)) : [];
+  const sized = M.total.owned != null;
   secs.push({
     id: "miles",
     tab: "Mileage",
     title: "Mileage per unit",
     lede: `On these diagrams a ${c.label} unit averages ` +
-      `<b>${n0(M.total.dailyPerUnit)} miles a day</b> and ` +
-      `<b>${n0(M.total.annualPerUnit)} a year</b>.` +
+      `<b>${n0(perDay(M.total))} miles a day</b> and ` +
+      `<b>${n0(per(M.total))} a year</b>` +
+      (sized
+        ? ` across the <b>${M.total.owned}</b> the depot owns.`
+        : ` — but that is per DIAGRAMMED unit, because no fleet size is set. ` +
+          `The real figure is lower: the spares and the ones on exam take ` +
+          `their turn through the same work. Set the sizes under Fleets &amp; ` +
+          `depots.`) +
       (spread.length > 1
         ? ` The sub-fleets are not worked alike: a <b>${spread[0].sub}</b> covers ` +
-          `${n0(spread[0].annualPerUnit)} a year against ` +
-          `${n0(spread[spread.length - 1].annualPerUnit)} for a ` +
+          `${n0(per(spread[0]))} a year against ` +
+          `${n0(per(spread[spread.length - 1]))} for a ` +
           `<b>${spread[spread.length - 1].sub}</b>.` : ""),
-    how: `Exams fall due on a unit's clock, so this is what one unit covers, ` +
+    how: `Exams fall due on a unit's clock, so this is what ONE UNIT covers, ` +
       `not what the fleet racks up between them. A diagram is worked by one ` +
       `unit and its <em>Total miles</em> is the distance that unit covers — two ` +
-      `units coupled are two diagrams, each carrying the whole distance — so ` +
-      `miles per diagram is miles per unit. Each day's miles are divided by the ` +
-      `diagrams running that day, and the daily averages added across a week. ` +
-      `<b>Units</b> is what the <em>plan</em> needs on its busiest day: a ` +
-      `diagram book carries no spare or exam float, so the fleet as owned is ` +
-      `larger and the real per-unit mileage lower.`,
-    stat: [["Miles per unit per day", n0(M.total.dailyPerUnit)],
-           ["Miles per unit per year", n0(M.total.annualPerUnit)],
-           ["Units the plan needs", M.total.units],
+      `units coupled are two diagrams, each carrying the whole distance. ` +
+      `The day's miles are then shared over the units that could be working ` +
+      `them, and the daily figures added across a week. ` +
+      `<b>Which units</b> is the whole question, and the answer is the FLEET: ` +
+      `a diagram book carries no spare and no exam float, so a plan needing ` +
+      `27 diagrams is worked by the 30 units the depot owns, and dividing by ` +
+      `the diagrams instead makes every figure too high by the float. Both are ` +
+      `shown — per diagrammed unit is what a unit in traffic does, per fleet ` +
+      `unit is what a unit on the books accrues — and the second is the one to ` +
+      `plan off. Annualised on <b>${a.runningDays} running days</b>: 52 weeks ` +
+      `less Christmas Day and Boxing Day, which is how the depot's own sheets ` +
+      `count the year.`,
+    stat: [["Miles per unit per day", n0(perDay(M.total))],
+           ["Miles per unit per year", n0(per(M.total))],
+           [sized ? "Units the depot owns" : "Units the plan needs",
+            sized ? M.total.owned : M.total.units],
            ["Whole fleet per year", n0(M.total.annualTotal)]],
-    head: ["Sub-fleet", "Units the plan needs", "Miles per unit a day",
-           "Per unit a week", "Per unit a year", "Whole sub-fleet a year"],
+    head: ["Sub-fleet", "Units owned", "Units the plan needs",
+           "Miles per unit a day", "Per diagrammed unit a year",
+           "Per fleet unit a year", "Whole sub-fleet a year"],
     rows: M.rows.map(mRow).concat(M.rows.length > 1 ? [mRow(M.total)] : []),
     detail: [{
       tab: "Mileage by day",
