@@ -197,13 +197,30 @@ it is pinned by a pair of diagrams that end their day at 15 50 and at 13 30,
 one either side of the line, with the early one as the control.
 
 It came out of chasing a reported fault — **GT129 showing AFK in the AM
-column** — which does not reproduce on 18/09: AFK is in the PM column on all
-four of its rows, GT129 and GT130 read identically, and moving this cutoff
-changes none of them. The sheet that was marked up reads `SPLITS PM` on the
-row where the 18/09 pull reads `SPLITS`, and that pull is stamped three
-hours after the report of it, so the diagram itself moved between the two.
-That one is still open, and wants the reports the marked-up book was built
-from.
+column** — and that one turned out to be no fault at all. **Closed: the
+columns were right.** The depot confirmed the four rows as they stand:
+
+| row | D | E |
+|---|---|---|
+| 06+07 GLM | VIC | AFK |
+| 10+12 GPD | GPD | AFK |
+| 11+44 VIC | VIC | AFK |
+| 16 25 AFK | *(blank)* | AFK |
+
+AFK is the PM column on every one of them, GT129 and GT130 read the same,
+and moving the cutoff above changes none of them — GT129's day ends at
+02:22, nowhere near any version of the line.
+
+Two things recorded so they are not re-trodden. The marked-up books were
+supplied and **were 18/09** — they are this tool's own output from before
+3.1.1, with the Sevenoaks page still in them and RM022 still ahead of RM021.
+An earlier note here reasoned from a `SPLITS PM` on the marked row that the
+plan must have moved between two pulls of the report; that was wrong, and
+the books disprove it. Three of GT129's four rows carry `SPLITS PM` and the
+16 25 one carries `SPLITS`, all from the one build. And the general lesson:
+a fault reported against a book is worth reproducing from the book itself
+before reasoning about the reports behind it — the two workbooks settled in
+one reading what the reports alone could not settle at all.
 
 ## 3.1.1 — 17 September 2026 — two the depot marked up
 
@@ -239,12 +256,9 @@ is berthed there, and that half is pinned too. The working's mileage follows
 the same correction: the 09+58 now carries the 109 miles of the whole
 out-and-back, not the 18 as far as Sevenoaks.
 
-Not fixed, for want of the day it came off: **GT129's AFK reading in D
-rather than E**. On 18/09 that row is right — GT129 and GT130 both end at
-Ashford after midnight, and both print AFK in E. The sheet that was marked
-up shows `SPLITS PM` where 18/09 shows `SPLITS`, so it is a different date's
-book, and the rule in question moves every diagram in every book. It needs
-the reports for the day it was read off.
+The third point reported alongside these two, **GT129's AFK column**, was no
+fault: the row is right and the depot confirmed it. See 3.1.2 above, which
+carries the four rows and what the marked-up books settled.
 
 ## 3.1.0 — 4 September 2026 — the weekend builds the depot's own documents
 
