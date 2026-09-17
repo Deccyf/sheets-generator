@@ -449,6 +449,51 @@ test("which unit leads is per section, from the fleet profile", async () => {
     "the platform turn flips the pair, no pin involved");
 });
 
+/* Both faults the depot reported off the real 18/09 book. They share a
+   fixture because they share a place: everything below happens at Grove
+   Park, and each fix had to leave the other's rows alone. */
+test("one road reads one way, whatever is standing on it", async () => {
+  const N = built();
+  const { GROVE_PARK_SUMMARY, GROVE_PARK_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const gp = N.GENIUS.buildIntegrale(
+    [GROVE_PARK_SUMMARY, GROVE_PARK_DETAIL]).secsByDay.M.get("GROVE PARK");
+  const at = t => gp.find(e => e.time === t);
+  /* 021/022 off the Up C.H.S at 15+18 and 811/812 off the same road at
+     17+00. A shipped pin used to turn the first pair over on its own, so
+     one road printed both ways round in the same book; the depot says 021
+     leads, and Position 1 leading is what the unpinned road already does. */
+  assert.deepEqual(norm(at(15 * 60 + 18).units.map(u => u.diag)), ["021", "022"],
+    "Position 1 leads off the up sidings");
+  assert.deepEqual(norm(at(17 * 60).units.map(u => u.diag)), ["812", "811"],
+    "and the next working off the same road reads the same way");
+});
+
+test("a brief stand in a spur is a turnround, and takes no column with it", async () => {
+  const N = built();
+  const { GROVE_PARK_SUMMARY, GROVE_PARK_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale([GROVE_PARK_SUMMARY, GROVE_PARK_DETAIL]);
+  const gp = res.secsByDay.M.get("GROVE PARK");
+  const sev = res.secsByDay.M.get("SEVENOAKS");
+  const at = t => gp.find(e => e.time === t);
+  /* RM043 stands fourteen minutes in the Sevenoaks siding and comes back to
+     the down sidings at 16:19. Nothing is based at Sevenoaks, so that is a
+     turnround: the unit's next berth is the one it returns to, which is why
+     the AM column reads GPD. Counted a berthing it read SEV instead, and
+     opened a Sevenoaks page in the book for the one line. */
+  assert.equal(norm(at(9 * 60 + 58).units.map(u => u.am))[0], "GPD",
+    "the AM column names the berth the unit actually comes back to");
+  assert.ok(!sev || !sev.some(e => e.units.some(u => u.diag === "043")),
+    "and the fourteen-minute stand is not a departure of its own");
+  /* The rule is the stay, not the place. RM046 does the same shape with two
+     hours standing there, and that IS the unit being put away. */
+  assert.equal(norm(at(9 * 60 + 44).units.map(u => u.am))[0], "SEV",
+    "two hours there is a berthing, and the AM column says so");
+  assert.ok(sev && sev.some(e => e.time === 12 * 60 + 42),
+    "with its own line off the siding");
+});
+
 test("units the reports cannot order are named on the review list", async () => {
   const N = built();
   const { TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL } =

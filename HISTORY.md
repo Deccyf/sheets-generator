@@ -140,6 +140,47 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.1.1 — 17 September 2026 — two the depot marked up
+
+Both reported off a real book, both at Grove Park, both checked against the
+**18/09** Diagram Summary and Diagram Detail.
+
+**RM021/RM022 printed the wrong way round.** They come off the Grove Park
+**Up C.H.S** on the 15+18 and printed 022 first. The next working off that
+same road, SG811/SG812's 17+00, printed Position 1 first — and one road
+cannot face two ways. The odd one out was a pin: `GROVE PARK|021,022`, taken
+from the hand-written 12/08 book when the order corrections were first
+gathered. The depot says that row is wrong, the same way it said the Ashford
+117/128 one is. With the pin gone, both pairs read off the section's own
+rule — Grove Park lists lowest Position first — and both agree with the
+depot. Nothing else in the book moves: the pin named those two diagrams and
+that section, and nothing else.
+
+**RM043's AM column said Sevenoaks when the unit goes back to Grove Park.**
+It runs out of the down sidings at 09+58 on a route-learning move, stands
+**fourteen minutes** in the Sevenoaks siding, and is back in the same
+sidings at 16+19. The siding is named like a siding, so the stand counted as
+the unit being put away: the AM column read `SEV`, and the book opened a
+whole SEVENOAKS page to carry that one line — the only Sevenoaks entry in
+the day.
+
+`SVNOCHS` joins the shunt spurs, which is the mechanism that already exists
+for exactly this — Hastings Park, Bellingham, St Leonards CET, Gillingham Up
+Sidings, and Sidcup Sidings on the weekend side. A spur splits a diagram
+only after a berthing-length stay; a home berthing road still splits it
+however short the sit, because the books list every re-departure off those.
+The rule is the stay, not the place, so a unit that stands there *properly*
+is berthed there, and that half is pinned too. The working's mileage follows
+the same correction: the 09+58 now carries the 109 miles of the whole
+out-and-back, not the 18 as far as Sevenoaks.
+
+Not fixed, for want of the day it came off: **GT129's AFK reading in D
+rather than E**. On 18/09 that row is right — GT129 and GT130 both end at
+Ashford after midnight, and both print AFK in E. The sheet that was marked
+up shows `SPLITS PM` where 18/09 shows `SPLITS`, so it is a different date's
+book, and the rule in question moves every diagram in every book. It needs
+the reports for the day it was read off.
+
 ## 3.1.0 — 4 September 2026 — the weekend builds the depot's own documents
 
 **The weekend panel drew all three roads with one layout.** Mainline, Metro

@@ -1219,7 +1219,15 @@ const SIDING_CLASS_RE = new RegExp(
     "ASHFORD 15+43|101,102": ["101", "102"],
 
 
-    "GROVE PARK|021,022": ["022", "021"],
+    /* 021,022 used to be pinned here, ["022","021"], off the hand-written
+       12/08 book. The depot says that row is wrong, the same way it said the
+       Ashford 117/128 one is: RM021 is Position 1 off the Grove Park Up
+       C.H.S and leads. The check is the 18/09 book, where SG811/SG812 leave
+       the SAME road on the next working out of it (5F92 at 17+00, against
+       021/022's 5F34 at 15+18) and print Position 1 first, unpinned, because
+       GROVE PARK is on the posAsc list. One road cannot face two ways, so
+       with the pin gone the section rule gives both pairs the same reading
+       and both agree with the depot. */
     "GROVE PARK|118,119": ["118", "119"],
     /* 301 is last at Ashford and first at Grove Park, so this cannot be a bare
        key. Untimed on purpose: the book shows 15+54 on every sheet, but a
@@ -1338,7 +1346,16 @@ const SIDING_CLASS_RE = new RegExp(
   // brief working calls all day and are never listed as re-departures -
   // need a stay of berthing length before they split.
 
-  const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS"]);
+  /* SVNOCHS, the Sevenoaks siding, is the fifth and reads exactly like the
+     others: nothing is based there, and the only call on it in the 18/09
+     reports is RM043 running in off the 5Z37 at 10:42 and straight back out
+     on the 5Z39 at 10:56 - fourteen minutes, a turnback on a route-learning
+     move. Counted a berthing it opened a SEVENOAKS page in the book for that
+     one line, and it took the column D of RM043's Grove Park 09+58 entry
+     with it: the unit's next real berth is back at the Grove Park down
+     sidings at 16+19, which is GPD, and the depot asked for GPD. */
+  const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS",
+                              "SVNOCHS"]);
   /* The same spurs under the names the weekend PRINTS use for them, so the
      weekend books read a brief call at one the same way the weekday books
      do. Three are the ones above (LOC_LONG below spells each one out, and
@@ -1356,7 +1373,12 @@ const SIDING_CLASS_RE = new RegExp(
      of them counted a berthing the Metro book carried twenty-seven Sidcup
      lines and the mainline book eight, for stands nobody puts a unit away
      on. A unit that stands there PROPERLY is still berthed there - the rule
-     is the stay, not the place. */
+     is the stay, not the place.
+
+     The Sevenoaks siding has no line here on purpose: no weekend print seen
+     so far calls at it, so nothing says what those documents spell it, and
+     a guessed spelling would sit in a lookup table reading like a fact. Add
+     it the day a print shows it. */
   const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -

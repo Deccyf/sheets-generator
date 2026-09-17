@@ -443,6 +443,54 @@ export const GAPPED_POSITION_DETAIL = [
   ]),
 ].join("\r\n");
 
+/* The two faults the depot reported off the real 18/09 book, side by side
+   in one day, because both live at Grove Park.
+
+   RM021/RM022 come off the Grove Park UP C.H.S on the 15+18; SG811/SG812
+   come off the SAME road on the next working out of it, the 17+00. One road
+   cannot face two ways, so the pair have to read the same way round, and
+   GROVE PARK is on the lowest-Position-first list. A shipped ORDER_FIX pin
+   used to turn 021/022 over on their own.
+
+   RM043 runs out of the Grove Park down sidings, stands fourteen minutes in
+   the Sevenoaks siding on a route-learning move and comes back to the same
+   sidings at 16:19. Nothing is based at Sevenoaks; the stand is a turnround.
+   RM046 is the control: the same shape with two hours standing there, which
+   IS the unit being put away, because the rule is the stay, not the place. */
+export const GROVE_PARK_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM021,Covered,375/6,,0,10/08/2026 15:18,1,5F34,GRVPKUS,10/08/2026 17:30,ASHFEBS,18,,,,,,RM021,,",
+  "RM022,Covered,375/6,,0,10/08/2026 15:18,2,5F34,GRVPKUS,10/08/2026 17:30,ASHFEBS,18,,,,,,RM022,,",
+  // Positions as the real 18/09 export carries them: 812 at 1, 811 at 2,
+  // so the book prints 812 first - the row the depot pointed at as right.
+  "SG811,Covered,376/0,,0,10/08/2026 17:00,2,5F92,GRVPKUS,10/08/2026 19:30,GRVPCSD,18,,,,,,SG811,,",
+  "SG812,Covered,376/0,,0,10/08/2026 17:00,1,5F92,GRVPKUS,10/08/2026 19:30,GRVPCSD,18,,,,,,SG812,,",
+  "RM043,Covered,375/6,,0,10/08/2026 09:58,1,5Z37,GRVPKDS,10/08/2026 17:34,CANONST,40,,,,,,RM043,,",
+  "RM046,Covered,375/6,,0,10/08/2026 09:44,1,5Z47,GRVPKDS,10/08/2026 13:40,GRVPKDS,40,,,,,,RM046,,",
+].join("\r\n");
+
+export const GROVE_PARK_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["RM021", "RM022"].flatMap(d => [
+    orderLeg(d, 18, "GRVPKUS", "Grove Park Up C.H.S", "15:18:00", "5F34", "CHRX", "London Charing X", "15:48:00"),
+    orderLeg(d, 18, "CHRX", "London Charing X", "15:59:00", "1U38", "ASHFEBS", "Ashford E Berthi", "17:30:00"),
+  ]),
+  ...["SG811", "SG812"].flatMap(d => [
+    orderLeg(d, 18, "GRVPKUS", "Grove Park Up C.H.S", "17:00:00", "5F92", "CHRX", "London Charing X", "17:29:00"),
+    orderLeg(d, 18, "CHRX", "London Charing X", "17:41:00", "2N92", "GRVPCSD", "Grove Park CSD", "19:30:00"),
+  ]),
+  orderLeg("RM043", 40, "GRVPKDS", "Grove Park Down CHS", "09:58:00", "5Z37", "SVNOCHS", "Sevenoaks Sdg", "10:42:00"),
+  orderLeg("RM043", 40, "SVNOCHS", "Sevenoaks Sdg", "10:56:00", "5Z39", "GRVPKDS", "Grove Park Down CHS", "16:19:00"),
+  orderLeg("RM043", 40, "GRVPKDS", "Grove Park Down CHS", "17:09:00", "5F95", "CANONST", "London Cannon St", "17:34:00"),
+  orderLeg("RM046", 40, "GRVPKDS", "Grove Park Down CHS", "09:44:00", "5Z47", "SVNOCHS", "Sevenoaks Sdg", "10:40:00"),
+  orderLeg("RM046", 40, "SVNOCHS", "Sevenoaks Sdg", "12:42:00", "5Z49", "GRVPKDS", "Grove Park Down CHS", "13:40:00"),
+].join("\r\n");
+
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
 export const INTEGRALE_QUIRKS_SUMMARY =
