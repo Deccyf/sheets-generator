@@ -654,6 +654,9 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
   const at = new Map();                       // "r,c" -> cell
   function put(r, c, v, look){
     const cell = {r:r, c:c, v:v, look:look, sides:[null,null,null,null]};
+    // the UNIT column, empty here because the prints allocate nothing:
+    // Text, the same as the weekday book, so a leading zero survives
+    if (c === SHEETS_XLSX.UNIT_COL) cell.text = true;
     cells.push(cell); at.set(r + "," + c, cell);
     return cell;
   }
@@ -728,7 +731,8 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     if (r > bodyFirst) ruleSection(bodyFirst, r - 1, entryEnds, doubleEnds);
     rowHeights.set(r, 18); r++;
   }
-  return {cells:cells, merges:merges, rowHeights:rowHeights, maxRow:r};
+  return {cells:cells, merges:merges, rowHeights:rowHeights, maxRow:r,
+          opts:{textCols: SHEETS_XLSX.TEXT_COLS}};
 }
 /* ---- the depot's own two documents, off the weekend prints ----
 

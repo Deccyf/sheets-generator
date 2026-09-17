@@ -220,7 +220,10 @@ cell, with the same records as CSS for the preview. The print planner
 (`printPlan`) sets A4 portrait, a scale that fits the columns across and the
 longest section down, and manual breaks so no location straddles a page; a
 layout may instead carry its own margins and a fixed scale. Number cells are
-written only for finite numbers. There is one preview renderer, and it draws
+written only for finite numbers, and a layout can name the columns it leaves
+for somebody to fill in (`textCols`) — the berthing sheets' **UNIT** column,
+F, which is formatted Text down its whole length so a unit number typed with
+a leading zero keeps it. There is one preview renderer, and it draws
 the same cell layout the writer saves — what you look at is what you get,
 page breaks included.
 

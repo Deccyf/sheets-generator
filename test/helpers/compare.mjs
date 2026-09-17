@@ -79,9 +79,18 @@ export async function normalizeWorkbook(readerCtx, bytes, opts) {
           border: { top: side(b.top), bottom: side(b.bottom),
                     left: side(b.left), right: side(b.right) },
         };
-        // Skip cells that carry nothing at all — writers may or may not emit them.
+        /* Skip cells that carry nothing at all — writers may or may not emit
+           them. "Nothing" now includes the grid's own Calibri 11: a column
+           formatted Text for its whole length (the UNIT column, so a unit
+           number keeps its leading zero) gives every cell beneath the book a
+           style, and ExcelJS resolves the workbook's default font onto it.
+           That is the column's dress showing through an empty cell, not a
+           cell of its own — every cell either writer really puts down wears
+           one of the books' Arial faces. */
+        const bare = !f.name ||
+          (f.name === "Calibri" && f.size === 11 && !f.bold);
         if (v === "" && !rec.border.top && !rec.border.bottom && !rec.border.left &&
-            !rec.border.right && !f.name) continue;
+            !rec.border.right && bare) continue;
         cells.push([r, c, rec]);
       }
     });

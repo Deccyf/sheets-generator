@@ -4,6 +4,7 @@
    merges, widths, heights and page setup. */
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { legacy, built, norm, normalizeWorkbook } from "./helpers/compare.mjs";
 import { makePdf, makeDocx, SUMMARY_LINES, DETAIL_LINES, PRINTS_LINES }
   from "./helpers/synth.mjs";
@@ -357,8 +358,13 @@ test("the mileage column is opt-in, and holds the stint's miles as numbers", () 
   assert.deepEqual([...cols(off)].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6, 7, 8],
     "off: the sheet is the eight-column one, untouched");
   assert.ok(cols(on).has(9), "on: a ninth column appears");
-  assert.equal(off.opts, undefined, "off: no width override, so the house widths stand");
+  assert.equal(off.opts.widths, undefined, "off: no width override, so the house widths stand");
   assert.equal(on.opts.widths.length, 9, "on: nine widths for nine columns");
+  /* Either way the layout names its hand-written column, so the writer can
+     format it Text for its whole length - a unit number can start with a 0,
+     and General eats it. */
+  for (const [name, l] of [["off", off], ["on", on]])
+    assert.deepEqual(norm(l.opts.textCols), [X.UNIT_COL], name + ": UNIT is text");
 
   const cell = (l, c) => l.cells.find(x => x.c === c && x.r === 2);
   assert.equal(cell(on, 9).v, 199, "the stint's miles land in it");
@@ -371,4 +377,53 @@ test("the mileage column is opt-in, and holds the stint's miles as numbers", () 
   assert.ok(on.merges.includes("H1:I1"), "and spreads across the mileage one");
   assert.ok(off.merges.includes("A1:G1") && on.merges.includes("A1:G1"),
     "the section name spans the same columns either way");
+});
+
+test("the UNIT column is Text all the way down, so a leading zero survives", async () => {
+  /* Asked for as "make all of column F text so I can type numbers that start
+     with 0". F is the one column a berthing sheet leaves for the depot: under
+     General, Excel reads 012 as the number 12 and the zero is gone before
+     anyone notices. The whole column, not only the ruled rows - somebody
+     working down the sheet does not stop at the last section. */
+  const L = legacy(), N = built();
+  const res = await geniusRes(N);
+  const bytes = N.SHEETS_XLSX.writeBooks(res.secsByDay, res.labels, false);
+  const mk = vm.runInContext("(n) => new Uint8Array(n)", L.__ctx);
+  const local = mk(bytes.length); local.set(bytes);
+  const wb = new L.ExcelJS.Workbook();
+  await wb.xlsx.load(local);
+  const ws = wb.worksheets[0];
+  assert.equal(ws.getColumn(N.SHEETS_XLSX.UNIT_COL).numFmt, "@",
+    "the column itself carries it");
+  // a ruled row inside the book, and the empty grid a long way below it
+  for (const ref of ["F3", "F10", "F900"])
+    assert.equal(ws.getCell(ref).numFmt, "@", ref + " is text");
+  // and nothing either side of it moved: only F was asked for
+  for (const ref of ["E3", "G3", "C10"])
+    assert.equal(ws.getCell(ref).numFmt, undefined, ref + " is left alone");
+  /* The ruling is the other half of that column and has to survive the
+     format - the golden comparison above pins every border, and this is the
+     one cell that would have lost its own style to the column's. */
+  const bot = (ws.getCell("F3").border || {}).bottom;
+  const anyRuled = ["F3", "F4", "F5", "F6"].some(r =>
+    (ws.getCell(r).border || {}).bottom || (ws.getCell(r).border || {}).top);
+  assert.ok(anyRuled, "the unit cells are still ruled: " + JSON.stringify(bot));
+});
+
+test("the weekend book's UNIT column is text too, and it is the same column", () => {
+  /* The prints allocate no units at all, so every cell of this column comes
+     out empty - which is exactly the column somebody fills in by hand, and
+     the two berthing layouts have to agree on which one it is. */
+  const N = built();
+  const res = N.SheetsEngine.run(
+    [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(PRINTS_LINES, N.fflate) }],
+    b => N.fflate.unzipSync(b),
+    f => N.fflate.zipSync(f, { level: 6 }));
+  const book = res.books.find(b => b.layout && !b.skipped);
+  assert.ok(book, "a weekend berthing book was built");
+  assert.deepEqual(norm(book.layout.opts.textCols), [N.SHEETS_XLSX.UNIT_COL],
+    "the weekend layout names the same column");
+  const f = Array.from(book.layout.cells).filter(c => c.c === N.SHEETS_XLSX.UNIT_COL);
+  assert.ok(f.length, "and it writes cells there");
+  assert.ok(f.every(c => c.text === true), "every one of them text");
 });

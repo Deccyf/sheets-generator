@@ -140,6 +140,38 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.1.3 — 17 September 2026 — the UNIT column keeps a leading zero
+
+**Column F is formatted Text now, all the way down.** It is the one column a
+berthing sheet leaves empty — the allocated unit where the export names one,
+and otherwise a ruled cell for the depot to write in. Under General, Excel
+reads `012` as the number 12 and the zero is gone before anyone notices it
+went. The cells carry the format and so does the column, because somebody
+working down a sheet does not stop at the last section — the blank grid below
+it takes it too.
+
+Both berthing layouts name the same column, the weekday one in
+`src/xlsx.js` and the weekend one in `src/engine.js`, and it is `UNIT_COL`
+in one place rather than a 6 in two. The depot's own Metro and 395 documents
+are untouched: their unit column is somewhere else, and a layout only gets
+this by asking for it. Nothing either side of F moved, and the ruling on the
+column survives — a cell's own style beats the column's.
+
+One thing had to give for it. The golden comparison against the frozen
+ExcelJS build reads a workbook back cell by cell and skips cells that carry
+nothing; a column formatted for its whole length gives every cell below the
+book a style, which ExcelJS resolves into the workbook's default Calibri, so
+those empty cells started counting as real ones. "Carries nothing" now
+includes wearing only that default face — every cell either writer really
+puts down wears one of the books' Arial ones.
+
+The size ceiling moved from 660 KB to 700 KB at the same time, and that one
+is not a feature. Three releases of ordinary fixes ate the last of the old
+headroom a few hundred bytes at a time; the ceiling is meant to sit above the
+file with room in it, or the next one-line fix fails a test instead of being
+a decision. The file is still roughly half what it was when ExcelJS was in
+it, and that bundle has an assertion of its own.
+
 ## 3.1.2 — 17 September 2026 — one cutoff, not two
 
 **The AM and PM columns split the day at a different time in a weekday book

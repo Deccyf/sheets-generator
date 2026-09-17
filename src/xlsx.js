@@ -16,6 +16,11 @@ const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
    and the print scale is computed from these widths, so the page still
    fits. */
 const MILES_WIDTHS = HOUSE_WIDTHS.concat([6.2]);
+/* F, the UNIT column - the one a berthing sheet leaves for the depot to
+   write in. Both berthing layouts put it here, the weekday one below and
+   the weekend one in src/engine.js, so it is named rather than a 6 twice. */
+const UNIT_COL = 6;
+const TEXT_COLS = [UNIT_COL];
 /* How long a break in a location's work has to be before a double line is
    ruled in it, and the hour after which a second one is drawn - see
    sectionRows for which breaks qualify. */
@@ -63,13 +68,18 @@ const FILLS_XML =
 '<fill><patternFill patternType="gray125"/></fill>';
 const FILL_COUNT = 2;
 
-/* Styles are registered as they are needed, so any mix of look and border
-   gets its own entry rather than being hard-coded up front. */
+/* Excel's built-in Text format: a cell wearing it keeps what is typed in
+   exactly as typed, which General does not - it eats the leading zero off a
+   unit number. Built in, so it needs no numFmts part of its own. */
+const TEXT_FMT = 49;
+
+/* Styles are registered as they are needed, so any mix of look, border and
+   number format gets its own entry rather than being hard-coded up front. */
 function StyleBook(){
   this.borders = [[null,null,null,null]];
   this.borderIdx = {",,,": 0};
-  this.xfs = [{look:0, border:0}];
-  this.xfIdx = {"0|0": 0};
+  this.xfs = [{look:0, border:0, fmt:0}];
+  this.xfIdx = {"0|0|0": 0};
 }
 StyleBook.prototype.border = function(sides){
   const key = sides.map(function(s){ return s || ""; }).join(",");
@@ -79,11 +89,12 @@ StyleBook.prototype.border = function(sides){
   }
   return this.borderIdx[key];
 };
-StyleBook.prototype.style = function(look, borderId){
-  const key = look + "|" + borderId;
+StyleBook.prototype.style = function(look, borderId, fmt){
+  fmt = fmt || 0;
+  const key = look + "|" + borderId + "|" + fmt;
   if (this.xfIdx[key] === undefined){
     this.xfIdx[key] = this.xfs.length;
-    this.xfs.push({look:look, border:borderId});
+    this.xfs.push({look:look, border:borderId, fmt:fmt});
   }
   return this.xfIdx[key];
 };
@@ -100,8 +111,10 @@ StyleBook.prototype.xml = function(){
   let x = '<cellXfs count="' + this.xfs.length + '">';
   for (const f of this.xfs){
     const L = LOOKS[f.look];
-    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="0' +
+    x += '<xf numFmtId="' + (f.fmt || 0) + '" fontId="' + (L ? L[0] : 0) +
+         '" fillId="0' +
          '" borderId="' + f.border + '" xfId="0" applyFont="1" applyBorder="1"' +
+         (f.fmt ? ' applyNumberFormat="1"' : "") +
          (L ? ' applyAlignment="1">' + '<alignment horizontal="' + L[1] +
               '" vertical="center"/></xf>' : "/>");
   }
@@ -214,10 +227,19 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
   const widths = opts.widths || HOUSE_WIDTHS;
   // the house margins, unless the layout reproduces a document with its own
   const M = opts.margins || MARGIN;
+  /* A hand-written column is Text for its WHOLE length, not just the rows
+     the book fills: the cells carry it, and the column carries it for the
+     blank grid below. A cell's own style wins, so the ruled ones keep
+     their borders. */
+  const textCols = new Set(opts.textCols || []);
+  const colStyle = opts.textColStyle;
   let cols = '<cols>';
   widths.forEach(function(w, i){
-    cols += '<col min="' + (i+1) + '" max="' + (i+1) +
-            '" width="' + w + '" customWidth="1"/>';
+    const n = i + 1;
+    cols += '<col min="' + n + '" max="' + n +
+            '" width="' + w + '" customWidth="1"' +
+            (textCols.has(n) && colStyle !== undefined
+              ? ' style="' + colStyle + '" customFormat="1"' : "") + '/>';
   });
   cols += '</cols>';
   const byRow = new Map();
@@ -359,8 +381,12 @@ function writeWorkbook(sheets, zipFn){
   const sb = raw ? null : new StyleBook();
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells)
-      c.s = raw ? (c.xf || 0) : sb.style(c.look, sb.border(c.sides));
+      c.s = raw ? (c.xf || 0)
+                : sb.style(c.look, sb.border(c.sides), c.text ? TEXT_FMT : 0);
     const o = s.layout.opts || {};
+    // no look and no border: it dresses the empty grid, not the book
+    if (!raw && o.textCols && o.textCols.length)
+      o.textColStyle = sb.style(0, 0, TEXT_FMT);
     if (s.layout.comments && s.layout.comments.length) o.hasComments = true;
     return buildSheetXml(s.layout.cells, s.layout.merges,
                          s.layout.rowHeights, s.layout.maxRow, o);
@@ -668,7 +694,8 @@ function previewHtml(layout){
       if (divideAt.has(idx) && !lastSec) bot = "double";
       rows.push({ kind: "data",
         /* 6 is the unit column: the allocated unit where the export names
-           it, and otherwise an empty ruled cell for the depot to write in. */
+           it, and otherwise an empty ruled cell for the depot to write in -
+           which is why UNIT_COL is formatted Text, leading zero and all. */
         /* 9 is only read when the mainline mileage option is on - the layout
            is told how many columns to walk, so it costs nothing when off. */
         vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 6: v.unit,
@@ -766,7 +793,7 @@ function rowsToLayout(rowsIn, miles) {
         /* a real number, so the column can be summed in Excel - the Metro
            book's MILES and the 395 sheet's MG both ship theirs that way */
         const num = c === 9 && typeof val === "number";
-        cells.push({ r, c, v: val, look: V_LOOK[c], num,
+        cells.push({ r, c, v: val, look: V_LOOK[c], num, text: c === UNIT_COL,
                      sides: [l, rr, row.top || null, row.bot || null] });
       }
       rowEdge.set(r, [row.top || null, row.bot || null]);
@@ -789,7 +816,8 @@ function rowsToLayout(rowsIn, miles) {
     merges.push("G" + r0 + ":G" + r1);
   }
   return { cells, merges, rowHeights, maxRow: r,
-           opts: miles ? { widths: MILES_WIDTHS } : undefined };
+           opts: miles ? { widths: MILES_WIDTHS, textCols: TEXT_COLS }
+                       : { textCols: TEXT_COLS } };
 }
 
 /* The section order for a book: the base list with every section the
@@ -836,7 +864,8 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, esc,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan,
+         UNIT_COL, TEXT_COLS, TEXT_FMT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

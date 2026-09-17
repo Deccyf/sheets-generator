@@ -21,8 +21,14 @@ test("the built file is self-contained and lean", () => {
      workbook's own styleSheet verbatim (~21 KB), the same way the 395
      skin ships its document's records - the price of the form being the
      depot's own, cell for cell, rather than a lookalike. */
-  assert.ok(html.length < 660 * 1024,
-    "under 660 KB (was 1.2 MB); this build is " +
+  /* 700 KB at 3.1.3, and this one is not a feature: three releases of
+     ordinary fixes ate the last of the 660 headroom a few hundred bytes at
+     a time, and the ceiling is meant to sit ABOVE the file with room in it,
+     or the next one-line fix fails this test instead of being a decision.
+     Nothing here is a bundle - the two that matter are named below, and the
+     file is still roughly half what it was when they were in it. */
+  assert.ok(html.length < 700 * 1024,
+    "under 700 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

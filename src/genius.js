@@ -730,14 +730,11 @@ const GENIUS = (() => {
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
         if (later.length === 0) {
-          /* Nothing later, so this berth is the unit's day - and which
-             column it belongs in is the one question AM_CUTOFF answers.
-             This used to be its own bare 16:00, which put a day finishing
-             at, say, 15 50 in the AM column here and in the PM column in a
-             weekend book, off the same moment under a name. One rule, one
-             figure: src/core.js owns it, the rulebook carries it, and both
-             engines read it. Below, and the END marker further down, were
-             already on it - this line was the odd one out. */
+          /* Nothing later, so this berth IS the unit's day, and which column
+             it belongs in is the one question AM_CUTOFF answers. It used to
+             be a bare 16:00 here, so a day finishing at 15 50 read AM in a
+             weekday book and PM in a weekend one. One rule, one figure:
+             core.js owns it and the rulebook carries it. */
           const t = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
           if (t !== null && sortkey(t) < AM_CUTOFF) { D = fc; E = ""; }
           else { D = ""; E = fc; }

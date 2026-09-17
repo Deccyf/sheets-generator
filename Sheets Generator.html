@@ -452,7 +452,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.1.2</b> · 17 September 2026</span>
+      <span class="ver">Version <b>3.1.3</b> · 17 September 2026</span>
     </div>
   </header>
 
@@ -762,7 +762,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.1.2
+      works without an internet connection. Version 3.1.3
       &middot; 17 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -3011,6 +3011,11 @@ const HOUSE_WIDTHS = [12.4, 9.1, 7.3, 4.7, 5.4, 12.9, 11.9, 27.6];
    and the print scale is computed from these widths, so the page still
    fits. */
 const MILES_WIDTHS = HOUSE_WIDTHS.concat([6.2]);
+/* F, the UNIT column - the one a berthing sheet leaves for the depot to
+   write in. Both berthing layouts put it here, the weekday one below and
+   the weekend one in src/engine.js, so it is named rather than a 6 twice. */
+const UNIT_COL = 6;
+const TEXT_COLS = [UNIT_COL];
 /* How long a break in a location's work has to be before a double line is
    ruled in it, and the hour after which a second one is drawn - see
    sectionRows for which breaks qualify. */
@@ -3058,13 +3063,18 @@ const FILLS_XML =
 '<fill><patternFill patternType="gray125"/></fill>';
 const FILL_COUNT = 2;
 
-/* Styles are registered as they are needed, so any mix of look and border
-   gets its own entry rather than being hard-coded up front. */
+/* Excel's built-in Text format: a cell wearing it keeps what is typed in
+   exactly as typed, which General does not - it eats the leading zero off a
+   unit number. Built in, so it needs no numFmts part of its own. */
+const TEXT_FMT = 49;
+
+/* Styles are registered as they are needed, so any mix of look, border and
+   number format gets its own entry rather than being hard-coded up front. */
 function StyleBook(){
   this.borders = [[null,null,null,null]];
   this.borderIdx = {",,,": 0};
-  this.xfs = [{look:0, border:0}];
-  this.xfIdx = {"0|0": 0};
+  this.xfs = [{look:0, border:0, fmt:0}];
+  this.xfIdx = {"0|0|0": 0};
 }
 StyleBook.prototype.border = function(sides){
   const key = sides.map(function(s){ return s || ""; }).join(",");
@@ -3074,11 +3084,12 @@ StyleBook.prototype.border = function(sides){
   }
   return this.borderIdx[key];
 };
-StyleBook.prototype.style = function(look, borderId){
-  const key = look + "|" + borderId;
+StyleBook.prototype.style = function(look, borderId, fmt){
+  fmt = fmt || 0;
+  const key = look + "|" + borderId + "|" + fmt;
   if (this.xfIdx[key] === undefined){
     this.xfIdx[key] = this.xfs.length;
-    this.xfs.push({look:look, border:borderId});
+    this.xfs.push({look:look, border:borderId, fmt:fmt});
   }
   return this.xfIdx[key];
 };
@@ -3095,8 +3106,10 @@ StyleBook.prototype.xml = function(){
   let x = '<cellXfs count="' + this.xfs.length + '">';
   for (const f of this.xfs){
     const L = LOOKS[f.look];
-    x += '<xf numFmtId="0" fontId="' + (L ? L[0] : 0) + '" fillId="0' +
+    x += '<xf numFmtId="' + (f.fmt || 0) + '" fontId="' + (L ? L[0] : 0) +
+         '" fillId="0' +
          '" borderId="' + f.border + '" xfId="0" applyFont="1" applyBorder="1"' +
+         (f.fmt ? ' applyNumberFormat="1"' : "") +
          (L ? ' applyAlignment="1">' + '<alignment horizontal="' + L[1] +
               '" vertical="center"/></xf>' : "/>");
   }
@@ -3209,10 +3222,19 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
   const widths = opts.widths || HOUSE_WIDTHS;
   // the house margins, unless the layout reproduces a document with its own
   const M = opts.margins || MARGIN;
+  /* A hand-written column is Text for its WHOLE length, not just the rows
+     the book fills: the cells carry it, and the column carries it for the
+     blank grid below. A cell's own style wins, so the ruled ones keep
+     their borders. */
+  const textCols = new Set(opts.textCols || []);
+  const colStyle = opts.textColStyle;
   let cols = '<cols>';
   widths.forEach(function(w, i){
-    cols += '<col min="' + (i+1) + '" max="' + (i+1) +
-            '" width="' + w + '" customWidth="1"/>';
+    const n = i + 1;
+    cols += '<col min="' + n + '" max="' + n +
+            '" width="' + w + '" customWidth="1"' +
+            (textCols.has(n) && colStyle !== undefined
+              ? ' style="' + colStyle + '" customFormat="1"' : "") + '/>';
   });
   cols += '</cols>';
   const byRow = new Map();
@@ -3354,8 +3376,12 @@ function writeWorkbook(sheets, zipFn){
   const sb = raw ? null : new StyleBook();
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells)
-      c.s = raw ? (c.xf || 0) : sb.style(c.look, sb.border(c.sides));
+      c.s = raw ? (c.xf || 0)
+                : sb.style(c.look, sb.border(c.sides), c.text ? TEXT_FMT : 0);
     const o = s.layout.opts || {};
+    // no look and no border: it dresses the empty grid, not the book
+    if (!raw && o.textCols && o.textCols.length)
+      o.textColStyle = sb.style(0, 0, TEXT_FMT);
     if (s.layout.comments && s.layout.comments.length) o.hasComments = true;
     return buildSheetXml(s.layout.cells, s.layout.merges,
                          s.layout.rowHeights, s.layout.maxRow, o);
@@ -3663,7 +3689,8 @@ function previewHtml(layout){
       if (divideAt.has(idx) && !lastSec) bot = "double";
       rows.push({ kind: "data",
         /* 6 is the unit column: the allocated unit where the export names
-           it, and otherwise an empty ruled cell for the depot to write in. */
+           it, and otherwise an empty ruled cell for the depot to write in -
+           which is why UNIT_COL is formatted Text, leading zero and all. */
         /* 9 is only read when the mainline mileage option is on - the layout
            is told how many columns to walk, so it costs nothing when off. */
         vals: { 1: v.a, 2: v.cls, 3: v.diag, 4: v.am, 5: v.pm, 6: v.unit,
@@ -3761,7 +3788,7 @@ function rowsToLayout(rowsIn, miles) {
         /* a real number, so the column can be summed in Excel - the Metro
            book's MILES and the 395 sheet's MG both ship theirs that way */
         const num = c === 9 && typeof val === "number";
-        cells.push({ r, c, v: val, look: V_LOOK[c], num,
+        cells.push({ r, c, v: val, look: V_LOOK[c], num, text: c === UNIT_COL,
                      sides: [l, rr, row.top || null, row.bot || null] });
       }
       rowEdge.set(r, [row.top || null, row.bot || null]);
@@ -3784,7 +3811,8 @@ function rowsToLayout(rowsIn, miles) {
     merges.push("G" + r0 + ":G" + r1);
   }
   return { cells, merges, rowHeights, maxRow: r,
-           opts: miles ? { widths: MILES_WIDTHS } : undefined };
+           opts: miles ? { widths: MILES_WIDTHS, textCols: TEXT_COLS }
+                       : { textCols: TEXT_COLS } };
 }
 
 /* The section order for a book: the base list with every section the
@@ -3831,7 +3859,8 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
 
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, esc,
-         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan };
+         DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan,
+         UNIT_COL, TEXT_COLS, TEXT_FMT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
@@ -6809,6 +6838,9 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
   const at = new Map();                       // "r,c" -> cell
   function put(r, c, v, look){
     const cell = {r:r, c:c, v:v, look:look, sides:[null,null,null,null]};
+    // the UNIT column, empty here because the prints allocate nothing:
+    // Text, the same as the weekday book, so a leading zero survives
+    if (c === SHEETS_XLSX.UNIT_COL) cell.text = true;
     cells.push(cell); at.set(r + "," + c, cell);
     return cell;
   }
@@ -6883,7 +6915,8 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
     if (r > bodyFirst) ruleSection(bodyFirst, r - 1, entryEnds, doubleEnds);
     rowHeights.set(r, 18); r++;
   }
-  return {cells:cells, merges:merges, rowHeights:rowHeights, maxRow:r};
+  return {cells:cells, merges:merges, rowHeights:rowHeights, maxRow:r,
+          opts:{textCols: SHEETS_XLSX.TEXT_COLS}};
 }
 /* ---- the depot's own two documents, off the weekend prints ----
 
@@ -7998,14 +8031,11 @@ const GENIUS = (() => {
         const fc = bcode(locName(finalStop), warn, u.diag);
         let D = "", E = "";
         if (later.length === 0) {
-          /* Nothing later, so this berth is the unit's day - and which
-             column it belongs in is the one question AM_CUTOFF answers.
-             This used to be its own bare 16:00, which put a day finishing
-             at, say, 15 50 in the AM column here and in the PM column in a
-             weekend book, off the same moment under a name. One rule, one
-             figure: src/core.js owns it, the rulebook carries it, and both
-             engines read it. Below, and the END marker further down, were
-             already on it - this line was the odd one out. */
+          /* Nothing later, so this berth IS the unit's day, and which column
+             it belongs in is the one question AM_CUTOFF answers. It used to
+             be a bare 16:00 here, so a day finishing at 15 50 read AM in a
+             weekday book and PM in a weekend one. One rule, one figure:
+             core.js owns it and the rulebook carries it. */
           const t = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
           if (t !== null && sortkey(t) < AM_CUTOFF) { D = fc; E = ""; }
           else { D = ""; E = fc; }
