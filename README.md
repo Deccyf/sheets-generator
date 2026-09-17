@@ -194,6 +194,12 @@ repeated here. The shape of it:
   the depot has said so. What the reports cannot say — which way a train is
   physically facing — is measured in [HISTORY.md](HISTORY.md) and is why
   the corrections list exists.
+- **The AM and PM columns.** Where the unit is put away next, and where it
+  ends the day. A day that simply ends is one or the other by the clock, and
+  the clock is `AM_CUTOFF` — `src/core.js` defines it, `src/rulebook.js`
+  carries it, and both engines read that one figure. The weekday engine
+  carried a second, unnamed cutoff of its own until 3.1.2, which put the
+  same moment in different columns in a weekday book and a weekend one.
 - **The lines across the page.** The first break of `BREAK_GAP` (three
   hours) or more in a location's work, and any later one leading into work
   after `PM_BREAK`. Grove Park is never ruled.

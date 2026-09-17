@@ -491,6 +491,36 @@ export const GROVE_PARK_DETAIL = [
   orderLeg("RM046", 40, "SVNOCHS", "Sevenoaks Sdg", "12:42:00", "5Z49", "GRVPKDS", "Grove Park Down CHS", "13:40:00"),
 ].join("\r\n");
 
+/* Two diagrams that do the same thing an hour and a half apart, to pin the
+   line between the AM and PM columns for a day that simply ends.
+
+   RM071 finishes in the Ashford east berthing sidings at 15:50 and RM072 at
+   13:30. One is an afternoon berth and the other a morning one, and the
+   cutoff between them is AM_CUTOFF - 14:00, the same figure the weekend
+   books read. This engine used to carry its own 16:00 here, so RM071 came
+   out in the AM column on a weekday sheet and the PM column on a weekend
+   one, off the same moment. RM072 is the control: it lands in AM either
+   way, so a test that only had the late one could pass on a rule that put
+   everything in PM. */
+export const DAY_END_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM071,Covered,375/6,,0,10/08/2026 14:30,1,5W71,DOVERPS,10/08/2026 15:50,ASHFEBS,30,,,,,,RM071,,",
+  "RM072,Covered,375/6,,0,10/08/2026 12:10,1,5W72,DOVERPS,10/08/2026 13:30,ASHFEBS,30,,,,,,RM072,,",
+].join("\r\n");
+
+export const DAY_END_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  orderLeg("RM071", 30, "DOVERPS", "Dover Priory Sidings", "14:30:00", "5W71", "DOVERP", "Dover Priory", "14:40:00"),
+  orderLeg("RM071", 30, "DOVERP", "Dover Priory", "14:50:00", "2W71", "ASHFEBS", "Ashford E Berthi", "15:50:00"),
+  orderLeg("RM072", 30, "DOVERPS", "Dover Priory Sidings", "12:10:00", "5W72", "DOVERP", "Dover Priory", "12:20:00"),
+  orderLeg("RM072", 30, "DOVERP", "Dover Priory", "12:30:00", "2W72", "ASHFEBS", "Ashford E Berthi", "13:30:00"),
+].join("\r\n");
+
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
 export const INTEGRALE_QUIRKS_SUMMARY =

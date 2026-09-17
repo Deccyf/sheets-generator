@@ -2,6 +2,7 @@
    legacy build's output exactly, structure for structure. */
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { legacy, built, norm } from "./helpers/compare.mjs";
 import { makePdf, SUMMARY_LINES, DETAIL_LINES } from "./helpers/synth.mjs";
 
@@ -492,6 +493,28 @@ test("a brief stand in a spur is a turnround, and takes no column with it", asyn
     "two hours there is a berthing, and the AM column says so");
   assert.ok(sev && sev.some(e => e.time === 12 * 60 + 42),
     "with its own line off the siding");
+});
+
+test("the line between the AM and PM columns is AM_CUTOFF, in both engines", async () => {
+  const N = built();
+  const { DAY_END_SUMMARY, DAY_END_DETAIL } = await import("./helpers/synth.mjs");
+  const dp = N.GENIUS.buildIntegrale(
+    [DAY_END_SUMMARY, DAY_END_DETAIL]).secsByDay.M.get("DOVER PRIORY");
+  const row = t => norm(dp.find(e => e.time === t).units.map(u => [u.diag, u.am, u.pm]))[0];
+  /* Two diagrams that end their day in the same sidings, RM072 at 13:30 and
+     RM071 at 15:50. This engine used to carry a bare 16:00 of its own here,
+     so the late one read as a morning berth on a weekday sheet and an
+     afternoon one on a weekend sheet, off the same moment. */
+  assert.deepEqual(row(14 * 60 + 50), ["071", "", "AFE"],
+    "a day that ends at 15 50 ends in the afternoon");
+  assert.deepEqual(row(12 * 60 + 30), ["072", "AFE", ""],
+    "and one that ends at 13 30 ends in the morning");
+  // and the figure itself is the one core.js defines, not a copy
+  assert.equal(N.SHEETS_RULEBOOK.AM_CUTOFF, N.SHEETS_CORE.AM_CUTOFF,
+    "the rulebook carries core's figure");
+  const src = readFileSync(new URL("../Sheets Generator.html", import.meta.url), "utf8");
+  assert.equal(src.indexOf("16 * 60"), -1,
+    "and no engine has a second, unnamed cutoff of its own");
 });
 
 test("units the reports cannot order are named on the review list", async () => {

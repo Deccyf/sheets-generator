@@ -140,6 +140,39 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.1.2 — 17 September 2026 — one cutoff, not two
+
+**The AM and PM columns split the day at a different time in a weekday book
+than in a weekend one.** The weekend engine calls the moment `AM_CUTOFF` and
+puts it at **14:00**; the weekday engine had its own bare `16 * 60` sitting
+in the line that decides where a day that simply ends belongs. So a unit
+finishing in the Ashford east berthing sidings at 15 50 read as a morning
+berth on one sheet and an afternoon berth on the other, off the same move.
+
+The figure is defined once, in `src/core.js`, and carried by
+`src/rulebook.js` so both engines take every day-shape constant from one
+place. Two lines a few rows apart in the same function were already reading
+it; this one was the odd one out. It now reads it too, and the build carries
+no `16 * 60` anywhere — which is itself a test, so a third cutoff cannot be
+written in quietly.
+
+**What it changes on a real day: nothing yet.** Every unit row in the 18/09
+book — all 254 — is identical before and after, because no diagram that day
+ends at a berth between half past six in the morning and four in the
+afternoon; a weekday plan finishes its units in the small hours or in the
+evening. So this is the inconsistency removed rather than a fault fixed, and
+it is pinned by a pair of diagrams that end their day at 15 50 and at 13 30,
+one either side of the line, with the early one as the control.
+
+It came out of chasing a reported fault — **GT129 showing AFK in the AM
+column** — which does not reproduce on 18/09: AFK is in the PM column on all
+four of its rows, GT129 and GT130 read identically, and moving this cutoff
+changes none of them. The sheet that was marked up reads `SPLITS PM` on the
+row where the 18/09 pull reads `SPLITS`, and that pull is stamped three
+hours after the report of it, so the diagram itself moved between the two.
+That one is still open, and wants the reports the marked-up book was built
+from.
+
 ## 3.1.1 — 17 September 2026 — two the depot marked up
 
 Both reported off a real book, both at Grove Park, both checked against the
