@@ -1864,7 +1864,12 @@ const GENIUS = (() => {
   // shapes shared with the weekend engine; nothing else calls them.
   return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
            pdfText,
-           parseSummary, parseDetail, _stopsOf: stopsOf, _boundaries: boundaries };
+           /* parseSummaryCsvG is out here for the shortages road, which wants
+              the POS column and nothing else the weekday pipeline does with
+              it - one Summary reader for both, rather than a second one that
+              would drift. */
+           parseSummary, parseSummaryCsvG, parseDetail,
+           _stopsOf: stopsOf, _boundaries: boundaries };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = GENIUS;
 if (typeof globalThis !== "undefined") globalThis.GENIUS = GENIUS;

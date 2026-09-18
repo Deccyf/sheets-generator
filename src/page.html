@@ -159,6 +159,8 @@
       aria-selected="true" aria-controls="wkPanel">Weekday · Mon – Fri</button>
     <button type="button" class="mode" id="mode_we" role="tab"
       aria-selected="false" aria-controls="wePanel">Weekend · Sat &amp; Sun</button>
+    <button type="button" class="mode" id="mode_sv" role="tab"
+      aria-selected="false" aria-controls="svPanel">Shortages &amp; variations</button>
   </div>
 
   <section class="platform" id="wkPanel" role="tabpanel" aria-labelledby="mode_wk">
@@ -330,6 +332,84 @@
     </div>
 
     <div class="roads" id="we_roads"></div>
+  </section>
+
+  <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
+    <h2 class="vh">Shortages and variations from the Operating Report</h2>
+    <p class="whatfor">Needs the <strong>Operating Report</strong> and the
+      <strong>Diagram Detail</strong> for the date — .pdf or .csv. This is not
+      a berthing book: it is the controller&rsquo;s list of what is short, what
+      is the wrong length and what is the wrong fleet, with every service each
+      one goes on to affect. The <strong>Diagram Summary</strong> is optional
+      and one column of it is read: <code>POS</code>, which is the only place
+      a diagram&rsquo;s place in its formation is written down.</p>
+
+    <button class="berth" id="svberth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the Operating Report &amp; Diagram Detail here</strong>
+          <span>.pdf or .csv · both for the same date · the Diagram Summary
+            too, if a formation of three needs placing · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
+
+    <div class="board">
+      <p class="status" id="svstatus" role="status" aria-live="polite"></p>
+      <div class="board-acts" id="svbar" hidden>
+        <button class="btn light" id="svcopy" type="button">Copy the list</button>
+        <button class="btn light" id="svsave" type="button">Save as text</button>
+        <button class="btn ghost light" id="svclear" type="button">Start over</button>
+        <span class="note" id="svnote"></span>
+      </div>
+    </div>
+
+    <pre class="svout" id="svout" hidden></pre>
+
+    <div class="svreview" id="svreviewwrap" hidden>
+      <h3>Review</h3>
+      <ul id="svreview"></ul>
+    </div>
+
+    <details class="svrules" id="svrules">
+      <summary>What this list is working from</summary>
+      <div class="svrules-body">
+        <p><b>Shortages.</b> A <i>Not allocated</i> line on the Operating
+          Report, inside the window the print time puts it in: a report run
+          between one and eight in the morning takes departures before 09 00;
+          one run between eight and six takes departures between 12 00 and
+          18 00. There is no window yet for a report run after 18 00, and one
+          run then says so on the Review list rather than guessing.</p>
+        <p><b>Variations.</b> A unit of the wrong length, the wrong fleet
+          family or the wrong class against what the diagram planned. A 3-car
+          and a 4-car that have simply swapped between two diagrams on one
+          working read as <code>3 CAR WRONG END</code>; reciprocal 375 / 375-9
+          swaps on the same working cancel out; a 377 on an RM diagram or a
+          375 on a GT one is paired when the diagrams start together.</p>
+        <p><b>A 3-car in the wrong place is not a length difference.</b> Where
+          the cars are all there and only their order is wrong, it reads
+          <code>3 CAR WRONG END</code>, or <code>3 CAR INTER VICE END</code>
+          where the 3-car is standing in the middle of the formation. Which of
+          the two needs the <code>POS</code> column: with two units both are
+          ends and the answer is forced, with three or more it is the Diagram
+          Summary that settles it, and without one the pair is named on the
+          Review list rather than labelled on a guess.</p>
+        <p><b>Everything it touches.</b> Legs shared between diagrams are
+          stitched into one working, so a variation is traced through every
+          service it goes on to affect and grouped by the length the train
+          ends up — the <code>FOLLOWING</code> lines.</p>
+        <p><b>Left out.</b> Shunts inside the Ashford and Grove Park depot
+          fences. And when both reports were produced between 08 00 and 16 00,
+          a diagram that has finished by 16 00.</p>
+        <p class="secn">The place codes here are the <b>roads</b>, not the
+          berthing books&rsquo; station codes — <code>AFDS</code>,
+          <code>AFUS</code>, <code>DVPS</code>, <code>GPUS</code> — because a
+          discrepancy is worked off a road. The two vocabularies are
+          deliberately apart.</p>
+      </div>
+    </details>
   </section>
 
   <footer>

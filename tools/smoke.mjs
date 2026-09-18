@@ -173,5 +173,34 @@ await page.waitForFunction(() =>
   document.querySelector("#we_status").textContent.includes("Books built"), null, { timeout: 20000 });
 console.log("csv pasted  :", await page.textContent("#we_paste_say"));
 
+/* ---- the shortages and variations road ---- */
+await page.reload();
+await page.locator("#mode_sv").click();
+if (!(await page.locator("#svPanel").isVisible())) throw new Error("the shortages panel should open on its tab");
+console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
+{
+  /* Its two reports, written as their text comes out of the PDF and the CSV
+     export, so the panel is driven the way a person drives it. */
+  const { OPERATING_LINES, SHORTAGE_DETAIL_CSV, SHORTAGE_SUMMARY_LINES } =
+    await import("../test/helpers/shortage-synth.mjs");
+  const opPath = f("uoperatd.txt", OPERATING_LINES.join("\n"));
+  const detPath = f("diagdet2.csv", SHORTAGE_DETAIL_CSV);
+  const sumPath = f("udiagsum.txt", SHORTAGE_SUMMARY_LINES.join("\n"));
+  await page.setInputFiles("#svfile", [opPath, detPath, sumPath]);
+  await page.waitForFunction(() => !document.querySelector("#svout").hidden,
+    null, { timeout: 20000 });
+  console.log("sv built    :", (await page.textContent("#svstatus")).trim());
+  const list = await page.textContent("#svout");
+  if (!/3 CAR WRONG END \(RM301\/RM901\)/.test(list)) throw new Error("the 3-car swap is missing: " + list);
+  if (!/3\.375 V 4\.375 \(RM903\)/.test(list)) throw new Error("the real shortfall is missing: " + list);
+  if (!/3 CAR INTER VICE END \(RM302\/RM905\)/.test(list)) throw new Error("the middle case is missing: " + list);
+  const note = await page.textContent("#svnote");
+  if (!/positions from the Summary/.test(note)) throw new Error("the Summary should be read: " + note);
+  console.log("sv list     :", list.split("\n")[0]);
+  await page.locator("#svclear").click();
+  if (!(await page.locator("#svout").isHidden())) throw new Error("start over should clear the list");
+  console.log("sv cleared  :", (await page.textContent("#svstatus")).trim());
+}
+
 await browser.close();
 console.log("SMOKE OK");

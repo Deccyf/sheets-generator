@@ -140,6 +140,88 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.0 — 18 September 2026 — a third road: shortages and variations
+
+**The depot's own *Shortage and Variations* prototype is now a tab.** It takes
+the GENIUS **Operating Report** and the **Diagram Detail** and writes the
+controller's list — what is short, what is the wrong length, what is the wrong
+fleet, and every service each one goes on to affect. It builds no workbook;
+the list is written text, copied into an email or saved.
+
+**The engine came across as it was written.** It had been held against the
+real 18/09 reports before the port and it reproduced them, so the logic is
+evidence and the port was plumbing. What changed: it carried its own copy of
+the PDF text extractor and its own fflate bundle, and both were already in
+this build, so it now reads what the rest of the tool reads — and the Diagram
+Detail can arrive as the **CSV export** as well as the PDF, which the
+prototype could not do. Both roads land on the same list, and a test holds
+them to it.
+
+**What it found on 18/09.** 528 rows over 67 diagrams, and 31 to report: one
+4-car on a 3-car diagram, one 3-car on a 4-car, and 29 fleet swaps. Two things
+worth recording from that run. The report carried **no *Not allocated* lines
+at all** — every row was a fleet mismatch — so the shortage half of the rules
+is still unexercised on real paper and wants a print from a day something was
+genuinely short. And it was printed at 20:25, outside every window the rules
+have, which the Review list said rather than guessing.
+
+**A 3-car in the wrong place is a swap, not a length difference.** The depot
+read the first list and said so: where the cars are all there and only their
+order is wrong, it is `3 CAR WRONG END`, never `4.375 V 3.375` against one
+diagram and `3.375 V 4.375` against the other.
+
+The prototype had that rule and it could not fire, for a reason worth
+recording. It looked for the pair among each diagram’s **effective**
+allocation - the last one it holds in the day - and RM901 carries the 3-car
+375303 on the 05 22 to Dover but a 4-car from 15:49, so its morning unit was
+never looked at and the swap with RM301 was invisible. The pair is read off
+the **working** now, over every allocation a diagram holds, and 18/09 reads
+`3 CAR WRONG END (RM301/RM901) ENDS 2R02 05 22 AFK - DVP` where it read two
+length differences before. RM901’s afternoon unit is a separate mismatch and
+still has its own line.
+
+A 3-car with nothing swapped back is untouched: that train really is a car
+short, so it keeps its length label and the `FOLLOWING` trace of what it
+leaves short.
+
+**And the middle of a formation: `3 CAR INTER VICE END`.** A 3-car standing
+*intermediate* rather than on an end reads differently again, and telling the
+two apart needs a diagram’s place in its formation. That is not on the
+Operating Report, not on the Diagram Detail, and — checked — **not on the
+Allocation Summary** either: that report is a row per unit (which diagram it
+starts on, which it finishes on, where, when, how far) and has no position
+column at all. It is the **Diagram Summary’s POS**, which is the report the
+weekday books are already built from.
+
+So the road takes the Diagram Summary as an optional third report and reads
+it with the weekday pipeline’s own parser rather than a second one that would
+drift. With two units both are ends and the answer is forced, so no Summary is
+needed; with three or more the POS column settles it, and with no Summary
+dropped in the pair is named on the Review list — saying which report would
+answer it — rather than labelled on a guess.
+
+On 18/09 it changes nothing, and that is the point: the only swap that day is
+the two-unit RM301/RM901, so the list is identical with the Summary and
+without it.
+
+**The place codes stay apart on purpose.** This list names the **road** —
+`AFDS`, `AFUS`, `DVPS`, `GPUS` — where the berthing books name the station.
+That is not an inconsistency to be merged away: a berthing sheet says where a
+unit is put away, a discrepancy is worked off a road. Of the codes the two
+tables share, thirteen differ, and the test names six of them so a future
+merge has to argue with something.
+
+**And a thing the merge makes possible but does not yet do.** The berthing
+books take a diagram's class from the Diagram Summary's *planned* fleet. On
+18/09 the Operating Report contradicted that on **39 rows** — 21 printed
+`4 375` that had a 375/9 on them, 18 of the 9xx printed `4 375-9` that had a
+plain 375 or a 3-car. Whether a berthing book should show the plan or what is
+actually out there is the depot's call, so nothing changed; but the tool can
+now see the difference.
+
+The size ceiling moves 700 KB → 760 KB for the road (~35 KB). It brought no
+library with it.
+
 ## 3.1.4 — 18 September 2026 — RM013 leads to Dover Priory
 
 **The 03+52 off Ashford printed 014 first; the depot says 013 leads.** It is

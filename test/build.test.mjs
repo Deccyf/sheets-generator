@@ -27,8 +27,13 @@ test("the built file is self-contained and lean", () => {
      or the next one-line fix fails this test instead of being a decision.
      Nothing here is a bundle - the two that matter are named below, and the
      file is still roughly half what it was when they were in it. */
-  assert.ok(html.length < 700 * 1024,
-    "under 700 KB (was 1.2 MB); this build is " +
+  /* 760 KB since the shortages and variations road came in (~35 KB): a
+     third report read, a third panel, and the leg/occurrence walk that
+     traces a variation through every diagram sharing a working. It brought
+     no library with it - it had its own copy of the PDF extractor and its
+     own fflate, and both were dropped for the ones already here. */
+  assert.ok(html.length < 760 * 1024,
+    "under 760 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

@@ -33,6 +33,7 @@ release by release.
 - [The workbook writer and the preview](#the-workbook-writer-and-the-preview)
 - [The two documents that are not berthing sheets](#the-two-documents-that-are-not-berthing-sheets)
 - [The stock requirements form](#the-stock-requirements-form)
+- [Shortages and variations](#shortages-and-variations)
 - [The interface](#the-interface)
 - [The diagram analyser](#the-diagram-analyser)
 - [Reference data — where the knowledge lives](#reference-data--where-the-knowledge-lives)
@@ -52,7 +53,7 @@ them, in a fixed order, into the two HTML files.
 | `HOW TO USE.md` → `HOW TO USE.docx` | The user guide; the Word file is generated from the Markdown by `tools/make-guide-docx.mjs` on every build (needs the `docx` package from `npm ci`). |
 | `BERTHING SHEET RULES.html` | The rulebook for circulating, generated on every build by `tools/make-rules-doc.mjs` from the built file's own tables — nothing on it is typed out separately. |
 | `HISTORY.md` | Release history and the reasoning behind past changes. |
-| `src/page.html`, `src/styles.css` | The page shell (both panels, the how-to fold, the ES5 capability probe, the `{{CSS}}` / `{{SCRIPTS}}` / `{{VERSION}}` / `{{RELEASED}}` placeholders) and all styling. The analyser reuses `styles.css` for its base look and adds `src/fleet/fleet.css`. |
+| `src/page.html`, `src/styles.css` | The page shell (all three panels, the how-to fold, the ES5 capability probe, the `{{CSS}}` / `{{SCRIPTS}}` / `{{VERSION}}` / `{{RELEASED}}` placeholders) and all styling. The analyser reuses `styles.css` for its base look and adds `src/fleet/fleet.css`. |
 | `src/data.js` — `SHEETS_DATA` | Every reference table for every engine: berths, destination codes, section orders, fleet profiles, the station table, end-marker rules, the place names. Corrections belong here. |
 | `src/rules.js` — `SHEETS_RULES` | Local unit-order corrections (key grammar, merge, storage round-trip) and `explain()` / `explainHtml()`, which turn a build's rules into plain English for the Rules tab and the printed handout. |
 | `src/prints-read.js` — `SHEETS_PRINTS` | Opening a set of diagram prints whatever they arrive as: `.docx`, legacy `.doc` (OLE compound file and Word piece table, by hand), plain text, UTF-16 text, or a CSV save. Also owns `csvParse`. Both tools read the prints through this one module. |
@@ -64,7 +65,8 @@ them, in a fixed order, into the two HTML files.
 | `src/hs-skin.js`, `src/hs.js` — `SHEETS_HS_SKIN`, `SHEETS_HS` | The Class 395 Allocations Sheet: the depot's own style records (generated from their workbook by `tools/make-hs-skin.py`, not in the repo) and the sheet built with them. |
 | `src/engine.js` — `SheetsEngine` | The weekend pipeline: diagram parsing, generation, reissue merge, the updated-prints splice, the report. |
 | `src/genius.js` — `GENIUS` | The weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
-| `src/ui.js` | The page: the mode switch, the two panels (one panel controller, one message table `MSG`), the cards, the sprites, the Rules and Unit order tabs, this computer's memory. |
+| `src/shortage.js` — `SHEETS_SHORTAGE` | The shortages and variations list: the GENIUS Operating Report read, its legs stitched into workings so a variation can be traced through every diagram that shares one, and the controller’s written list out. Not a berthing sheet, and it keeps its own place-code table on purpose - it names roads where the books name stations. |
+| `src/ui.js` | The page: the mode switch, the three panels (one panel controller, one message table `MSG`), the cards, the sprites, the Rules and Unit order tabs, this computer's memory. |
 | `src/fleet/*` | The analyser: `prints.js` (the prints parsed for the fleet's sake), `fleet.js` (the analysis), `report.js` (the seven questions, rendered once for the screen and once for the workbook), `xlsx.js` (a small plain-grid writer), `ui.js`, `page.html`, `fleet.css`. |
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code: zip/unzip for docx and xlsx, inflate for PDF streams. |
 | `build.mjs` | Assembles `src/` into both files, stamps the versions, then runs the two document generators. |
@@ -257,6 +259,39 @@ styleSheet ships verbatim and every cell names the blank's own style record,
 so file and preview are the depot's form cell for cell, quirks included.
 The counts ride out of the build in a field of their own (`res.stock`), so
 nothing the golden suite compares changes shape.
+
+## Shortages and variations
+
+The third road, and the only one that builds no workbook. It takes the GENIUS
+**Operating Report** and the **Diagram Detail** and writes the controller's
+list: what is short, what is the wrong length, what is the wrong fleet, and
+every service each one goes on to affect.
+
+Ported from the depot's own *Shortage and Variations* prototype (v0.4). The
+engine is kept as it was written — it was held against the real 18/09 reports
+before the port and reproduced them line for line — and only the plumbing
+changed: it carried its own copy of the PDF extractor and its own fflate, both
+of which were already here, so it now reads what the rest of the tool reads,
+and the Diagram Detail can arrive as the CSV export as well as the PDF.
+
+- **Shortages** come from a *Not allocated* line, inside the window the
+  report's own print time puts it in. There is no window yet for a report run
+  after 18 00, and one run then says so on the Review list rather than
+  guessing.
+- **Variations** are a unit of the wrong length, family or class against the
+  plan. A 3-car and a 4-car swapped between two diagrams on one working read
+  as `3 CAR WRONG END`; reciprocal 375 / 375-9 swaps cancel; a 377 on an RM
+  diagram is paired with its mate when the diagrams start together.
+- **The trace** is the part no other road has: legs shared between diagrams
+  are stitched into one working with a union-find, so a variation is followed
+  through every service it touches and grouped by the length the train ends up
+  — the `FOLLOWING` lines.
+
+Its **place codes are the roads** — `AFDS`, `AFUS`, `DVPS`, `GPUS` — where the
+berthing books name the station (`AFK`, `AFU`, `DVP`, `GPU`). That is a
+difference of audience, not an inconsistency: a berthing sheet says where a
+unit is put away, and a discrepancy is worked off a road. Neither table is the
+other's master, and `test/shortage.test.mjs` guards them apart.
 
 ## The interface
 

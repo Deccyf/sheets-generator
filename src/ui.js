@@ -738,9 +738,12 @@ function roadCard(spec) {
 
 /* ---------------- the mode switch ---------------- */
 const MODES = { wk: { tab: $("#mode_wk"), panel: $("#wkPanel") },
-                we: { tab: $("#mode_we"), panel: $("#wePanel") } };
+                we: { tab: $("#mode_we"), panel: $("#wePanel") },
+                sv: { tab: $("#mode_sv"), panel: $("#svPanel") } };
 function currentMode() {
-  return MODES.we.tab && MODES.we.tab.getAttribute("aria-selected") === "true" ? "we" : "wk";
+  for (const k of Object.keys(MODES))
+    if (MODES[k].tab && MODES[k].tab.getAttribute("aria-selected") === "true") return k;
+  return "wk";
 }
 function switchMode(m) {
   for (const k of Object.keys(MODES)) {
@@ -752,7 +755,8 @@ function switchMode(m) {
 }
 for (const k of Object.keys(MODES))
   if (MODES[k].tab) MODES[k].tab.addEventListener("click", () => switchMode(k));
-if (savedOpts.mode === "we") switchMode("we");
+if (savedOpts.mode && savedOpts.mode !== "wk" && MODES[savedOpts.mode])
+  switchMode(savedOpts.mode);
 
 /* ---------------- one panel: what both share ---------------- */
 function makePanel(ids) {
@@ -1406,5 +1410,136 @@ function decodeText(u8) {
   try { return new TextDecoder("utf-8", { fatal: true }).decode(u8); }
   catch (e) { return new TextDecoder("windows-1252").decode(u8); }
 }
+
+/* ---------------- shortages and variations ----------------
+   Its own small panel: two reports in, one written list out. Nothing here
+   builds a workbook, so it shares the drop furniture and the status line
+   and none of the book machinery. */
+(function svPanel() {
+  const zone = $("#svberth"), input = $("#svfile"), statusEl = $("#svstatus");
+  if (!zone || !input) return;
+  const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
+  const revWrap = $("#svreviewwrap"), rev = $("#svreview");
+  /* The Diagram Summary is optional, and only one thing is read off it: the
+     POS column, which says where a diagram stands in its formation. Without
+     it a formation of three cannot be placed and the road says so. */
+  const held = { op: null, det: null, sum: null,
+                 names: { op: "", det: "", sum: "" } };
+  const HELD_LABEL = { op: "Operating Report", det: "Diagram Detail",
+                       sum: "Diagram Summary" };
+  let text = "", stamp = "";
+  const say = (msg, kind) => {
+    statusEl.textContent = msg;
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  };
+  const waiting = () => {
+    const got = ["op", "det", "sum"].filter(k => held[k]).map(k => HELD_LABEL[k]);
+    const want = ["op", "det"].filter(k => !held[k]).map(k => HELD_LABEL[k]);
+    if (!got.length) return "Waiting for the Operating Report and the Diagram Detail.";
+    return got.join(" and ") + " loaded — waiting for the " + want.join(" and ") + ".";
+  };
+  function render() {
+    if (!held.op || !held.det) { say(waiting()); return; }
+    let res;
+    try { res = SHEETS_SHORTAGE.run(held.op, held.det, held.sum); }
+    catch (e) { say("That pair could not be read: " + e.message, "err"); return; }
+    text = res.text || "";
+    out.textContent = text || "Nothing to report — every diagram has what it was planned.";
+    out.hidden = false;
+    bar.hidden = false;
+    rev.textContent = "";
+    for (const r of res.reviews) {
+      const li = document.createElement("li");
+      li.textContent = r;
+      rev.appendChild(li);
+    }
+    revWrap.hidden = res.reviews.length === 0;
+    const n = (k, one, many) =>
+      res.counts[k] + " " + (res.counts[k] === 1 ? one : many);
+    note.textContent = res.diagrams + " diagrams on the report, " +
+      res.detailDiagrams + " in the detail" +
+      (res.positions ? ", positions from the Summary"
+                     : " · no Diagram Summary, so a formation of three cannot be placed");
+    say(n("top", "shortage or length case", "shortage and length cases") +
+        " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
+        ". Look them over, then copy or save.", "go");
+  }
+  async function take(files) {
+    const list = [...files];
+    if (!list.length) return;
+    for (const f of list) {
+      let u8;
+      try { u8 = new Uint8Array(await f.arrayBuffer()); }
+      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      let txt;
+      if (/\.pdf$/i.test(f.name)) {
+        try { txt = GENIUS.pdfText(u8); }
+        catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+      } else txt = decodeText(u8);
+      const kind = SHEETS_SHORTAGE.sniff(txt);
+      if (kind === "op") { held.op = txt; held.names.op = f.name; }
+      else if (kind === "det") { held.det = txt; held.names.det = f.name; }
+      else if (kind === "sum") { held.sum = txt; held.names.sum = f.name; }
+      else {
+        say(f.name + " does not read as an Operating Report or a Diagram " +
+            "Detail.", "err");
+      }
+    }
+    stamp = (held.names.op || held.names.det || "").replace(/\.[^.]+$/, "");
+    render();
+  }
+  zone.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => { take(input.files); input.value = ""; });
+  for (const ev of ["dragenter", "dragover"])
+    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
+  for (const ev of ["dragleave", "drop"])
+    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
+  zone.addEventListener("drop", e => {
+    if (e.dataTransfer && e.dataTransfer.files) take(e.dataTransfer.files);
+  });
+  /* The list is pasted into an email, so it goes onto the clipboard twice:
+     as plain text, and as Calibri 11 bold, which is the face the depot's
+     notes are written in. A browser without ClipboardItem gets the text. */
+  const esc = s => String(s).replace(/[&<>"]/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  if ($("#svcopy")) $("#svcopy").addEventListener("click", async () => {
+    if (!text) return;
+    const html = '<pre style="font-family:Calibri,Arial,sans-serif;' +
+      'font-size:11pt;font-weight:700;white-space:pre-wrap">' +
+      esc(text) + "</pre>";
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/html": new Blob([html], { type: "text/html" }),
+        })]);
+        say("Copied, in Calibri 11 bold.", "go");
+      } else {
+        await navigator.clipboard.writeText(text);
+        say("Copied.", "go");
+      }
+    } catch (e) {
+      try { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+      catch (e2) { say("This browser would not let the page copy. Select the " +
+                       "list and copy it by hand.", "err"); }
+    }
+  });
+  if ($("#svsave")) $("#svsave").addEventListener("click", () => {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "SHORTAGES_AND_VARIATIONS.txt";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  if ($("#svclear")) $("#svclear").addEventListener("click", () => {
+    held.op = held.det = held.sum = null; text = "";
+    held.names.op = held.names.det = held.names.sum = "";
+    out.textContent = ""; out.hidden = true; bar.hidden = true;
+    revWrap.hidden = true; note.textContent = "";
+    say(waiting());
+  });
+  say(waiting());
+})();
 }
 })();
