@@ -1354,15 +1354,16 @@ test("two units berthed together both print; a unit joining does not", async () 
   assert.equal(afk.attachment, true, "and carries the ATTACHMENT note");
 });
 
-test("a formation that has lost a unit is told its pin no longer covers it", async () => {
-  /* The failure this catches, from the real books: a pin named 043, 044 and
+test("a formation short of its pin takes the order from it", async () => {
+  /* The failure this fixes, from the real books: a pin named 043, 044 and
      910; the day ran 043 and 044; the key stopped matching and the sheet went
-     back to guessing with nothing said, in the opposite order to the one
-     somebody had written down. The same-set check cannot see it, because the
-     set is not the same.
-
-     Still live in the shipped table on every day to hand: GROVE PARK 04+58
-     runs 441+440 while the pin names 204, 440 and 441. */
+     back to guessing, in the opposite order to the one somebody had written
+     down. The same-set key cannot see it, because the set is not the same.
+     For a long time this was only REPORTED; the depot asked for RM301/RM901
+     at Grove Park, which is the same shape - the trio is pinned 301, 902,
+     901 there, 902 runs elsewhere, and the pair printed 901 first against
+     the book. A pin that names every unit standing here and some more still
+     says which of these leads, so it is used. */
   const N = built();
   const { ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL } =
     await import("./helpers/synth.mjs");
@@ -1374,16 +1375,32 @@ test("a formation that has lost a unit is told its pin no longer covers it", asy
   const clean = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL]);
   assert.equal(near(clean).length, 0, "quiet when no pin mentions them");
 
-  /* a pin naming one more unit than actually turned up */
+  const order = res => {
+    const day = Object.keys(res.labels)[0];
+    return norm(res.secsByDay[day].get("ASHFORD")[0].units.map(u => u.diag));
+  };
+  /* unpinned, Ashford reads highest Position first */
+  assert.deepEqual(order(clean), ["952", "951"], "the rule alone");
+
+  /* a pin naming one more unit than actually turned up: used, and said */
+  const short = res => res.review.map(text).filter(m => /short of the formation/.test(m));
   const res = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],
     { orderFix: { "ASHFORD|951,952,953": ["951", "952", "953"] } });
-  const hits = near(res);
+  assert.deepEqual(order(res), ["951", "952"], "the pin turns the pair round");
+  const hits = short(res);
   assert.equal(hits.length, 1, "exactly one formation is short of its pin");
-  assert.match(hits[0], /951/, "it names the units that did turn up");
-  assert.match(hits[0], /this formation is different/,
-    "and says why the correction stopped applying");
+  assert.match(hits[0], /951, 952, 953/, "it names the formation the order was written for");
+
+  /* a pin the formation is NOT a subset of says nothing about the units it
+     never named, so the order still comes from the reports */
+  const part = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],
+    { orderFix: { "ASHFORD|951,953": ["953", "951"] } });
+  assert.deepEqual(order(part), ["952", "951"], "an overlapping pin is not applied");
+  assert.equal(short(part).length, 0, "and nothing claims it was");
+
   /* the exact-set pin still fires and still says nothing */
   const exact = N.GENIUS.buildIntegrale([ASHFORD_ROADS_SUMMARY, ASHFORD_ROADS_DETAIL],
     { orderFix: { "ASHFORD|951,952": ["952", "951"] } });
-  assert.equal(near(exact).length, 0, "a pin that fits is not a near miss");
+  assert.equal(near(exact).length + short(exact).length, 0,
+    "a pin that fits is neither a near miss nor a short formation");
 });

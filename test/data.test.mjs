@@ -263,3 +263,28 @@ test("each book's rules describe the document that book actually is", () => {
   assert.ok(R.pickFor(null, false).skip.indexOf("corrections") >= 0,
     "the Rules tab leaves them to the Unit order tab");
 });
+
+test("Cannon Street reads lowest Position first, and its pins say so", () => {
+  /* Reported by the depot: SG702 printed ahead of SG701. Cannon Street was
+     not on the Metro reading-order list, so it read highest Position first -
+     except that two of its three formations were pinned, and BOTH pins are
+     the order the Position column already gives. A pin that agrees with the
+     reports is a pin standing in for a missing section rule, and here it was
+     hiding one: the only formation with no pin was the only one printing the
+     other way up.
+
+     This is the invariant that keeps the two honest. If somebody ever takes
+     Cannon Street off the list, these pins start contradicting the rule
+     rather than agreeing with it, and this fails. */
+  const N = built(), D = N.SHEETS_DATA;
+  const metro = D.PROFILES_G.find(p => p.bucket === "metro");
+  assert.ok(metro.posAsc.has("CANNON STREET"),
+    "Cannon Street lists lowest Position first");
+  const pins = Object.keys(D.ORDER_FIX).filter(k => k.startsWith("CANNON STREET|"));
+  assert.ok(pins.length >= 2, "its formations are still pinned: " + pins.join(" "));
+  for (const k of pins) {
+    const want = norm(D.ORDER_FIX[k]);
+    assert.deepEqual(want, want.slice().sort(),
+      k + " is in ascending order, which is what the section rule now gives");
+  }
+});

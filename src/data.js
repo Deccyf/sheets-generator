@@ -470,6 +470,19 @@ const SIDING_CLASS_RE = new RegExp(
     "VICTORIA 17 14|127,128": ["127", "128"],
     // Metro, from the marked-up 10/08 book
     "BELLINGHAM SIDING|461,462": ["461", "462"],
+    /* These two agree with the order the Position column already gives, and
+       a pin that agrees with the reports is usually one standing in for a
+       missing section rule. That is what they were: CANNON STREET was not on
+       the Metro posAsc list, so the one formation there with no pin printed
+       the other way up - 702 ahead of 701 - and the depot reported it. The
+       section is named now (PROFILES_G below).
+
+       They stay anyway, and not from timidity. 403,404 and 405,406 are also
+       pinned at SLADE GREEN, and the review list says so whenever a pinned
+       formation turns up somewhere its pin does not reach; drop these and
+       Cannon Street collects that note every day for an order that is now
+       right by rule. Same reasoning as the bare 046,047,913 key below - the
+       table already prefers a redundant entry to a standing false alarm. */
     "CANNON STREET|403,404": ["403", "404"],
     "CANNON STREET|405,406": ["405", "406"],
     "GILLINGHAM|201,422": ["422", "201"],
@@ -531,7 +544,15 @@ const SIDING_CLASS_RE = new RegExp(
       // A platform starter's first move IS its platform departure, so those
       // keep the platform time.
       firstDepAll: true,
-      posAsc: new Set(), roadPosAsc: new Map(),
+      /* CANNON STREET reads lowest Position first, and the marked-up 10/08
+         book had already said so twice without anyone noticing: both of its
+         pinned formations, 403/404 and 405/406, are pinned to the order the
+         Position column gives, which is what a pin should never need to be.
+         The one Cannon Street formation with no pin, SG701/SG702, was
+         therefore the only one printing highest first - 702 ahead of 701 -
+         and the depot reported it. Naming the section is what the two pins
+         were standing in for; they are gone with it. */
+      posAsc: new Set(["CANNON STREET"]), roadPosAsc: new Map(),
       firstDep: new Set(["GROVE PARK", "SLADE GREEN"]),
       ecsOnlyOk: new Set(["GROVE PARK", "SLADE GREEN"]) },
     { bucket: "hs", fleets: { "395/0": "6 395" },

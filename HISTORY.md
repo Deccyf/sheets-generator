@@ -140,6 +140,57 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.1 — 18 September 2026 — Cannon Street's reading order, and a pin that had lost a unit
+
+Two reported off the real Metro books, and both turn out to be the same
+shape: house knowledge that was written down as a *pin* where it should have
+been a rule, and so only half applied.
+
+**SG702 printed ahead of SG701 at Cannon Street.** Cannon Street was not on
+the Metro reading-order list, so it read highest Position first — except that
+two of its three formations, 403/404 and 405/406, were pinned, and **both
+pins are the order the Position column already gives**. A pin that agrees
+with the reports is a pin standing in for a missing section rule, and here it
+was hiding one: the only Cannon Street formation with no pin was the only one
+printing the other way up. `CANNON STREET` is on the list now and all three
+read 701/702, 403/404, 405/406.
+
+The two pins stay, and not from timidity. Both formations are pinned at Slade
+Green as well, and the review list says so whenever a pinned formation turns
+up somewhere its pin does not reach — drop them and Cannon Street collects
+that note every day for an order that is now right by rule. The table already
+prefers a redundant entry to a standing false alarm; the bare `046,047,913`
+key is there for the same reason.
+
+**RM901 and RM301 printed 901 first at Grove Park, against the book.** The
+trio 301/901/902 is pinned at Grove Park as `301, 902, 901` — 301 leads
+there, and trails at Ashford — but 902 was working elsewhere, the three-unit
+key stopped matching, and the pair fell back to Grove Park's
+lowest-Position-first rule.
+
+This is the failure the corrections table has warned about in its own
+comments since the day 043/044/910 ran as 043/044, and until now it was only
+**reported**. A pin that names every unit standing here and one or two more
+is now **used**: somebody wrote down which of these leads, and the one that
+did not run does not change that. Only a superset — a formation that has
+*gained* a unit is not covered by an order that never named it, and a pin
+that merely overlaps says nothing about the ones it left out.
+
+Two entries in the whole 18/09 book take their order this way, both of them
+this pair: Ashford reads 901, 301 as it always did, Grove Park now reads
+301, 901. The review line says which formation the order was written for
+instead of telling the reader to go and check.
+
+**Still open: the rounder.** SG403/404 leave Cannon Street at 06 26 on the
+2P11, run Greenwich, Woolwich, Slade Green, Eltham, Blackheath and back into
+Cannon Street at 07 55. The row reads `06 26 CST`, which is true and reads
+like a shunt. Seven rows in the day have a destination equal to their own
+section, and a clean line separates them: the other six are `5B` empty moves
+around Slade Green, which really are shunts. A **passenger** working that
+starts and ends in the same section is a rounder. What such a row should say
+instead is the depot's convention, not something to invent, so it is
+unchanged pending an answer.
+
 ## 3.2.0 — 18 September 2026 — a third road: shortages and variations
 
 **The depot's own *Shortage and Variations* prototype is now a tab.** It takes

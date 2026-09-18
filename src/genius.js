@@ -899,8 +899,8 @@ const GENIUS = (() => {
         const kTimed = e.sec + " " + fmtT(e.tmin, e.hc) + "|" + diags;
         const kSec = e.sec + "|" + diags;
         const fix = fx.table[kTimed] || fx.table[kSec] || fx.table[diags];
-        const applied = fx.table[kTimed] ? kTimed
-                      : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
+        let applied = fx.table[kTimed] ? kTimed
+                    : (fx.table[kSec] ? kSec : (fx.table[diags] ? diags : null));
         if (fix) { pinned = true; e.blocks.sort((x, y) =>
           fix.indexOf(x.diag.slice(2)) - fix.indexOf(y.diag.slice(2))); }
         /* A pin that silently stops matching is the worst failure this table
@@ -921,14 +921,46 @@ const GENIUS = (() => {
            put the Ramsgate orders back the wrong way round. */
         else if (e.blocks.length > 1) {
           const mine = new Set(e.blocks.map(x => x.diag.slice(2)));
-          const near = (fx.near || []).filter(p =>
-            (!p.sec || p.sec === e.sec) &&
-            [...mine].filter(x => p.set.has(x)).length >= 2);
-          if (near.length) warn.push({ sec: e.sec, msg: e.sec + " " +
-            fmtT(e.tmin, e.hc) + " (" + [...mine].join("+") + "): a correction " +
-            "exists for " + [...near[0].set].join(", ") + " here, but this " +
-            "formation is different, so its order comes from the report. " +
-            "Check it against the real book." });
+          /* A pin that names every unit standing here and one or two more:
+             the formation has run a unit SHORT, and the order somebody wrote
+             down for the full one still says which of these leads. Taking the
+             relative order off it is the thing an exact-set key cannot do,
+             and it is the failure this table has warned about in its own
+             comments since the day 043/044/910 ran as 043/044 - RM301 and
+             RM901 are the live case: the trio is pinned 301, 902, 901 at
+             Grove Park, 902 runs elsewhere, and the pair fell back to Grove
+             Park's lowest-Position-first rule and printed 901 first against
+             the book.
+
+             Only a SUPERSET. A formation that has gained a unit is not
+             covered by an order that never named it, and a pin that merely
+             overlaps says nothing about the ones it left out. */
+          const covers = (fx.near || []).filter(p =>
+            (!p.sec || p.sec === e.sec) && p.set.size > mine.size &&
+            [...mine].every(x => p.set.has(x)));
+          // a key naming this section beats a bare one, as the exact lookup does
+          covers.sort((a, b) => (a.sec ? 0 : 1) - (b.sec ? 0 : 1));
+          const seq = covers.length ? fx.table[covers[0].key] : null;
+          if (seq) {
+            pinned = true;
+            applied = covers[0].key;
+            e.blocks.sort((x, y) =>
+              seq.indexOf(x.diag.slice(2)) - seq.indexOf(y.diag.slice(2)));
+            warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) +
+              " (" + e.blocks.map(x => x.diag.slice(2)).join("+") + "): short " +
+              "of the formation an order was written down for (" +
+              [...covers[0].set].join(", ") + "), so the order of the ones " +
+              "that ARE here is taken from it rather than from the report." });
+          } else {
+            const near = (fx.near || []).filter(p =>
+              (!p.sec || p.sec === e.sec) &&
+              [...mine].filter(x => p.set.has(x)).length >= 2);
+            if (near.length) warn.push({ sec: e.sec, msg: e.sec + " " +
+              fmtT(e.tmin, e.hc) + " (" + [...mine].join("+") + "): a correction " +
+              "exists for " + [...near[0].set].join(", ") + " here, but this " +
+              "formation is different, so its order comes from the report. " +
+              "Check it against the real book." });
+          }
         }
         /* What the lookup consulted, recorded at the lookup itself so nothing
            downstream has to re-derive a key and risk deriving a different

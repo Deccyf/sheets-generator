@@ -338,7 +338,7 @@ test("9d. local order corrections are described as what they are, singular and p
     "nothing sends anybody to an export that does not exist");
 });
 
-test("9e. a near-miss correction is explained in one sentence", () => {
+test("9e. a formation short of its pin takes the order from it", () => {
   const S = [HS, srow("AD951", "375/6", 1, "06:00", "ASHFDNS", "07:20", "DOVERP"),
                  srow("AD952", "375/6", 2, "06:00", "ASHFDNS", "07:20", "DOVERP")].join("\r\n");
   const D = [HD, ...["AD951", "AD952"].flatMap(d => [
@@ -346,10 +346,18 @@ test("9e. a near-miss correction is explained in one sentence", () => {
     leg(d, "ASHFKY", "Ashford", "06:20", "2A60", "DOVERP", "Dover Priory", "07:20")])].join("\r\n");
   const r = G.buildIntegrale([S, D],
     { orderFix: { "ASHFORD|951,952,953": ["951", "952", "953"] } });
-  const note = r.reviews.main.find(x => /a correction exists for/.test(x.msg));
+  /* The pin names one unit more than turned up. It used to be reported as a
+     near miss and the order left to the reports; it is used now - somebody
+     wrote down which of these leads, and the one that did not run does not
+     change that. Ashford reads highest Position first, so the pin is doing
+     real work here: unpinned this pair prints 952 first. */
+  const secs = r.secsByDay[Object.keys(r.labels)[0]].get("ASHFORD");
+  assert.deepEqual(norm(secs[0].units.map(u => u.diag)), ["951", "952"],
+    "ordered from the larger formation’s correction");
+  const note = r.reviews.main.find(x => /short of the formation/.test(x.msg));
   assert.ok(note, r.reviews.main.map(x => x.msg).join(" | "));
   assert.match(note.msg,
-    /^ASHFORD 06 20 \(95[12]\+95[12]\): a correction exists for 951, 952, 953 here, but this formation is different, so its order comes from the report\. Check it against the real book\.$/);
+    /^ASHFORD 06 20 \(951\+952\): short of the formation an order was written down for \(951, 952, 953\), so the order of the ones that ARE here is taken from it rather than from the report\.$/);
 });
 
 test("9f. Integrale notes pluralise properly and every review item uses an em dash", () => {
