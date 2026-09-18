@@ -427,3 +427,44 @@ test("the weekend book's UNIT column is text too, and it is the same column", ()
   assert.ok(f.length, "and it writes cells there");
   assert.ok(f.every(c => c.text === true), "every one of them text");
 });
+
+test("a weekday book and a weekend book are dressed the same", async () => {
+  /* Reported by the depot: typing a unit number into the weekend book looked
+     wrong beside the weekday one. Both leave column F empty for it, but the
+     weekend layout only RULED its blank cells and never dressed them, so they
+     came out in the grid default - Calibri, left - where the weekday book
+     gives that column Arial, bold, centred. The column looks are one table in
+     src/xlsx.js now and both layouts read it, so this holds by construction:
+     what it guards is somebody adding a column to one and not the other. */
+  const L = legacy(), N = built();
+  const mk = vm.runInContext("(n) => new Uint8Array(n)", L.__ctx);
+  const open = async bytes => {
+    const local = mk(bytes.length); local.set(bytes);
+    const wb = new L.ExcelJS.Workbook();
+    await wb.xlsx.load(local);
+    return wb.worksheets[0];
+  };
+  const wkRes = await geniusRes(N);
+  const weekday = await open(N.SHEETS_XLSX.writeBooks(wkRes.secsByDay, wkRes.labels, false));
+  const weRes = N.SheetsEngine.run(
+    [{ name: "WEEKEND PRINTS.docx", bytes: makeDocx(PRINTS_LINES, N.fflate) }],
+    b => N.fflate.unzipSync(b), f => N.fflate.zipSync(f, { level: 6 }));
+  const book = weRes.books.find(b => b.layout && !b.skipped);
+  assert.ok(book, "a weekend berthing book was built");
+  const weekend = await open(book.xlsx);
+
+  /* row 3 is the first line of the first section on both */
+  const dress = ws => [1, 2, 3, 4, 5, 6, 7, 8].map(i => {
+    const c = ws.getCell(3, i), f = c.font || {}, a = c.alignment || {};
+    return [f.name || null, f.size || null, !!f.bold, a.horizontal || null];
+  });
+  assert.deepEqual(norm(dress(weekend)), norm(dress(weekday)),
+    "every column wears the same face and alignment in both books");
+
+  /* and the column somebody types into is Text in both, or a unit number
+     with a leading zero survives in one book and not the other */
+  for (const ws of [weekday, weekend]) {
+    assert.equal(ws.getColumn(N.SHEETS_XLSX.UNIT_COL).numFmt, "@", "column F is text");
+    assert.equal(ws.getCell(3, N.SHEETS_XLSX.UNIT_COL).numFmt, "@", "and its cells are");
+  }
+});

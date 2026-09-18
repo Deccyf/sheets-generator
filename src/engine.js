@@ -669,7 +669,13 @@ function layoutBook(sectionsOut, sectionOrder, headcodeSections, dateStr, allHc)
       for (let i = 0; i < COL_SIDES.length; i++){
         const key = r + "," + (i+1);
         let cell = at.get(key);
-        if (!cell) cell = put(r, i+1, "", 0);
+        /* An empty cell the ruling brings into being still has to be
+           DRESSED, and dressed the same as the weekday book: these are the
+           cells somebody writes a unit number into, and a bare one comes out
+           in the grid default - Calibri, left - against the weekday sheet is
+           Arial, bold, centred. The looks come from the weekday layout
+           itself rather than being copied here. */
+        if (!cell) cell = put(r, i+1, "", SHEETS_XLSX.V_LOOK[i+1] || 0);
         cell.sides = [COL_SIDES[i][0], COL_SIDES[i][1], top, bottom];
       }
     }

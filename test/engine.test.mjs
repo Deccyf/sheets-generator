@@ -98,7 +98,16 @@ function sameShape(b) {
         // the notes column: a leading headcode comes and goes with the
         // headcode sections, which are the weekday ones now
         c[1] === 8 ? String(c[2] || "").replace(/^\d[A-Z]\d\d\s*/, "")
-        : c[2], c[3],
+        : c[2],
+        /* An EMPTY cell that only exists because the ruling brought it into
+           being: the frozen build left those undressed, so they came out in
+           the grid default - Calibri, left - while the weekday book dressed
+           the same column Arial, bold, centred. They are the cells somebody
+           writes a unit number into, and the depot reported the two books
+           looking different to type in. Both dress them the same way now, so
+           the look on a blank cell is a deliberate difference from the frozen
+           build; a cell with a VALUE in it still has to match exactly. */
+        String(c[2] || "") === "" ? 0 : c[3],
         [c[4][0], c[4][1], c[4][2], c[4][3] === "double" ? "thin" : c[4][3]],
         c[5]]),
     })),

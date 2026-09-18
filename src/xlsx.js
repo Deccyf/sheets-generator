@@ -767,6 +767,11 @@ function previewHtml(layout){
    the entry rules, and the flag column merged per entry. */
 /* 9 reads like the AM/PM pair beside it rather than like the notes: a short
    figure, centred, at the same size. */
+/* The dress of a berthing sheet, column by column: which font and alignment
+   each one wears. The weekend layout in src/engine.js sets the same looks on
+   the cells it writes, and takes these for the ones it only rules - or the
+   two books disagree on the EMPTY cells, which are exactly the ones somebody
+   types a unit number into. */
 const V_LOOK = { 1: 3, 2: 3, 3: 3, 4: 4, 5: 4, 6: 3, 7: 6, 8: 5, 9: 4 };
 function rowsToLayout(rowsIn, miles) {
   const cells = [], merges = [], rowHeights = new Map();
@@ -865,7 +870,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, esc,
          DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan,
-         UNIT_COL, TEXT_COLS, TEXT_FMT };
+         UNIT_COL, TEXT_COLS, TEXT_FMT, V_LOOK };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

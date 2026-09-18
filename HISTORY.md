@@ -140,6 +140,39 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.2 — 18 September 2026 — the two books are dressed the same
+
+**Reported as the weekend book not being formatted for text and not matching
+the weekday one to type into.** Half of that: the Text format was already on
+both — the weekend book's column F reads `@` down its whole length, the same
+as the weekday one. What differed was the **face**.
+
+A weekend sheet's blank cells are brought into being by the ruling, and the
+ruling only gave them a border: no font, no alignment. So a cell somebody
+types a unit number into came out in the grid default — **Calibri 11, left** —
+against the weekday book's **Arial 11 bold, centred**. Nothing was wrong with
+either book on its own; side by side they looked like two different documents,
+which is exactly how they are used.
+
+The column dress is one table now, `V_LOOK` in `src/xlsx.js`, and both
+layouts read it. The weekend layout's own cells already used those looks —
+they were only ever missing from the ones it ruled — so this changes no cell
+that has a value in it. Every column of a berthing sheet now wears the same
+face and alignment in both books:
+
+| | A | B | C | D | E | **F** | G | H |
+|---|---|---|---|---|---|---|---|---|
+| | Arial 11 b | Arial 11 b | Arial 11 b | Arial 10 | Arial 10 | **Arial 11 b** | Arial 10 b | Arial 10 |
+| | centre | centre | centre | centre | centre | **centre** | centre | right |
+
+A test holds the two books against each other cell for cell, so a column
+added to one and not the other is caught rather than noticed.
+
+The frozen-build comparison carries one more deliberate difference for it:
+the old build left those blank cells undressed, so the look on an **empty**
+cell is now expected to differ. A cell with a value in it still has to match
+exactly.
+
 ## 3.2.1 — 18 September 2026 — Cannon Street's reading order, and a pin that had lost a unit
 
 Two reported off the real Metro books, and both turn out to be the same
