@@ -517,6 +517,29 @@ test("the line between the AM and PM columns is AM_CUTOFF, in both engines", asy
     "and no engine has a second, unnamed cutoff of its own");
 });
 
+test("a pin corrects its own formation and leaves its twin alone", async () => {
+  const N = built();
+  const { ASHFORD_DOVER_SUMMARY, ASHFORD_DOVER_DETAIL } =
+    await import("./helpers/synth.mjs");
+  const res = N.GENIUS.buildIntegrale(
+    [ASHFORD_DOVER_SUMMARY, ASHFORD_DOVER_DETAIL]);
+  const ash = res.secsByDay.M.get("ASHFORD");
+  const at = t => norm(ash.find(e => e.time === t).units.map(u => u.diag));
+  /* Two departures a Down Sidings apart that no field in either report can
+     tell apart: same road, same yard, same platform, same destination, both
+     with their Positions off that berth. The depot corrected the first -
+     RM013 leads to Dover Priory - and the second is right as Ashford's own
+     rule reads it, highest Position first. So the correction has to be as
+     narrow as the formation it names. */
+  assert.deepEqual(at(3 * 60 + 52), ["013", "014"], "the pinned one leads 013");
+  assert.deepEqual(at(5 * 60 + 22), ["901", "301"], "its twin does not move");
+  /* And the twin is not passed over in silence: a correction is on record
+     for a formation close to it, so the review list says to check it. That
+     note is the open question, kept where somebody will see it. */
+  assert.ok(res.review.some(m => /ASHFORD 05 22/.test(m) && /301/.test(m)),
+    "the twin is named for checking: " + res.review.join(" | "));
+});
+
 test("units the reports cannot order are named on the review list", async () => {
   const N = built();
   const { TIED_POSITION_SUMMARY, TIED_POSITION_DETAIL } =

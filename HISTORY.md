@@ -140,6 +140,36 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.1.4 — 18 September 2026 — RM013 leads to Dover Priory
+
+**The 03+52 off Ashford printed 014 first; the depot says 013 leads.** It is
+the 5R05 out of the Down Sidings, through the down yard and the platform and
+away to Dover Priory. Ashford reads highest Position first and 013 is
+Position 1, so unpinned it trailed. `ASHFORD|013,014` now corrects it, and
+two rows of a 254-row book move — that entry's own.
+
+**Why a pin and not the rule that was asked for.** The suggestion was that
+anything running Ashford Down Sidings → Dover Priory via the platform should
+be ordered from the platform. There are two such departures in the 18/09
+book, and nothing in either report tells them apart: the 03+52 and the
+**05 22**, both off the Down Sidings, both through the yard to the platform
+and away to Dover, both splitting later, both with their Positions taken off
+that same berth. Read as a rule it turns the 05 22 round as well, which puts
+301 in front of 901 — against what the corrections table already records for
+that formation at Ashford.
+
+The one field that does differ is the one the report named: the 03+52 is
+`5R05` in and `5R05` out, empty stock running *through* the platform, where
+the 05 22 arrives as `5R02` and leaves as `2R02`, into service. That may well
+be the rule. One example is not, so this is pinned at the width of the
+evidence, and the fixture that guards it carries both departures side by side
+so the next attempt starts from the pair rather than from one of them.
+
+The 05 22 is not passed over in silence either: a correction is on record for
+a formation close to it, so the review list already says to check that one
+against the real book. If it should move too, that is the second example and
+the rule can be written.
+
 ## 3.1.3 — 17 September 2026 — the UNIT column keeps a leading zero
 
 **Column F is formatted Text now, all the way down.** It is the one column a

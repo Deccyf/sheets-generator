@@ -521,6 +521,47 @@ export const DAY_END_DETAIL = [
   orderLeg("RM072", 30, "DOVERP", "Dover Priory", "12:30:00", "2W72", "ASHFEBS", "Ashford E Berthi", "13:30:00"),
 ].join("\r\n");
 
+/* The two Ashford-to-Dover Priory departures that no rule can tell apart.
+   Both come out of the Down Sidings, both run the down yard to the platform
+   and away to Dover, both carry Positions off the same berth - and the
+   depot says one prints lowest Position first and the other highest.
+
+   RM013/RM014 are the 03+52, which the depot corrected: 013 LEADS. They run
+   through the platform as one working, 5R05 in and 5R05 out. RM301/RM901
+   are the 05 22, which is right as the section reads it and must not move
+   with them; that one changes to 2R02 at the platform and goes into
+   service. The headcode is the only field that differs, and one example is
+   not a rule - so 013/014 is pinned and this fixture is the guard on how
+   narrow the pin is. */
+export const ASHFORD_DOVER_SUMMARY = [
+  "Code,Cov,Type,Allocate Resource,Stock,Start Time,Position,First Train," +
+  "Start Location,End Time,End Location,Distance,First Train Note," +
+  "Start Stock,Last Train,Last Train Note,End Stock,Pre-assignment," +
+  "Diagram Comments,Coverage Notes",
+  "RM013,Covered,375/6,,0,10/08/2026 03:22,1,5R05,ASHFDNS,10/08/2026 04:15,DOVERP,22,,,,,,RM013,,",
+  "RM014,Covered,375/6,,0,10/08/2026 03:22,2,5R05,ASHFDNS,10/08/2026 04:15,DOVERP,22,,,,,,RM014,,",
+  "RM301,Covered,375/3,,0,10/08/2026 04:45,1,5R02,ASHFDNS,10/08/2026 05:51,DOVERP,22,,,,,,RM301,,",
+  "RM901,Covered,375/9,,0,10/08/2026 04:45,2,5R02,ASHFDNS,10/08/2026 05:51,DOVERP,22,,,,,,RM901,,",
+].join("\r\n");
+
+export const ASHFORD_DOVER_DETAIL = [
+  "Diagram Code,Diagram Date,Notes,Total Miles,Start Tiploc," +
+  "Start Location Name,Start Time,Activity,Headcode,Cumulative Miles," +
+  "Cumulative Fuel Miles,End Tiploc,End Location Name,End Time,Off Diagram,Works",
+  ...["RM013", "RM014"].flatMap(d => [
+    orderLeg(d, 22, "ASHFDNS", "Ashford Dn Sdgs", "03:22:00", "5R05", "ASHFDYW", "Ashford Down Yd", "03:33:00"),
+    orderLeg(d, 22, "ASHFDYW", "Ashford Down Yd", "03:40:00", "5R05", "ASHFKY", "Ashford Kent", "03:45:00"),
+    // still 5R05: empty stock the whole way through the platform
+    orderLeg(d, 22, "ASHFKY", "Ashford Kent", "03:52:00", "5R05", "DOVERP", "Dover Priory", "04:15:00"),
+  ]),
+  ...["RM301", "RM901"].flatMap(d => [
+    orderLeg(d, 22, "ASHFDNS", "Ashford Dn Sdgs", "04:45:00", "5R02", "ASHFDYW", "Ashford Down Yd", "04:56:00"),
+    orderLeg(d, 22, "ASHFDYW", "Ashford Down Yd", "05:05:00", "5R02", "ASHFKY", "Ashford Kent", "05:10:00"),
+    // 2R02 out of the platform: into service, and the order stands
+    orderLeg(d, 22, "ASHFKY", "Ashford Kent", "05:22:00", "2R02", "DOVERP", "Dover Priory", "05:51:00"),
+  ]),
+].join("\r\n");
+
 /* A separate mini pair exercising the Integrale quirks: an Excel-mangled
    headcode, a stable-all-day placeholder diagram, and an Uncovered one. */
 export const INTEGRALE_QUIRKS_SUMMARY =

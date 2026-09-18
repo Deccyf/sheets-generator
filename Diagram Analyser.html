@@ -1198,6 +1198,22 @@ const SIDING_CLASS_RE = new RegExp(
      every day to hand; the sides tables above say how. */
   const ORDER_FIX = {
     "ASHFORD|004,905": ["004", "905"],
+    /* RM013 LEADS from Ashford to Dover Priory, per the depot, off the
+       18/09 book's 03+52. Ashford reads highest Position first, 013 is
+       Position 1, so unpinned it trails.
+
+       This is a pin rather than a rule because nothing in either report
+       separates it from the 05 22 to the same place. Both come out of the
+       Down Sidings, both run the yard to the platform and away to Dover
+       Priory, both split later, and the Summary gives both their Position
+       off the same berth. The one field that does differ is the one the
+       depot named: 5R05 runs THROUGH the platform as one working, where
+       5R02 becomes 2R02 there and goes into service. One example is not a
+       rule, and reading it as one would turn the 05 22 round too - which
+       would put 301 in front of 901, against what this table already
+       records for that formation. If the depot says the 05 22 should move
+       as well, that is the second example, and then it is a rule. */
+    "ASHFORD|013,014": ["013", "014"],
     "ASHFORD|114,115": ["115", "114"],
     /* Both units come through the reports on Position 1 for this working, so
        the numbers cannot separate them at all and the order was falling to
