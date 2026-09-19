@@ -224,6 +224,10 @@ const SWAP_DAY = [
       S("CHRX", "09:20", "09:25", "2A06"), S("HASTING", "11:30", "11:40", "5H05"), S("HASTPSD", "11:50", "", "")] },
   { code: "RM106", units: "375706.", stops: [S("RAMSGTD", "", "05:35", "5W06"), S("RAMSGTE", "05:55", "06:05", "2W06"),
       S("CHRX", "07:45", "09:15", "2R06"), S("RAMSGTE", "11:05", "11:15", "5R06", "DETACH"), S("RAMSGTD", "11:25", "", "")] },
+  /* RM907 is RM104 again but a 375/9 diagram with a 375/9 on it - the
+     same times, so the only thing keeping 375703 off it is the fleet */
+  { code: "RM907", fleet: "375/9", units: "375901.", stops: [S("RAMSGTD", "", "05:32", "5W08"), S("RAMSGTE", "05:52", "06:02", "2W08"),
+      S("CHRX", "07:42", "09:12", "2R08"), S("RAMSGTE", "11:02", "11:12", "5R08"), S("RAMSGTD", "11:22", "", "")] },
 ];
 const swapDay = async () => { const p = geniusPairCsv(SWAP_DAY); return N.GENIUS.build([p.summary, p.detail]); };
 const planFor = lines => ["Exams", "Unit Nr \tExam\t\tWhere\tAction"].concat(lines).join("\n");
@@ -277,6 +281,28 @@ test("a changeover at a London terminal, and the two ways it is refused", async 
   const s3 = both.rows[0].suggest;
   assert.ok(!/RM104|375704/.test(s3.notes.join(" ")), "RM104 is not offered while 375704 is wanted at Ramsgate: " + JSON.stringify(s3));
   assert.equal(both.rows[1].suggest.action, "RE HOLD", "375704 ends there and is held");
+});
+
+test("fleets stay on their own diagrams, and the same number of units go on the service", async () => {
+  const f = B().fits;
+  assert.equal(f("375901", "375/9"), true);  assert.equal(f("375901", "375/6"), false);
+  assert.equal(f("375301", "375/3"), true);  assert.equal(f("375301", "375/6"), false);
+  assert.equal(f("375613", "375/6"), true);  assert.equal(f("375713", "375/8"), true, "6, 7 and 8 are one fleet");
+  assert.equal(f("375826", "375/9"), false); assert.equal(f("376017", "376/0"), true);
+  assert.equal(f("377514", "377/5"), true);  assert.equal(f("377514", "375/6"), false, "a 377 stays on GT diagrams");
+  assert.equal(f("376017", "465/9"), false, "and nothing couples across fleets");
+  const res = await swapDay();
+  /* 375703 is a plain 375. RM907 fits the time window exactly as RM104
+     does, and is never offered: a 375/6 does not go on a 375/9 diagram.
+     With RM104 wanted by its own unit and RM106 splitting, nothing is. */
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
+  const s = out.rows[0].suggest;
+  assert.ok(!/RM907|375901/.test(s.action + s.notes.join(" ")), "no 375/9 diagram for a plain 375: " + JSON.stringify(s));
+  /* and the other way: the 375/9 wants Ramsgate, RM104 fits the window,
+     but a 375/9 does not go on a plain 375 diagram - only RM907 would, and
+     it is its own */
+  const nine = B().run(planFor(["375901\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.equal(nine.action, "RE HOLD", "it ends at Ramsgate anyway");
 });
 
 test("a diagram that splits after the swap point is not offered", async () => {

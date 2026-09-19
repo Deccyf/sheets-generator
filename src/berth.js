@@ -249,9 +249,11 @@ function allDays(genius, date) {
   const out = new Map();
   const dets = genius.detail && genius.detail.get(date);
   if (!dets) return out;
-  const unitsOf = new Map();
-  for (const r of genius.summary || []) if (r.date === date)
+  const unitsOf = new Map(), fleetOf = new Map();
+  for (const r of genius.summary || []) if (r.date === date) {
     unitsOf.set(r.diag, (unitsOf.get(r.diag) || []).concat(r.units || (r.unit ? [r.unit] : [])));
+    if (r.fleet && !fleetOf.has(r.diag)) fleetOf.set(r.diag, r.fleet);
+  }
   for (const [diag, raw] of dets) {
     const stops = stopsOf(raw).map(s => ({ ...s, diag }));
     if (!stops.length) continue;
@@ -260,7 +262,7 @@ function allDays(genius, date) {
     for (const r of raw) if (/^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "")) {
       const p = placeOf(r.code); if (splitsAt.indexOf(p) < 0) splitsAt.push(p);
     }
-    out.set(diag, { diag, stops, units: [...new Set(unitsOf.get(diag) || [])],
+    out.set(diag, { diag, stops, units: [...new Set(unitsOf.get(diag) || [])], fleet: fleetOf.get(diag) || "",
                     endCode: last.code, endPlace: placeOf(last.code), endDepot: depotOf(placeOf(last.code)),
                     endTime: last.arr != null ? last.arr : last.dep, splitsAt,
                     final: finalWorking(stops), raw });
@@ -402,7 +404,25 @@ function callsAt(day, places) {
    taken into it. Nothing lost back to the depot: the unit displaced must
    not be one the plan wants at that same depot. */
 const SWAP_MARGIN = 10, SWAP_WINDOW = 90;
-const classOf = u => /^3753/.test(u) ? "375/3" : String(u).slice(0, 3);
+/* Fleets stay on their own diagrams: a 375/9 on a 375/9 diagram, a 3-car
+   on a 3-car diagram, a 375/6, /7 or /8 on a plain 375 one, a 376 on a 376
+   diagram, a 377 on a GT diagram - and none of them couples to another
+   fleet. The diagram's fleet is the Summary's FLEET column; the unit's is
+   its number. */
+function familyOfUnit(u) {
+  const n = String(u);
+  if (/^3759/.test(n)) return "375/9";
+  if (/^3753/.test(n)) return "375/3";
+  if (/^375/.test(n)) return "375";
+  return n.slice(0, 3);
+}
+function familyOfFleet(f) {
+  const m = /^(\d{3})(?:\/(\d))?/.exec(String(f || ""));
+  if (!m) return "";
+  if (m[1] === "375") return m[2] === "9" ? "375/9" : m[2] === "3" ? "375/3" : "375";
+  return m[1];
+}
+const fits = (unit, fleet) => familyOfUnit(unit) === familyOfFleet(fleet);
 function splitsAfter(day, idx) {
   // an attach or detach at or after this stop, by the raw rows' clock
   const t = day.stops[idx].dep;
@@ -437,12 +457,16 @@ function swapBetween(mine, theirs) {
 function candidatesFor(r, mine, days, wanted) {
   const targets = r.places.map(depotOf).filter(Boolean);
   const out = [];
+  const myFleet = mine.rows[0] && mine.rows[0].fleet;
+  const myCount = mine.rows[0] && mine.rows[0].units ? mine.rows[0].units.length : 1;
   for (const d of days.values()) {
     if (!d.endDepot || targets.indexOf(d.endDepot) < 0) continue;
     if (mine.diags.indexOf(d.diag) >= 0) continue;
     if (!d.units.length) continue;
-    if (d.units.length !== mine.rows.length && !(d.units.length === 1 && mine.rows.length >= 1)) continue;
-    if (d.units.some(u => classOf(u) !== classOf(r.unit))) continue;
+    // the same number of units go on the service, and the same fleet both ways
+    if (d.units.length !== myCount) continue;
+    if (!fits(r.unit, d.fleet)) continue;
+    if (myFleet && d.units.some(u => !fits(u, myFleet))) continue;
     // a unit the plan wants at that same depot is not to be taken off it
     if (d.units.some(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0)) continue;
     const swap = swapBetween(mine, d);
@@ -776,7 +800,7 @@ function render(res) {
 }
 
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, whenOf, suggest,
-         finalWorking, requestName, terminalCalls, depotStands, swapBetween,
+         finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;

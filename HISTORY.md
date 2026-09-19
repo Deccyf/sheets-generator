@@ -140,6 +140,17 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.5.1 — 19 September 2026 — fleets stay on their own diagrams
+
+**A swap keeps each fleet on its own diagrams, both ways.** A 375/9 on a
+375/9 diagram, a 3-car on a 3-car one, a 375/6, /7 or /8 on a plain 375
+one, a 376 on a 376 diagram, a 377 on a GT diagram — and none of them
+couples to another fleet. The diagram's fleet is the Summary's own FLEET
+column; the unit's is its number. The same number of units go on the
+service. 3.5.0 matched on class alone, which would have put a 375/6 onto
+a 375/9 working that happened to fit the clock; a test now holds a 375/9
+diagram alongside with exactly the same times and it is never offered.
+
 ## 3.5.0 — 19 September 2026 — a berth request names a working, and the changeover that gets it there
 
 **"Ends elsewhere" was not a request.** A near line whose unit neither
