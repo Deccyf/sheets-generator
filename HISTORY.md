@@ -140,6 +140,46 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.8.3 — 20 September 2026 — two legs, the fleet moves as requests, and Selhurst
+
+Two of the planner's own filled plans, a Tuesday's and a Thursday's,
+set the form. They write *GP BERTH 5F42 - VIC BERTH 5Y50* and *VIC BERTH
+5Y29 THEN 5N46/5Y94/5Y96* — a request in two legs; *SG BERTH 5L17
+RETIMED TO 11+10* — the standing fleet move as the request; *VIC HOLD
+FOR 5Y50*; and *ENDS GP AM* for a unit into Grove Park in the morning.
+
+**Two legs.** Where nothing out of the place a unit is at gets to the
+depot, a working out of there that gets to another depot is asked for,
+and the second leg is what that depot has once the unit is there: the
+working that stands there and goes on to the depot wanted (its PM
+departures), the standing fleet move out of it, or failing those the
+next morning's departure with the same Detail standing in. *TON BERTH
+06+02 - GP BERTH 5U02/5F85/5F87*, *XSE BERTH 06+13 - GP BERTH …*. The
+first leg is claimed like any request, so two units are not handed the
+same train. On the Saturday reports this took a dozen lines from *ENDS*
+to a request.
+
+**The fleet moves are requests.** A unit at a depot with nothing on the
+Detail out of it is given the standing fleet move that runs that day —
+*SG BERTH 5L17/5L19/5L92*, *AFK BERTH 5R51*, *GP BERTH 5G70* — where
+before the move was a note under *ENDS*. A move on the Detail's own
+departures still comes first, so *GP BERTH 5F87* does not grow a *5R00*.
+
+**Selhurst.** A line for SU never matched a working into Victoria,
+because a Victoria code reads as VIC and the target read as SU: no 377 at
+Ashford was ever given the way to Selhurst. Selhurst is reached at
+Victoria and the fleet move takes it over, so the line is answered with
+what gets the unit to Victoria and the move: *AFK BERTH 06+17 - VIC
+BERTH 5Y41*, *VIC HOLD FOR 5Y41*.
+
+**One request per unit.** A unit on an exam line and a defect line was
+given a train on each — two trains it cannot both be on. It is asked for
+once, on the line that comes first, and the other line says *asked for
+on its other line* and names the request.
+
+**ENDS GP AM.** A unit into a depot between 03+00 and midday that sits
+there is written the way the plan writes it.
+
 ## 3.8.2 — 20 September 2026 — why a line gets no request, and the day in between
 
 **A line with no request says why.** Run on a Saturday night with the
