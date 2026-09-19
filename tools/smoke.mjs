@@ -340,6 +340,22 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#brfiles .chip").first().click();
   await page.waitForFunction(() => document.querySelector("#brfiles").hidden, null, { timeout: 10000 });
   console.log("br chips    : all off, zone idle");
+  /* the weekend diagram prints stand in for a Detail: a Summary for the
+     Saturday the prints are from, and the prints .docx */
+  const satSum = geniusPairCsv([{ code: "GT501", units: "375601.", stops: [
+    { code: "ASHFDNS", arr: "", dep: "05:30", hc: "5A01" }, { code: "DOVERPS", arr: "23:50", dep: "", hc: "" }] }])
+    .summary.replace(/03\/08\/26/g, "01/08/26");
+  await page.setInputFiles("#brfile", [f("satsum2.csv", satSum), prints]);
+  await page.waitForFunction(() => /Summary 01\/08\/26.*Detail 01\/08\/26/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 15000 });
+  const chipTexts = await page.locator("#brfiles .chip").allTextContents();
+  if (!chipTexts.some(t => /^Prints 01\/08\/26/.test(t))) throw new Error("the prints should have a chip: " + chipTexts.join(" | "));
+  await page.fill("#brplan", ["Exams", "Unit Nr \tExam\t\tWhere\tAction", "375601\tA\tSUN AM 02/08\tAFK\t"].join("\n"));
+  await page.fill("#brdefects", "");
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /against 01\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 15000 });
+  const printsOut = await page.textContent("#brout");
+  if (!/AFK BERTH off 2A01/.test(printsOut)) throw new Error("375601 should be placed off the prints: " + printsOut.slice(0, 300));
+  console.log("br prints   :", (await page.textContent("#brberthtxt")).trim());
 }
 
 await browser.close();

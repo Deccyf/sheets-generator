@@ -511,12 +511,13 @@
         <span class="berth-txt">
           <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
           <span>PDF or CSV &middot; any day, a Saturday included &middot; the
+            weekend diagram prints (.docx) stand in for a Detail &middot; the
             Summary alone says where every unit ends tonight &middot; or leave it
             and the weekday books&rsquo; own pair is used</span>
         </span>
       </span>
     </button>
-    <input type="file" id="brfile" accept=".pdf,.csv" multiple hidden>
+    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
     <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
 
     <div class="brgrid">
@@ -548,6 +549,8 @@
       <button class="btn" id="brgo" type="button">Read the plan</button>
       <label><input type="checkbox" id="brkeep" autocomplete="off">
         Keep trains together &mdash; split a formation only where nothing else gets it home</label>
+      <label><input type="checkbox" id="brdaytorun" autocomplete="off">
+        A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
       <span class="note" id="brhint"></span>
     </div>
 
@@ -749,6 +752,23 @@
           a unit whose allocation finishes between <b>09+00 and 16+30</b> is
           on hand at a depot, and the departures it is offered are those
           between 09+00 and 16+30 first, any later ones after.</p>
+        <p><b>A day still to run.</b> Where the reports are for a day that
+          has not run &mdash; the Summary for today or a day to come, with
+          everything allocated, the day after Christmas say &mdash; every
+          unit is where its first working starts, and any diagram starting
+          there that gets to the depot is a request before it goes out, in
+          place of what it is on: <i>before it goes out: today&rsquo;s 2R21
+          05 27 from AFK</i>. The tick above is set for you when the
+          Summary&rsquo;s date is today or later, and untick it for a day
+          that has already run. A swap on the day still comes first.</p>
+        <p><b>The weekend diagram prints.</b> The Word prints the weekend tab
+          builds from stand in for a Diagram Detail here: drop the
+          <code>.docx</code> with the Summary and each diagram&rsquo;s calls
+          are read for the date the print is from, the print&rsquo;s own
+          place names turned into the codes the road works in &mdash; <i>Ram
+          Depot</i> is Ramsgate depot, <i>G Pk Dep</i> Grove Park, <i>St L
+          Shed</i> West Marina &mdash; and a place it has no code for keeps
+          the print&rsquo;s name on the line.</p>
         <p><b>The notice</b> is written out under the table in the
           depot&rsquo;s own form, ready to send:
           <i>375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE /

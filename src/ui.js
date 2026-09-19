@@ -1424,7 +1424,8 @@ function decodeText(u8) {
   if (!plan || !go) return;
   const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
-  const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint"), keep = $("#brkeep");
+  const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint"), keep = $("#brkeep"),
+        dayToRun = $("#brdaytorun");
   const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
   /* The pair this tab reads: the one dropped here, or failing that the
@@ -1471,8 +1472,29 @@ function decodeText(u8) {
       return;
     }
     try {
-      own = await GENIUS.read(ownFiles.map(f => f.data));
+      /* the Genius reports go to the weekday reader; the weekend diagram
+         prints, .docx or pasted, are read the way the weekend tab reads
+         them and become that day's Detail */
+      const genius = ownFiles.filter(f => !f.prints).map(f => f.data);
+      const prints = ownFiles.filter(f => f.prints);
+      if (!genius.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
+      own = await GENIUS.read(genius);
+      for (const f of prints) {
+        const det = SHEETS_BERTH.detailFromPrints(SheetsEngine.parseDiagrams(f.prints, []));
+        for (const [date, m] of det) {
+          if (!own.detail.has(date)) own.detail.set(date, new Map());
+          for (const [diag, rows] of m) own.detail.get(date).set(diag, rows);
+        }
+      }
       const detDates = [...own.detail.keys()];
+      /* a Summary for today or a day to come is a day still to run: the
+         units are where their first workings start and can be asked for
+         from there before they go out - ticked for the planner to untick */
+      if (dayToRun) {
+        const now = new Date(); const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+        const at = d => { const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d); return m ? Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]) : 0; };
+        dayToRun.checked = own.dates.some(d => at(d) >= t0);
+      }
       const units = own.summary.filter(r => r.units && r.units.length).length;
       if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
         (detDates.length ? " · Detail " + detDates.join(", ") : " · no Detail yet: where each unit ends, and tomorrow's departures once a Detail is dropped");
@@ -1498,6 +1520,14 @@ function decodeText(u8) {
       if (/\.pdf$/i.test(f.name)) {
         try { txt = GENIUS.pdfText(u8); } catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
         data = { pdfText: txt };           // extracted once, for the chip and the read alike
+      } else if (/\.docx?$/i.test(f.name) || SHEETS_PRINTS.isDocxBytes(u8)) {
+        // the weekend diagram prints
+        let lines;
+        try { lines = SHEETS_PRINTS.readPrints(u8, fflate.unzipSync); } catch (e) { say(f.name + " could not be read as the diagram prints.", "err"); continue; }
+        const dates = [...new Set([...lines].map(l => (/From:\t(\d\d\/\d\d\/)\d\d(\d\d)/.exec(l) || [])[0]).filter(Boolean)
+          .map(x => x.replace(/From:\t/, "").replace(/(\d\d\/\d\d\/)\d\d(\d\d)/, "$1$2")))];
+        ownFiles.push({ name: f.name, prints: lines, label: "Prints" + (dates.length ? " " + dates.join(", ") : "") });
+        continue;
       } else { txt = decodeText(u8); data = txt; }
       ownFiles.push({ name: f.name, data, label: labelOf(txt) });
     }
@@ -1529,7 +1559,7 @@ function decodeText(u8) {
     if (!res) { say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.", "err"); return; }
     if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, first.", "err"); return; }
     try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "",
-                                                         keep: !!(keep && keep.checked) }); }
+                                                         keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked) }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
     if (mseHint) mseHint.textContent = result.mseUnits.length
       ? "MSE on: " + result.mseUnits.join(" ") + " — list those they are attending here and read the plan again."

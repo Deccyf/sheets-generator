@@ -41,8 +41,13 @@ test("the built file is self-contained and lean", () => {
      writes out each rule as the depot gave it (~35 KB over 3.4.0). The
      rulebook is the largest single piece and is prose, not code: it is what
      lets the planner check a suggestion against the rule that made it. */
-  assert.ok(html.length < 860 * 1024,
-    "under 860 KB (was 1.2 MB); this build is " +
+  /* 900 KB at 3.8.0: the berth-request road now reads the weekend diagram
+     prints as a Detail, takes a day still to run, places a unit off the
+     plan's own Action, and lays the shortages list out for the Excel text
+     box (~35 KB over 3.6.0). Still no library: the prints reader and the
+     weekend engine's parser were already here and are called, not copied. */
+  assert.ok(html.length < 900 * 1024,
+    "under 900 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

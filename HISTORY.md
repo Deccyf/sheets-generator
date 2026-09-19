@@ -140,6 +140,26 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.8.0 — 20 September 2026 — a day still to run, and the weekend prints
+
+**A day still to run.** Where the reports are for a day that has not run
+— the Summary for today or a day to come with everything allocated, the
+day after Christmas say — every unit is where its first working starts,
+and any diagram starting there that gets to the depot is a request before
+it goes out, in place of what it is on: *before it goes out: today's 2R21
+05 27 from AFK*. A tick on the tab, set when the Summary's date is today
+or later and there for the planner to untick for a day already run. A
+swap on the day still comes first; the start of the day comes before
+tomorrow's departures.
+
+**The weekend diagram prints stand in for a Detail.** The Word prints the
+weekend tab builds from can be dropped on the berth tab with the Summary:
+each diagram's calls are read for the date the print is from, through the
+weekend engine's own reader, and the print's short place names — *Ram
+Depot*, *G Pk Dep*, *St L Shed*, *Ashfrd DS* — become the Genius codes
+the road works in. A place with no code keeps the print's name on the
+line. Each print has its chip like any other report.
+
 ## 3.7.2 — 20 September 2026 — a unit on no working, and a Summary allocated in part
 
 **Where the plan says a unit stands.** A Summary printed before the 375s

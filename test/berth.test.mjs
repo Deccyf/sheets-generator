@@ -880,3 +880,50 @@ test("a Summary allocated in part says which diagrams have no units yet", async 
   assert.equal(out.rows[0].suggest.action, "NOT IN TRAFFIC");
   assert.ok(out.reviews.some(m => /has units on 1 of 8 workings and none on the RM diagrams — those were not allocated when it was printed/.test(m)), out.reviews.join(" | "));
 });
+
+/* ---- a day still to run, and the weekend prints ---- */
+test("a day still to run: a unit is where its first working starts, and is asked for from there before it goes out", async () => {
+  /* RM121 starts at Ashford at 05 27 and ends at Ramsgate. 375703, on RM103
+     out of Ashford, wanted at Ramsgate, with every swap home its own
+     unit's: read as a day to run it is offered RM121's working before it
+     goes out; read as a day gone it is not. */
+  const day = SWAP_DAY.concat([{ code: "RM121", units: "375721.", stops: [S("ASHFDNS", "", "05:27", "2R21"), S("RAMSGTE", "06:30", "06:40", "5R21"), S("RAMSGTD", "06:45", "", "")] }]);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  const plan = planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t", "375702\tC\tTUE AM 04/08\tRE\t",
+                        "375706\tA\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"]);
+  const run = B().run(plan, res, { dayToRun: true });
+  const s = run.rows[0].suggest;
+  assert.equal(s.action, "AFK BERTH 05 27", JSON.stringify(s));
+  assert.match(s.notes.join("; "), /before it goes out: today's 2R21 05 27 from AFK — today's RM121 ends RE 06\+45, 375721 off it/);
+  assert.ok(!/check tomorrow/.test(s.notes.join("; ")));
+  assert.ok(run.reviews.some(m => /Read as a day still to run/.test(m)), run.reviews.join(" | "));
+  const gone = B().run(plan, res, {}).rows[0].suggest;
+  assert.ok(!/05 27/.test(gone.action), "a day gone is not asked for at its start: " + JSON.stringify(gone));
+  // a swap today still comes first: with RM104 free, the Charing Cross changeover
+  const free = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t"]), res, { dayToRun: true }).rows[0].suggest;
+  assert.equal(free.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(free));
+});
+
+test("the weekend diagram prints read as that day's Detail, the print's places as Genius codes", async () => {
+  const { PRINTS_LINES } = await import("./helpers/synth.mjs");
+  const diags = N.SheetsEngine.parseDiagrams(PRINTS_LINES, []);
+  const det = B().detailFromPrints(diags);
+  assert.deepEqual(norm([...det.keys()]), ["01/08/26"]);
+  const gt501 = det.get("01/08/26").get("GT501");
+  assert.ok(gt501, "GT501 read: " + [...det.get("01/08/26").keys()].join(","));
+  assert.deepEqual(norm(gt501.slice(0, 3).map(r => [r.code, r.arr, r.dep, r.hc])),
+    [["ASHFDNS", null, 330, "5A01"], ["ASHFKY", 335, 345, "2A01"], ["CHRX", 420, 540, "2A02"]]);
+  assert.equal(gt501[gt501.length - 1].code, "DOVERPS");
+  assert.equal(gt501.find(r => r.name === "Ashfd EBS").code, "ASHFEBS");
+  /* with a Summary for that Saturday putting 375601 on GT501, the road
+     reads the prints as the Detail: 375601 ends in the Dover sidings and
+     calls at Ashford on the way */
+  const sum = geniusPairCsv([{ code: "GT501", units: "375601.", stops: [S("ASHFDNS", "", "05:30", "5A01"), S("DOVERPS", "23:50", "", "")] }])
+    .summary.replace(/03\/08\/26/g, "01/08/26");
+  const rd = await N.GENIUS.read([sum]);
+  for (const [date, m] of det) rd.detail.set(date, m);
+  const out = B().run(planFor(["375601\tA\tSUN AM 02/08\tAFK\t"]), rd, {});
+  assert.equal(out.date, "01/08/26");
+  assert.equal(out.rows[0].ends.place, "DVP");
+  assert.equal(out.rows[0].suggest.action, "AFK BERTH off 2A01", JSON.stringify(out.rows[0].suggest));
+});

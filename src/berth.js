@@ -337,6 +337,61 @@ const hhmm = (t, ecs) => {
   const m = ((t % 1440) + 1440) % 1440;
   return String(Math.floor(m / 60)).padStart(2, "0") + (ecs ? "+" : " ") + String(m % 60).padStart(2, "0");
 };
+/* ---------- the weekend diagram prints as a Detail ----------
+   The prints name places the depot's short way - "Ram Depot", "G Pk Dep",
+   "St L Shed" - and the road works in Genius codes, so the ones it has a
+   word for are mapped and the rest keep the print's own name, which is
+   what the line then shows. A print row is a call: the working that
+   leaves it, its clock rolled past midnight the way the Detail's is. */
+const PRINT_CODES = {
+  "CX": "CHRX", "C St": "CANONST", "Lndon BrE": "LNDNBDG", "Vic (E)": "VICTRIE", "VictGroSh": "VICTGCS",
+  "Ram": "RAMSGTE", "Ram Depot": "RAMSGTD", "RM DRW": "RAMSDRW", "RamsNewSd": "RAMSNEW", "RMUSW": "RAMSGTD",
+  "RM EK5143": "RAMMKEX", "RM EK5145": "RAMMKEX", "RM EK4985": "RAMMKEX",
+  "Ashford I": "ASHFKY", "Ashfrd DS": "ASHFDNS", "Ashfd EBS": "ASHFEBS", "Ash Up Sd": "ASHFUPS", "AshfDYWRd": "ASHFDYW",
+  "G Pk Dep": "GRVPCSD", "G Pk DnSd": "GRVPKDS", "G Pk UpSd": "GRVPKUS", "GrPkDCtEE": "GRVPDCE", "Gvpuphs": "GRVPKUS", "Grove Par": "GRVPK",
+  "S Gn Dep": "SLADEGD", "S Gn U Sd": "SLADGUS", "SldGrDEHs": "SLADEGD", "S Gn": "SLADEGN",
+  "Gill Dep": "GLNGDEP", "Gill": "GLNGHMK", "Gill US": "GLNGMUS",
+  "St L Shed": "STLNWCS", "St L ShNk": "STLNWMS", "Folk E TR": "FLKSETR",
+  "Dover P": "DOVERP", "Dover PSd": "DOVERPS", "Dover621": "DOVERP", "Dover623": "DOVERP",
+  "Tonbridge": "TONBDG", "TonbJubS": "TONBPMY", "Ton DMS": "TONBDMS", "Tonbdg160": "TONBDG",
+  "Hastings": "HASTING", "Hast Pk S": "HASTPSD",
+  "Fav": "FAVRSHM", "Fav Up Sd": "FAVRUPS", "Fav Bk Rd": "FAVRBRD",
+  "Mgate": "MARGATE", "Dart": "DARTFD", "Orp": "ORPNGTN", "StPancInt": "STPANCI", "Gend": "GRVSEND",
+  "Brom S": "BROMLYS", "Brom N": "BROMLYN", "Sevenoaks": "SEVNOAKS", "Boro Gn": "BOROGRN", "Strood": "STROOD", "Strood625": "STROOD",
+  "TunbdgWls": "TUNWELL", "TunWellTB": "TUNWELL", "Padd W": "PKWD", "Sheer": "SHRNSOS", "Sitt": "STNGBRN",
+  "CantrbryW": "CNTBW", "Maid W": "MSTONEW", "Maid E": "MSTONEE", "Roch": "RCHT", "Bell Sd": "BELNGMS", "Hither Gn": "HTHRGRN",
+};
+const printMins = t => {
+  const m = /^(\d{1,2})[:.+ ](\d{2})(?::\d{2})?$/.exec(String(t == null ? "" : t).trim());
+  return m ? +m[1] * 60 + +m[2] : null;
+};
+const printDate = d => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{2})?(\d{2})$/.exec(String(d || "").trim());
+  return m ? m[1] + "/" + m[2] + "/" + m[4] : null;
+};
+function detailFromPrints(diags) {
+  const byDate = new Map();
+  for (const d of diags.values()) {
+    const date = printDate(d.date);
+    if (!date) continue;
+    const diag = d.code + String(d.num).padStart(3, "0");
+    const rows = []; let prev = -1;
+    const roll = v => { if (v === null) return null; while (v < prev - 60) v += 1440; prev = Math.max(prev, v); return v; };
+    for (const r of d.rows) {
+      if (!r.loc) continue;
+      const arr = roll(printMins(r.arr)), dep = roll(printMins(r.dep));
+      rows.push({ code: PRINT_CODES[r.loc] || r.loc, name: r.loc, arr, dep,
+                  hc: r.hc && /^\d[A-Z]\d\d/.test(r.hc) ? r.hc.slice(0, 4) : null,
+                  ev: /^(ATTTT|ATTACH|DETACH|DETTT)$/i.test(r.ev || "") ? r.ev.toUpperCase() : null,
+                  act: r.ev === "#" ? "#" : null });
+    }
+    if (!rows.length) continue;
+    if (!byDate.has(date)) byDate.set(date, new Map());
+    byDate.get(date).set(diag, rows);
+  }
+  return byDate;
+}
+
 /* ---------- every diagram's day ----------
    The candidates for a swap are the diagrams that end tonight where a unit
    is wanted, so the whole day is read once: each diagram's stops, its
@@ -751,7 +806,15 @@ function morningFrom(r, days, mates, wanted, taken, proxy) {
    Summary and can carry three requests, an 8-car two - less any unit on it
    the plan wants at that depot, which is not to be taken off it. Each
    request displaces one unit, so the formation is kept both ways. */
-function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
+function matesAtStart(mine, days) {
+  const s0 = mine.stops[0];
+  if (!s0 || !s0.hcOut || s0.dep == null || !days.workings) return [];
+  const out = [];
+  for (const g of days.workings.get(workingKey(s0.code, s0.hcOut, s0.dep)) || [])
+    if (mine.diags.indexOf(g) < 0 && days.get(g)) for (const u of unitAt(days.get(g), s0.dep)) if (u !== mine.unit && out.indexOf(u) < 0) out.push(u);
+  return out;
+}
+function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
   const targets = r.places.map(depotOf).filter(Boolean);
   const out = [];
   const myFleet = mine.rows[0] && mine.rows[0].fleet;
@@ -776,6 +839,20 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
     if (!strict && !fitsBoth(fitsLoosely)) continue;
     const displaced = d.units.join("/");        // empty for tomorrow's, not yet allocated
     const swap = mode === "morning" ? null : swapBetween(mine, d);
+    const s0 = d.stops[0];
+    const morning = !swap && r.ends && (PLACES[r.ends.place] || []).indexOf(s0.code) >= 0 && s0.dep != null && !!s0.hcOut;
+    /* The day still to run - the reports are for it and everything is
+       allocated, nothing has gone out: the unit is where its first working
+       starts, and any diagram starting there that gets to the depot is a
+       request before it goes out, in place of what it is on. */
+    const start = !swap && !morning && mode !== "morning" && !!dayToRun && r.starts && r.starts.place &&
+      (PLACES[r.starts.place] || []).indexOf(s0.code) >= 0 && s0.dep != null && !!s0.hcOut;
+    /* a request is made where the unit is: a swap at a place both are, or
+       a departure from where it ends or starts. A working with no place to
+       make the swap is no request, however well it ends. */
+    if (!swap && !morning && !start) continue;
+    if (mode === "swap" && !swap && !start) continue;
+    if (mode === "morning" && !morning) continue;
     /* The working the unit would take is one train, whichever diagrams run
        it coupled - a 12-car is three diagrams on one working - and it
        carries a request per diagram, never more than a 12-car of this
@@ -802,7 +879,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
        unit whose formation-mate has already been given this working goes
        with it, so a 12-car that arrives as one train is not split three
        ways for three requests. */
-    const mates = matesOn(mine, swap, days);
+    const mates = start ? matesAtStart(mine, days) : matesOn(mine, swap, days);
     /* together: a mate is already on this working, or every mate is
        wanted at this same depot now and the train has room for them all,
        so they will follow */
@@ -814,22 +891,15 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
        Detail has it, since tomorrow's diagrams are on no report read
        here. That is a concrete request, so it comes before a depot swap
        with no place to make it. */
-    const s0 = d.stops[0];
-    const morning = !swap && r.ends && (PLACES[r.ends.place] || []).indexOf(s0.code) >= 0 && s0.dep != null && !!s0.hcOut;
-    /* a request is made where the unit is: a swap at a place both are, or
-       a departure from where it ends. A working with no place to make the
-       swap is no request, however well it ends. */
-    if (!swap && !morning) continue;
-    if (mode === "swap" && !swap) continue;
-    if (mode === "morning" && !morning) continue;
     const cand = { day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank: 0, together, mates, portion,
                    displaced, work: wkey, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
-    if (morning) {
+    if (morning || start) {
+      const from = start ? r.starts.place : r.ends.place;
       const k0 = workingKey(s0.code, s0.hcOut, s0.dep);
       if (taken && taken.get("D:" + d.diag + "@" + k0)) continue;
-      cand.morning = { from: r.ends.place, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag] };
+      cand.morning = { from, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag], today: !!start };
       cand.morning.portion = portionOf(d, cand.morning.sharing, pool, d.endDepot);
-      cand.morning.name = HEADCODE_DEPOTS.has(depotOf(r.ends.place)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
+      cand.morning.name = HEADCODE_DEPOTS.has(depotOf(from)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
       // the unit displaced is the one on the diagram's FIRST segment
       cand.displaced = (d.rows[0] && d.rows[0].units.length ? d.rows[0].units : d.units).join("/");
       cand.work = k0; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
@@ -841,12 +911,13 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
        can be requested but not split; and with "keep trains together" on,
        only where nothing else gets it home. */
     const splitsTrain = mates.length > 0 && !together;
-    const where = swap ? (swap.kind === "depot" ? swap.mine.depot : placeOf(swap.at)) : morning ? r.ends.place : null;
+    const where = swap ? (swap.kind === "depot" ? swap.mine.depot : placeOf(swap.at)) : start ? r.starts.place : morning ? r.ends.place : null;
     if (swap && swap.kind === "depot" && NO_REQUEST_AT.has(swap.mine.depot)) continue;
     if (morning && NO_REQUEST_AT.has(depotOf(r.ends.place) || r.ends.place)) continue;
+    if (start && NO_REQUEST_AT.has(depotOf(r.starts.place) || r.starts.place)) continue;
     if (splitsTrain && where && NO_SPLIT_AT.has(depotOf(where) || where)) continue;
     cand.splitsTrain = splitsTrain; cand.where = where; cand.proxy = proxy;
-    cand.rank = (strict ? 0 : 10) + (swap ? (swap.splitsTheirs ? 0.25 : 0) : morning ? 0.5 : 1) +
+    cand.rank = (strict ? 0 : 10) + (swap ? (swap.splitsTheirs ? 0.25 : 0) : start ? 0.3 : morning ? 0.5 : 1) +
                 (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0) +
                 (splitsTrain && keep ? 5 : 0);
     out.push(cand);
@@ -980,7 +1051,7 @@ function suggest(r, ctx) {
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
   if (soon && targets.length && ctx && ctx.mine) {
-    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep, ctx.tomDays);
+    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep, ctx.tomDays, ctx.dayToRun);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
@@ -1022,7 +1093,7 @@ function suggest(r, ctx) {
            fits, in the order they leave */
         const outs = [];
         listed.length = 0;
-        const ms = cands.filter(k => k.morning && k.morning.from === c.morning.from && k.variation === c.variation)
+        const ms = cands.filter(k => k.morning && k.morning.from === c.morning.from && !!k.morning.today === !!c.morning.today && k.variation === c.variation)
           .sort((a, b) => a.morning.dep - b.morning.dep);
         for (const k of ms) {
           const name = (k.morning.portion ? k.morning.portion + " " : "") + k.morning.name;
@@ -1032,13 +1103,14 @@ function suggest(r, ctx) {
         s.action = c.morning.from + " BERTH " + outs.join("/");
         for (const k of listed) {
           const m = k.morning;
-          s.notes.push("tomorrow's " + m.hc + " " + hhmm(m.dep, /^5/.test(m.hc)) + " from " + m.from +
+          const when = m.today ? "today's " : "tomorrow's ";
+          s.notes.push((m.today ? "before it goes out: today's " : "tomorrow's ") + m.hc + " " + hhmm(m.dep, /^5/.test(m.hc)) + " from " + m.from +
                        (m.portion ? ", " + m.portion + " (" + m.sharing.join("+") + ")" : "") +
-                       " — " + (k.proxy ? "today's " : "tomorrow's ") + k.day.diag + " ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
+                       " — " + (m.today ? "today's " : k.proxy ? "today's " : "tomorrow's ") + k.day.diag + " ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
                        (k.displaced ? ", " + k.displaced + " off it" : ", not yet allocated"));
         }
         const tail = [];
-        if (c.proxy) tail.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same");
+        if (c.proxy && !c.morning.today) tail.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same");
         if (outs.length > 1) tail.push("the depot to choose");
         if (tail.length) s.notes.push(tail.join("; "));
       } else {
@@ -1161,6 +1233,8 @@ function run(planText, genius, opts) {
                  "or depot swap today can be seen. " + (tomDate ? "The departures are off the " + tomDate + " Detail, " + on + "." : "Drop the Detail for " + date + ", or for the day after, for more."));
   else if (tomDate)
     reviews.push("The departures are off the " + tomDate + " Diagram Detail, " + on + ", not today's taken as a proxy.");
+  if (opts.dayToRun && date)
+    reviews.push("Read as a day still to run: every unit is where its first working starts, and can be asked for from there before it goes out.");
   /* When each line is due, first, because what a swap may not do depends
      on it. */
   const dated = plan.rows.map(row => {
@@ -1225,7 +1299,7 @@ function run(planText, genius, opts) {
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
     r.formation = legs.reduce((m, l) => Math.max(m, l.n), day ? 1 : 0);
-    r.suggest = suggest(r, { mine: day, days, tomDays, wanted, taken, mse, keep: !!opts.keep });
+    r.suggest = suggest(r, { mine: day, days, tomDays, wanted, taken, mse, keep: !!opts.keep, dayToRun: !!opts.dayToRun });
     if (r.suggest.taken) {
       const t = r.suggest.taken;
       taken.set("D:" + t.diag + "@" + t.work, 1);                  // that diagram's unit displaced off that working
@@ -1447,6 +1521,7 @@ function render(res) {
 }
 
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
+         detailFromPrints, PRINT_CODES,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
