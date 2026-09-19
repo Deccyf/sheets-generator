@@ -473,7 +473,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.2.5</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.2.6</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -800,6 +800,14 @@
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
 
+    <div class="opts-row" id="svoptsrow">
+      <span class="opts-label">Layout</span>
+      <label><input type="checkbox" id="svlettered" autocomplete="off">
+        Lettered, as the depot writes it</label>
+      <span class="note">A letter per shortage, swap or length case; the
+        whole fleet list under the last one</span>
+    </div>
+
     <div class="board">
       <p class="status" id="svstatus" role="status" aria-live="polite"></p>
       <div class="board-acts" id="svbar" hidden>
@@ -840,6 +848,10 @@
           ends and the answer is forced, with three or more it is the Diagram
           Summary that settles it, and without one the pair is named on the
           Review list rather than labelled on a guess.</p>
+        <p><b>Long formed counts too.</b> A length difference is reported
+          whichever way it goes — <code>4.375 V 3.375</code> for a 4-car on a
+          3-car diagram as readily as <code>3.375 V 4.375</code> the other
+          way. Nothing filters the over-length ones out.</p>
         <p><b>Everything it touches.</b> Legs shared between diagrams are
           stitched into one working, so a variation is traced through every
           service it goes on to affect and grouped by the length the train
@@ -863,7 +875,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.2.5
+      works without an internet connection. Version 3.2.6
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -9805,6 +9817,36 @@ function headingWithEnd(label, diagText, end) {
   return `${label} (${diagText}) ENDS ${end.text} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
 }
 
+/* ---------- the lettered layout ----------
+   How the depot writes the list out by hand, and what it refers to on the
+   telephone: every shortage, swap or length variation takes a letter of
+   its own, in the order they happen, and the whole run of fleet variations
+   shares the last letter - so "B" names one train and "D" names the fleet
+   list. A case's own follow-on notes sit under its letter, a blank line
+   apart, aligned with the heading rather than stepped in again.
+
+   Past Z it carries into AA, AB - no day has ever needed it, but a list
+   that silently started again at A would be worse than a long letter. */
+function letterFor(n) {
+  let s="";
+  do { s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; } while (n>=0);
+  return s;
+}
+function letterList(blocks) {
+  return blocks.map((lines,i)=>{
+    const out=[];
+    lines.forEach((ln,j)=>{
+      const body=String(ln).replace(/^\s+/,"");
+      if(j===0){ out.push(letterFor(i)+")\t"+body); return; }
+      // a case's notes are set off by a blank line; a run of list lines is not
+      const note=/^(FOLLOWING|THEN|ON ARR|\d+ CAR T\/F)/.test(body);
+      if(note && out[out.length-1]!=="") out.push("");
+      out.push(body?"\t"+body:"");
+    });
+    return out.join("\n");
+  }).join("\n\n");
+}
+
 function formatFollowing(groups) {
   const lines=[];
   for(const g of groups){
@@ -10033,7 +10075,13 @@ function buildDiscrepancies(op, detail, posAt) {
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
   const normalText=normalBlocks.join("\n\n");
   const text=[topText,normalText].filter(Boolean).join("\n\n");
-  return {text,reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
+  /* The same list in the depot's own hand: a letter per case, and the whole
+     run of fleet variations under the last one. Built from the same blocks,
+     so there is one list in two layouts and not two lists. */
+  const blocks=topCases.map(c=>c.lines);
+  if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
+  return {text,lettered:letterList(blocks),
+          reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
 }
 
 /* ---------- the Diagram Detail as the CSV export ----------
@@ -10180,7 +10228,7 @@ function sniff(text) {
   return null;
 }
 
-return { run, sniff, parseOperating, parseOperatingCsv, operatingFrom,
+return { run, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
          pdfText, ABBR, MASTER_GROUPS };
 })();
@@ -11723,6 +11771,7 @@ function decodeText(u8) {
   if (!zone || !input) return;
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
+  const lettered = $("#svlettered");
   /* The Diagram Summary is optional, and only one thing is read off it: the
      POS column, which says where a diagram stands in its formation. Without
      it a formation of three cannot be placed and the road says so. */
@@ -11746,7 +11795,10 @@ function decodeText(u8) {
     let res;
     try { res = SHEETS_SHORTAGE.run(held.op, held.det, held.sum); }
     catch (e) { say("That pair could not be read: " + e.message, "err"); return; }
-    text = res.text || "";
+    /* Two layouts of ONE list: the plain run, and the depot's own lettered
+       hand. What is on screen is what Copy and Save hand over, so the two
+       can never disagree about what was sent. */
+    text = (lettered && lettered.checked ? res.lettered : res.text) || "";
     out.textContent = text || "Nothing to report — every diagram has what it was planned.";
     out.hidden = false;
     bar.hidden = false;
@@ -11834,6 +11886,9 @@ function decodeText(u8) {
     a.download = "SHORTAGES_AND_VARIATIONS.txt";
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  if (lettered) lettered.addEventListener("change", () => {
+    if (held.op && held.det) render();
   });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = "";

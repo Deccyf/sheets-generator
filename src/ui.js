@@ -1420,6 +1420,7 @@ function decodeText(u8) {
   if (!zone || !input) return;
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
+  const lettered = $("#svlettered");
   /* The Diagram Summary is optional, and only one thing is read off it: the
      POS column, which says where a diagram stands in its formation. Without
      it a formation of three cannot be placed and the road says so. */
@@ -1443,7 +1444,10 @@ function decodeText(u8) {
     let res;
     try { res = SHEETS_SHORTAGE.run(held.op, held.det, held.sum); }
     catch (e) { say("That pair could not be read: " + e.message, "err"); return; }
-    text = res.text || "";
+    /* Two layouts of ONE list: the plain run, and the depot's own lettered
+       hand. What is on screen is what Copy and Save hand over, so the two
+       can never disagree about what was sent. */
+    text = (lettered && lettered.checked ? res.lettered : res.text) || "";
     out.textContent = text || "Nothing to report — every diagram has what it was planned.";
     out.hidden = false;
     bar.hidden = false;
@@ -1531,6 +1535,9 @@ function decodeText(u8) {
     a.download = "SHORTAGES_AND_VARIATIONS.txt";
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  if (lettered) lettered.addEventListener("change", () => {
+    if (held.op && held.det) render();
   });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = "";

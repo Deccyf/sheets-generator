@@ -5,7 +5,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
 import { OPERATING_LINES, SHORTAGE_DETAIL_LINES, SHORTAGE_DETAIL_CSV,
-         SHORTAGE_OPERATING_CSV } from "./helpers/shortage-synth.mjs";
+         SHORTAGE_OPERATING_CSV, SHORTAGE_SUMMARY_LINES,
+         SHORTAGE_SUMMARY_CSV } from "./helpers/shortage-synth.mjs";
 
 const S = () => built().SHEETS_SHORTAGE;
 const txt = lines => lines.join("\n");
@@ -177,4 +178,52 @@ test("two reports from different days are named as such", () => {
   assert.ok(!s.run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES)).reviews
     .some(r => /The Operating Report is for/.test(r)),
     "no false alarm on a matched pair");
+});
+
+test("the Diagram Summary reads the same saved as printed", () => {
+  /* The optional third report, and the only one that carries POS. Asked
+     after the Operating Report's export turned out not to read: this one
+     always did, and a test keeps it that way. */
+  const s = S();
+  const op = txt(OPERATING_LINES), det = txt(SHORTAGE_DETAIL_LINES);
+  const printed = s.run(op, det, txt(SHORTAGE_SUMMARY_LINES));
+  const saved = s.run(op, det, SHORTAGE_SUMMARY_CSV);
+  assert.equal(saved.positions, true, "the export's POS column is read");
+  assert.equal(saved.text, printed.text, "so the list is the same list");
+  // and the case that needs POS comes out of both
+  assert.match(saved.text, /3 CAR INTER VICE END \(RM302\/RM905\)/);
+});
+
+test("the lettered layout gives every case its own letter and the fleet one", () => {
+  /* The depot's own hand, and what it refers to on the telephone: "B" is
+     one train, the last letter is the whole fleet list. */
+  const res = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES),
+                      txt(SHORTAGE_SUMMARY_LINES));
+  const heads = res.lettered.split("\n").filter(l => /^[A-Z]+\)\t/.test(l));
+  assert.deepEqual(norm(heads.map(l => l.split(")")[0])), ["A", "B", "C", "D"],
+    "three cases and then the fleet block: " + heads.join(" | "));
+  assert.match(heads[0], /^A\)\t3 CAR WRONG END \(RM301\/RM901\)/);
+  assert.match(heads[1], /^B\)\t3\.375 V 4\.375 \(RM903\)/);
+  assert.match(heads[2], /^C\)\t3 CAR INTER VICE END \(RM302\/RM905\)/);
+  assert.match(heads[3], /^D\)\t375 V 375\/9 \(RM905\)/, "the fleet list shares the last letter");
+  // a case's own note is set off by a blank line and aligned, not stepped in
+  const lines = res.lettered.split("\n");
+  const at = lines.findIndex(l => /FOLLOWING 3 V 4/.test(l));
+  assert.equal(lines[at], "\tFOLLOWING 3 V 4: 2W14 06 36 RAM - CHX");
+  assert.equal(lines[at - 1], "", "a blank line above it");
+  // every fleet line sits under D, and no line is left without its indent
+  assert.ok(res.lettered.split("\n").every(l => l === "" || /^([A-Z]+\))?\t/.test(l)),
+    "every line is either a letter or indented under one");
+  // the same lines as the plain layout, just laid out differently
+  const strip = t => t.split("\n").map(l => l.replace(/^[A-Z]+\)\t|^\t/, "").trim())
+    .filter(Boolean).join("\n");
+  assert.equal(strip(res.lettered), strip(res.text), "one list, two layouts");
+});
+
+test("past Z the letters carry rather than starting again", () => {
+  const S2 = S();
+  const many = Array.from({ length: 28 }, (_, i) => ["x" + i]);
+  // exercised through the only door there is: a list built from 28 blocks
+  assert.equal(S2.letterList(many).split("\n\n")[26].split(")")[0], "AA");
+  assert.equal(S2.letterList(many).split("\n\n")[27].split(")")[0], "AB");
 });

@@ -212,6 +212,19 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   const csvList = await page.textContent("#svout");
   if (csvList !== list) throw new Error("the saved report should give the same list:\n" + csvList);
   console.log("sv csv      :", (await page.textContent("#svstatus")).trim());
+
+  /* The depot's own lettered hand, off the same build. */
+  await page.locator("#svlettered").check();
+  await page.waitForFunction(() =>
+    /^A\)/.test(document.querySelector("#svout").textContent), null, { timeout: 10000 });
+  const letters = (await page.textContent("#svout")).split("\n")
+    .filter(l => /^[A-Z]+\)\t/.test(l)).map(l => l.split(")")[0]);
+  if (letters.join(",") !== "A,B,C,D")
+    throw new Error("a letter per case and one for the fleet list: " + letters.join(","));
+  console.log("sv lettered :", (await page.textContent("#svout")).split("\n")[0].replace(/\t/g, "  "));
+  await page.locator("#svlettered").uncheck();
+  if ((await page.textContent("#svout")) !== csvList)
+    throw new Error("unticking should give the plain list back");
 }
 
 await browser.close();

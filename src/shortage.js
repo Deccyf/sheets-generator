@@ -427,6 +427,36 @@ function headingWithEnd(label, diagText, end) {
   return `${label} (${diagText}) ENDS ${end.text} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
 }
 
+/* ---------- the lettered layout ----------
+   How the depot writes the list out by hand, and what it refers to on the
+   telephone: every shortage, swap or length variation takes a letter of
+   its own, in the order they happen, and the whole run of fleet variations
+   shares the last letter - so "B" names one train and "D" names the fleet
+   list. A case's own follow-on notes sit under its letter, a blank line
+   apart, aligned with the heading rather than stepped in again.
+
+   Past Z it carries into AA, AB - no day has ever needed it, but a list
+   that silently started again at A would be worse than a long letter. */
+function letterFor(n) {
+  let s="";
+  do { s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; } while (n>=0);
+  return s;
+}
+function letterList(blocks) {
+  return blocks.map((lines,i)=>{
+    const out=[];
+    lines.forEach((ln,j)=>{
+      const body=String(ln).replace(/^\s+/,"");
+      if(j===0){ out.push(letterFor(i)+")\t"+body); return; }
+      // a case's notes are set off by a blank line; a run of list lines is not
+      const note=/^(FOLLOWING|THEN|ON ARR|\d+ CAR T\/F)/.test(body);
+      if(note && out[out.length-1]!=="") out.push("");
+      out.push(body?"\t"+body:"");
+    });
+    return out.join("\n");
+  }).join("\n\n");
+}
+
 function formatFollowing(groups) {
   const lines=[];
   for(const g of groups){
@@ -655,7 +685,13 @@ function buildDiscrepancies(op, detail, posAt) {
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
   const normalText=normalBlocks.join("\n\n");
   const text=[topText,normalText].filter(Boolean).join("\n\n");
-  return {text,reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
+  /* The same list in the depot's own hand: a letter per case, and the whole
+     run of fleet variations under the last one. Built from the same blocks,
+     so there is one list in two layouts and not two lists. */
+  const blocks=topCases.map(c=>c.lines);
+  if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
+  return {text,lettered:letterList(blocks),
+          reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
 }
 
 /* ---------- the Diagram Detail as the CSV export ----------
@@ -802,7 +838,7 @@ function sniff(text) {
   return null;
 }
 
-return { run, sniff, parseOperating, parseOperatingCsv, operatingFrom,
+return { run, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
          pdfText, ABBR, MASTER_GROUPS };
 })();

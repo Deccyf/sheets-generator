@@ -137,3 +137,22 @@ export const SHORTAGE_OPERATING_CSV = OPERATING_LINES
   .map(l => OP_HEAD + l.split(/\s{2,}/).filter(Boolean).slice(0, 13)
     .map(x => '"' + x + '"').join(","))
   .join("\r\n");
+
+/* The Diagram Summary as the CSV export writes it — the one report of the
+   three that is optional, and the only place POS is written down. Built
+   FROM the printed lines above, same as the Operating Report's export. */
+const SUM_HEAD = '"GENIUS","DIAGRAM SUMMARY REPORT","Page:","Page -1 of 1",,' +
+  '"Control:","SouthEastern Trains","Print Date:","September 18, 2026",' +
+  '"Controller:","NA","Signon:","DFINCH","Name:","DECLAN FINCH","Time:",' +
+  '"05:30","Diagram Summary for:"," 18/09/26","DIAGRAM","UNITS","FLEET",' +
+  '"OFF","START FUEL","POS","AT","FROM","TO","AT","WORKS","END FUEL",' +
+  '"MILES","TOT. FUEL  MILES","NOTES","NOTES",';
+export const SHORTAGE_SUMMARY_CSV = SHORTAGE_SUMMARY_LINES
+  .filter(l => /^RM\d{3}\s/.test(l))
+  .map(l => {
+    // diagram  fleet  start fuel  POS  start  from  to  end
+    const [diag, fleet, fuel, pos, start, from, to, end] = l.split(/\s{2,}/);
+    return SUM_HEAD + ['"' + diag + '"', "", '"' + fleet + '"', fuel, pos,
+      '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
+      "0.00", "0.00", "0.00", "", ""].join(",");
+  }).join("\r\n");

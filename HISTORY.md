@@ -140,6 +140,52 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.6 — 19 September 2026 — the depot's own lettered hand
+
+**The Diagram Summary's export was checked and was already fine.** Asked
+after the Operating Report's turned out not to read: the Summary comes in
+either way, and on the real 18/09 export that is 261 rows over 151
+diagrams with POS, start, end and fleet all matching the file cell for
+cell. The synthetic Summary is now written in both shapes too, the saved
+one built from the printed one, with a test holding the two lists against
+each other — so if it ever stops being fine, something says so.
+
+**Long formed is reported, and always was.** A length difference is named
+whichever way it goes: `4.375 V 3.375` for a 4-car on a 3-car diagram as
+readily as `3.375 V 4.375` the other way. Nothing filters the over-length
+ones out, and the depot's own lists carry them, so nothing should. Written
+into the rules panel where it can be read rather than inferred.
+
+**A toggle for the lettered layout.** How the depot writes the list out by
+hand and what it says on the telephone: every shortage, swap or length
+variation takes a **letter of its own**, in the order they happen, and the
+whole run of fleet variations shares the **last** letter. So "B" names one
+train and "D" names the fleet list.
+
+```
+A)      3 CAR WRONG END (RM301/RM901) ENDS 2R02 05 22 AFK - DVP (ARR 05 51)
+
+B)      3.375 V 4.375 (RM903) ENDS 2W14 06 36 RAM - CHX (ARR 08 54)
+
+        FOLLOWING 3 V 4: 2W14 06 36 RAM - CHX
+
+C)      3 CAR INTER VICE END (RM302/RM905) ENDS 2X01 07 10 RAM - CHX
+
+D)      375 V 375/9 (RM905) ENDS 2X01 07 10 RAM - CHX (ARR 09 20)
+
+        375 V 375/9 (RM901) ENDS 5F85 15+49 DVP - CST (ARR 16+15)
+```
+
+A case's own follow-on notes sit under its letter, a blank line apart and
+aligned with the heading rather than stepped in again. Past Z the letters
+carry into AA, AB — no day has needed it, but a list that silently started
+again at A would be worse than a long letter.
+
+It is **one list in two layouts, not two lists**: both are built from the
+same blocks, a test strips the lettering off and holds the two against
+each other line for line, and what is on screen is what **Copy** and
+**Save** hand over, so the two can never disagree about what was sent.
+
 ## 3.2.5 — 19 September 2026 — the Operating Report, saved as well as printed
 
 **Reported as the shortages list saying there was nothing wrong when there

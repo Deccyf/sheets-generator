@@ -356,6 +356,14 @@
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
 
+    <div class="opts-row" id="svoptsrow">
+      <span class="opts-label">Layout</span>
+      <label><input type="checkbox" id="svlettered" autocomplete="off">
+        Lettered, as the depot writes it</label>
+      <span class="note">A letter per shortage, swap or length case; the
+        whole fleet list under the last one</span>
+    </div>
+
     <div class="board">
       <p class="status" id="svstatus" role="status" aria-live="polite"></p>
       <div class="board-acts" id="svbar" hidden>
@@ -396,6 +404,10 @@
           ends and the answer is forced, with three or more it is the Diagram
           Summary that settles it, and without one the pair is named on the
           Review list rather than labelled on a guess.</p>
+        <p><b>Long formed counts too.</b> A length difference is reported
+          whichever way it goes — <code>4.375 V 3.375</code> for a 4-car on a
+          3-car diagram as readily as <code>3.375 V 4.375</code> the other
+          way. Nothing filters the over-length ones out.</p>
         <p><b>Everything it touches.</b> Legs shared between diagrams are
           stitched into one working, so a variation is traced through every
           service it goes on to affect and grouped by the length the train
