@@ -616,15 +616,9 @@ function run(planText, genius, opts) {
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
   const days = date ? allDays(genius, date) : new Map();
-  /* What every unit on the plan wants, so a swap never takes a unit off the
-     diagram that was getting it home. */
-  const wanted = new Map();
-  for (const row of plan.rows) {
-    const ds = row.places.map(depotOf).filter(Boolean);
-    if (ds.length) wanted.set(row.unit, (wanted.get(row.unit) || []).concat(ds));
-  }
-  const out = [], notices = [];
-  for (const row of plan.rows) {
+  /* When each line is due, first, because what a swap may not do depends
+     on it. */
+  const dated = plan.rows.map(row => {
     const when = whenOf(row.when, today);
     /* An end-of-day defect with no target date is due TODAY - back at a
        maintenance depot by the end of the day is what EOD means. */
@@ -632,7 +626,21 @@ function run(planText, genius, opts) {
       when.date = today; when.half = "EOD"; when.text = when.text || "EOD";
     }
     const ahead = daysAhead(when, today);
-    const r = { ...row, when, ahead, today, tier: tierOf(when, ahead), ignored: ignore.has(row.unit) };
+    return { ...row, when, ahead, today, tier: tierOf(when, ahead), ignored: ignore.has(row.unit) };
+  });
+  /* What the plan wants NOW - today, tomorrow, ASAP, overdue - so a swap
+     never takes a unit off the diagram that was getting it home for work
+     that is about to happen. A unit wanted somewhere on Wednesday is not
+     protected on Monday: swapping it costs it nothing yet. */
+  const wanted = new Map();
+  for (const r of dated) {
+    if (r.tier !== 1) continue;
+    const ds = r.places.map(depotOf).filter(Boolean);
+    if (ds.length) wanted.set(r.unit, (wanted.get(r.unit) || []).concat(ds));
+  }
+  const out = [], notices = [];
+  for (const r of dated) {
+    const row = r;
     const day = date ? unitDay(row.unit, genius, date) : null;
     if (day) {
       r.diags = day.diags; r.splits = day.splits; r.splitsAt = day.splitsAt;

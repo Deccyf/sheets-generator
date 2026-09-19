@@ -276,11 +276,15 @@ test("a changeover at a London terminal, and the two ways it is refused", async 
   const late = B().run(planFor(["375705\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
   assert.match(late.action, /^RE BERTH 11\+10 \(no shared terminal — depot swap\)$/, JSON.stringify(late));
   assert.equal(late.notice, null);
-  // and the unit displaced must not be one the plan wants at Ramsgate too
+  // and the unit displaced must not be one the plan wants at Ramsgate NOW
   const both = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
   const s3 = both.rows[0].suggest;
   assert.ok(!/RM104|375704/.test(s3.notes.join(" ")), "RM104 is not offered while 375704 is wanted at Ramsgate: " + JSON.stringify(s3));
   assert.equal(both.rows[1].suggest.action, "RE HOLD", "375704 ends there and is held");
+  // but a unit wanted there on Wednesday is not protected on Monday
+  const later = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tWED AM 05/08\tRE\t"]), res, {});
+  assert.equal(later.rows[0].suggest.action, "RE BERTH 11+10 — T/F AT CHX",
+    "swapping 375704 off RM104 costs it nothing yet: " + JSON.stringify(later.rows[0].suggest));
 });
 
 test("fleets stay on their own diagrams, and the same number of units go on the service", async () => {
