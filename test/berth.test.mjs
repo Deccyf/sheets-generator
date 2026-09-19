@@ -279,7 +279,7 @@ test("a changeover at a London terminal, and the two ways it is refused", async 
   // would delay it, so no changeover - the working is still named
   const late = B().run(planFor(["375705\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
   assert.equal(late.action, "ENDS HGS", JSON.stringify(late));
-  assert.match(late.notes.join("; "), /no working it could be put on gets to RE/);
+  assert.match(late.notes.join("; "), /no call at RE today; no request at HGS — none are made there/);
   assert.equal(late.notice, null);
   // and the unit displaced must not be one the plan wants at Ramsgate NOW
   const both = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
@@ -1000,6 +1000,64 @@ test("today's Allocation Summary with tomorrow's Summary and Detail: today is th
   const r = out.rows[0];
   assert.equal(r.viaAlloc, true); assert.equal(r.ends.place, "GP");
   assert.match(r.suggest.action, /^GP BERTH 5(J01|R00)/, JSON.stringify(r.suggest));
+});
+
+test("a line with no request says why: the train out of there is spoken for, nobody at that place, or nothing gets there", async () => {
+  const day = SWAP_DAY.concat([
+    // a diagram out of Hastings sidings to Ramsgate, for a unit that ends at Hastings
+    { code: "RM108", units: "375708.", stops: [S("HASTPSD", "", "06:00", "5H08"), S("RAMSGTE", "07:50", "08:00", "5H08"), S("RAMSGTD", "08:10", "", "")] },
+  ]);
+  const p = geniusPairCsv(day);
+  const rd = await N.GENIUS.read([p.summary, p.detail]);          // Monday 03/08, tomorrow
+  rd.alloc = B().parseAllocation([
+    allocRow("375701", "RM101", "02/08/26 05:00", "RAMSGTD", "RM101", "02/08/26 22:00", "GRVPCSD"),
+    allocRow("375706", "RM106", "02/08/26 05:00", "RAMSGTD", "RM106", "02/08/26 22:30", "GRVPCSD"),
+    allocRow("375703", "RM103", "02/08/26 05:00", "RAMSGTD", "RM103", "02/08/26 21:00", "HASTPSD"),
+    allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "TONBDMS"),
+  ].join("\r\n"));
+  const out = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t", "375706\tB\tMON PM 03/08\tRE\t", "375703\tA\tMON AM 03/08\tRE\t", "375705\tA\tMON AM 03/08\tRE\t",
+                               "375706\t\tEOD MON 03/08\tRE\t"]), rd, {});
+  const [a, b, c, d, e] = out.rows.map(r => r.suggest);
+  // the one train out of Grove Park to Ramsgate goes to the nearer line
+  assert.equal(a.action, "GP BERTH 5J01", JSON.stringify(a));
+  assert.equal(b.action, "ENDS GP", JSON.stringify(b));
+  assert.match(b.notes.join("; "), /tomorrow's 5J01 06\+00 \(RM102\) already asked for by 375701 — nothing else out of GP gets to RE/);
+  // nobody at Hastings: no request, and the train that would have done is still named
+  assert.equal(c.action, "ENDS HGS", JSON.stringify(c));
+  assert.match(c.notes.join("; "), /no request at HGS — none are made there; tomorrow's 5H08 06\+00 \(RM108\) out of it gets to RE all the same/);
+  // nothing out of Tonbridge gets there
+  assert.equal(d.action, "ENDS TON", JSON.stringify(d));
+  assert.match(d.notes.join("; "), /nothing out of TON on tomorrow's Detail gets to RE/);
+  // 375706's second line points at its first
+  assert.equal(e.action, "ENDS GP");
+  assert.ok(!/asked for on its other line/.test(b.notes.join("; ")), "the first line is not pointed at itself");
+  // and with a request on one line, the other says so
+  const two = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t", "375701\t\tEOD MON 03/08\tRE\t"]), rd, {});
+  assert.equal(two.rows[0].suggest.action, "GP BERTH 5J01");
+  assert.match(two.rows[1].suggest.notes.join("; "), /asked for on its other line — GP BERTH 5J01/, JSON.stringify(two.rows[1].suggest));
+});
+
+test("a day nothing is loaded for is named, and a unit the later day does place is placed by it", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const rd = await N.GENIUS.read([p.summary, p.detail]);          // Monday 03/08
+  // Saturday's allocation, and Sunday's with one unit on it so far
+  rd.alloc = B().parseAllocation([
+    allocRow("375701", "RM101", "01/08/26 05:00", "RAMSGTD", "RM101", "01/08/26 22:00", "GRVPCSD"),
+    allocRow("375706", "RM106", "01/08/26 05:00", "RAMSGTD", "RM106", "01/08/26 22:30", "GRVPCSD"),
+    allocRow("375703", "RM103", "01/08/26 05:00", "RAMSGTD", "RM103", "01/08/26 21:00", "HASTPSD"),
+    allocRow("375706", "RM106", "02/08/26 05:00", "GRVPCSD", "RM106", "02/08/26 23:30", "RAMSGTD"),
+  ].join("\r\n"));
+  const out = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t", "375706\tB\tMON AM 03/08\tRE\t"]), rd, {});
+  assert.equal(out.date, "01/08/26");
+  assert.ok(out.reviews.some(m => /Nothing is loaded for 02\/08\/26 \(the 02\/08\/26 Allocation Summary places 1 units, so it was printed before that day was allocated\): every other unit is taken to stand where 01\/08\/26 leaves it until the 03\/08\/26 departures/.test(m)), out.reviews.join(" | "));
+  const [a, b] = out.rows;
+  assert.equal(a.placedOn, null); assert.equal(a.ends.place, "GP");
+  assert.equal(a.suggest.action, "GP BERTH 5J01", JSON.stringify(a.suggest));
+  assert.match(a.suggest.notes.join("; "), /Monday's 5J01 06\+00 from GP — Monday's RM102 ends RE/, "the day is named, two days on");
+  // 375706 is on Sunday's allocation and ends at Ramsgate on it: held there
+  assert.equal(b.placedOn, "02/08/26"); assert.equal(b.ends.place, "RE");
+  assert.equal(b.suggest.action, "RE HOLD FOR MON", JSON.stringify(b.suggest));
+  assert.match(B().render(out), /375706.*placed by the 02\/08\/26 Allocation Summary/);
 });
 
 test("an Allocation Summary for some other day places nothing, and is named", async () => {

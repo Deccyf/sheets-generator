@@ -140,6 +140,36 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.8.2 — 20 September 2026 — why a line gets no request, and the day in between
+
+**A line with no request says why.** Run on a Saturday night with the
+day's allocation and Monday's reports, the tab answered a third of the
+plan with *ENDS XSE* or *ENDS HGS* and a note that said *no call at RE
+today* — true of a unit that never ran, and no help. Each now says what
+was looked at: *no request at HGS — none are made there*, with the train
+out of Hastings that would have done named all the same; *Monday's 5H91
+06+01 (RM059+RM060+RM920) already asked for by 375617, 375616 — nothing
+else out of XSE gets to RE*, where seven units stood at West Marina and
+the one train out of it to Ramsgate had two portions; or *nothing out of
+TON on Monday's Detail gets to RE*. A unit on several lines is asked for
+once, on the line that comes first, and its other lines point at that
+request instead of reading as nothing. The day is named — *Monday's
+5H91* — where the Detail is two days on, not *tomorrow's*.
+
+**The day in between.** Saturday's allocation with Monday's Detail leaves
+the Sunday blank, and the review now says so: every unit is taken to
+stand where Saturday leaves it until Monday's departures, and one that
+works on the Sunday will not be there. A unit the Sunday's own
+allocation does place is placed by that, the latest word on it, and the
+line says which day placed it. An Allocation Summary printed before its
+day was allocated — eight units on it against 233 — is named as that
+rather than taken as the day.
+
+**Every road of the depot.** A unit in the Up Sidings at Slade Green was
+offered only the departures out of the Up Sidings, and one on the
+platform at Ramsgate only those off the platform. They are the depot's
+to move: the request is *SG BERTH* or *RE BERTH*, off any of its roads.
+
 ## 3.8.1 — 20 September 2026 — the Allocation Summary, and the tab's introduction
 
 **The Allocation Summary places the units.** A row per unit — the diagram
