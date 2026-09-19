@@ -382,7 +382,7 @@ function generate(diags, prof, stabling, warn){
         continue;
       }
       const grp = new Set(sections[sec]);
-      let leaveStop = null; const run = [];
+      let leaveStop = null; const run = [], rounds = [];
       for (let k = a; k <= b; k++){
         const s = stops[k];
         if (grp.has(s.loc)) run.push(s);
@@ -402,20 +402,29 @@ function generate(diags, prof, stabling, warn){
             for (let j = k; j < back; j++)
               if ("12".indexOf((stops[j].hc_out || "5")[0]) >= 0){ worked = true; break; }
             if (!worked){
-              const backDep = stops[back].dep_idx !== null
-                            ? padTime(rows[stops[back].dep_idx].dep) : "next";
-              warn.push(["runround", v.code + v.num + " runs round via " + nxt.loc +
-                         " at " + padTime(rows[s.dep_idx].dep) + " (" +
-                         mod1440(stops[back].arr - s.dep) +
-                         " min) — listed on its " + backDep + " departure instead",
-                         null, ""]);
+              rounds.push(v.code + v.num + " runs round via " + nxt.loc + " at " +
+                          padTime(rows[s.dep_idx].dep) + " (" +
+                          mod1440(stops[back].arr - s.dep) + " min)");
               continue;
             }
           }
           leaveStop = s; break;
         }
       }
-      if (leaveStop === null) continue;
+      /* What became of a run-round is not known until the search has
+         finished, so it is said afterwards rather than guessed at the point
+         it is skipped. One with NOTHING after it is the unit going to bed,
+         and the old wording - "listed on its next departure instead" - sent
+         the depot looking for a row that was never written: SG462/463 into
+         Victoria East, RM905/906 onto the Ramsgate wash road and RM30 into
+         the New Sidings — every one of the five run-round lines on the
+         Saturday 19/09 prints. */
+      if (leaveStop === null){
+        for (const r of rounds)
+          warn.push(["runround", r + " and works nothing afterwards, so it is " +
+                     "not on a sheet", null, ""]);
+        continue;
+      }
       // time it off the platform if the unit runs through the platform
       const plat = PLATFORM[sec];
       if (plat){
@@ -430,6 +439,10 @@ function generate(diags, prof, stabling, warn){
       }
       const fmRow = rows[leaveStop.dep_idx];
       const ei = exitStop.dep_idx, er = rows[ei];
+      // named with the time the row really carries, so it can be found
+      for (const r of rounds)
+        warn.push(["runround", r + " — listed on its " + padTime(er.dep) +
+                   " departure instead", null, ""]);
       // The metro book is timed off the first move, but a unit that only
       // runs empty into the platform alongside still shows where the
       // service it forms is going. The two depot sections keep their own

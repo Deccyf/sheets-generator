@@ -246,6 +246,23 @@ export const SECTION_TURN_PRINTS = printsLines(
     "\t\tG Pk UpSd\t12+54\t\t\t\t\t",
   ]));
 
+/* Two run-rounds: GN621 pops out and comes back to work the 05:50, GN622
+   pops out and then goes to bed, which is not a row at all. */
+export const RUN_ROUND_PRINTS = printsLines([
+  "Diagram:\tGN\t621\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tS Gn Dep\t\t05:30\t5C01\t\t\t",
+  "\t\tDart\t05:40\t05:45\t5C01\t\t\t",
+  "\t\tS Gn\t05:55\t06:10\t2C03\t\t\t",
+  "\t\tC St\t06:50\t\t\t#\t\t",
+  "Diagram:\tGN\t622\tSat",
+  "Fleet:\t465/9",
+  "From:\t01/08/2026",
+  "\t\tS Gn Dep\t\t05:32\t5C05\t\t\t",
+  "\t\tS Gn\t05:36\t\t\t\t\t",
+]);
+
 function xmlEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

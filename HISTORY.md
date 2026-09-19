@@ -140,6 +140,76 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.4 — 19 September 2026 — a sweep, and one review line that was not true
+
+Asked to look through the rest of the tool for faults, so both roads were
+run over real paper and every row checked back against the source it came
+from. What that found is at the bottom. One thing needed fixing.
+
+**A run-round that works nothing afterwards was said to be listed somewhere
+it was not.** A unit that pops out of its section and comes straight back
+without working anything has been run round, not sent out, so the row is
+held for the service that follows and the review says
+`— listed on its next departure instead`. The word "next" was a placeholder
+put in whenever there was no time to name — which is exactly the case where
+there is no following service at all and no row is ever written.
+
+On the Saturday 19/09 prints **all five** run-round lines said that, and
+not one of the five was listed anywhere:
+
+| | Runs round | And then |
+|---|---|---|
+| SG462, SG463 | Victoria Grosvenor shed to Vic (E) at 23+59 | berths in the platform, day over |
+| RM905, RM906 | Ramsgate depot to the wash road at 19+05 | back to the depot, day over |
+| RM30 | Ramsgate depot via the New Sidings at 00+30 | stables there, day over |
+
+None of them belongs on a berthing sheet — a sheet lists services STARTING
+somewhere, and none of these starts one — so the books are right. The
+review was sending somebody to look for a row nobody had written.
+
+What became of a run-round is not known until the stint search has
+finished, so it is said afterwards now rather than guessed at the moment it
+is skipped. One that does work afterwards names **the time the row really
+carries**, which is what makes it findable; one that does not says
+`and works nothing afterwards, so it is not on a sheet`. No row moves.
+
+### What else was checked
+
+Both roads, over the Saturday 19/09 prints and the Friday 18/09 Genius
+reports, re-read from scratch by code that shares nothing with the tool:
+
+- **Every row against its source.** All 289 unit rows of the three Saturday
+  books: the departure exists in the prints, the headcode matches, and the
+  POS order matches the printed formation at that leg. All 254 rows of the
+  weekday books against the Diagram Detail: same, with the 25 Victoria rows
+  that show the ECS headcode off the sidings against a platform time coming
+  out as the deliberate convention they are.
+- **Coverage, the other way round.** Every stint that comes off a stand,
+  checked for a row somewhere between leaving it and reaching the next one.
+  Weekend: six, all three run-round pairs above. Weekday: two, RM003/004's
+  23:59 off the Ashford down sidings, which the review already names as an
+  empty move to a berth.
+- **The AM and PM columns** against where the prints actually put the unit
+  next and where they leave it at the end: no disagreement.
+- **Structure**: no duplicate rows, no row without a destination, no row
+  with neither time nor diagram, and the cars-and-fleet column right on
+  every one (375/6 and 377/5 as 4, 375/3 as 3, 376/0 as 5, 465/9 as 4).
+- **After midnight**: one section has a row past midnight (West Marina
+  00+50) and it sorts last, as DAY_ROLL intends.
+
+Two things were looked at and deliberately left alone. **Twelve depot roads
+have an abbreviation that does not read as one** — `RM DRW`, `VictGroSh`,
+`GrPkDCtEE`, `SldGrDEHs`, `TonbJubS` and the rest — so a stand there is a
+berthing only when the prints mark it `#`. Teaching the reader the long
+names it already holds was tried and measured: it adds two rows to the
+Ashford allocations, both **six-minute** calls at the Down Washer Road,
+which is a turnround and not a berthing. The shunt-spur guard would have to
+be widened at the same time, and which roads belong in it is the depot's
+call. The visible cost today is wording: 8¾ hours on the Ramsgate wash road
+reads as a "station dwell". And the **Gravesend page** in the Metro book is
+real — SG707/708 start their day there — it is only the section list that
+has never heard of it.
+
 ## 3.2.3 — 19 September 2026 — dressed off the leg it is timed from
 
 **Reported as SG417 and SG418 the wrong way round on Saturday's Grove Park

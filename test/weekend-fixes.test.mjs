@@ -5,8 +5,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
-import { makeDocx, PRINTS_LINES, REISSUE_LINES, SECTION_TURN_PRINTS,
-         STABLED_PRINTS } from "./helpers/synth.mjs";
+import { makeDocx, PRINTS_LINES, REISSUE_LINES, RUN_ROUND_PRINTS,
+         SECTION_TURN_PRINTS, STABLED_PRINTS } from "./helpers/synth.mjs";
 
 const N = built();
 const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f) };
@@ -527,4 +527,25 @@ test("a unit that turns round inside its section is listed the way up it leaves"
   // row must NOT be dressed, and no second row of its own either
   assert.deepEqual(norm(col1(metro).filter(v => /^\d\d[+.:]\d\d$/.test(v))), [],
     "one entry for the pair, not one per leg");
+});
+
+test("a run-round that works nothing afterwards is not claimed to be listed", () => {
+  /* Every run-round line read "— listed on its next departure instead",
+     with the word "next" standing in wherever there was no time to name.
+     On the Saturday 19/09 prints all five of them said that and none of the
+     five was listed anywhere: SG462/463 ran into the Victoria East platform
+     and stopped, RM905/906 onto the Ramsgate wash road, RM30 into the New
+     Sidings. The depot was being sent to look for rows nobody had written. */
+  const res = run([docx(RUN_ROUND_PRINTS, "prints.docx")]);
+  const lines = reviewLines(res).filter(l => l.includes("run-round"));
+  assert.equal(lines.length, 2, lines.join("\n"));
+  assert.ok(lines.some(l => /GN621 runs round via Dart at 05.30 \(25 min\) — listed on its 05.30 departure instead/.test(l)),
+    "one that does work afterwards names the time the row really carries: " + lines.join(" | "));
+  assert.ok(lines.some(l => /GN622 runs round via S Gn at 05.32 \(4 min\) and works nothing afterwards, so it is not on a sheet/.test(l)),
+    "and one that does not says so: " + lines.join(" | "));
+  // and the claim holds: the only entry in the book is GN621's
+  const metro = res.books.find(b => b.road === "Metro");
+  const diags = metro.sheets.flatMap(s => Array.from(s.layout.cells)
+    .filter(c => c.c === 6 && /^GN/.test(String(c.v))).map(c => String(c.v)));
+  assert.deepEqual(norm(diags), ["GN621"], "GN622 really is on no sheet");
 });
