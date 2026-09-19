@@ -991,7 +991,8 @@ function suggest(r, ctx) {
         /* the night turn's window: the departures between 09+00 and 16+30
            are the ones the depot works its AM/PM berth by, so they lead */
         const inWin = k => k.swap.theirs.dep >= PM_WINDOW[0] && k.swap.theirs.dep <= PM_WINDOW[1];
-        const order = listed.map((k, n) => ({ k, name: outs[n] })).sort((a, b) => (inWin(b.k) ? 1 : 0) - (inWin(a.k) ? 1 : 0));
+        const order = listed.map((k, n) => ({ k, name: outs[n] }))
+          .sort((a, b) => ((inWin(b.k) ? 1 : 0) - (inWin(a.k) ? 1 : 0)) || (a.k.swap.theirs.dep - b.k.swap.theirs.dep));
         listed.splice(0, listed.length, ...order.map(o => o.k)); outs.splice(0, outs.length, ...order.map(o => o.name));
         s.action = at + " BERTH " + outs.join("/");
         s.notes.push("in on " + (sw.mine.hcIn || "?") + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) +
@@ -1000,13 +1001,16 @@ function suggest(r, ctx) {
                      ", " + k.displaced + " off it" + (sw.mine.hcOut ? " (takes " + sw.mine.hcOut + ")" : " (stays at " + placeOf(sw.at) + ")")));
         if (outs.length > 1) s.notes.push("the depot to choose");
       } else if (c.morning) {
-        /* tomorrow's departures out of where it ends tonight, every one that fits */
+        /* tomorrow's departures out of where it ends tonight, every one that
+           fits, in the order they leave */
         const outs = [];
-        for (const k of cands) {
-          if (!k.morning || k.morning.from !== c.morning.from || k.variation !== c.variation) continue;
+        listed.length = 0;
+        const ms = cands.filter(k => k.morning && k.morning.from === c.morning.from && k.variation === c.variation)
+          .sort((a, b) => a.morning.dep - b.morning.dep);
+        for (const k of ms) {
           const name = (k.morning.portion ? k.morning.portion + " " : "") + k.morning.name;
           if (outs.indexOf(name) >= 0) continue;
-          outs.push(name); if (k !== c) listed.push(k);
+          outs.push(name); listed.push(k);
         }
         s.action = c.morning.from + " BERTH " + outs.join("/");
         for (const k of listed) {
