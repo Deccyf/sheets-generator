@@ -488,8 +488,19 @@
   .brfiles .chip b{margin-left:8px; font-weight:700}
   .brfiles .chip:hover{border-color:var(--danger); color:var(--danger)}
   .brfiles .chip.all{border-style:dashed}
-  .platform > .brwarn{margin:14px 0 0}
-  .platform > .brhow{margin-top:14px}
+  /* the berth tab's introduction: the blurb and the warning on the left,
+     how it works on the right, one column on a narrow screen */
+  .brintro{display:grid; grid-template-columns:1fr; gap:14px 32px; margin-top:14px; align-items:start}
+  @media (min-width:1000px){ .brintro{grid-template-columns:minmax(0,5fr) minmax(0,6fr)} }
+  .brintro .whatfor{margin:0; max-width:none; color:#3C464D; font-size:14px}
+  .brintro .brwarn{margin:14px 0 0; max-width:none}
+  .brhow{font-size:14px; color:#3C464D; line-height:1.5}
+  .brhow p{margin:0 0 8px}
+  .brhow ul{margin:0 0 8px; padding-left:18px}
+  .brhow li{margin:4px 0}
+  .bropts{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
+  .brticks{display:flex; flex-direction:column; gap:6px}
+  .brticks label{display:flex; align-items:center; gap:8px}
   .berth-small{margin-top:14px}
   @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
 </style>
@@ -514,7 +525,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.8.0</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.8.1</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -957,38 +968,55 @@
 
   <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
     <h2 class="vh">Berth requests from the maintenance plan</h2>
-    <p class="whatfor"><strong>Stuck on finding berth requests for your
-      Telex?</strong> Copy and paste your maintenance tab out of the workbook
-      and this will suggest berth requests for the depots. For the defects,
-      copy and paste the End of Days, Restrictions and Performance Defects
-      out of <strong>Equinox or EMS</strong> into the defects box, as they
-      come, and the requests for those are worded off the fault.</p>
-    <p class="checknote brwarn"><b>Do not use this to build your Telex</b>This
-      is an experimental tool. It is a reference only, to help you make a
-      decision on berth requests, so please double-check all of its work
-      against the reports before anything goes on the Telex.</p>
-    <p class="whatfor brhow"><strong>How it works.</strong> Drop the Diagram
-      Summary printed <strong>after allocation</strong> below &mdash; PDF or
-      CSV, it is the UNITS column that is read, and the morning print has it
-      empty &mdash; and with it the Diagram Detail for <strong>today,
-      tomorrow or both</strong>. Or leave the drop zone alone and the weekday
-      books&rsquo; own pair is used. Then paste the maintenance plan out of
-      the Telex workbook. For every line this says where that unit is today,
-      where and when it ends tonight and whether it calls at the place the
-      plan wants it, and off those facts and the depot&rsquo;s own rules it
-      <strong>suggests</strong> a request in the depot&rsquo;s own words.
-      <strong>On the day turn</strong>, drop today&rsquo;s Summary and
-      <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight comes off
-      the Summary, and the requests are tomorrow morning&rsquo;s departures
-      out of those places. <strong>On the night turn</strong>, drop
-      today&rsquo;s Summary and today&rsquo;s Detail: a unit whose allocation
-      finishes between 09+00 and 16+30 is on hand at a depot, and the
-      requests are the departures between 09+00 and 16+30 it could go out
-      on, the depot to choose. The plan comes back in its own shape, sections,
-      columns, order and colours, with <em>Suggested</em> and <em>Today</em>
-      added on the right; your own Action column is never written over, and
-      a plan pasted with it empty comes back with the suggestions filling
-      it. The rules are written out at the bottom.</p>
+    <div class="brintro">
+      <div>
+        <p class="whatfor"><strong>Stuck on finding berth requests for your
+          Telex?</strong> Copy and paste your maintenance tab out of the
+          workbook and this will suggest berth requests for the depots. For
+          the defects, copy and paste the End of Days, Restrictions and
+          Performance Defects out of <strong>Equinox or EMS</strong> into the
+          defects box, as they come, and the requests for those are worded
+          off the fault.</p>
+        <p class="checknote brwarn"><b>Do not use this to build your Telex</b>This
+          is an experimental tool. It is a reference only, to help you make a
+          decision on berth requests, so please double-check all of its work
+          against the reports before anything goes on the Telex.</p>
+      </div>
+      <div class="brhow">
+        <p><b>How it works.</b> Drop the Diagram Summary printed
+          <strong>after allocation</strong> &mdash; PDF or CSV, it is the
+          UNITS column that is read, and the morning print has it empty
+          &mdash; with the Diagram Detail for today, tomorrow or both, or
+          leave the drop zone alone and the weekday books&rsquo; own pair is
+          used. Paste the plan, read it, and every line says where that unit
+          is, where it ends tonight, and the request in the depot&rsquo;s own
+          words.</p>
+        <ul>
+          <li><b>Day turn</b> &mdash; today&rsquo;s Summary and
+            <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight
+            comes off the Summary, the requests are tomorrow morning&rsquo;s
+            departures out of those places.</li>
+          <li><b>Night turn</b> &mdash; today&rsquo;s Summary and
+            today&rsquo;s Detail: a unit whose allocation finishes between
+            09+00 and 16+30 is on hand at a depot, and is offered the
+            departures between 09+00 and 16+30, the depot to choose.</li>
+          <li><b>A day still to run</b> &mdash; the reports for a day that
+            has not happened, everything allocated: each unit is asked for
+            from where its first working starts, before it goes out.</li>
+          <li><b>Weekend</b> &mdash; the diagram prints (.docx) stand in for
+            the Detail.</li>
+          <li><b>Allocation Summary</b> &mdash; a row per unit, where it
+            starts and where it ends: drop it with the Detail and it places
+            every unit, or with a Diagram Summary and it fills in the units
+            that Summary has no row for.</li>
+        </ul>
+        <p>The plan comes back in its own shape, sections, columns, order and
+          colours, with <em>Suggested</em> and <em>Today</em> added on the
+          right. Your own Action column is never written over; a plan pasted
+          with it empty comes back with the suggestions filling it. The rules
+          are written out at the bottom.</p>
+      </div>
+    </div>
 
     <button class="berth berth-small" id="brberth" type="button">
       <span class="berth-inner">
@@ -997,8 +1025,9 @@
           <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
           <span>PDF or CSV &middot; any day, a Saturday included &middot; the
             weekend diagram prints (.docx) stand in for a Detail &middot; the
-            Summary alone says where every unit ends tonight &middot; or leave it
-            and the weekday books&rsquo; own pair is used</span>
+            <b>Allocation Summary</b> says where every unit starts and ends,
+            with or without a Diagram Summary &middot; or leave it and the
+            weekday books&rsquo; own pair is used</span>
         </span>
       </span>
     </button>
@@ -1030,12 +1059,14 @@
         <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
       </label>
     </div>
-    <div class="opts-row">
+    <div class="opts-row bropts">
       <button class="btn" id="brgo" type="button">Read the plan</button>
-      <label><input type="checkbox" id="brkeep" autocomplete="off">
-        Keep trains together &mdash; split a formation only where nothing else gets it home</label>
-      <label><input type="checkbox" id="brdaytorun" autocomplete="off">
-        A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
+      <span class="brticks">
+        <label><input type="checkbox" id="brkeep" autocomplete="off">
+          Keep trains together &mdash; split a formation only where nothing else gets it home</label>
+        <label><input type="checkbox" id="brdaytorun" autocomplete="off">
+          A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
+      </span>
       <span class="note" id="brhint"></span>
     </div>
 
@@ -1246,6 +1277,16 @@
           05 27 from AFK</i>. The tick above is set for you when the
           Summary&rsquo;s date is today or later, and untick it for a day
           that has already run. A swap on the day still comes first.</p>
+        <p><b>The Allocation Summary.</b> A row per unit: the diagram it
+          starts on, where and when, the diagram it finishes on, where and
+          when. Dropped with the Diagram Detail and no Diagram Summary it
+          places every unit &mdash; the line says <i>placed by the
+          Allocation Summary</i> &mdash; and dropped beside a Diagram Summary
+          it fills in any unit that Summary has no row for. A unit that
+          starts on one diagram and finishes on another is read as two
+          segments, the second beginning on the finishing diagram&rsquo;s
+          first call after the first has ended. CSV export or the print,
+          either reads.</p>
         <p><b>The weekend diagram prints.</b> The Word prints the weekend tab
           builds from stand in for a Diagram Detail here: drop the
           <code>.docx</code> with the Summary and each diagram&rsquo;s calls
@@ -1338,7 +1379,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.8.0
+      works without an internet connection. Version 3.8.1
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -9453,9 +9494,11 @@ const GENIUS = (() => {
       if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt, notes));
       if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
-    // a READ may stand on the Summary alone: it says where every unit ends
+    // a READ may stand on either report alone: the Summary says where every
+    // unit ends, the Detail with an Allocation Summary does the same
+    if (!sumRows.length && !lenient) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
     if (!byDate.size && !lenient) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
+    if (!sumRows.length && !byDate.size) throw new Error("Neither a Diagram Summary nor a Diagram Detail was found in what was dropped.");
     return { sumRows, byDate };
   }
   async function build(inputs, opts) {
@@ -11295,6 +11338,71 @@ const hhmm = (t, ecs) => {
   const m = ((t % 1440) + 1440) % 1440;
   return String(Math.floor(m / 60)).padStart(2, "0") + (ecs ? "+" : " ") + String(m % 60).padStart(2, "0");
 };
+/* ---------- the Allocation Summary ----------
+   A row per UNIT: the diagram it starts on, where and when, the diagram
+   it finishes on, where and when. Where the Diagram Summary has no row
+   for a unit - or was not dropped at all - this is what says where the
+   unit is. Read as the CSV export (its labels on every line) or the
+   printed text. Map date -> Map unit -> record, the date being the day
+   the unit's day starts. */
+const ALLOC_DT = /^(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)$/;
+function parseAllocation(text) {
+  const out = new Map();
+  const add = rec => {
+    if (!out.has(rec.date)) out.set(rec.date, new Map());
+    out.get(rec.date).set(rec.unit, rec);
+  };
+  const mins = t => { const m = /^(\d\d):(\d\d)$/.exec(t); return m ? +m[1] * 60 + +m[2] : null; };
+  const daysApart = (a, b) => { const p = parseShort(a), q = parseShort(b); return p && q ? Math.round((q - p) / 86400000) : 0; };
+  const make = (unit, depot, startDiag, sd, st, startLoc, ed, et, endLoc, endDiag) => ({
+    unit, depot, startDiag, startLoc, start: mins(st), endDiag: endDiag || startDiag, endLoc,
+    end: mins(et) != null ? mins(et) + 1440 * Math.max(0, daysApart(sd, ed)) : null, date: sd, endDate: ed,
+  });
+  const txt = String(text || "");
+  if (/ALLOCATION SUMMARY/i.test(txt) && txt.indexOf(",") >= 0 && typeof SHEETS_CORE !== "undefined") {
+    for (const f of SHEETS_CORE.csvParse(txt)) {
+      const g = f.map(x => String(x == null ? "" : x).trim());
+      const mi = g.lastIndexOf("MAINTENANCE");
+      if (mi < 0) continue;
+      const d = g.slice(mi + 1);
+      if (!/^\d{6}$/.test(d[0] || "") || !/^[A-Z]{2}\d{3}$/.test(d[2] || "")) continue;
+      const sm = ALLOC_DT.exec((d[4] || "").replace(/\s+/g, " ")), em = ALLOC_DT.exec((d[6] || "").replace(/\s+/g, " "));
+      if (!sm) continue;
+      add(make(d[0], d[1], d[2], sm[1], sm[2], d[5], em ? em[1] : sm[1], em ? em[2] : "", d[7] || "", /^[A-Z]{2}\d{3}$/.test(d[9] || "") ? d[9] : null));
+    }
+    if (out.size) return out;
+  }
+  // the print: one unit per line, the two clocks as the anchor
+  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:\s+\S+)?\s+([A-Z]{2}\d{3})/;
+  for (const raw of txt.split("\n")) {
+    const m = RE.exec(raw.trim().replace(/\s{2,}/g, "  "));
+    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10]));
+  }
+  return out;
+}
+/* The Summary rows a unit's allocation stands in for: one segment on the
+   diagram it starts and ends on, or two where they differ - the first to
+   its diagram's last call, the second from its diagram's first. */
+function allocRows(rec, dets) {
+  const stopsFor = diag => { const raw = dets && dets.get(diag); return raw ? stopsOf(raw) : []; };
+  const base = { date: rec.date, fleet: "", pos: 1, units: [rec.unit], unit: rec.unit.slice(-3), viaAlloc: true };
+  if (!rec.endDiag || rec.endDiag === rec.startDiag)
+    return [{ ...base, diag: rec.startDiag, start: rec.start, from: rec.startLoc, to: rec.endLoc, end: rec.end }];
+  const a = stopsFor(rec.startDiag), b = stopsFor(rec.endDiag);
+  const za = a[a.length - 1];
+  const cut = za ? (za.arr != null ? za.arr : za.dep) : rec.start;     // where the first segment ends
+  // the second segment begins on the end diagram's first call after that
+  const b0 = b.find(x => (x.dep != null ? x.dep : x.arr) >= cut);
+  const t0 = b0 ? Math.max(cut, b0.dep != null ? b0.dep : b0.arr) : cut;
+  return [
+    { ...base, diag: rec.startDiag, start: rec.start, from: rec.startLoc, to: za ? za.code : rec.startLoc, end: cut },
+    { ...base, diag: rec.endDiag, start: t0, from: b0 ? b0.code : rec.endLoc, to: rec.endLoc, end: rec.end },
+  ];
+}
+function allocFor(genius, date) {
+  return genius && genius.alloc && genius.alloc.get ? (genius.alloc.get(date) || null) : null;
+}
+
 /* ---------- the weekend diagram prints as a Detail ----------
    The prints name places the depot's short way - "Ram Depot", "G Pk Dep",
    "St L Shed" - and the road works in Genius codes, so the ones it has a
@@ -11385,6 +11493,13 @@ function allDays(genius, date) {
     rowsOf.set(r.diag, (rowsOf.get(r.diag) || []).concat([{ ...r, units: r.units || (r.unit ? [r.unit] : []) }]));
     if (r.fleet && !fleetOf.has(r.diag)) fleetOf.set(r.diag, r.fleet);
   }
+  /* the Allocation Summary places the units the Diagram Summary does not:
+     a diagram with no row of its own takes the rows its units' allocations
+     stand in for */
+  const alloc = allocFor(genius, date);
+  if (alloc) for (const rec of alloc.values())
+    for (const r of allocRows(rec, dets)) if (!rowsOf.has(r.diag) || !rowsOf.get(r.diag).some(x => x.units.length))
+      rowsOf.set(r.diag, (rowsOf.get(r.diag) || []).filter(x => x.units.length).concat([r]));
   for (const rs of rowsOf.values()) rs.sort((a, b) => a.start - b.start);
   const unitsOf = new Map(), posOf = new Map();
   for (const [diag, rs] of rowsOf) {
@@ -11508,12 +11623,18 @@ function stopsWithin(stops, row) {
   return out;
 }
 function unitDay(unit, genius, date) {
-  const rows = (genius.summary || []).filter(r => r.date === date &&
+  const dets = genius.detail && genius.detail.get(date);
+  let rows = (genius.summary || []).filter(r => r.date === date &&
     (r.units ? r.units.indexOf(unit) >= 0 : r.unit === unit));
-  if (!rows.length) return null;
+  let viaAlloc = false;
+  if (!rows.length) {
+    const alloc = allocFor(genius, date);
+    const rec = alloc && alloc.get(unit);
+    if (!rec) return null;
+    rows = allocRows(rec, dets); viaAlloc = true;
+  }
   rows.sort((a, b) => a.start - b.start);
   const diags = [...new Set(rows.map(r => r.diag))];
-  const dets = genius.detail && genius.detail.get(date);
   /* A diagram that attaches or detaches during the day is portion working -
      on the Kent Coast that is at Ashford, Faversham, Ramsgate, Victoria and
      Dover, and 131 of the 296 diagrams on the 18/09 Detail do it. Said with
@@ -11525,7 +11646,10 @@ function unitDay(unit, genius, date) {
     if (!raw) continue;
     const win = raw.filter(r => (r.dep != null && r.dep >= row.start && r.dep <= row.end) || (r.arr != null && r.arr >= row.start && r.arr <= row.end));
     rawAll = rawAll.concat(win.length ? win : raw);
-    const seg = stopsWithin(stopsOf(raw), row).map(s => ({ ...s, diag: row.diag }));
+    let seg = stopsWithin(stopsOf(raw), row).map(s => ({ ...s, diag: row.diag }));
+    /* a segment the Detail has no calls for still ends where the row says:
+       the row's own end stands in, so the day ends where the unit does */
+    if (!seg.length && row.to) seg = [{ code: row.to, name: row.to, arr: row.end, dep: null, hcIn: null, hcOut: null, act: null, diag: row.diag }];
     /* where one segment ends and the next begins at the same place, that
        is one stand: in on the first working, out on the second */
     const last = stops[stops.length - 1];
@@ -11544,7 +11668,7 @@ function unitDay(unit, genius, date) {
   const last = rows[rows.length - 1];
   const lastStop = stops.length ? stops[stops.length - 1] : null;
   return {
-    unit, diags, rows, stops, splits, splitsAt, raw: rawAll,
+    unit, diags, rows, stops, splits, splitsAt, raw: rawAll, viaAlloc,
     endCode: lastStop ? lastStop.code : last.to,
     endTime: lastStop ? (lastStop.arr != null ? lastStop.arr : lastStop.dep) : last.end,
     startCode: rows[0].from, startTime: rows[0].start,
@@ -12146,8 +12270,8 @@ function run(planText, genius, opts) {
   opts = opts || {};
   const plan = mergeDefects(parsePlan(planText), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
-  const date = (genius && genius.summary && genius.summary.length)
-    ? (opts.date || genius.summary[0].date) : null;
+  const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
+  const date = opts.date || ((genius && genius.summary && genius.summary.length) ? genius.summary[0].date : (allocDates[0] || null));
   const today = date ? parseShort(date) : null;
   if (!date) reviews.push("No weekday reports are loaded, so nothing can be said about where any unit is — build the weekday books first.");
   const ignore = new Set(String(opts.ignore || "").match(/\d{6}/g) || []);
@@ -12155,7 +12279,11 @@ function run(planText, genius, opts) {
   const mse = new Set(String(opts.mse || "").match(/\d{6}/g) || []);
   const dayRows = (genius && genius.summary || []).filter(r => r.date === date);
   const filled = dayRows.filter(r => r.units && r.units.length).length;
-  if (date && !filled)
+  const allocHere = allocFor(genius, date);
+  if (allocHere) reviews.push("The Allocation Summary for " + date + " places " + allocHere.size + " units" +
+    (dayRows.length ? " — used for any unit the Diagram Summary has no row for." : " — no Diagram Summary, so it places every unit."));
+  if (date && !filled && allocHere) { /* the allocation does the placing */ }
+  else if (date && !filled)
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
   else if (date && filled < dayRows.length) {
@@ -12249,6 +12377,7 @@ function run(planText, genius, opts) {
       r.diags = []; r.ends = null; r.calls = []; r.endsAtTarget = false; r.splits = false; r.splitsAt = [];
     }
     r.inTraffic = !!day && !standing;
+    r.viaAlloc = !!(day && day.viaAlloc);
     /* how it runs today, working by working: the diagrams coupled with it
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
@@ -12330,6 +12459,7 @@ function factsOf(r) {
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
   if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : "") + tail;
   const bits = [];
+  if (r.viaAlloc) bits.push("placed by the Allocation Summary");
   bits.push("on " + r.diags.join("+") + (r.splits ? " (splits at " + r.splitsAt.join("/") + ")" : ""));
   bits.push("ENDS " + r.ends.place + " " + hhmm(r.ends.time, true) + (r.afterMidnight ? " (after midnight)" : ""));
   const at = r.calls.filter(c => !c.ends);
@@ -12479,7 +12609,7 @@ function render(res) {
 }
 
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
-         detailFromPrints, PRINT_CODES,
+         detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
@@ -14039,6 +14169,10 @@ function decodeText(u8) {
   const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
+    if (/ALLOCATION SUMMARY/i.test(txt)) {
+      const a = /Allocation Summary for:[^0-9]*(\d\d\/\d\d\/\d\d)/.exec(txt);
+      return "Allocation" + (a ? " " + a[1] : "");
+    }
     const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
     const m = /Diagram (?:Summary|Details?) for:[^0-9]{0,12}(\d\d\/\d\d\/\d\d)/.exec(txt) || /\bOn\b\W{0,3}(\d\d\/\d\d\/\d\d)/.exec(txt);
     return kind + (m ? " " + m[1] : "");
@@ -14077,10 +14211,22 @@ function decodeText(u8) {
       /* the Genius reports go to the weekday reader; the weekend diagram
          prints, .docx or pasted, are read the way the weekend tab reads
          them and become that day's Detail */
-      const genius = ownFiles.filter(f => !f.prints).map(f => f.data);
+      const genius = ownFiles.filter(f => !f.prints && !f.alloc).map(f => f.data);
       const prints = ownFiles.filter(f => f.prints);
-      if (!genius.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
-      own = await GENIUS.read(genius);
+      const allocs = ownFiles.filter(f => f.alloc);
+      if (!genius.length && !allocs.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
+      own = genius.length ? await GENIUS.read(genius) : { summary: [], detail: new Map(), dates: [], labels: {} };
+      /* the Allocation Summary - a row per unit, where it starts and ends -
+         places the units the Diagram Summary has no row for, or every unit
+         where there is no Diagram Summary at all */
+      if (allocs.length) {
+        own.alloc = new Map();
+        for (const f of allocs) for (const [date, m] of f.alloc) {
+          if (!own.alloc.has(date)) own.alloc.set(date, new Map());
+          for (const [unit, rec] of m) own.alloc.get(date).set(unit, rec);
+        }
+        if (!own.dates.length) { own.dates = [...own.alloc.keys()]; own.labels = Object.fromEntries(own.dates.map(d => [d, d])); }
+      }
       for (const f of prints) {
         const det = SHEETS_BERTH.detailFromPrints(SheetsEngine.parseDiagrams(f.prints, []));
         for (const [date, m] of det) {
@@ -14098,10 +14244,11 @@ function decodeText(u8) {
         dayToRun.checked = own.dates.some(d => at(d) >= t0);
       }
       const units = own.summary.filter(r => r.units && r.units.length).length;
-      if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
+      const allocTxt = own.alloc ? " · Allocation " + [...own.alloc.keys()].join(", ") + " (" + [...own.alloc.values()].reduce((n, m) => n + m.size, 0) + " units)" : "";
+      if (zoneTxt) zoneTxt.textContent = (own.summary.length ? "Summary " + own.dates.join(", ") + " — " + units + " workings with units" : "No Diagram Summary") + allocTxt +
         (detDates.length ? " · Detail " + detDates.join(", ") : " · no Detail yet: where each unit ends, and tomorrow's departures once a Detail is dropped");
-      say("Summary for " + own.dates.join(", ") + (detDates.length ? " and Detail for " + detDates.join(", ") : "") +
-          " loaded — paste the plan and read it.", "go");
+      say((own.summary.length ? "Summary for " + own.dates.join(", ") : "Allocation Summary for " + own.dates.join(", ")) +
+          (detDates.length ? " and Detail for " + detDates.join(", ") : "") + " loaded — paste the plan and read it.", "go");
     } catch (e) {
       own = null;
       // a Detail on its own waits for the Summary
@@ -14131,6 +14278,12 @@ function decodeText(u8) {
         ownFiles.push({ name: f.name, prints: lines, label: "Prints" + (dates.length ? " " + dates.join(", ") : "") });
         continue;
       } else { txt = decodeText(u8); data = txt; }
+      if (/ALLOCATION SUMMARY/i.test(txt)) {
+        const alloc = SHEETS_BERTH.parseAllocation(txt);
+        if (!alloc.size) { say(f.name + " reads as an Allocation Summary but no unit rows were found in it.", "err"); continue; }
+        ownFiles.push({ name: f.name, alloc, label: labelOf(txt) });
+        continue;
+      }
       ownFiles.push({ name: f.name, data, label: labelOf(txt) });
     }
     await reread();

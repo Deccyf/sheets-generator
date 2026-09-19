@@ -1509,9 +1509,11 @@ const GENIUS = (() => {
       if (/DIAGRAM SUMMARY REPORT/i.test(txt)) sumRows = sumRows.concat(parseSummary(txt, notes));
       if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
-    if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
-    // a READ may stand on the Summary alone: it says where every unit ends
+    // a READ may stand on either report alone: the Summary says where every
+    // unit ends, the Detail with an Allocation Summary does the same
+    if (!sumRows.length && !lenient) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
     if (!byDate.size && !lenient) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
+    if (!sumRows.length && !byDate.size) throw new Error("Neither a Diagram Summary nor a Diagram Detail was found in what was dropped.");
     return { sumRows, byDate };
   }
   async function build(inputs, opts) {

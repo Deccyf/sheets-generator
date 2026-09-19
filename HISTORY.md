@@ -140,6 +140,25 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.8.1 — 20 September 2026 — the Allocation Summary, and the tab's introduction
+
+**The Allocation Summary places the units.** A row per unit — the diagram
+it starts on, where and when, the diagram it finishes on, where and when
+— read as the CSV export or the print. Dropped with the Diagram Detail
+and no Diagram Summary it places every unit, and the line says *placed by
+the Allocation Summary*; dropped beside a Diagram Summary it fills in any
+unit that Summary has no row for. A unit that starts on one diagram and
+finishes on another is read as two segments, the second beginning on the
+finishing diagram's first call after the first has ended, and a segment
+the Detail has no calls for still ends where its row says. The reader
+now takes a Detail on its own, for this.
+
+**The tab's introduction was a column down the left** with the rest of
+the width empty and a paragraph that had grown into a wall. It is two
+columns now, the blurb and the warning on the left and how it works on
+the right with the turns as a short list, one column on a narrow screen;
+and the two ticks under the button stand together.
+
 ## 3.8.0 — 20 September 2026 — a day still to run, and the weekend prints
 
 **A day still to run.** Where the reports are for a day that has not run

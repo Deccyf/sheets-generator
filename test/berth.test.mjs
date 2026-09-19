@@ -927,3 +927,63 @@ test("the weekend diagram prints read as that day's Detail, the print's places a
   assert.equal(out.rows[0].ends.place, "DVP");
   assert.equal(out.rows[0].suggest.action, "AFK BERTH off 2A01", JSON.stringify(out.rows[0].suggest));
 });
+
+/* ---- the Allocation Summary: a row per unit ---- */
+const ALLOC_HEAD = '"GENIUS","ALLOCATION SUMMARY REPORT","Page:","Page -1 of 1","Control:","SouthEastern Trains","Print Date:","August 2, 2026","Controller:","NA","Signon:","X","Name:","Y","Time:",16:08,"Allocation Summary for:","Owning Ctrl NE,   All   03/08/26 00:00 04/08/26 23:59 Sorted By ResGrp","ResourceId.","Depot","STARTDIAG.","OFF orSTATUS","----------- START -----------  Date     Time   Location","------------- END -------------   Date     Time   Location","ACT. orSTATUS","FINALDIAG.","WORKSDIAGRAM","TRAIN ID","MILES","FUELMILES","MILES SINCE FUEL","MILES SINCE FUEL","OwningCTRL","OwningCTRL","MAINTENANCE","MAINTENANCE",';
+const allocRow = (unit, sd, st, sloc, ed, et, eloc, fd) =>
+  ALLOC_HEAD + '"' + unit + '","RM","' + sd + '","  000",' + st.replace(" ", "  ") + ',"' + sloc + '",' + et.replace(" ", "  ") + ',"' + eloc + '",,"' + (fd || sd) + '","  000",,"2P43BA",100.00,100.00,"9,999.00","9,999.00","NE",,"NE",,"' + unit + '",,"' + sloc + '"';
+const ALLOC_CSV = [
+  allocRow("375701", "RM101", "03/08/26 05:00", "RAMSGTD", "RM101", "03/08/26 22:00", "GRVPKUS"),
+  allocRow("375702", "RM102", "03/08/26 06:00", "GRVPCSD", "RM102", "03/08/26 16:20", "RAMSGTD"),
+  // 375705 starts on RM105 and finishes on RM104, into Ramsgate after midnight
+  allocRow("375705", "RM105", "03/08/26 07:00", "ASHFDNS", "RM104", "04/08/26 00:20", "RAMSGTD", "RM104"),
+].join("\r\n");
+
+test("the Allocation Summary is read, a row per unit: where it starts and where it ends", () => {
+  const a = B().parseAllocation(ALLOC_CSV);
+  assert.deepEqual(norm([...a.keys()]), ["03/08/26"]);
+  const day = a.get("03/08/26");
+  assert.equal(day.size, 3);
+  const r1 = day.get("375701");
+  assert.deepEqual(norm([r1.startDiag, r1.startLoc, r1.start, r1.endDiag, r1.endLoc, r1.end]), ["RM101", "RAMSGTD", 300, "RM101", "GRVPKUS", 1320]);
+  const r5 = day.get("375705");
+  assert.deepEqual(norm([r5.startDiag, r5.endDiag, r5.end]), ["RM105", "RM104", 1440 + 20], "a finish after midnight is rolled on");
+  // the print reads the same
+  const printed = ["GENIUS  ALLOCATION SUMMARY REPORT", "Allocation Summary for: Owning Ctrl NE,   All   03/08/26 00:00 04/08/26 23:59",
+    "375701  RM  RM101  000  03/08/26  05:00  RAMSGTD  03/08/26  22:00  GRVPKUS  RM101  000  2P43BA  100.00"].join("\n");
+  const p = B().parseAllocation(printed).get("03/08/26").get("375701");
+  assert.deepEqual(norm([p.startDiag, p.endLoc, p.end]), ["RM101", "GRVPKUS", 1320]);
+});
+
+test("with no Diagram Summary the Allocation Summary places every unit, and the requests follow", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const rd = await N.GENIUS.read([p.detail]);          // the Detail alone
+  assert.equal(rd.summary.length, 0);
+  rd.alloc = B().parseAllocation(ALLOC_CSV);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375705\tB\tTUE AM 04/08\tRE\t", "375703\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.equal(out.date, "03/08/26");
+  assert.ok(out.reviews.some(m => /Allocation Summary for 03\/08\/26 places 3 units — no Diagram Summary, so it places every unit/.test(m)), out.reviews.join(" | "));
+  assert.ok(!out.reviews.some(m => /has no units on it/.test(m)));
+  const [a, b, c] = out.rows;
+  assert.equal(a.inTraffic, true); assert.equal(a.ends.place, "GP");
+  assert.equal(a.suggest.action, "GP BERTH 5R00", JSON.stringify(a.suggest));
+  assert.match(a.suggest.notes.join("; "), /375702 off it/, "RM102's unit is known off the allocation too");
+  assert.match(B().render(out), /375701.*placed by the Allocation Summary/);
+  // 375705 finishes on RM104 into Ramsgate after midnight: held, and said to be after midnight
+  assert.equal(b.ends.place, "RE"); assert.deepEqual(norm(b.diags), ["RM105", "RM104"]);
+  assert.equal(b.suggest.action, "RE HOLD", JSON.stringify(b.suggest));
+  assert.match(b.suggest.notes.join("; "), /after midnight/);
+  assert.equal(c.suggest.action, "NOT IN TRAFFIC", "375703 is on no allocation");
+});
+
+test("with a Diagram Summary the Allocation Summary fills in the units it has no row for", async () => {
+  const p = geniusPairCsv(SWAP_DAY.filter(d => d.code !== "RM101"));   // the Summary and Detail without RM101
+  const rd = await N.GENIUS.read([p.summary, p.detail]);
+  rd.detail.get("03/08/26").set("RM101", (await N.GENIUS.read([geniusPairCsv(SWAP_DAY).detail])).detail.get("03/08/26").get("RM101"));
+  rd.alloc = B().parseAllocation(ALLOC_CSV);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.ok(out.reviews.some(m => /used for any unit the Diagram Summary has no row for/.test(m)), out.reviews.join(" | "));
+  assert.equal(out.rows[0].viaAlloc, true);
+  assert.equal(out.rows[0].suggest.action, "GP BERTH 5R00", JSON.stringify(out.rows[0].suggest));
+  assert.equal(out.rows[1].viaAlloc, false, "375703 is on the Summary");
+});

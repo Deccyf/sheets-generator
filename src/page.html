@@ -472,38 +472,55 @@
 
   <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
     <h2 class="vh">Berth requests from the maintenance plan</h2>
-    <p class="whatfor"><strong>Stuck on finding berth requests for your
-      Telex?</strong> Copy and paste your maintenance tab out of the workbook
-      and this will suggest berth requests for the depots. For the defects,
-      copy and paste the End of Days, Restrictions and Performance Defects
-      out of <strong>Equinox or EMS</strong> into the defects box, as they
-      come, and the requests for those are worded off the fault.</p>
-    <p class="checknote brwarn"><b>Do not use this to build your Telex</b>This
-      is an experimental tool. It is a reference only, to help you make a
-      decision on berth requests, so please double-check all of its work
-      against the reports before anything goes on the Telex.</p>
-    <p class="whatfor brhow"><strong>How it works.</strong> Drop the Diagram
-      Summary printed <strong>after allocation</strong> below &mdash; PDF or
-      CSV, it is the UNITS column that is read, and the morning print has it
-      empty &mdash; and with it the Diagram Detail for <strong>today,
-      tomorrow or both</strong>. Or leave the drop zone alone and the weekday
-      books&rsquo; own pair is used. Then paste the maintenance plan out of
-      the Telex workbook. For every line this says where that unit is today,
-      where and when it ends tonight and whether it calls at the place the
-      plan wants it, and off those facts and the depot&rsquo;s own rules it
-      <strong>suggests</strong> a request in the depot&rsquo;s own words.
-      <strong>On the day turn</strong>, drop today&rsquo;s Summary and
-      <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight comes off
-      the Summary, and the requests are tomorrow morning&rsquo;s departures
-      out of those places. <strong>On the night turn</strong>, drop
-      today&rsquo;s Summary and today&rsquo;s Detail: a unit whose allocation
-      finishes between 09+00 and 16+30 is on hand at a depot, and the
-      requests are the departures between 09+00 and 16+30 it could go out
-      on, the depot to choose. The plan comes back in its own shape, sections,
-      columns, order and colours, with <em>Suggested</em> and <em>Today</em>
-      added on the right; your own Action column is never written over, and
-      a plan pasted with it empty comes back with the suggestions filling
-      it. The rules are written out at the bottom.</p>
+    <div class="brintro">
+      <div>
+        <p class="whatfor"><strong>Stuck on finding berth requests for your
+          Telex?</strong> Copy and paste your maintenance tab out of the
+          workbook and this will suggest berth requests for the depots. For
+          the defects, copy and paste the End of Days, Restrictions and
+          Performance Defects out of <strong>Equinox or EMS</strong> into the
+          defects box, as they come, and the requests for those are worded
+          off the fault.</p>
+        <p class="checknote brwarn"><b>Do not use this to build your Telex</b>This
+          is an experimental tool. It is a reference only, to help you make a
+          decision on berth requests, so please double-check all of its work
+          against the reports before anything goes on the Telex.</p>
+      </div>
+      <div class="brhow">
+        <p><b>How it works.</b> Drop the Diagram Summary printed
+          <strong>after allocation</strong> &mdash; PDF or CSV, it is the
+          UNITS column that is read, and the morning print has it empty
+          &mdash; with the Diagram Detail for today, tomorrow or both, or
+          leave the drop zone alone and the weekday books&rsquo; own pair is
+          used. Paste the plan, read it, and every line says where that unit
+          is, where it ends tonight, and the request in the depot&rsquo;s own
+          words.</p>
+        <ul>
+          <li><b>Day turn</b> &mdash; today&rsquo;s Summary and
+            <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight
+            comes off the Summary, the requests are tomorrow morning&rsquo;s
+            departures out of those places.</li>
+          <li><b>Night turn</b> &mdash; today&rsquo;s Summary and
+            today&rsquo;s Detail: a unit whose allocation finishes between
+            09+00 and 16+30 is on hand at a depot, and is offered the
+            departures between 09+00 and 16+30, the depot to choose.</li>
+          <li><b>A day still to run</b> &mdash; the reports for a day that
+            has not happened, everything allocated: each unit is asked for
+            from where its first working starts, before it goes out.</li>
+          <li><b>Weekend</b> &mdash; the diagram prints (.docx) stand in for
+            the Detail.</li>
+          <li><b>Allocation Summary</b> &mdash; a row per unit, where it
+            starts and where it ends: drop it with the Detail and it places
+            every unit, or with a Diagram Summary and it fills in the units
+            that Summary has no row for.</li>
+        </ul>
+        <p>The plan comes back in its own shape, sections, columns, order and
+          colours, with <em>Suggested</em> and <em>Today</em> added on the
+          right. Your own Action column is never written over; a plan pasted
+          with it empty comes back with the suggestions filling it. The rules
+          are written out at the bottom.</p>
+      </div>
+    </div>
 
     <button class="berth berth-small" id="brberth" type="button">
       <span class="berth-inner">
@@ -512,8 +529,9 @@
           <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
           <span>PDF or CSV &middot; any day, a Saturday included &middot; the
             weekend diagram prints (.docx) stand in for a Detail &middot; the
-            Summary alone says where every unit ends tonight &middot; or leave it
-            and the weekday books&rsquo; own pair is used</span>
+            <b>Allocation Summary</b> says where every unit starts and ends,
+            with or without a Diagram Summary &middot; or leave it and the
+            weekday books&rsquo; own pair is used</span>
         </span>
       </span>
     </button>
@@ -545,12 +563,14 @@
         <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
       </label>
     </div>
-    <div class="opts-row">
+    <div class="opts-row bropts">
       <button class="btn" id="brgo" type="button">Read the plan</button>
-      <label><input type="checkbox" id="brkeep" autocomplete="off">
-        Keep trains together &mdash; split a formation only where nothing else gets it home</label>
-      <label><input type="checkbox" id="brdaytorun" autocomplete="off">
-        A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
+      <span class="brticks">
+        <label><input type="checkbox" id="brkeep" autocomplete="off">
+          Keep trains together &mdash; split a formation only where nothing else gets it home</label>
+        <label><input type="checkbox" id="brdaytorun" autocomplete="off">
+          A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
+      </span>
       <span class="note" id="brhint"></span>
     </div>
 
@@ -761,6 +781,16 @@
           05 27 from AFK</i>. The tick above is set for you when the
           Summary&rsquo;s date is today or later, and untick it for a day
           that has already run. A swap on the day still comes first.</p>
+        <p><b>The Allocation Summary.</b> A row per unit: the diagram it
+          starts on, where and when, the diagram it finishes on, where and
+          when. Dropped with the Diagram Detail and no Diagram Summary it
+          places every unit &mdash; the line says <i>placed by the
+          Allocation Summary</i> &mdash; and dropped beside a Diagram Summary
+          it fills in any unit that Summary has no row for. A unit that
+          starts on one diagram and finishes on another is read as two
+          segments, the second beginning on the finishing diagram&rsquo;s
+          first call after the first has ended. CSV export or the print,
+          either reads.</p>
         <p><b>The weekend diagram prints.</b> The Word prints the weekend tab
           builds from stand in for a Diagram Detail here: drop the
           <code>.docx</code> with the Summary and each diagram&rsquo;s calls

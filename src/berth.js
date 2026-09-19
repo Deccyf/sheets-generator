@@ -337,6 +337,71 @@ const hhmm = (t, ecs) => {
   const m = ((t % 1440) + 1440) % 1440;
   return String(Math.floor(m / 60)).padStart(2, "0") + (ecs ? "+" : " ") + String(m % 60).padStart(2, "0");
 };
+/* ---------- the Allocation Summary ----------
+   A row per UNIT: the diagram it starts on, where and when, the diagram
+   it finishes on, where and when. Where the Diagram Summary has no row
+   for a unit - or was not dropped at all - this is what says where the
+   unit is. Read as the CSV export (its labels on every line) or the
+   printed text. Map date -> Map unit -> record, the date being the day
+   the unit's day starts. */
+const ALLOC_DT = /^(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)$/;
+function parseAllocation(text) {
+  const out = new Map();
+  const add = rec => {
+    if (!out.has(rec.date)) out.set(rec.date, new Map());
+    out.get(rec.date).set(rec.unit, rec);
+  };
+  const mins = t => { const m = /^(\d\d):(\d\d)$/.exec(t); return m ? +m[1] * 60 + +m[2] : null; };
+  const daysApart = (a, b) => { const p = parseShort(a), q = parseShort(b); return p && q ? Math.round((q - p) / 86400000) : 0; };
+  const make = (unit, depot, startDiag, sd, st, startLoc, ed, et, endLoc, endDiag) => ({
+    unit, depot, startDiag, startLoc, start: mins(st), endDiag: endDiag || startDiag, endLoc,
+    end: mins(et) != null ? mins(et) + 1440 * Math.max(0, daysApart(sd, ed)) : null, date: sd, endDate: ed,
+  });
+  const txt = String(text || "");
+  if (/ALLOCATION SUMMARY/i.test(txt) && txt.indexOf(",") >= 0 && typeof SHEETS_CORE !== "undefined") {
+    for (const f of SHEETS_CORE.csvParse(txt)) {
+      const g = f.map(x => String(x == null ? "" : x).trim());
+      const mi = g.lastIndexOf("MAINTENANCE");
+      if (mi < 0) continue;
+      const d = g.slice(mi + 1);
+      if (!/^\d{6}$/.test(d[0] || "") || !/^[A-Z]{2}\d{3}$/.test(d[2] || "")) continue;
+      const sm = ALLOC_DT.exec((d[4] || "").replace(/\s+/g, " ")), em = ALLOC_DT.exec((d[6] || "").replace(/\s+/g, " "));
+      if (!sm) continue;
+      add(make(d[0], d[1], d[2], sm[1], sm[2], d[5], em ? em[1] : sm[1], em ? em[2] : "", d[7] || "", /^[A-Z]{2}\d{3}$/.test(d[9] || "") ? d[9] : null));
+    }
+    if (out.size) return out;
+  }
+  // the print: one unit per line, the two clocks as the anchor
+  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:\s+\S+)?\s+([A-Z]{2}\d{3})/;
+  for (const raw of txt.split("\n")) {
+    const m = RE.exec(raw.trim().replace(/\s{2,}/g, "  "));
+    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10]));
+  }
+  return out;
+}
+/* The Summary rows a unit's allocation stands in for: one segment on the
+   diagram it starts and ends on, or two where they differ - the first to
+   its diagram's last call, the second from its diagram's first. */
+function allocRows(rec, dets) {
+  const stopsFor = diag => { const raw = dets && dets.get(diag); return raw ? stopsOf(raw) : []; };
+  const base = { date: rec.date, fleet: "", pos: 1, units: [rec.unit], unit: rec.unit.slice(-3), viaAlloc: true };
+  if (!rec.endDiag || rec.endDiag === rec.startDiag)
+    return [{ ...base, diag: rec.startDiag, start: rec.start, from: rec.startLoc, to: rec.endLoc, end: rec.end }];
+  const a = stopsFor(rec.startDiag), b = stopsFor(rec.endDiag);
+  const za = a[a.length - 1];
+  const cut = za ? (za.arr != null ? za.arr : za.dep) : rec.start;     // where the first segment ends
+  // the second segment begins on the end diagram's first call after that
+  const b0 = b.find(x => (x.dep != null ? x.dep : x.arr) >= cut);
+  const t0 = b0 ? Math.max(cut, b0.dep != null ? b0.dep : b0.arr) : cut;
+  return [
+    { ...base, diag: rec.startDiag, start: rec.start, from: rec.startLoc, to: za ? za.code : rec.startLoc, end: cut },
+    { ...base, diag: rec.endDiag, start: t0, from: b0 ? b0.code : rec.endLoc, to: rec.endLoc, end: rec.end },
+  ];
+}
+function allocFor(genius, date) {
+  return genius && genius.alloc && genius.alloc.get ? (genius.alloc.get(date) || null) : null;
+}
+
 /* ---------- the weekend diagram prints as a Detail ----------
    The prints name places the depot's short way - "Ram Depot", "G Pk Dep",
    "St L Shed" - and the road works in Genius codes, so the ones it has a
@@ -427,6 +492,13 @@ function allDays(genius, date) {
     rowsOf.set(r.diag, (rowsOf.get(r.diag) || []).concat([{ ...r, units: r.units || (r.unit ? [r.unit] : []) }]));
     if (r.fleet && !fleetOf.has(r.diag)) fleetOf.set(r.diag, r.fleet);
   }
+  /* the Allocation Summary places the units the Diagram Summary does not:
+     a diagram with no row of its own takes the rows its units' allocations
+     stand in for */
+  const alloc = allocFor(genius, date);
+  if (alloc) for (const rec of alloc.values())
+    for (const r of allocRows(rec, dets)) if (!rowsOf.has(r.diag) || !rowsOf.get(r.diag).some(x => x.units.length))
+      rowsOf.set(r.diag, (rowsOf.get(r.diag) || []).filter(x => x.units.length).concat([r]));
   for (const rs of rowsOf.values()) rs.sort((a, b) => a.start - b.start);
   const unitsOf = new Map(), posOf = new Map();
   for (const [diag, rs] of rowsOf) {
@@ -550,12 +622,18 @@ function stopsWithin(stops, row) {
   return out;
 }
 function unitDay(unit, genius, date) {
-  const rows = (genius.summary || []).filter(r => r.date === date &&
+  const dets = genius.detail && genius.detail.get(date);
+  let rows = (genius.summary || []).filter(r => r.date === date &&
     (r.units ? r.units.indexOf(unit) >= 0 : r.unit === unit));
-  if (!rows.length) return null;
+  let viaAlloc = false;
+  if (!rows.length) {
+    const alloc = allocFor(genius, date);
+    const rec = alloc && alloc.get(unit);
+    if (!rec) return null;
+    rows = allocRows(rec, dets); viaAlloc = true;
+  }
   rows.sort((a, b) => a.start - b.start);
   const diags = [...new Set(rows.map(r => r.diag))];
-  const dets = genius.detail && genius.detail.get(date);
   /* A diagram that attaches or detaches during the day is portion working -
      on the Kent Coast that is at Ashford, Faversham, Ramsgate, Victoria and
      Dover, and 131 of the 296 diagrams on the 18/09 Detail do it. Said with
@@ -567,7 +645,10 @@ function unitDay(unit, genius, date) {
     if (!raw) continue;
     const win = raw.filter(r => (r.dep != null && r.dep >= row.start && r.dep <= row.end) || (r.arr != null && r.arr >= row.start && r.arr <= row.end));
     rawAll = rawAll.concat(win.length ? win : raw);
-    const seg = stopsWithin(stopsOf(raw), row).map(s => ({ ...s, diag: row.diag }));
+    let seg = stopsWithin(stopsOf(raw), row).map(s => ({ ...s, diag: row.diag }));
+    /* a segment the Detail has no calls for still ends where the row says:
+       the row's own end stands in, so the day ends where the unit does */
+    if (!seg.length && row.to) seg = [{ code: row.to, name: row.to, arr: row.end, dep: null, hcIn: null, hcOut: null, act: null, diag: row.diag }];
     /* where one segment ends and the next begins at the same place, that
        is one stand: in on the first working, out on the second */
     const last = stops[stops.length - 1];
@@ -586,7 +667,7 @@ function unitDay(unit, genius, date) {
   const last = rows[rows.length - 1];
   const lastStop = stops.length ? stops[stops.length - 1] : null;
   return {
-    unit, diags, rows, stops, splits, splitsAt, raw: rawAll,
+    unit, diags, rows, stops, splits, splitsAt, raw: rawAll, viaAlloc,
     endCode: lastStop ? lastStop.code : last.to,
     endTime: lastStop ? (lastStop.arr != null ? lastStop.arr : lastStop.dep) : last.end,
     startCode: rows[0].from, startTime: rows[0].start,
@@ -1188,8 +1269,8 @@ function run(planText, genius, opts) {
   opts = opts || {};
   const plan = mergeDefects(parsePlan(planText), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
-  const date = (genius && genius.summary && genius.summary.length)
-    ? (opts.date || genius.summary[0].date) : null;
+  const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
+  const date = opts.date || ((genius && genius.summary && genius.summary.length) ? genius.summary[0].date : (allocDates[0] || null));
   const today = date ? parseShort(date) : null;
   if (!date) reviews.push("No weekday reports are loaded, so nothing can be said about where any unit is — build the weekday books first.");
   const ignore = new Set(String(opts.ignore || "").match(/\d{6}/g) || []);
@@ -1197,7 +1278,11 @@ function run(planText, genius, opts) {
   const mse = new Set(String(opts.mse || "").match(/\d{6}/g) || []);
   const dayRows = (genius && genius.summary || []).filter(r => r.date === date);
   const filled = dayRows.filter(r => r.units && r.units.length).length;
-  if (date && !filled)
+  const allocHere = allocFor(genius, date);
+  if (allocHere) reviews.push("The Allocation Summary for " + date + " places " + allocHere.size + " units" +
+    (dayRows.length ? " — used for any unit the Diagram Summary has no row for." : " — no Diagram Summary, so it places every unit."));
+  if (date && !filled && allocHere) { /* the allocation does the placing */ }
+  else if (date && !filled)
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
   else if (date && filled < dayRows.length) {
@@ -1291,6 +1376,7 @@ function run(planText, genius, opts) {
       r.diags = []; r.ends = null; r.calls = []; r.endsAtTarget = false; r.splits = false; r.splitsAt = [];
     }
     r.inTraffic = !!day && !standing;
+    r.viaAlloc = !!(day && day.viaAlloc);
     /* how it runs today, working by working: the diagrams coupled with it
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
@@ -1372,6 +1458,7 @@ function factsOf(r) {
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
   if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : "") + tail;
   const bits = [];
+  if (r.viaAlloc) bits.push("placed by the Allocation Summary");
   bits.push("on " + r.diags.join("+") + (r.splits ? " (splits at " + r.splitsAt.join("/") + ")" : ""));
   bits.push("ENDS " + r.ends.place + " " + hhmm(r.ends.time, true) + (r.afterMidnight ? " (after midnight)" : ""));
   const at = r.calls.filter(c => !c.ends);
@@ -1521,7 +1608,7 @@ function render(res) {
 }
 
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
-         detailFromPrints, PRINT_CODES,
+         detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();

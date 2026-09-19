@@ -356,6 +356,17 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   const printsOut = await page.textContent("#brout");
   if (!/AFK BERTH off 2A01/.test(printsOut)) throw new Error("375601 should be placed off the prints: " + printsOut.slice(0, 300));
   console.log("br prints   :", (await page.textContent("#brberthtxt")).trim());
+  /* the Allocation Summary places the units where there is no Diagram Summary */
+  await page.locator("#brfiles .chip.all").click();
+  await page.waitForFunction(() => document.querySelector("#brfiles").hidden, null, { timeout: 10000 });
+  const allocCsv = '"GENIUS","ALLOCATION SUMMARY REPORT","Page:","Page -1 of 1","Control:","SouthEastern Trains","Print Date:","August 2, 2026","Controller:","NA","Signon:","X","Name:","Y","Time:",16:08,"Allocation Summary for:","Owning Ctrl NE,   All   08/08/26 00:00 09/08/26 23:59 Sorted By ResGrp","ResourceId.","Depot","STARTDIAG.","OFF orSTATUS","----------- START -----------  Date     Time   Location","------------- END -------------   Date     Time   Location","ACT. orSTATUS","FINALDIAG.","WORKSDIAGRAM","TRAIN ID","MILES","FUELMILES","MILES SINCE FUEL","MILES SINCE FUEL","OwningCTRL","OwningCTRL","MAINTENANCE","MAINTENANCE","375601","RM","RM101","  000",08/08/26  05:00,"RAMSGTD",08/08/26  07:00,"GRVPKUS",,"RM101","  000",,"5J70BA",100.00,100.00,"9,999.00","9,999.00","NE",,"NE",,"375601",,"RAMSGTD"';
+  await page.setInputFiles("#brfile", [f("alloc.csv", allocCsv), f("satdet3.csv", p.detail.replace(/03\/08\/26/g, "08/08/26"))]);
+  await page.waitForFunction(() => /Allocation 08\/08\/26/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 15000 });
+  await page.fill("#brplan", ["Exams", "Unit Nr \tExam\t\tWhere\tAction", "375601\tA\tSUN AM 09/08\tRE\t"].join("\n"));
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /against 08\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 15000 });
+  if (!/placed by the Allocation Summary/.test(await page.textContent("#brout"))) throw new Error("375601 should be placed off the allocation");
+  console.log("br alloc    :", (await page.textContent("#brberthtxt")).trim());
 }
 
 await browser.close();

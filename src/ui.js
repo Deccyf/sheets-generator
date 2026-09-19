@@ -1437,6 +1437,10 @@ function decodeText(u8) {
   const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
+    if (/ALLOCATION SUMMARY/i.test(txt)) {
+      const a = /Allocation Summary for:[^0-9]*(\d\d\/\d\d\/\d\d)/.exec(txt);
+      return "Allocation" + (a ? " " + a[1] : "");
+    }
     const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
     const m = /Diagram (?:Summary|Details?) for:[^0-9]{0,12}(\d\d\/\d\d\/\d\d)/.exec(txt) || /\bOn\b\W{0,3}(\d\d\/\d\d\/\d\d)/.exec(txt);
     return kind + (m ? " " + m[1] : "");
@@ -1475,10 +1479,22 @@ function decodeText(u8) {
       /* the Genius reports go to the weekday reader; the weekend diagram
          prints, .docx or pasted, are read the way the weekend tab reads
          them and become that day's Detail */
-      const genius = ownFiles.filter(f => !f.prints).map(f => f.data);
+      const genius = ownFiles.filter(f => !f.prints && !f.alloc).map(f => f.data);
       const prints = ownFiles.filter(f => f.prints);
-      if (!genius.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
-      own = await GENIUS.read(genius);
+      const allocs = ownFiles.filter(f => f.alloc);
+      if (!genius.length && !allocs.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
+      own = genius.length ? await GENIUS.read(genius) : { summary: [], detail: new Map(), dates: [], labels: {} };
+      /* the Allocation Summary - a row per unit, where it starts and ends -
+         places the units the Diagram Summary has no row for, or every unit
+         where there is no Diagram Summary at all */
+      if (allocs.length) {
+        own.alloc = new Map();
+        for (const f of allocs) for (const [date, m] of f.alloc) {
+          if (!own.alloc.has(date)) own.alloc.set(date, new Map());
+          for (const [unit, rec] of m) own.alloc.get(date).set(unit, rec);
+        }
+        if (!own.dates.length) { own.dates = [...own.alloc.keys()]; own.labels = Object.fromEntries(own.dates.map(d => [d, d])); }
+      }
       for (const f of prints) {
         const det = SHEETS_BERTH.detailFromPrints(SheetsEngine.parseDiagrams(f.prints, []));
         for (const [date, m] of det) {
@@ -1496,10 +1512,11 @@ function decodeText(u8) {
         dayToRun.checked = own.dates.some(d => at(d) >= t0);
       }
       const units = own.summary.filter(r => r.units && r.units.length).length;
-      if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
+      const allocTxt = own.alloc ? " · Allocation " + [...own.alloc.keys()].join(", ") + " (" + [...own.alloc.values()].reduce((n, m) => n + m.size, 0) + " units)" : "";
+      if (zoneTxt) zoneTxt.textContent = (own.summary.length ? "Summary " + own.dates.join(", ") + " — " + units + " workings with units" : "No Diagram Summary") + allocTxt +
         (detDates.length ? " · Detail " + detDates.join(", ") : " · no Detail yet: where each unit ends, and tomorrow's departures once a Detail is dropped");
-      say("Summary for " + own.dates.join(", ") + (detDates.length ? " and Detail for " + detDates.join(", ") : "") +
-          " loaded — paste the plan and read it.", "go");
+      say((own.summary.length ? "Summary for " + own.dates.join(", ") : "Allocation Summary for " + own.dates.join(", ")) +
+          (detDates.length ? " and Detail for " + detDates.join(", ") : "") + " loaded — paste the plan and read it.", "go");
     } catch (e) {
       own = null;
       // a Detail on its own waits for the Summary
@@ -1529,6 +1546,12 @@ function decodeText(u8) {
         ownFiles.push({ name: f.name, prints: lines, label: "Prints" + (dates.length ? " " + dates.join(", ") : "") });
         continue;
       } else { txt = decodeText(u8); data = txt; }
+      if (/ALLOCATION SUMMARY/i.test(txt)) {
+        const alloc = SHEETS_BERTH.parseAllocation(txt);
+        if (!alloc.size) { say(f.name + " reads as an Allocation Summary but no unit rows were found in it.", "err"); continue; }
+        ownFiles.push({ name: f.name, alloc, label: labelOf(txt) });
+        continue;
+      }
       ownFiles.push({ name: f.name, data, label: labelOf(txt) });
     }
     await reread();
