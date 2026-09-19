@@ -50,7 +50,11 @@ const ABBR = {
   CNTBW:"CBW", DOVERPS:"DVPS", FLKSETR:"FKETR", MINSTER:"MSR",
   GRVPCSD:"GP", GRVPKUS:"GPUS", GRVPKDS:"GPD", CANONST:"CST", VICTGCS:"VICS",
   BRSR:"BSR", TONBPMY:"TONJS", GLNGDEP:"GI", RCHT:"RTR", STNGBRN:"SIT",
-  STROOD:"SOO", SHRNSOS:"SSS", MSTONEW:"MDW"
+  STROOD:"SOO", SHRNSOS:"SSS", MSTONEW:"MDW",
+  /* Both of these only ever turn up on the small-hours workings, so they
+     went unnoticed for as long as those were being missed - the list said
+     "??? - TON" for RM020 and RM021 on the Saturday 19/09 report. */
+  TUNWELL:"TBW", PKWD:"PDW"
 };
 const KNOWN_CODES = new Set(Object.keys(ABBR));
 const MASTER_GROUPS = [
@@ -107,6 +111,45 @@ function finishOpRow(row) {
   row.actual=resourceInfo(row.resource);
   return row;
 }
+/* ---------- the clock past midnight ----------
+   The Operating Report writes plain times of day, so a diagram that
+   finishes at 01:27 has its last two workings written 00:15 and 01:27 -
+   below everything else on its own list, but the SMALLEST numbers on it.
+   Read as plain minutes they sort to the top of the day, so the last
+   working of any diagram running into the small hours was never the one
+   picked as its ending: on the Saturday 19/09 report RM020 was shown
+   finishing at 22 30 into Charing Cross when it really finishes at 01+27
+   into Tonbridge, and RM027 at 23 44 into Tonbridge when it really goes on
+   to the DM siding at 00+51.
+
+   So every row gets a SORTING clock that carries past midnight, the way
+   the Diagram Detail's reader already rolls its own. The printed clock is
+   left exactly as it is, because the Not Allocated windows are asked about
+   the time of day and a working at ten past midnight is at ten past
+   midnight whichever day it belongs to. */
+function rollOpRows(rows) {
+  /* A diagram's rows are grouped by the UNIT that worked them and not in
+     one time order: RM919 on the 18/09 report lists 375710's midday-to-
+     night block first and 375712's morning block after it, so reading the
+     whole diagram as one clock would carry that morning into the next day.
+     Each run of rows sharing a diagram and a unit is rolled on its own, and
+     the clock starts again at the next run - within one unit's own
+     itinerary the time only goes backwards when it has passed midnight. */
+  let key = null, prev = -1;
+  for (const r of rows) {
+    const k = r.diag + "\u0000" + (r.resource || "");
+    if (k !== key) { key = k; prev = -1; }
+    let dep = r.depMin;
+    if (dep !== null) while (dep < prev - 60) dep += 1440;
+    r.depSort = dep;
+    let arr = r.arrMin;
+    if (arr !== null && dep !== null) while (arr < dep) arr += 1440;
+    r.arrSort = arr;
+    const far = arr !== null ? arr : dep;
+    if (far !== null) prev = Math.max(prev, far);
+  }
+  return rows;
+}
 function parseOperating(txt) {
   const rows=[];
   const tm = /\bTime:\s*(\d\d:\d\d)/i.exec(txt);
@@ -124,7 +167,7 @@ function parseOperating(txt) {
     row.discrepancy=t.slice(i).join(" ");
     rows.push(finishOpRow(row));
   }
-  return {reportTime, rows};
+  return {reportTime, rows:rollOpRows(rows)};
 }
 /* ---------- the Operating Report as the CSV export ----------
    The same report, saved rather than printed. Like the Diagram Detail's
@@ -159,7 +202,7 @@ function parseOperatingCsv(text) {
     if (!/^[A-Z]{2,3}$/.test(row.owning)) row.owning = null;
     rows.push(finishOpRow(row));
   }
-  return {reportTime, rows};
+  return {reportTime, rows:rollOpRows(rows)};
 }
 /* Either shape of it, the same way the Diagram Detail is taken either way.
    The saved one is tried first when there are commas to make it possible,
@@ -191,7 +234,7 @@ function selectedAllocatedRows(opRows) {
   for (const [d,rs] of by) {
     const alloc=rs.filter(r=>r.resource);
     if (!alloc.length) continue;
-    alloc.sort((a,b)=>a.arrExt-b.arrExt || a.depMin-b.depMin);
+    alloc.sort((a,b)=>a.arrSort-b.arrSort || a.depSort-b.depSort);
     out.set(d,alloc[alloc.length-1]);
   }
   return out;
@@ -488,12 +531,10 @@ function formatFollowing(groups) {
 
    A working that carries BOTH - one of each, swapped with each other -
    belongs to neither, so it keeps a block of its own between them rather
-   than being torn in half. Nothing reaches that branch today, because a
-   reciprocal pair on one ending working cancels out further up: the cars
-   are all there and only their badges are crossed. It is here because the
-   depot's own lists DO show such a pair (RM035/RM920 on the 5H04 19+17
-   HGS - XSE), so if that cancelling is ever relaxed the grouping already
-   knows where to put them. */
+   than being torn in half. That is the RM035/RM920 shape on the depot's
+   own sheets: the 5H04 19+17 HGS - XSE with a 375/9 where a 375 was
+   planned and a 375 where the 375/9 was, read as one thing because it is
+   one swap to undo. */
 function byPlace(normal) {
   const groups=new Map();
   for(const n of normal){const k=masterKey(n.end.endAbbr);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
@@ -560,7 +601,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     const cls=plannedClass(r.diag,r.planned);
     const label=`${r.expectedLength}.${cls} SHORTAGE`;
     const groups=formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:r.depMin, lines:[headingWithEnd(label,r.diag,end,opts),...formatFollowing(groups)]});
+    topCases.push({sort:r.depSort, lines:[headingWithEnd(label,r.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // Work out each diagram's effective ending working and the allocation that actually covers that working.
@@ -642,9 +683,9 @@ function buildDiscrepancies(op, detail, posAt, opts) {
        later, which tells a controller nothing. */
     const sameUnit=(byOp.get(a.diag)||[]).filter(r=>r.resource===a.resource);
     const last=sameUnit.length
-      ? sameUnit.slice().sort((x,y)=>x.arrExt-y.arrExt).at(-1) : a;
+      ? sameUnit.slice().sort((x,y)=>x.arrSort-y.arrSort).at(-1) : a;
     const end=endingDescriptor(a.diag,last,detail,legsStruct,occStruct,reviews);
-    topCases.push({sort:a.depMin,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end,opts)]});
+    topCases.push({sort:a.depSort,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end,opts)]});
   }
   /* What is left is a real length difference: the formation is short or long,
      not merely out of order. Judged on the diagram's effective allocation, as
@@ -664,7 +705,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     const end=c.end||endingDescriptor(c.diag,c.row,detail,legsStruct,occStruct,reviews);
     const label=`${c.row.actual.length}.375 V ${c.row.expectedLength}.375`;
     const groups=formationDetails(c.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:c.row.depMin,lines:[headingWithEnd(label,c.diag,end,opts),...formatFollowing(groups)]});
+    topCases.push({sort:c.row.depSort,lines:[headingWithEnd(label,c.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // 3) Cross-fleet substitutions: 377 on RM diagrams or 375 on GT diagrams.
@@ -694,7 +735,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     const label=`${actualLen}.${actualCls} V ${expectedLen}.${expectedCls}`;
     const diagText=cs.map(c=>c.diag).join("/");
     const end=cs.map(c=>c.end).filter(Boolean).sort((a,b)=>b.arr-a.arr)[0]||null;
-    topCases.push({sort:Math.min(...cs.map(c=>c.row.depMin)),lines:[headingWithEnd(label,diagText,end,opts)]});
+    topCases.push({sort:Math.min(...cs.map(c=>c.row.depSort)),lines:[headingWithEnd(label,diagText,end,opts)]});
   }
 
   // 4) ordinary 375 / 375-9 fleet-family mismatches on the effective ending working.
@@ -710,19 +751,13 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     fleet.push({diag,row:r,expected:r.expectedFamily,actual:actualFamily,end:e.end});
   }
 
-  // Reciprocal normal-375 / 375/9 swaps on the same displayed ending working cancel out.
-  const cancelled=new Set();
-  for(let i=0;i<fleet.length;i++){
-    if(cancelled.has(i))continue;
-    for(let j=i+1;j<fleet.length;j++){
-      if(cancelled.has(j))continue;
-      const a=fleet[i],b=fleet[j];
-      const sig=x=>x.end ? [coreHC(x.end.hcFull),x.end.dep,x.end.from,x.end.to,x.end.arr].join("|") : [coreHC(x.row.trainid),x.row.depMin,x.row.from,x.row.to,x.row.arrExt].join("|");
-      if(sig(a)!==sig(b))continue;
-      if(a.expected===b.actual && b.expected===a.actual){cancelled.add(i);cancelled.add(j);break;}
-    }
-  }
-  fleet=fleet.filter((_,i)=>!cancelled.has(i));
+  /* A reciprocal 375 / 375-9 swap on one ending working used to cancel out
+     here, on the reasoning that every car is there and only the badges are
+     crossed. The depot's own lists show both halves - RM035 and RM920 on
+     the 5H04 19+17 HGS - XSE - because the swap still has to be undone, and
+     a sheet that says nothing about it cannot be worked from. So both are
+     listed, and the grouping keeps them together rather than filing one
+     under each way round. */
 
   const normal=[];
   for(const f of fleet){

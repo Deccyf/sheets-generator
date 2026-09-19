@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
 import { OPERATING_LINES, SHORTAGE_DETAIL_LINES, SHORTAGE_DETAIL_CSV,
          SHORTAGE_OPERATING_CSV, SHORTAGE_SUMMARY_LINES,
-         SHORTAGE_SUMMARY_CSV } from "./helpers/shortage-synth.mjs";
+         SHORTAGE_SUMMARY_CSV, MIDNIGHT_OPERATING_LINES,
+         MIDNIGHT_DETAIL_LINES } from "./helpers/shortage-synth.mjs";
 
 const S = () => built().SHEETS_SHORTAGE;
 const txt = lines => lines.join("\n");
@@ -241,9 +242,17 @@ test("the fleet block can be gathered by which way round instead of by place", (
     .flatMap(b => b.split("\n"));
   assert.deepEqual(norm(fleetOf(family)), norm([
     "375/9 V 375 (RM002) ENDS 2R06 05 55 AFK - RAM (ARR 07 08)",
+    // the working that carries one of each keeps a block of its own
+    "375/9 V 375 (RM004) ENDS 2T10 08 10 TON - CHX (ARR 09 30)",
+    "375 V 375/9 (RM904) ENDS 2T10 08 10 TON - CHX (ARR 09 30)",
     "375 V 375/9 (RM901) ENDS 5F85 15+49 DVP - CST (ARR 16+15)",
     "375 V 375/9 (RM905) ENDS 2X01 07 10 RAM - CHX (ARR 09 20)",
-  ]), "one way round, then the other, each in diagram order");
+  ]), "one way round, the swapped pair, then the other, each in diagram order");
+  const blockOf = r => r.text.split("\n\n").filter(b => /^375/.test(b))
+    .map(b => b.split("\n").map(l => (/\((RM\d+)\)/.exec(l) || [])[1]));
+  assert.deepEqual(norm(blockOf(family)),
+    norm([["RM002"], ["RM004", "RM904"], ["RM901", "RM905"]]),
+    "the pair is together, not filed one under each way round");
   // the same lines either way — only their order and grouping differ
   assert.deepEqual(norm(fleetOf(family).slice().sort()),
                    norm(fleetOf(place).slice().sort()),
@@ -272,12 +281,43 @@ test("arrival times can be kept for Ramsgate and dropped everywhere else", () =>
                    "only the arrival goes");
 });
 
-test("a reciprocal 375 / 375-9 swap on one working still cancels out", () => {
+test("a reciprocal 375 / 375-9 swap on one working is listed, both halves", () => {
   /* RM004 has the 375/9 RM904 was planned and RM904 has RM004's plain 375,
-     on the same working: every car is there and only the badges are
-     crossed, so neither is a variation. Pinned because the grouping above
-     has a branch for a working that carries both ways round, and that
-     branch stays unreachable only for as long as this rule holds. */
+     on the same working. These used to cancel each other out on the
+     reasoning that every car is there and only the badges are crossed —
+     but the swap still has to be undone, and a sheet that says nothing
+     about it cannot be worked from. The depot's own list carries both
+     halves (RM035 and RM920 on the 5H04 19+17 HGS - XSE), so this does. */
   const res = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES));
-  assert.ok(!/RM004|RM904/.test(res.text), "neither is listed: " + res.text);
+  assert.match(res.text, /^375\/9 V 375 \(RM004\) ENDS 2T10 08 10 TON - CHX/m,
+    "the one carrying the 9: " + res.text);
+  assert.match(res.text, /^375 V 375\/9 \(RM904\) ENDS 2T10 08 10 TON - CHX/m,
+    "and the one missing it");
+});
+
+test("a diagram that runs past midnight ends where it really ends", () => {
+  /* The Operating Report writes plain times of day, so the last working of
+     a diagram that finishes in the small hours carries the SMALLEST numbers
+     on its list and sorted to the top of the morning — and was therefore
+     never picked as the ending. On the Saturday 19/09 report RM020 came out
+     "ENDS 1H82 22 30 HGS - CHX" when it really finishes at 01+27 into
+     Tonbridge, and RM027 at 23 44 when it goes on to the DM siding at
+     00+51. Ten diagrams of forty-one were wrong that way. */
+  const res = S().run(txt(MIDNIGHT_OPERATING_LINES), txt(MIDNIGHT_DETAIL_LINES));
+  assert.match(res.text, /^375\/9 V 375 \(RM007\) ENDS 5R94 00\+20 DVP - DVPS \(ARR 00\+45\)$/m,
+    "the 00:20 off Dover is the ending, not the 22:10 off the sidings: " + res.text);
+});
+
+test("a diagram worked by two units is not carried into the next day", () => {
+  /* The report groups a diagram's rows by the UNIT that worked them and not
+     in one time order: RM008 lists 375931's midday-to-night block first and
+     375932's morning block after it. Rolling the clock over the whole
+     diagram would push that morning past midnight and make the 10:30 its
+     latest working — which is what a first attempt at the rule above did to
+     RM919 and RM921 on the real 18/09 report. Each run of rows sharing a
+     unit keeps its own clock. */
+  const res = S().run(txt(MIDNIGHT_OPERATING_LINES), txt(MIDNIGHT_DETAIL_LINES));
+  assert.match(res.text, /^375\/9 V 375 \(RM008\) ENDS 5H16 22\+03 HGS - XSE \(ARR 22\+30\)$/m,
+    "the night working, not the morning one carried forward: " + res.text);
+  assert.ok(!/RM008\) ENDS 1H74/.test(res.text), "the 10:30 is not its ending");
 });

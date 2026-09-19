@@ -170,3 +170,44 @@ export const SHORTAGE_SUMMARY_CSV = SHORTAGE_SUMMARY_LINES
       '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
       "0.00", "0.00", "0.00", "", ""].join(",");
   }).join("\r\n");
+
+/* ---- the small hours ----
+   Two shapes the clock puts in the way.
+
+   RM007 runs past midnight: its last working leaves Dover at 00:20 and its
+   times are written as plain times of day, so read as minutes they are the
+   SMALLEST on its list and sort to the top of the morning.
+
+   RM008 does not. It has two units on it, and the report groups a
+   diagram's rows by the unit that worked them rather than in one time
+   order - 375931's midday-to-night block first, 375932's morning block
+   after it. Nothing here has crossed midnight and nothing must be carried
+   into the next day. */
+export const MIDNIGHT_OPERATING_LINES = [
+  "Page:  Page 1 of 1",
+  "GENIUS  Control  :SouthEastern Trains  OPERATING REPORT",
+  "Controller:NA  Signon:DFINCH  Name:Declan Finch  Time:  05:30",
+  "Operating Report for:Depot RM, Owning Ctrl NE, 18/09/26 to 19/09/26. ",
+  "DIAGRAM  DATE  FROM  DEP.  ARR.  TO  TRAINID  DEPOT  PLANNED  ALLOCATED  RESOURCE  OWNING   DISCREPANCY",
+  "RM007  18/09/26  ASHFDNS  22:10  22:30  ASHFKY  5R90BA  RM  375/6  375/9  375930  NE  Fleet mismatch.",
+  "RM007  18/09/26  ASHFKY  22:40  23:50  DOVERP  2R90BA  RM  375/6  375/9  375930  NE  Fleet mismatch.",
+  "RM007  18/09/26  DOVERP  00:20  00:45  DOVERPS  5R94BA  RM  375/6  375/9  375930  NE  Fleet mismatch.",
+  "RM008  18/09/26  CHRX  12:15  13:47  HASTING  1H32BA  RM  375/6  375/9  375931  NE  Fleet mismatch.",
+  "RM008  18/09/26  HASTING  22:03  22:30  STLNWCS  5H16BD  RM  375/6  375/9  375931  NE  Fleet mismatch.",
+  "RM008  18/09/26  STLNWCS  05:27  06:07  HASTING  5H58BA  RM  375/6  375/9  375932  NE  Fleet mismatch.",
+  "RM008  18/09/26  HASTING  10:30  12:03  CHRX  1H74BA  RM  375/6  375/9  375932  NE  Fleet mismatch.",
+];
+export const MIDNIGHT_DETAIL_LINES = [
+  "GENIUS  Diagram Detail Report",
+  "Diagram RM 0 0 7 On 18/09/26",
+  "ASHFDNS  Ashford Dn Sdgs  22:10  5R90BA",
+  "ASHFKY  Ashford Kent  22:30  22:40  2R90BA",
+  "DOVERP  Dover Priory  23:50  00:20  5R94BA",
+  "DOVERPS  Dover Priory Sdgs  00:45",
+  "Diagram RM 0 0 8 On 18/09/26",
+  "STLNWCS  St Leonards WM  05:27  5H58BA",
+  "HASTING  Hastings  06:07  10:30  1H74BA",
+  "CHRX  London Charing X  12:03  12:15  1H32BA",
+  "HASTING  Hastings  13:47  22:03  5H16BD",
+  "STLNWCS  St Leonards WM  22:30",
+];

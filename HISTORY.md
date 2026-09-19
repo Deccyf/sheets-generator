@@ -140,6 +140,61 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.8 — 19 September 2026 — the small hours, and a swap that has to be undone
+
+**Reported as the list not showing services after midnight.** It was not.
+The Operating Report writes plain times of day, so the last working of a
+diagram that finishes in the small hours carries the **smallest** numbers
+on its own list. Read as minutes those sorted to the top of the morning,
+so the working picked as a diagram's ending was the last one before
+midnight and never the real one. On the Saturday 19/09 report that was
+**ten diagrams of forty-one**:
+
+| | Was shown ending | Really ends |
+|---|---|---|
+| RM020, RM021 | `1H82 22 30 HGS - CHX` | `5E28 01+27 TBW - TON` |
+| RM027 | `1H88 23 44 HGS - TON` | `5H88 00+51 TON - TONDMS` |
+| RM041 | `2U79 23 18 DVP - FAV` | `5U39 00+08 FAV - FAVUS` |
+| RM045 | `1H30 23 45 CHX - HGS` | `5H30 01+35 HGS - HGPS` |
+| RM048 | `1H28 23 15 CHX - HGS` | `5H28 00+54 HGS - XSE` |
+| RM006 | `1U74 22 18 RAM - VIC` | `1U30 00 54 VIC - GLM` |
+
+Every row now carries a **sorting clock that runs past midnight**, the way
+the Diagram Detail's reader already rolls its own. The printed clock is
+untouched, because the Not Allocated windows are asked about the time of
+day and a working at ten past midnight is at ten past midnight whichever
+day it belongs to.
+
+**And a trap inside that, found by measuring rather than by reasoning.** A
+diagram's rows are grouped by the **unit** that worked them, not in one
+time order: RM919 on the 18/09 report lists 375710's midday-to-night block
+first and 375712's morning block after it. Rolling the whole diagram as
+one clock carried that morning into the next day and made the 10:30 its
+latest working — it moved RM919 and RM921 from `5H16 22+03 HGS - XSE`,
+which is right and is what the depot's own sheet says, to `1H74 10 30
+HGS - CHX`, which is not. Each run of rows sharing a diagram **and a unit**
+now keeps its own clock; within one unit's itinerary the time only goes
+backwards when it really has passed midnight.
+
+**Two locations that only ever appear on the small-hours workings** went
+unnoticed for exactly as long as those were being missed, and printed as
+`???`: `TUNWELL` (Tunbridge Wells, TBW) and `PKWD` (Paddock Wood, PDW).
+
+**A reciprocal 375 / 375-9 swap on one working is listed now, both
+halves.** It used to cancel out, on the reasoning that every car is there
+and only the badges are crossed. The depot's own sheet carries both — RM035
+and RM920 on the `5H04 19+17 HGS - XSE` — because the swap still has to be
+undone, and a sheet that says nothing about it cannot be worked from. With
+the fleet block gathered by which way round, the pair keeps a block of its
+own between the two one-way lists rather than being filed one under each.
+
+Against the 18/09 reports that is four lines back from the cancelling, one
+diagram whose after-midnight ending is a mismatch where its pre-midnight
+one was not, and three moved onto their real endings — and several of them
+now match the depot's own sheet word for word where they did not before:
+`RM002 ENDS 5S70 00+32 FAV - FAVU?S`, `RM032 ENDS 5H30 01+41 HGS - XSE`,
+`RM042 ENDS 5R76 01+06 DVP - DVPS`.
+
 ## 3.2.7 — 19 September 2026 — two more ways to read the same list
 
 **Variations gathered by which way round.** The fleet block is grouped on
