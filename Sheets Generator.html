@@ -480,6 +480,14 @@
      20.19 cm wide, the breaks made by the road and not by the browser */
   .svbox{font-family:Calibri,Carlito,Arial,sans-serif; font-weight:700; font-size:11pt;
     white-space:pre; width:20.19cm; max-width:100%; overflow:auto; line-height:1.25}
+  /* the reports dropped on the berth tab, each with its own remove, so one
+     can be swapped without losing the plan and defects already pasted */
+  .brfiles{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center}
+  .brfiles .chip{font:inherit; font-size:12.5px; padding:4px 10px; border:1px solid var(--apron-dk);
+    border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
+  .brfiles .chip b{margin-left:8px; font-weight:700}
+  .brfiles .chip:hover{border-color:var(--danger); color:var(--danger)}
+  .brfiles .chip.all{border-style:dashed}
   .platform > .brwarn{margin:14px 0 0}
   .platform > .brhow{margin-top:14px}
   .berth-small{margin-top:14px}
@@ -506,7 +514,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.7.0</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.7.1</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -994,6 +1002,7 @@
       </span>
     </button>
     <input type="file" id="brfile" accept=".pdf,.csv" multiple hidden>
+    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
 
     <div class="brgrid">
       <label class="brfield">
@@ -1064,13 +1073,15 @@
           traffic today</i> &mdash; usually because it is already stopped for
           the work the plan lists.</p>
         <p><b>Nearest first.</b> Lines due today, tomorrow, <code>ASAP</code>
-          or already overdue come first; then the rest of the week and the
-          mileage triggers; then everything later. One day&rsquo;s reports say
-          where a unit is today and where it ends tonight, not which diagram
-          it takes tomorrow &mdash; that is the allocator&rsquo;s choice each
-          morning &mdash; so the further out a line is, the less there is to
-          say beyond where the unit ends, which is what the plan itself writes
-          (<code>ENDS DVP</code>).</p>
+          or already overdue &mdash; and, from a Friday or the weekend, the
+          coming weekend and Monday &mdash; come first and get holds and
+          requests. Then the rest of the week and the mileage triggers: those
+          get a request too, after the near lines have had theirs, and the
+          line says when they are due, but no hold, because the unit works
+          again before then &mdash; one that ends where it is wanted tonight
+          for a Tuesday exam is <i>where it ends tonight, not yet a hold</i>.
+          Everything later is where the unit ends, which is what the plan
+          itself writes (<code>ENDS DVP</code>).</p>
         <p><b>The plan&rsquo;s places.</b> <code>RE</code> is any road at
           Ramsgate, <code>GP</code> any of the three Grove Park roads,
           <code>SG</code> the Slade Green roads, <code>AFK</code> the Ashford
@@ -1293,7 +1304,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.7.0
+      works without an internet connection. Version 3.7.1
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11827,7 +11838,11 @@ function suggest(r, ctx) {
   if (r.category === "NM" && r.coupled && r.coupled.length)
     s.notes.push("NM — no multiple on one end: check which end couples on " + legName(r.coupled[0]) + " today");
   const endsAt = depotOf(r.ends.place);
-  const near = r.tier === 1;
+  /* near: today, tomorrow, ASAP, overdue, or this coming weekend and
+     Monday - holds and requests. Soon: the rest of the week - requests,
+     after the near lines have had theirs, but no hold, since the unit
+     works again before it is due. */
+  const near = r.tier === 1, soon = r.tier <= 2;
   const mon = weekendHold(r);
   // exams: Ramsgate wants them back by 20 00 where it can be done, never after 22 00
   const backBy = () => {
@@ -11844,8 +11859,10 @@ function suggest(r, ctx) {
       if (r.when.half === "PM" && r.ahead === 1) s.notes.push("PM — could run the morning first");
       backBy();
     } else {
+      /* it ends where it is wanted TONIGHT, but works again before it is
+         due, so that is where it is and not yet a hold */
       s.action = "ENDS " + r.ends.place;
-      if (r.tier === 2) s.notes.push("ends where it is wanted");
+      if (soon) s.notes.push("due " + dueOf(r) + " — where it ends tonight, not yet a hold");
     }
     return s;
   }
@@ -11869,11 +11886,12 @@ function suggest(r, ctx) {
   /* Nothing today. A berth request names a working that DOES end where
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
-  if (near && targets.length && ctx && ctx.mine) {
+  if (soon && targets.length && ctx && ctx.mine) {
     const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep, ctx.tomDays);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
+      if (!near) s.notes.push("due " + dueOf(r));
       s.taken = { diag: c.day.diag, work: c.work };
       s.matesOn = c.mates;
       if (c.variation) s.notes.push("VARIATION — " + (c.day.fleet || "?") + " diagram, same fleets exhausted");
@@ -11949,11 +11967,11 @@ function suggest(r, ctx) {
   /* Nothing today reaches the depot. Where it ends is a place with a
      berth: tomorrow's working out of there that does - "AFK BERTH RP
      05 27", the portion named where the train splits before the depot. */
-  const mf = near && targets.length && ctx && ctx.mine
+  const mf = soon && targets.length && ctx && ctx.mine
     ? morningFrom(r, ctx.tomDays || ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted, ctx.taken, !ctx.tomDays || ctx.tomDays === ctx.days) : null;
-  if (mf) { s.action = mf.action; s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
+  if (mf) { s.action = mf.action; if (!near) s.notes.push("due " + dueOf(r)); s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
   s.action = "ENDS " + r.ends.place;
-  if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
+  if (soon && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
     (ctx && ctx.days && ctx.days.size ? ", and no working it could be put on gets to " + r.places.join("/") : ""));
   if (r.today && endsAt && r.tier <= 2) {
     const dow = (r.today.getUTCDay() + 1) % 7;    // tomorrow, when it is where it ends
@@ -12017,16 +12035,22 @@ function run(planText, genius, opts) {
      departures are its own, not today's taken as a proxy. And without
      today's Detail the Summary alone says where every unit ends tonight -
      a swap today cannot be seen, a departure tomorrow can. */
-  let tomDate = null;
+  /* the next day the Detail is for: tomorrow, or the Monday dropped on a
+     Friday, whichever is the first after today */
+  let tomDate = null, tomAhead = 0;
   if (today && genius && genius.detail)
-    for (const k of genius.detail.keys()) { const d = parseShort(k); if (d && Math.round((d - today) / 86400000) === 1) tomDate = k; }
+    for (const k of genius.detail.keys()) {
+      const d = parseShort(k), n = d ? Math.round((d - today) / 86400000) : 0;
+      if (n >= 1 && (!tomDate || n < tomAhead)) { tomDate = k; tomAhead = n; }
+    }
   const tomDays = tomDate ? allDays(genius, tomDate) : days;
   const haveToday = !!(date && genius && genius.detail && genius.detail.get(date));
+  const on = tomAhead === 1 ? "tomorrow's" : tomAhead + " days on";
   if (date && !haveToday)
     reviews.push("No Diagram Detail for " + date + ": where each unit ends tonight is read off the Summary alone, and no changeover " +
-                 "or depot swap today can be seen. " + (tomDate ? "Tomorrow's departures are off the " + tomDate + " Detail." : "Drop the Detail for " + date + ", or for the day after, for more."));
+                 "or depot swap today can be seen. " + (tomDate ? "The departures are off the " + tomDate + " Detail, " + on + "." : "Drop the Detail for " + date + ", or for the day after, for more."));
   else if (tomDate)
-    reviews.push("Tomorrow's departures are off the " + tomDate + " Diagram Detail, not today's taken as a proxy.");
+    reviews.push("The departures are off the " + tomDate + " Diagram Detail, " + on + ", not today's taken as a proxy.");
   /* When each line is due, first, because what a swap may not do depends
      on it. */
   const dated = plan.rows.map(row => {
@@ -13856,17 +13880,46 @@ function decodeText(u8) {
      included, because nothing is built from it - only read. */
   let own = null, ownFiles = [];
   const source = () => own || window.__lastWeekdayBuild;
-  async function takePair(files) {
-    const list = [...files];
-    if (!list.length) return;
-    for (const f of list) {
-      let u8;
-      try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
-      ownFiles.push(/\.pdf$/i.test(f.name) ? u8 : decodeText(u8));
+  const chips = $("#brfiles");
+  const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
+  /* what a dropped report is, for its chip: the kind and the date it is for */
+  const labelOf = txt => {
+    const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
+    const m = /Diagram (?:Summary|Details?) for:[^0-9]{0,12}(\d\d\/\d\d\/\d\d)/.exec(txt) || /\bOn\b\W{0,3}(\d\d\/\d\d\/\d\d)/.exec(txt);
+    return kind + (m ? " " + m[1] : "");
+  };
+  /* Each report dropped here can be taken off again on its own - to swap
+     tomorrow's Detail for another day's, say - without losing the plan and
+     defects already pasted. */
+  function showChips() {
+    if (!chips) return;
+    chips.textContent = "";
+    chips.hidden = !ownFiles.length;
+    ownFiles.forEach((f, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.title = "Remove " + f.name;
+      b.textContent = f.label;
+      const x = document.createElement("b"); x.textContent = "×"; b.appendChild(x);
+      b.addEventListener("click", () => { ownFiles.splice(i, 1); reread(); });
+      chips.appendChild(b);
+    });
+    if (ownFiles.length > 1) {
+      const all = document.createElement("button");
+      all.type = "button"; all.className = "chip all"; all.textContent = "Remove all reports";
+      all.addEventListener("click", () => { ownFiles = []; reread(); });
+      chips.appendChild(all);
+    }
+  }
+  async function reread() {
+    showChips();
+    if (!ownFiles.length) {
+      own = null;
+      if (zoneTxt) zoneTxt.textContent = ZONE_IDLE;
+      idle();
+      return;
     }
     try {
-      own = await GENIUS.read(ownFiles);
+      own = await GENIUS.read(ownFiles.map(f => f.data));
       const detDates = [...own.detail.keys()];
       const units = own.summary.filter(r => r.units && r.units.length).length;
       if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
@@ -13874,10 +13927,29 @@ function decodeText(u8) {
       say("Summary for " + own.dates.join(", ") + (detDates.length ? " and Detail for " + detDates.join(", ") : "") +
           " loaded — paste the plan and read it.", "go");
     } catch (e) {
+      own = null;
       // a Detail on its own waits for the Summary
-      if (/Summary rows found/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too"; }
-      else { say("That pair could not be read: " + e.message, "err"); ownFiles = []; }
+      if (/Summary rows found/.test(e.message)) {
+        if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too";
+        say("Detail loaded — drop the Diagram Summary printed after allocation too.", "");
+      } else say("Those reports could not be read: " + e.message, "err");
     }
+  }
+  async function takePair(files) {
+    const list = [...files];
+    if (!list.length) return;
+    for (const f of list) {
+      let u8;
+      try { u8 = new Uint8Array(await f.arrayBuffer()); }
+      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      let txt, data;
+      if (/\.pdf$/i.test(f.name)) {
+        try { txt = GENIUS.pdfText(u8); } catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        data = { pdfText: txt };           // extracted once, for the chip and the read alike
+      } else { txt = decodeText(u8); data = txt; }
+      ownFiles.push({ name: f.name, data, label: labelOf(txt) });
+    }
+    await reread();
   }
   if (zone && input) {
     zone.addEventListener("click", () => input.click());

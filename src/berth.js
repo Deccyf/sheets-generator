@@ -914,7 +914,11 @@ function suggest(r, ctx) {
   if (r.category === "NM" && r.coupled && r.coupled.length)
     s.notes.push("NM — no multiple on one end: check which end couples on " + legName(r.coupled[0]) + " today");
   const endsAt = depotOf(r.ends.place);
-  const near = r.tier === 1;
+  /* near: today, tomorrow, ASAP, overdue, or this coming weekend and
+     Monday - holds and requests. Soon: the rest of the week - requests,
+     after the near lines have had theirs, but no hold, since the unit
+     works again before it is due. */
+  const near = r.tier === 1, soon = r.tier <= 2;
   const mon = weekendHold(r);
   // exams: Ramsgate wants them back by 20 00 where it can be done, never after 22 00
   const backBy = () => {
@@ -931,8 +935,10 @@ function suggest(r, ctx) {
       if (r.when.half === "PM" && r.ahead === 1) s.notes.push("PM — could run the morning first");
       backBy();
     } else {
+      /* it ends where it is wanted TONIGHT, but works again before it is
+         due, so that is where it is and not yet a hold */
       s.action = "ENDS " + r.ends.place;
-      if (r.tier === 2) s.notes.push("ends where it is wanted");
+      if (soon) s.notes.push("due " + dueOf(r) + " — where it ends tonight, not yet a hold");
     }
     return s;
   }
@@ -956,11 +962,12 @@ function suggest(r, ctx) {
   /* Nothing today. A berth request names a working that DOES end where
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
-  if (near && targets.length && ctx && ctx.mine) {
+  if (soon && targets.length && ctx && ctx.mine) {
     const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep, ctx.tomDays);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
+      if (!near) s.notes.push("due " + dueOf(r));
       s.taken = { diag: c.day.diag, work: c.work };
       s.matesOn = c.mates;
       if (c.variation) s.notes.push("VARIATION — " + (c.day.fleet || "?") + " diagram, same fleets exhausted");
@@ -1036,11 +1043,11 @@ function suggest(r, ctx) {
   /* Nothing today reaches the depot. Where it ends is a place with a
      berth: tomorrow's working out of there that does - "AFK BERTH RP
      05 27", the portion named where the train splits before the depot. */
-  const mf = near && targets.length && ctx && ctx.mine
+  const mf = soon && targets.length && ctx && ctx.mine
     ? morningFrom(r, ctx.tomDays || ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted, ctx.taken, !ctx.tomDays || ctx.tomDays === ctx.days) : null;
-  if (mf) { s.action = mf.action; s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
+  if (mf) { s.action = mf.action; if (!near) s.notes.push("due " + dueOf(r)); s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
   s.action = "ENDS " + r.ends.place;
-  if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
+  if (soon && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
     (ctx && ctx.days && ctx.days.size ? ", and no working it could be put on gets to " + r.places.join("/") : ""));
   if (r.today && endsAt && r.tier <= 2) {
     const dow = (r.today.getUTCDay() + 1) % 7;    // tomorrow, when it is where it ends
@@ -1104,16 +1111,22 @@ function run(planText, genius, opts) {
      departures are its own, not today's taken as a proxy. And without
      today's Detail the Summary alone says where every unit ends tonight -
      a swap today cannot be seen, a departure tomorrow can. */
-  let tomDate = null;
+  /* the next day the Detail is for: tomorrow, or the Monday dropped on a
+     Friday, whichever is the first after today */
+  let tomDate = null, tomAhead = 0;
   if (today && genius && genius.detail)
-    for (const k of genius.detail.keys()) { const d = parseShort(k); if (d && Math.round((d - today) / 86400000) === 1) tomDate = k; }
+    for (const k of genius.detail.keys()) {
+      const d = parseShort(k), n = d ? Math.round((d - today) / 86400000) : 0;
+      if (n >= 1 && (!tomDate || n < tomAhead)) { tomDate = k; tomAhead = n; }
+    }
   const tomDays = tomDate ? allDays(genius, tomDate) : days;
   const haveToday = !!(date && genius && genius.detail && genius.detail.get(date));
+  const on = tomAhead === 1 ? "tomorrow's" : tomAhead + " days on";
   if (date && !haveToday)
     reviews.push("No Diagram Detail for " + date + ": where each unit ends tonight is read off the Summary alone, and no changeover " +
-                 "or depot swap today can be seen. " + (tomDate ? "Tomorrow's departures are off the " + tomDate + " Detail." : "Drop the Detail for " + date + ", or for the day after, for more."));
+                 "or depot swap today can be seen. " + (tomDate ? "The departures are off the " + tomDate + " Detail, " + on + "." : "Drop the Detail for " + date + ", or for the day after, for more."));
   else if (tomDate)
-    reviews.push("Tomorrow's departures are off the " + tomDate + " Diagram Detail, not today's taken as a proxy.");
+    reviews.push("The departures are off the " + tomDate + " Diagram Detail, " + on + ", not today's taken as a proxy.");
   /* When each line is due, first, because what a swap may not do depends
      on it. */
   const dated = plan.rows.map(row => {

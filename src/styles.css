@@ -472,6 +472,14 @@
      20.19 cm wide, the breaks made by the road and not by the browser */
   .svbox{font-family:Calibri,Carlito,Arial,sans-serif; font-weight:700; font-size:11pt;
     white-space:pre; width:20.19cm; max-width:100%; overflow:auto; line-height:1.25}
+  /* the reports dropped on the berth tab, each with its own remove, so one
+     can be swapped without losing the plan and defects already pasted */
+  .brfiles{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center}
+  .brfiles .chip{font:inherit; font-size:12.5px; padding:4px 10px; border:1px solid var(--apron-dk);
+    border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
+  .brfiles .chip b{margin-left:8px; font-weight:700}
+  .brfiles .chip:hover{border-color:var(--danger); color:var(--danger)}
+  .brfiles .chip.all{border-style:dashed}
   .platform > .brwarn{margin:14px 0 0}
   .platform > .brhow{margin-top:14px}
   .berth-small{margin-top:14px}

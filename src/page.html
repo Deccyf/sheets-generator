@@ -517,6 +517,7 @@
       </span>
     </button>
     <input type="file" id="brfile" accept=".pdf,.csv" multiple hidden>
+    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
 
     <div class="brgrid">
       <label class="brfield">
@@ -587,13 +588,15 @@
           traffic today</i> &mdash; usually because it is already stopped for
           the work the plan lists.</p>
         <p><b>Nearest first.</b> Lines due today, tomorrow, <code>ASAP</code>
-          or already overdue come first; then the rest of the week and the
-          mileage triggers; then everything later. One day&rsquo;s reports say
-          where a unit is today and where it ends tonight, not which diagram
-          it takes tomorrow &mdash; that is the allocator&rsquo;s choice each
-          morning &mdash; so the further out a line is, the less there is to
-          say beyond where the unit ends, which is what the plan itself writes
-          (<code>ENDS DVP</code>).</p>
+          or already overdue &mdash; and, from a Friday or the weekend, the
+          coming weekend and Monday &mdash; come first and get holds and
+          requests. Then the rest of the week and the mileage triggers: those
+          get a request too, after the near lines have had theirs, and the
+          line says when they are due, but no hold, because the unit works
+          again before then &mdash; one that ends where it is wanted tonight
+          for a Tuesday exam is <i>where it ends tonight, not yet a hold</i>.
+          Everything later is where the unit ends, which is what the plan
+          itself writes (<code>ENDS DVP</code>).</p>
         <p><b>The plan&rsquo;s places.</b> <code>RE</code> is any road at
           Ramsgate, <code>GP</code> any of the three Grove Park roads,
           <code>SG</code> the Slade Green roads, <code>AFK</code> the Ashford

@@ -140,6 +140,29 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.7.1 — 20 September 2026 — requests for the week, and the reports taken off again
+
+**A line due this week gets a request too.** Only the near lines — today,
+tomorrow, ASAP, overdue, the coming weekend and Monday — were given
+requests; the rest of the week got *ENDS* and a unit ending where it was
+wanted tonight for a Tuesday exam was told it ended where it was wanted,
+which on a Saturday evening was true and useless: it works again before
+Tuesday. A line due this week is now given a request — a swap today or a
+departure from where it ends — after the near lines have had theirs, and
+the line says when it is due. It is not held: *where it ends tonight, not
+yet a hold*. A week and more out is still where it ends.
+
+**The next day the Detail is for.** Tomorrow's Detail was taken only when
+it was for the day after the Summary's, so a Friday Summary with a Monday
+Detail read as no Detail at all. The first Detail date after the
+Summary's is used, and the Review says how many days on it is.
+
+**The reports dropped on the tab can be taken off again**, one at a time
+or all at once, without losing the plan and defects already pasted — to
+swap tomorrow's Detail for another day's, say, where before it was a
+refresh and paste everything again. A PDF is read once, for its chip and
+for the road alike.
+
 ## 3.7.0 — 19 September 2026 — the Summary PDF's units, the two turns, and the Excel text box
 
 **The Summary PDF never gave up its units.** The berth-request road looks

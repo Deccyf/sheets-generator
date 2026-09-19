@@ -778,7 +778,7 @@ test("day turn: today's Summary with tomorrow's Diagram Detail gives tomorrow's 
   const rd = await N.GENIUS.read([today.summary, today.detail, tomorrow]);
   assert.deepEqual(norm([...rd.detail.keys()].sort()), ["03/08/26", "04/08/26"]);
   const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
-  assert.ok(out.reviews.some(m => /Tomorrow's departures are off the 04\/08\/26 Diagram Detail/.test(m)), out.reviews.join(" | "));
+  assert.ok(out.reviews.some(m => /departures are off the 04\/08\/26 Diagram Detail, tomorrow's/.test(m)), out.reviews.join(" | "));
   const s = out.rows[0].suggest;
   // today's swap still comes first where there is one: RM102's 5R00 out of Grove Park
   assert.equal(s.action, "GP BERTH 5R00", JSON.stringify(s));
@@ -813,4 +813,37 @@ test("a Summary printed as a PDF after allocation carries its units, so the plan
   assert.equal(out.rows[0].inTraffic, true, "375601 is found on GT101 off the PDF");
   assert.equal(out.rows[0].suggest.action, "AFK BERTH off 2A01");
   assert.ok(!out.reviews.some(m => /has no units on it/.test(m)), out.reviews.join(" | "));
+});
+
+test("a line due this week gets a request too, after the near lines, and no hold", async () => {
+  /* 375703's exam is Thursday, three days off a Monday: this week, not
+     near. It still gets the Charing Cross changeover, said to be due
+     Thursday - after 375715, due today, has had RM104. And 375704, ending
+     at Ramsgate tonight for a Thursday exam, is not held: it works again. */
+  const day = SWAP_DAY.concat([{ code: "RM115", units: "375715.", stops: [S("ASHFDNS", "", "05:05", "5A15"), S("ASHFKY", "05:15", "05:25", "2A15"),
+      S("CHRX", "07:05", "09:35", "2A16"), S("HASTING", "11:05", "11:15", "5H15"), S("HASTPSD", "11:25", "", "")] }]);
+  const q = geniusPairCsv(day); const res = await N.GENIUS.build([q.summary, q.detail]);
+  const out = B().run(planFor(["375703\tA\tTHU AM 06/08\tRE\t", "375715\tB\tMON AM 03/08\tRE\t", "375704\tB\tTHU AM 06/08\tRE\t"]), res, {});
+  const [s3, s15, s4] = out.rows.map(r => r.suggest);
+  assert.equal(out.rows[0].tier, 2);
+  assert.equal(s15.action, "RE BERTH 11+10 — T/F AT CHX", "due today, first: " + JSON.stringify(s15));
+  assert.equal(s3.action, "RE BERTH 11+15 — T/F AT CHX", "this week, next: " + JSON.stringify(s3));
+  assert.match(s3.notes.join("; "), /^due THU 06\/08 AM \(\+3d\)/);
+  assert.equal(s4.action, "ENDS RE", JSON.stringify(s4));
+  assert.match(s4.notes.join("; "), /due THU 06\/08 AM \(\+3d\) — where it ends tonight, not yet a hold/);
+  // a week and more out is still where it ends, and nothing more
+  const far = B().run(planFor(["375703\tA\tMON AM 17/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.equal(far.action, "ENDS HGS", JSON.stringify(far));
+});
+
+test("a Detail for the next day it exists for is used, and the Review says how many days on", async () => {
+  /* Monday's Summary with Thursday's Detail - the Friday-and-Monday shape,
+     three days on: the departures are off it, and said to be */
+  const today = geniusPairCsv(SWAP_DAY);
+  const later = geniusPairCsv([{ code: "RM150", stops: [S("GRVPCSD", "", "05:40", "5J50"), S("RAMSGTE", "07:20", "07:25", "5J50"), S("RAMSGTD", "07:35", "", "")] }])
+    .detail.replace(/03\/08\/26/g, "06/08/26");
+  const rd = await N.GENIUS.read([today.summary, later]);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.ok(out.reviews.some(m => /departures are off the 06\/08\/26 Detail, 3 days on/.test(m)), out.reviews.join(" | "));
+  assert.equal(out.rows[0].suggest.action, "GP BERTH 5J50", JSON.stringify(out.rows[0].suggest));
 });

@@ -1432,17 +1432,46 @@ function decodeText(u8) {
      included, because nothing is built from it - only read. */
   let own = null, ownFiles = [];
   const source = () => own || window.__lastWeekdayBuild;
-  async function takePair(files) {
-    const list = [...files];
-    if (!list.length) return;
-    for (const f of list) {
-      let u8;
-      try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
-      ownFiles.push(/\.pdf$/i.test(f.name) ? u8 : decodeText(u8));
+  const chips = $("#brfiles");
+  const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
+  /* what a dropped report is, for its chip: the kind and the date it is for */
+  const labelOf = txt => {
+    const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
+    const m = /Diagram (?:Summary|Details?) for:[^0-9]{0,12}(\d\d\/\d\d\/\d\d)/.exec(txt) || /\bOn\b\W{0,3}(\d\d\/\d\d\/\d\d)/.exec(txt);
+    return kind + (m ? " " + m[1] : "");
+  };
+  /* Each report dropped here can be taken off again on its own - to swap
+     tomorrow's Detail for another day's, say - without losing the plan and
+     defects already pasted. */
+  function showChips() {
+    if (!chips) return;
+    chips.textContent = "";
+    chips.hidden = !ownFiles.length;
+    ownFiles.forEach((f, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.title = "Remove " + f.name;
+      b.textContent = f.label;
+      const x = document.createElement("b"); x.textContent = "×"; b.appendChild(x);
+      b.addEventListener("click", () => { ownFiles.splice(i, 1); reread(); });
+      chips.appendChild(b);
+    });
+    if (ownFiles.length > 1) {
+      const all = document.createElement("button");
+      all.type = "button"; all.className = "chip all"; all.textContent = "Remove all reports";
+      all.addEventListener("click", () => { ownFiles = []; reread(); });
+      chips.appendChild(all);
+    }
+  }
+  async function reread() {
+    showChips();
+    if (!ownFiles.length) {
+      own = null;
+      if (zoneTxt) zoneTxt.textContent = ZONE_IDLE;
+      idle();
+      return;
     }
     try {
-      own = await GENIUS.read(ownFiles);
+      own = await GENIUS.read(ownFiles.map(f => f.data));
       const detDates = [...own.detail.keys()];
       const units = own.summary.filter(r => r.units && r.units.length).length;
       if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
@@ -1450,10 +1479,29 @@ function decodeText(u8) {
       say("Summary for " + own.dates.join(", ") + (detDates.length ? " and Detail for " + detDates.join(", ") : "") +
           " loaded — paste the plan and read it.", "go");
     } catch (e) {
+      own = null;
       // a Detail on its own waits for the Summary
-      if (/Summary rows found/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too"; }
-      else { say("That pair could not be read: " + e.message, "err"); ownFiles = []; }
+      if (/Summary rows found/.test(e.message)) {
+        if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too";
+        say("Detail loaded — drop the Diagram Summary printed after allocation too.", "");
+      } else say("Those reports could not be read: " + e.message, "err");
     }
+  }
+  async function takePair(files) {
+    const list = [...files];
+    if (!list.length) return;
+    for (const f of list) {
+      let u8;
+      try { u8 = new Uint8Array(await f.arrayBuffer()); }
+      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      let txt, data;
+      if (/\.pdf$/i.test(f.name)) {
+        try { txt = GENIUS.pdfText(u8); } catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        data = { pdfText: txt };           // extracted once, for the chip and the read alike
+      } else { txt = decodeText(u8); data = txt; }
+      ownFiles.push({ name: f.name, data, label: labelOf(txt) });
+    }
+    await reread();
   }
   if (zone && input) {
     zone.addEventListener("click", () => input.click());

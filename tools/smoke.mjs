@@ -330,6 +330,16 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#brgo").click();
   await page.waitForFunction(() => /against 08\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 10000 });
   console.log("br saturday :", (await page.textContent("#brstatus")).trim());
+  /* each dropped report has a chip that takes it off again, the plan staying put */
+  const nChips = await page.locator("#brfiles .chip").count();
+  if (nChips !== 3) throw new Error("two reports and a remove-all: " + nChips);
+  await page.locator("#brfiles .chip", { hasText: "Detail" }).first().click();
+  await page.waitForFunction(() => /no Detail yet/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 10000 });
+  if (!(await page.inputValue("#brdefects")).length) throw new Error("the defects box should be untouched");
+  console.log("br chip off :", (await page.textContent("#brberthtxt")).trim().slice(0, 60));
+  await page.locator("#brfiles .chip").first().click();
+  await page.waitForFunction(() => document.querySelector("#brfiles").hidden, null, { timeout: 10000 });
+  console.log("br chips    : all off, zone idle");
 }
 
 await browser.close();
