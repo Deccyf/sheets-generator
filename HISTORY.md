@@ -140,6 +140,82 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.6.1 — 19 September 2026 — one train, the three rules that were to come, and no notice at a depot
+
+**A unit's day is its own segments.** The Diagram Summary has a row per
+working segment of a diagram, each with the unit on it — RM912 is 375609
+up to Grove Park in the morning and 375827 out of it in the evening, the
+unit changing at the depot's AM/PM berth. Everything before this read the
+whole diagram as one unit's day, so 375609 was said to end at Ramsgate at
+19+54 when it ends at Grove Park at 09+54. A unit's stops are now the
+Detail's cut to its own segments, one stand where a segment ends and the
+next begins at the same place, and a unit on hand at a depot from the
+morning is offered the working out of it that goes home — `GP BERTH
+5J93/5F87` — displacing the unit the Summary has on that segment. A
+diagram the unit was on in the morning, that another unit takes home, is
+a way home too.
+
+**One unit per diagram, and a working is one train.** 3.6.0 read the
+Summary's UNITS column as a formation and counted a working's requests per
+diagram, so `5F87`, run coupled by three diagrams, was given four — on a
+12-car. A diagram carries one unit; a 12-car is three diagrams on one
+working. The count is now per working, off the Detail: it carries a
+request per diagram on it, never more than a 12-car of that unit's kind —
+three 375s or 377s, two 376s, four 3-car 375/3s — and the line says `5F87
+runs as 3 units (RM912+RM913+RM914) — request 2 of 3`. A restriction is
+checked the same way: MO wants a train of two diagrams or more, NM a train
+of one.
+
+**Formations kept together.** A unit whose formation-mate — a unit on a
+diagram coupled with its own on the working it arrives on — has already
+been given a working goes with it, so a 12-car that arrives at Grove Park,
+Ashford or West Marina as one train is not asked to go three ways for
+three requests. Where a request does take one unit off the train it
+arrived in, the line says so — *splits the 3-unit formation it arrives in
+— 375702+375712 left* — so the depot is asked to split a train only where
+there is need.
+
+**The portion.** Where the working named runs as a coupled train that
+splits before the depot and only this diagram's portion goes there, the
+request says which, off the Summary's POS: the lowest position leads and
+is `FP`, the highest is `RP`, anything between `MP` — `GP BERTH 5J70/RP
+5F87`. Position is the order the formation left its berth in, so a train
+that has turned since is still the planner's check.
+
+**Tomorrow's working from where it ends.** A unit that ends tonight at a
+place with a berth and is wanted at a depot nothing today reaches is
+given the working out of that place tomorrow that does, named the way
+that place names workings and with the portion — `AFK BERTH RP 05 27`.
+Tomorrow's diagrams are on no report read here, so it is taken as today's
+Detail has it and the line says to check tomorrow's runs the same. It
+comes after a swap today and before a depot swap with no place to make
+it.
+
+**No changeover notice at a depot.** The `GP BERTH 5J70/5F43` request is
+all: the unit went to Grove Park empty in the AM and sits there to the
+PM, so it ends GP in the AM and there is nothing to change over. The
+notice is written for a changeover at a terminal only.
+
+**Swapping exams.** When the requests run out for an exam that is near,
+the exams are swapped around: another unit on the plan whose exam is due
+later and that does end at the depot tonight has its exam brought forward,
+this one's put back. The same exam first, then the one due soonest after;
+never a unit that other maintenance wants somewhere else now; each unit
+once. Written out under the table as `EXAM SWAPS`, and both lines say so.
+
+**A restriction is a formation.** `MO` is read as *multiple only* and
+`NM` as *no multiple* — the export's own faults say so: every NM is a
+coupler fault, every MO a cab, a traction module or a toilet the other
+unit covers. A working offered to an MO unit runs as two units or more;
+one offered to an NM unit runs as one and never attaches. Today's own
+diagram is checked the same way and the line says *check* where it does
+not fit. Which routes a unit may not take is still on no report.
+
+**MSE attending.** A box beside the defects: the units listed get
+`MSE ATTENDING — NO REQUEST`, and the units the export flags MSE are named
+under the box once the plan is read, so the question is answered by
+listing them.
+
 ## 3.6.0 — 19 September 2026 — the defects export, and who goes first
 
 **The defects export is pasted as it comes.** The End of Days, Restrictions

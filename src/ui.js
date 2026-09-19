@@ -1424,7 +1424,7 @@ function decodeText(u8) {
   if (!plan || !go) return;
   const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
-  const list = $("#brlist"), defects = $("#brdefects");
+  const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint");
   const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
   /* The pair this tab reads: the one dropped here, or failing that the
@@ -1478,8 +1478,11 @@ function decodeText(u8) {
     const res = source();
     if (!res) { say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.", "err"); return; }
     if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, first.", "err"); return; }
-    try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "" }); }
+    try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "" }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
+    if (mseHint) mseHint.textContent = result.mseUnits.length
+      ? "MSE on: " + result.mseUnits.join(" ") + " — list those they are attending here and read the plan again."
+      : "Nothing on the plan is flagged MSE.";
     showPlan();
     rev.textContent = "";
     for (const m of result.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }

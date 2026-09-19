@@ -900,12 +900,17 @@ export function geniusSummaryCsvWithUnits(units) {
    from its first and last stops, the Detail rows from each leg, and "ev"
    goes in the activity column the way ATTACH and DETACH come out of
    Genius. Monday 03/08/26, like the rest. */
+/* One Summary row per diagram, from its first stop to its last - or, where
+   a diagram gives `rows`, one per working segment, each with its own
+   units, position and window, which is how the real Summary has a diagram
+   whose unit changes at a depot during the day. */
 export function geniusPairCsv(diags) {
-  const summary = diags.map(d => {
+  const summary = diags.flatMap(d => {
     const a = d.stops[0], z = d.stops[d.stops.length - 1];
-    return GHEAD + ['"' + d.code + '"', d.units ? '"' + d.units + '"' : "", '"' + (d.fleet || "375/6") + '"',
-      "0.00", d.pos || 1, '"' + a.dep + '"', '"' + a.code + '"', '"' + z.code + '"',
-      '"' + (z.arr || z.dep) + '"', "-0.60", "100.00", "100.00", "", ""].join(",");
+    const rows = d.rows || [{ units: d.units, pos: d.pos, start: a.dep, from: a.code, to: z.code, end: z.arr || z.dep }];
+    return rows.map(r => GHEAD + ['"' + d.code + '"', r.units ? '"' + r.units + '"' : "", '"' + (d.fleet || "375/6") + '"',
+      "0.00", r.pos || 1, '"' + r.start + '"', '"' + r.from + '"', '"' + r.to + '"',
+      '"' + r.end + '"', "-0.60", "100.00", "100.00", "", ""].join(","));
   }).join("\r\n");
   const detail = [];
   for (const d of diags) {

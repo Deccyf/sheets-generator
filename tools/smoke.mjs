@@ -303,6 +303,20 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   if (!/NO CAB AIR CON/.test(def)) throw new Error("the fault's couple of words should be on the line: " + def.slice(0, 300));
   if (!/RED · CON/.test(def)) throw new Error("RED and CON should be on the line: " + def.slice(0, 300));
   console.log("br defects  :", (await page.textContent("#brstatus")).trim());
+  /* MSE: the export flags 375602, the hint names it, listing it in the box
+     answers the question */
+  await page.fill("#brdefects", [
+    "Date Occurred\tDays O/S\tAsset No\tCoach No\tCatalogue No.\tStock Description\tRepair Location\tDiagram End Location\tArrival Date\tSystem Code\tFault Description\tFacility Failure\tReport\tPriority\tTarget Due Date",
+    "06/07/2026 15:48:00\t28\t375602\t67876\t\t\t+ MSE\tASHFEBS\t02/08/2026 19:54:00\tDR\tMDC wiper not working\tNo\tWR0000002\t2. Restriction MO\t04/08/2026 00:00:00",
+  ].join("\n"));
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /MSE on: 375602/.test(document.querySelector("#brmsehint").textContent), null, { timeout: 10000 });
+  console.log("br mse hint :", (await page.textContent("#brmsehint")).trim());
+  await page.fill("#brmse", "375602");
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /MSE ATTENDING — NO REQUEST/.test(document.querySelector("#brout").textContent), null, { timeout: 10000 });
+  console.log("br mse      : attending — no request");
+  await page.fill("#brmse", "");
   /* the tab's own drop zone takes a Saturday's pair, which the weekday
      books refuse */
   const { geniusPairCsv } = await import("../test/helpers/synth.mjs");

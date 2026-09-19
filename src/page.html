@@ -500,11 +500,17 @@
           placeholder="376036 375924 …"></textarea>
       </label>
     </div>
-    <div class="brgrid brgrid-one">
+    <div class="brgrid">
       <label class="brfield">
-        <span class="opts-label">Defects — the End of Day, Restriction and Performance Defect exports, pasted as they come</span>
+        <span class="opts-label">Defects — the End of Days, Restrictions and Performance Defects out of Equinox or EMS, pasted as they come</span>
         <textarea id="brdefects" rows="6" spellcheck="false"
           placeholder="Date Occurred&#9;Days O/S&#9;Asset No&#9;Coach No&#9;Catalogue No.&#9;Stock Description&#9;Repair Location&#9;Diagram End Location&#9;Arrival Date&#9;System Code&#9;Fault Description&#9;Facility Failure&#9;Report&#9;Priority&#9;Target Due Date&#10;06/07/2026 15:48:00&#9;75&#9;375625&#9;67875&#9;&#9;&#9;+ AMAT&#9;RAMSGTD&#9;17/09/2026 19:54:00&#9;HA&#9;UMD8968 No Cab Air Con - Requires HVAC&#9;No&#9;WR0472231&#9;2. Restriction MO&#9;30/09/2026 00:00:00"></textarea>
+      </label>
+      <label class="brfield brfield-small">
+        <span class="opts-label">MSE attending — no request for these</span>
+        <textarea id="brmse" rows="3" spellcheck="false"
+          placeholder="376020 375821 …"></textarea>
+        <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
       </label>
     </div>
     <div class="opts-row">
@@ -532,14 +538,22 @@
     <details class="svrules" id="brrules">
       <summary>What this table is working from, and the rules to come</summary>
       <div class="svrules-body">
-        <p><b>What is read now.</b> Each plan line&rsquo;s unit is looked up on
-          the Diagram Summary&rsquo;s UNITS column for the day the books were
-          built for, which gives its diagram or diagrams; the Diagram Detail
-          gives that diagram&rsquo;s calls in order, so the table can say where
-          it ends tonight and when, and every call it makes at the place the
-          plan names. A time past midnight is said so. A unit with no diagram
-          that day is <i>not in traffic today</i> &mdash; usually because it is
-          already stopped for the work the plan lists.</p>
+        <p><b>What is read now.</b> The Diagram Summary has a row per
+          <em>working segment</em> of a diagram, each with the unit on it:
+          RM912 is 375609 up to Grove Park in the morning and 375827 out of
+          it in the evening, the unit changing at the depot. So each plan
+          line&rsquo;s unit is looked up on the UNITS column for the day the
+          books were built for, which gives its own segments; the Diagram
+          Detail gives each diagram&rsquo;s calls in order, cut to those
+          segments&rsquo; windows, so the table can say where the unit ends
+          tonight and when, and every call it makes at the place the plan
+          names &mdash; a unit that went up to Grove Park in the morning and
+          stays ends at Grove Park, not where its diagram ends. Where one
+          segment ends and the next begins at the same place, that is one
+          stand: in on the first working, out on the second. A time past
+          midnight is said so. A unit with no segment that day is <i>not in
+          traffic today</i> &mdash; usually because it is already stopped for
+          the work the plan lists.</p>
         <p><b>Nearest first.</b> Lines due today, tomorrow, <code>ASAP</code>
           or already overdue come first; then the rest of the week and the
           mileage triggers; then everything later. One day&rsquo;s reports say
@@ -596,7 +610,9 @@
           At a <b>depot both stand at</b> during the day &mdash; the weekday
           AM berth &mdash; the afternoon workings are swapped, and the
           request reads <code>GP BERTH 5J70/5F43</code>: in on the first, out
-          on the second. The same number of units go on the service, and
+          on the second. No changeover notice for that: the unit went to
+          Grove Park empty and sits there to the PM, so it ends GP in the AM
+          and the request is all that is needed. The same number of units go on the service, and
           <b>fleets stay on their own diagrams</b> both ways: a 375/9 on a
           375/9 diagram, a 3-car on a 3-car one, a 375/6, /7 or /8 on a plain
           375 one, a 376 on a 376 diagram, a 377 on a GT diagram &mdash; none
@@ -619,15 +635,42 @@
           (<code>CON</code>), then to the plan&rsquo;s own order &mdash; a
           concession never jumps a line that is due sooner. The other line
           is given the next working, not the same one twice.</p>
-        <p><b>How many requests a working carries.</b> As many units as the
-          sheets put on it: a <b>12-car has three</b> units on the Summary and
-          can carry three requests, an <b>8-car two</b>, a 4-car one &mdash;
-          less any unit on it the plan wants at that depot itself, which is
-          not to be taken off. Each request displaces one unit, so the
-          formation is kept both ways, and the line names the unit displaced
-          and which request of the three it is. Check it against the
-          sheets: the count is the Summary&rsquo;s, and a working that runs
-          different lengths over the day is counted at its end.</p>
+        <p><b>How many requests a working carries.</b> One unit per diagram,
+          and a working is one train whichever diagrams run it coupled: a
+          <b>12-car is three diagrams</b> on one working and carries three
+          requests, an <b>8-car two</b>, a 4-car one &mdash; never more than
+          a 12-car of that unit&rsquo;s kind, three 375s or 377s, two 376s
+          &mdash; less any diagram whose unit the plan wants at that depot
+          itself, which is not to be taken off. Each request displaces the
+          unit on one diagram, so the formation is kept both ways, and the
+          line says <i>5F87 runs as 3 units (RM912+RM913+RM914) &mdash;
+          request 2 of 3</i>. Check it against the sheets.</p>
+        <p><b>Formations kept together.</b> A unit whose formation-mate has
+          already been given a working goes with it, so a 12-car that
+          arrives at Grove Park, Ashford or West Marina as one train is not
+          asked to go three ways for three requests. Where a request does
+          take one unit off the train it arrived in, the line says so
+          &mdash; <i>splits the 3-unit formation it arrives in &mdash;
+          375702+375712 left</i> &mdash; so the depot is asked to split a
+          train only where there is need.</p>
+        <p><b>The portion.</b> Where the working named runs as a coupled
+          train that splits before the depot and only this diagram&rsquo;s
+          portion goes there, the request says which: the diagram in the
+          lowest position on the Summary leads and is <code>FP</code>, the
+          front portion, the highest is <code>RP</code>, the rear, anything
+          between <code>MP</code> &mdash; <code>GP BERTH 5J70/RP 5F87</code>.
+          Position is the order the formation left its berth in, so a train
+          that has turned since is the planner&rsquo;s check.</p>
+        <p><b>Tomorrow&rsquo;s working from where it ends.</b> A unit that
+          ends tonight at a place with a berth &mdash; Ashford, Grove Park,
+          West Marina &mdash; and is wanted at a depot nothing today
+          reaches is given the working out of that place tomorrow that
+          does, named the way that place names workings and with the
+          portion: <code>AFK BERTH RP 05 27</code>. Tomorrow&rsquo;s diagrams
+          are on no report read here, so it is taken as today&rsquo;s Detail
+          has it &mdash; the weekday ones repeat &mdash; and the line says
+          to check tomorrow&rsquo;s runs the same. It comes before a depot
+          swap with no place to make it, after a swap today.</p>
         <p><b>The notice</b> is written out under the table in the
           depot&rsquo;s own form, ready to send:
           <i>375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE /
@@ -666,20 +709,38 @@
           who may go out to the unit in a van: if they are attending it needs
           no berth request, and if they are not it goes to the nearest place
           to the maintenance depot it can reach. Both words are picked up
-          wherever they are written on the line and shown; the question of
-          whether MSE are attending is one the panel will ask.</p>
+          wherever they are written on the line and shown; whether MSE are
+          attending is answered by listing the unit in the box above.</p>
         <p><b>Words.</b> <code>O/H</code> is on hand &mdash; there and usable;
           <code>SP @</code> is spare there, the same thing. <code>O/O/S</code>
           is out of service.</p>
 
-        <h4>The rules to come</h4>
-        <p><b>Swapping exams</b> that arrive earlier when the berth requests
-          run out, so long as they do not clash with other maintenance.
-          <b>Route restrictions</b>: the notice says MO or NM, but which
-          routes a restricted unit may not take is not on any report read
-          here, so that is still the planner&rsquo;s check. <b>MSE
-          attending?</b> &mdash; the question the panel will ask, so a defect
-          the mobile engineers are going out to is not given a request.</p>
+        <p><b>Swapping exams.</b> When the berth requests run out for an
+          exam that is near &mdash; the unit neither ends nor calls where it
+          is wanted, and nothing it could take ends there &mdash; the exams
+          are swapped around: another unit on the plan whose exam is due
+          later and that <em>does</em> end at that depot tonight has its exam
+          brought forward, and this one&rsquo;s is put back to that slot. The
+          same exam is taken first, then the one due soonest after. Never a
+          unit that other maintenance wants somewhere else now, and each
+          unit is swapped once. The swaps are written out under the table as
+          <code>EXAM SWAPS</code>, and both lines say so.</p>
+        <p><b>A restriction is a formation.</b> <code>MO</code> is read as
+          <em>multiple only</em> &mdash; the unit has to run coupled to
+          another, a defective cab inside the formation, a lost traction
+          module or a locked-out toilet covered by the other unit &mdash;
+          and <code>NM</code> as <em>no multiple</em>, a coupler fault, so it
+          runs as one unit and never attaches. A working offered to an MO
+          unit runs as two units or more; one offered to an NM unit runs as
+          one and never attaches or detaches. Today&rsquo;s own diagram is
+          checked the same way and the line says <i>check</i> where it does
+          not fit. Which routes a unit may not take is on no report read
+          here, so that is still the planner&rsquo;s.</p>
+        <p><b>MSE attending.</b> A unit listed in the box above is one the
+          mobile engineers are going out to, so its lines get
+          <code>MSE ATTENDING &mdash; NO REQUEST</code>. The units the export
+          flags MSE are named under the box once the plan is read, so the
+          question is answered by listing them.</p>
       </div>
     </details>
   </section>
