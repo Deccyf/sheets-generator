@@ -4,8 +4,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
-import { OPERATING_LINES, SHORTAGE_DETAIL_LINES, SHORTAGE_DETAIL_CSV }
-  from "./helpers/shortage-synth.mjs";
+import { OPERATING_LINES, SHORTAGE_DETAIL_LINES, SHORTAGE_DETAIL_CSV,
+         SHORTAGE_OPERATING_CSV } from "./helpers/shortage-synth.mjs";
 
 const S = () => built().SHEETS_SHORTAGE;
 const txt = lines => lines.join("\n");
@@ -131,4 +131,50 @@ test("the place codes are the roads, not the berthing books' stations", () => {
   }
   assert.ok(norm(s.MASTER_GROUPS).some(g => g.includes("AFDS")),
     "and the roads group back up for the list's own headings");
+});
+
+test("the Operating Report reads the same saved as printed", () => {
+  /* Dropped as the .csv export the report read as nothing at all — the
+     status line said "0 diagrams on the report" and the list came out
+     empty, which reads exactly like a clean day. The export repeats the
+     whole page header on every line and puts the data at the end, the same
+     shape the Diagram Detail's export has, so it needs reading the same
+     way. On the real 19/09 pair this was one length case and fifteen fleet
+     mismatches being reported as none. */
+  const s = S();
+  const printed = s.run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES));
+  const saved = s.run(SHORTAGE_OPERATING_CSV, txt(SHORTAGE_DETAIL_LINES));
+  assert.equal(saved.rows, printed.rows, "same number of rows read");
+  assert.equal(saved.diagrams, printed.diagrams, "over the same diagrams");
+  assert.equal(saved.reportTime, printed.reportTime, "and the same print time");
+  assert.equal(saved.text, printed.text, "so the list is the same list");
+  assert.deepEqual(norm(saved.reviews), norm(printed.reviews));
+  // blanks are real cells in the export, so an unallocated row keeps its shape
+  const blank = SHORTAGE_OPERATING_CSV.split("\r\n")[0]
+    .replace(/"375\/7","375713","NE"/, '"","","NE"');
+  const [row] = s.parseOperatingCsv(blank).rows;
+  assert.equal(row.allocated, null, "no unit allocated");
+  assert.equal(row.resource, null);
+  assert.equal(row.owning, "NE", "and the columns after it have not shifted left");
+});
+
+test("an unreadable Operating Report says so rather than showing a clean day", () => {
+  const res = S().run("Page 1\nnothing that reads as a row\n", txt(SHORTAGE_DETAIL_LINES));
+  assert.equal(res.rows, 0);
+  assert.match(res.reviews[0],
+    /No rows could be read from the Operating Report — the list below is empty because of that, not because the day was clean/,
+    res.reviews.join(" | "));
+});
+
+test("two reports from different days are named as such", () => {
+  const s = S();
+  const otherDay = txt(SHORTAGE_DETAIL_LINES).replace(/18\/09\/26/g, "17/09/26");
+  const res = s.run(txt(OPERATING_LINES), otherDay);
+  assert.match(res.reviews[0],
+    /The Operating Report is for 18\/09\/26 and the Diagram Detail for 17\/09\/26/,
+    res.reviews.join(" | "));
+  // and a matched pair says nothing of the sort
+  assert.ok(!s.run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES)).reviews
+    .some(r => /The Operating Report is for/.test(r)),
+    "no false alarm on a matched pair");
 });

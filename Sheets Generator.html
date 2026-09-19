@@ -473,7 +473,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.2.4</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.2.5</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -863,7 +863,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.2.4
+      works without an internet connection. Version 3.2.5
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -9472,6 +9472,19 @@ function resourceInfo(resource) {
 }
 
 // ---------- Operating Report ----------
+const ALLOC_RE = /^(?:375\/[36789]|377\/\d)$/;
+const RES_RE = /^(?:375[36789]\d\d|377\d{3})$/;
+/* The clock, the lengths and the fleets a row implies. Both readers below
+   end here, so the two shapes of the same report cannot drift apart. */
+function finishOpRow(row) {
+  row.depMin=clockMins(row.dep); row.arrMin=clockMins(row.arr);
+  row.arrExt=row.arrMin;
+  while (row.arrExt < row.depMin) row.arrExt += 1440;
+  row.expectedFamily=plannedFamily(row.diag,row.planned);
+  row.expectedLength=plannedLength(row.diag,row.planned);
+  row.actual=resourceInfo(row.resource);
+  return row;
+}
 function parseOperating(txt) {
   const rows=[];
   const tm = /\bTime:\s*(\d\d:\d\d)/i.exec(txt);
@@ -9483,19 +9496,59 @@ function parseOperating(txt) {
     if (t.length < 10 || !/^(?:RM|GT)\d{3}$/.test(t[0]) || !TM.test(t[3]||"") || !TM.test(t[4]||"")) continue;
     const row={diag:t[0],date:t[1],from:t[2],dep:t[3],arr:t[4],to:t[5],trainid:t[6],depot:t[7],planned:t[8],allocated:null,resource:null,owning:null,discrepancy:""};
     let i=9;
-    if (/^(?:375\/[36789]|377\/\d)$/.test(t[i]||"")) row.allocated=t[i++];
-    if (/^(?:375[36789]\d\d|377\d{3})$/.test(t[i]||"")) row.resource=t[i++];
+    if (ALLOC_RE.test(t[i]||"")) row.allocated=t[i++];
+    if (RES_RE.test(t[i]||"")) row.resource=t[i++];
     if (/^[A-Z]{2,3}$/.test(t[i]||"")) row.owning=t[i++];
     row.discrepancy=t.slice(i).join(" ");
-    row.depMin=clockMins(row.dep); row.arrMin=clockMins(row.arr);
-    row.arrExt=row.arrMin;
-    while (row.arrExt < row.depMin) row.arrExt += 1440;
-    row.expectedFamily=plannedFamily(row.diag,row.planned);
-    row.expectedLength=plannedLength(row.diag,row.planned);
-    row.actual=resourceInfo(row.resource);
-    rows.push(row);
+    rows.push(finishOpRow(row));
   }
   return {reportTime, rows};
+}
+/* ---------- the Operating Report as the CSV export ----------
+   The same report, saved rather than printed. Like the Diagram Detail's
+   export it repeats the whole page header on every line and puts the
+   thirteen data fields at the end, so the columns are found by their
+   labels rather than counted from the left - and the print time sits in
+   the cell after "Time:" rather than after a run of spaces.
+
+   Everything the text reader has to infer from shape is a real cell here:
+   a row with no unit allocated has an empty ALLOCATED and RESOURCE instead
+   of two missing tokens, so nothing has to be guessed. */
+const OP_COLS = ["diag","date","from","dep","arr","to","trainid","depot",
+                 "planned","allocated","resource","owning","discrepancy"];
+function parseOperatingCsv(text) {
+  const rows=[]; let reportTime=null;
+  for (const f of csvParse(text)) {
+    const g = f.map(x => String(x == null ? "" : x).trim());
+    if (reportTime === null) {
+      const ti = g.lastIndexOf("Time:");
+      if (ti >= 0 && TM.test(g[ti+1]||"")) reportTime = clockMins(g[ti+1]);
+    }
+    const di = g.lastIndexOf("DISCREPANCY");
+    if (di < 0) continue;
+    const d = g.slice(di + 1);
+    if (d.length < OP_COLS.length) continue;
+    const row = {};
+    OP_COLS.forEach((k, i) => { row[k] = d[i]; });
+    if (!/^(?:RM|GT)\d{3}$/.test(row.diag) || !TM.test(row.dep) || !TM.test(row.arr))
+      continue;
+    if (!ALLOC_RE.test(row.allocated)) row.allocated = null;
+    if (!RES_RE.test(row.resource)) row.resource = null;
+    if (!/^[A-Z]{2,3}$/.test(row.owning)) row.owning = null;
+    rows.push(finishOpRow(row));
+  }
+  return {reportTime, rows};
+}
+/* Either shape of it, the same way the Diagram Detail is taken either way.
+   The saved one is tried first when there are commas to make it possible,
+   and only counts if it actually found rows - the printed one has commas in
+   its date line too. */
+function operatingFrom(text) {
+  if (String(text||"").indexOf(",") >= 0) {
+    const csv = parseOperatingCsv(text);
+    if (csv.rows.length) return csv;
+  }
+  return parseOperating(text);
 }
 function rowQualifiesUnallocated(row, reportTime) {
   if (!/Not allocated/i.test(row.discrepancy||"")) return false;
@@ -9770,6 +9823,12 @@ function buildDiscrepancies(op, detail, posAt) {
   const topCases=[];
   const excluded=new Set();
 
+  /* An empty list means one of two quite different things, and the depot
+     should not have to guess which: nothing was wrong that day, or nothing
+     was READ. Said first, because it explains everything under it. */
+  if(!op.rows.length)reviews.push("No rows could be read from the Operating Report — " +
+    "the list below is empty because of that, not because the day was clean. " +
+    "Check the right report was dropped, and that it is the .pdf print or the .csv export.");
   if(op.reportTime==null)reviews.push("Could not read the Operating Report print time; Not Allocated rules were not applied.");
   else if(op.reportTime>=18*60 || op.reportTime<1)reviews.push("No Not Allocated selection rule has yet been supplied for reports produced at/after 18:00 (or exactly 00:00).");
 
@@ -10073,14 +10132,41 @@ function positionsFrom(text) {
     return (best || list[0]).pos;
   };
 }
+/* The date a report is FOR, off the line that says so - the same line in
+   the print and in the export, so one reading serves both. The Operating
+   Report names a span ("19/09/26 to 20/09/26"); the first date is its day.
+   The Diagram Detail also stamps every diagram with the day it is "On",
+   which is there whether or not the header line survived the export. */
+const DATE_RE = "(\\d\\d/\\d\\d/\\d\\d)";
+function afterLabel(text, label) {
+  const m = new RegExp(label + "[^\\n]*?" + DATE_RE).exec(String(text||""));
+  return m ? m[1] : null;
+}
+function opDateOf(text){ return afterLabel(text, "Operating Report for:"); }
+function detDateOf(text){
+  const m = afterLabel(text, "Diagram Details? for:");
+  if (m) return m;
+  const on = new RegExp("\\bOn\\b\\W{0,3}" + DATE_RE).exec(String(text||""));
+  return on ? on[1] : null;
+}
 /* One build: the Operating Report's text and the Diagram Detail's, however
    each arrived. Returns the list, the review lines and the counts. */
 function run(opText, detailText, summaryText) {
-  const op = parseOperating(opText);
+  const op = operatingFrom(opText);
   const detail = detailFrom(detailText);
   const posAt = positionsFrom(summaryText);
   const out = buildDiscrepancies(op, detail, posAt);
-  return { ...out, positions: !!posAt,
+  /* Two reports from different days read perfectly well and answer nothing:
+     every working is matched against a plan that was not in force. Said, not
+     refused - the depot knows what it dropped. */
+  const opDate = opDateOf(opText), detDate = detDateOf(detailText);
+  const reviews = (opDate && detDate && opDate !== detDate)
+    ? [`The Operating Report is for ${opDate} and the Diagram Detail for ` +
+       `${detDate}. The list below matches each working against the other ` +
+       `day's plan, so it cannot be trusted — drop the pair for one date.`]
+      .concat(out.reviews)
+    : out.reviews;
+  return { ...out, reviews, positions: !!posAt,
            reportTime: op.reportTime, rows: op.rows.length,
            diagrams: new Set(op.rows.map(r => r.diag)).size,
            detailDiagrams: detail.size };
@@ -10094,8 +10180,9 @@ function sniff(text) {
   return null;
 }
 
-return { run, sniff, parseOperating, parseDetail, parseDetailCsv, detailFrom,
-         buildDiscrepancies, pdfText, ABBR, MASTER_GROUPS };
+return { run, sniff, parseOperating, parseOperatingCsv, operatingFrom,
+         parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
+         pdfText, ABBR, MASTER_GROUPS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_SHORTAGE;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_SHORTAGE = SHEETS_SHORTAGE;

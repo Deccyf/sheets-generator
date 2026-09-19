@@ -140,6 +140,59 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.5 — 19 September 2026 — the Operating Report, saved as well as printed
+
+**Reported as the shortages list saying there was nothing wrong when there
+plainly was.** The 19/09 reports went in as the two **.csv exports** and the
+list came back empty. The status line was the tell — *0 diagrams on the
+report, 197 in the detail* — but "0 shortage and length cases · 0 fleet
+mismatches" reads exactly like a clean day, and that is what it looked like.
+
+The Diagram Detail could already arrive either way; the Operating Report
+could not. Its reader was written for the PDF print, where the columns are
+runs of two spaces or more and every line starts with the diagram. The
+export is the same shape the Detail's is: the whole page header repeated in
+front of **every** row, the thirteen data fields at the end, and the print
+time in the cell after `Time:` rather than after a run of spaces. Nothing
+in it matched, so nothing was read.
+
+It is read now, by its column labels rather than by counting from the left,
+and both readers finish in one place so the two shapes cannot drift into
+being different reports. The export is in some ways the better one: a row
+with no unit allocated has an empty ALLOCATED and RESOURCE rather than two
+missing tokens, so nothing has to be guessed from its shape.
+
+On the pair that was reported — Saturday 19/09, printed 02:38 — that is
+**41 diagrams read**, one length case and fifteen fleet mismatches where
+there had been none:
+
+```
+4.375 V 3.375 (RM308) ENDS 5T73 23+01 SOO - GI (ARR 23+27)
+    FOLLOWING 4 V 3: 5T73 23+01 SOO - GI
+```
+
+RM308 planned a 3-car and has a 4-car on it. Counted by hand off the export,
+the day holds exactly one length difference and sixteen diagrams whose
+effective unit is the wrong family — and the sixteenth is RM308, which is
+reported above as the length case instead. The two agree row for row.
+
+**Two things that would have said so out loud**, because an empty list is
+the one answer that looks the same whether the day was clean or the report
+was never read:
+
+- **No rows read** now says so first, above everything else, and says to
+  check the report and that either the print or the export will do.
+- **Two reports from different days** are named. They read perfectly well
+  together and answer nothing, because every working is matched against a
+  plan that was not in force. Said, not refused — the depot knows what it
+  dropped. The date comes off the line that names it, and failing that off
+  the `On dd/mm/yy` every diagram in the Detail carries.
+
+The synthetic report is now written in both shapes, the saved one built
+**from** the printed one so they are the same report by construction, and a
+test holds the two lists against each other. The browser smoke drives the
+panel with the export as well as the print.
+
 ## 3.2.4 — 19 September 2026 — a sweep, and one review line that was not true
 
 Asked to look through the rest of the tool for faults, so both roads were

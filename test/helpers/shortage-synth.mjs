@@ -119,3 +119,21 @@ export const SHORTAGE_DETAIL_CSV = [
     leg(d, "RAMSGTE", "Ramsgate", "07:00", "07:10", "2X01BA", "CHRX", "London Charing X", "09:20"),
   ]),
 ].join("\r\n");
+
+/* The same Operating Report as the CSV export writes it: the whole page
+   header in front of every row, the thirteen data fields at the end, and
+   the print time in the cell after "Time:" rather than after a run of
+   spaces. Built FROM the lines above, so the two shapes cannot drift into
+   being different reports. */
+const OP_HEAD = '"Page:","Page -1 of 1","GENIUS","Control:",' +
+  '"SouthEastern Trains","OPERATING REPORT","Print Date:",' +
+  '"September 18, 2026","Controller:","NA","Signon:","DFINCH","Name:",' +
+  '"Declan Finch","Time:",05:30,"Operating Report for:",' +
+  '"Depot RM, Owning Ctrl NE, 18/09/26 to 19/09/26. ","DIAGRAM","DATE",' +
+  '"FROM","DEP.","ARR.","TO","TRAINID","DEPOT","PLANNED","ALLOCATED",' +
+  '"RESOURCE","OWNING CTRL","DISCREPANCY",';
+export const SHORTAGE_OPERATING_CSV = OPERATING_LINES
+  .filter(l => /^(?:RM|GT)\d{3}\s/.test(l))
+  .map(l => OP_HEAD + l.split(/\s{2,}/).filter(Boolean).slice(0, 13)
+    .map(x => '"' + x + '"').join(","))
+  .join("\r\n");

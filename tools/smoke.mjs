@@ -200,6 +200,18 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#svclear").click();
   if (!(await page.locator("#svout").isHidden())) throw new Error("start over should clear the list");
   console.log("sv cleared  :", (await page.textContent("#svstatus")).trim());
+
+  /* And the same report SAVED rather than printed: dropped as the .csv
+     export it used to read as no rows at all, which looked like a clean
+     day. Driven through the panel because that is where it was reported. */
+  const { SHORTAGE_OPERATING_CSV } = await import("../test/helpers/shortage-synth.mjs");
+  await page.setInputFiles("#svfile",
+    [f("uoperatd.csv", SHORTAGE_OPERATING_CSV), detPath, sumPath]);
+  await page.waitForFunction(() => !document.querySelector("#svout").hidden,
+    null, { timeout: 20000 });
+  const csvList = await page.textContent("#svout");
+  if (csvList !== list) throw new Error("the saved report should give the same list:\n" + csvList);
+  console.log("sv csv      :", (await page.textContent("#svstatus")).trim());
 }
 
 await browser.close();
