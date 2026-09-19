@@ -175,6 +175,16 @@ arrived in, the line says so — *splits the 3-unit formation it arrives in
 — 375702+375712 left* — so the depot is asked to split a train only where
 there is need.
 
+**A split after the swap point no longer refuses the swap.** 3.5.0 would
+not put a unit onto a diagram that attached or detached after the swap
+point. RM912 attaches RM913 at Grove Park at 16+25, which refused the very
+AM/PM request the depot makes every day. An attach after the swap is
+nothing to it — the unit is on the diagram and goes where it goes — and a
+detach after it is answered by naming the portion; such a diagram ranks
+after a clean one, and the line still says where it splits. And a unit
+that goes into a depot on one road and out on another is one stand there,
+in on the first working and out on the second.
+
 **The portion.** Where the working named runs as a coupled train that
 splits before the depot and only this diagram's portion goes there, the
 request says which, off the Summary's POS: the lowest position leads and

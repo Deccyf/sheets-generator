@@ -306,7 +306,7 @@ test("fleets stay on their own diagrams, and the same number of units go on the 
      named only as the variation it would be. */
   const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows[0].suggest;
-  assert.equal(s.action, "RE BERTH 14+10 (no shared terminal — depot swap)", JSON.stringify(s));
+  assert.equal(s.action, "RE BERTH 11+15 — T/F AT CHX", JSON.stringify(s));
   assert.ok(!/RM907|375901/.test(s.action), "no 375/9 diagram for a plain 375 while a 375 one ends there: " + JSON.stringify(s));
   assert.match(s.notes.join("; "), /RM907 11\+12 \(variation\)/, "the variation is named as one");
   /* and the other way: the 375/9 wants Ramsgate, RM104 fits the window,
@@ -328,7 +328,7 @@ test("the 375/9 variation is offered only once the same fleets are exhausted", a
      swapped: RM106 splits and has no swap point, and is still named ahead
      of the variation, because the same fleets come first, always */
   const own = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t", "375702\tC\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
-  assert.equal(own.action, "RE BERTH 11+15 (no shared terminal — depot swap)", JSON.stringify(own));
+  assert.equal(own.action, "RE BERTH 11+15 — T/F AT CHX", JSON.stringify(own));
   assert.match(own.notes.join("; "), /RM106 splits at RAM/);
   assert.match(own.notes.join("; "), /or RM907 11\+12 \(variation\)/);
   assert.equal(s.action, "RE BERTH 11+12 — T/F AT CHX", JSON.stringify(s));
@@ -341,18 +341,25 @@ test("the 375/9 variation is offered only once the same fleets are exhausted", a
   assert.equal(f("377514", "375/9"), false);
 });
 
-test("a diagram that splits after the swap point comes last of its fleet, and no changeover is made onto it", async () => {
+test("a diagram that detaches after the swap point is offered with its changeover, after a clean one, and the line says where", async () => {
   /* RM106 is RM104 with a detach at Ramsgate after Charing Cross. With
-     every other way home wanted by its own unit - RM102, RM104 and RM907 -
-     RM106 is all that is left: it is named for a depot swap, never a
-     changeover, and the line says why. */
+     RM104 free it comes second; with RM104 wanted by its own unit it is
+     the way home, changeover and notice included, and the line says it
+     splits at Ramsgate. */
   const res = await swapDay();
+  const clean = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.equal(clean.action, "RE BERTH 11+10 — T/F AT CHX", "RM104 first: " + JSON.stringify(clean));
+  assert.match(clean.notes.join("; "), /or RM106 11\+15/);
   const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t",
                                "375702\tC\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows[0].suggest;
-  assert.equal(s.notice, null, "no changeover onto RM106: " + JSON.stringify(s));
-  assert.equal(s.action, "RE BERTH 11+15 (no shared terminal — depot swap)");
-  assert.match(s.notes.join("; "), /RM106 splits at RAM/, "and the line says why");
+  assert.equal(s.action, "RE BERTH 11+15 — T/F AT CHX", JSON.stringify(s));
+  assert.deepEqual(norm(s.notice), [
+    "375703 REQD RE EOD FOR A EXAM - CHX PLEASE NOTE",
+    "2A03 05 20 AFK - CHX T/F 2R06 09 15 CHX - RAM",
+    "2W06 06 05 RAM - CHX T/F 2A04 09 30 CHX - HGS",
+  ]);
+  assert.match(s.notes.join("; "), /RM106 splits at RAM/, "and the line says where");
 });
 
 test("two lines wanting the same working: the nearer, then RED, then CON, goes first and the other gets the next", async () => {
@@ -370,7 +377,7 @@ test("two lines wanting the same working: the nearer, then RED, then CON, goes f
   const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375705\tB\tMON AM 03/08\tRE\t"]), res, {});
   const [s3, s5] = out.rows.map(r => r.suggest);
   assert.equal(s5.action, "RE BERTH 11+10 (no shared terminal — depot swap)", "375705, due today, gets RM104: " + JSON.stringify(s5));
-  assert.equal(s3.action, "RE BERTH 14+10 (no shared terminal — depot swap)", "375703 is given the next, RM102, not RM104 twice: " + JSON.stringify(s3));
+  assert.equal(s3.action, "RE BERTH 11+15 — T/F AT CHX", "375703 is given the next, RM106, not RM104 twice: " + JSON.stringify(s3));
   assert.deepEqual(norm(out.tiered.map(r => r.unit)), ["375705", "375703"], "nearest first lists them in that order");
   assert.deepEqual(norm(out.rows.map(r => r.unit)), ["375703", "375705"], "the plan keeps its own order");
 });
@@ -386,7 +393,8 @@ test("a 12-car is three diagrams on one working: it carries three requests, an 8
         S("CHRX", "09:50", "09:55", "2A10"), S("HASTING", "12:00", "12:10", "5H09"), S("HASTPSD", "12:20", "", "")] }]);
   const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
   const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
-                               "375705\tC\tTUE AM 04/08\tRE\t", "375709\tA\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t"]), res, {});
+                               "375705\tC\tTUE AM 04/08\tRE\t", "375709\tA\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t",
+                               "375706\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows.map(r => r.suggest);
   assert.equal(s[0].action, "GP BERTH 5J70/5R00", JSON.stringify(s[0]));
   assert.match(s[0].notes.join("; "), /375702 takes 5F43/);
@@ -398,7 +406,8 @@ test("a 12-car is three diagrams on one working: it carries three requests, an 8
   assert.equal(s[4].action, "RE HOLD", "375704 ends at Ramsgate anyway");
   // with 375708 wanted at Ramsgate itself, RM108 is not displaced and the train has two slots
   const two = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
-                               "375705\tC\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t", "375708\tA\tTUE AM 04/08\tRE\t"]), res, {});
+                               "375705\tC\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t", "375708\tA\tTUE AM 04/08\tRE\t",
+                               "375706\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const t = two.rows.map(r => r.suggest);
   assert.match(t[0].notes.join("; "), /375702 takes 5F43/);
   assert.match(t[1].notes.join("; "), /375718 off it/, "375708 is not displaced: " + JSON.stringify(t[1]));

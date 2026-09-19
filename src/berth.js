@@ -483,8 +483,10 @@ function unitDay(unit, genius, date) {
     /* where one segment ends and the next begins at the same place, that
        is one stand: in on the first working, out on the second */
     const last = stops[stops.length - 1];
-    if (last && seg.length && seg[0].code === last.code && last.dep == null && seg[0].arr == null) {
-      last.dep = seg[0].dep; last.hcOut = seg[0].hcOut; last.diagOut = seg[0].diag;
+    const sameDepot = (a, b) => a === b || (!!DEPOT_CODES.get(a) && DEPOT_CODES.get(a) === DEPOT_CODES.get(b));
+    if (last && seg.length && sameDepot(seg[0].code, last.code) && last.dep == null && seg[0].arr == null) {
+      // in on one road of the depot, out on another: still one stand
+      last.dep = seg[0].dep; last.hcOut = seg[0].hcOut; last.diagOut = seg[0].diag; last.codeOut = seg[0].code;
       stops = stops.concat(seg.slice(1));
     } else stops = stops.concat(seg);
     for (const r of (win.length ? win : raw)) if (/^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "")) {
@@ -559,11 +561,13 @@ const fits = (unit, fleet) => familyOfUnit(unit) === familyOfFleet(fleet);
 const loosely = f => (f === "375" || f === "375/9") ? "375*" : f;
 const fitsLoosely = (unit, fleet) => loosely(familyOfUnit(unit)) === loosely(familyOfFleet(fleet));
 function splitsAfter(day, idx) {
-  // an attach or detach at or after this stop, by the raw rows' clock; a
-  // day that ends at this stop has nothing after it
+  // a DETACH at or after this stop, by the raw rows' clock: the train
+  // splits and the request has to name the portion. An attach after it is
+  // nothing to a swap - the unit is on the diagram and goes where it goes.
+  // A day that ends at this stop has nothing after it.
   const t = day.stops[idx].dep;
   if (t == null) return false;
-  return day.raw.some(r => /^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "") &&
+  return day.raw.some(r => /^(DETACH|DETTT)$/.test(r.ev || "") &&
     r.dep != null && r.dep >= t);
 }
 function swapBetween(mine, theirs) {
@@ -576,9 +580,10 @@ function swapBetween(mine, theirs) {
     if (x.arr != null && y.dep != null && x.arr + SWAP_MARGIN > y.dep) return;
     if (y.arr != null && x.dep != null && y.arr + SWAP_MARGIN > x.dep) return;
     if (x.arr == null || y.dep == null) return;
+    /* a diagram that detaches after the swap point is still a way home -
+       the request names the portion - it just ranks after a clean one */
     const cand = { kind, at, mine: x, theirs: y, gap: Math.abs(x.arr - (y.arr != null ? y.arr : x.arr)),
                    splitsMine: splitsAfter(mine, x.idx), splitsTheirs: splitsAfter(theirs, y.idx) };
-    if (cand.splitsTheirs) return;
     // a swap where both stand at a depot is the easier one to make
     const rank = (kind === "depot" ? 0 : 1000) + cand.gap;
     if (!best || rank < best.rank) best = { ...cand, rank };
@@ -773,7 +778,8 @@ function candidatesFor(r, mine, days, wanted, taken) {
       cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0) || 0) : 0) + 1;
       if (cand.slot > cand.slots) continue;
     }
-    cand.rank = (strict ? 0 : 10) + (swap ? 0 : morning ? 0.5 : 1) + (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0);
+    cand.rank = (strict ? 0 : 10) + (swap ? (swap.splitsTheirs ? 0.25 : 0) : morning ? 0.5 : 1) +
+                (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0);
     out.push(cand);
   }
   out.sort((p, q) => (p.rank - q.rank) || (p.day.endTime - q.day.endTime));
