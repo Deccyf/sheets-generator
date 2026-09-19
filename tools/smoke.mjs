@@ -245,5 +245,34 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
     throw new Error("unticking both should give the plain list back");
 }
 
+/* ---- berth requests: off the weekday build, so it needs a Summary with
+   units on it - the CSV export the way the evening print has it ---- */
+{
+  const { geniusSummaryCsvWithUnits, geniusDetailCsv } = await import("../test/helpers/synth.mjs");
+  await page.reload();
+  await page.locator("#mode_br").click();
+  console.log("br idle     :", (await page.textContent("#brstatus")).trim());
+  await page.locator("#mode_wk").click();
+  await page.setInputFiles("#file", [
+    f("udiagsum.csv", geniusSummaryCsvWithUnits({ GT101: "375601.", GT102: "375602." })),
+    f("diagdet2.csv", geniusDetailCsv())]);
+  await page.waitForFunction(() =>
+    document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+  await page.locator("#mode_br").click();
+  console.log("br ready    :", (await page.textContent("#brstatus")).trim());
+  await page.fill("#brplan", ["Exams", "Unit Nr \tExam\t\tWhere\tAction",
+    "375601\tA\tTUE AM 04/08\tAFK\tAFK HOLD", "375602\tB\tMON PM 03/08\tAFK\tENDS AFK",
+    "375699\tA\tTUE AM 04/08\tRE\tSTOPPED RE"].join("\n"));
+  await page.fill("#brignore", "375699");
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => !document.querySelector("#brout").hidden, null, { timeout: 10000 });
+  const table = await page.textContent("#brout");
+  if (!/375601 .*on GT101 · ENDS DVP 23\+50 · calls AFK/.test(table)) throw new Error("375601 should be placed:\n" + table);
+  if (!/375602 .*ends where it is wanted/.test(table)) throw new Error("375602 ends at Ashford:\n" + table);
+  if (!/375699 .*O\/O\/S — ignored/.test(table)) throw new Error("the ignore box should take:\n" + table);
+  console.log("br built    :", (await page.textContent("#brstatus")).trim());
+  console.log("br note     :", (await page.textContent("#brnote")).trim());
+}
+
 await browser.close();
 console.log("SMOKE OK");

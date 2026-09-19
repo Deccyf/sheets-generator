@@ -878,3 +878,16 @@ export const FLEET_LINES = [
   "\t\tOther Dep\t22.00\t\t\t\t100.0\t",
   "Total miles:\t100.0",
 ];
+
+/* The same Summary export with the UNITS column filled, as the print run
+   after allocation has it: a diagram -> "375601." or "375601, 375602." */
+export function geniusSummaryCsvWithUnits(units) {
+  return SUMMARY_LINES.slice(2).map(l => {
+    const t = l.split(/\s{2,}/);
+    const [diag, fleet, , pos, start, from, to, end] = t;
+    const u = units[diag] ? '"' + units[diag] + '"' : "";
+    return GHEAD + ['"' + diag + '"', u, '"' + fleet + '"', "0.00", pos,
+      '"' + start + '"', '"' + from + '"', '"' + to + '"', '"' + end + '"',
+      "-0.60", "100.00", "100.00", "", ""].join(",");
+  }).join("\r\n");
+}

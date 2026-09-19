@@ -452,6 +452,17 @@
     .view{max-height:none; overflow:visible; border:0}
   }
 
+  /* ---- berth requests ---- */
+  .brgrid{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:12px; margin-top:14px}
+  .brfield{display:flex; flex-direction:column; gap:6px; min-width:0}
+  .brfield textarea{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px;
+    line-height:1.45; padding:8px 10px; border:1px solid var(--apron-dk); border-radius:4px;
+    background:var(--paper); color:inherit; resize:vertical; white-space:pre; overflow:auto}
+  .brout{font-size:12px; line-height:1.5}
+  .mode .tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; margin-left:6px}
+  .svrules-body h4{margin:14px 0 6px; font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase}
+  @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
+
 /* The analyser's own furniture. The shared stylesheet gives the page its
    colours, header and drop zone; what follows is the report itself, which
    the berthing sheets have no equivalent of. */

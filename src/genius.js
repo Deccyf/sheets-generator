@@ -1495,7 +1495,15 @@ const GENIUS = (() => {
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
     if (!byDate.size) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
-    return assemble(sumRows, byDate, notes.concat(startOfDayOnly(sumRows, byDate) || []), opts);
+    const out = assemble(sumRows, byDate, notes.concat(startOfDayOnly(sumRows, byDate) || []), opts);
+    /* What was read, handed on as read: the Summary's rows (unit, diagram,
+       where it starts and ends) and the Detail's itineraries by date. The
+       berth-request road works from these rather than from the books, so
+       it asks the same reports the books were built from and never a
+       second copy. */
+    out.summary = sumRows;
+    out.detail = byDate;
+    return out;
   }
 
   /* Which way round a formation reads comes from the Position, and the
@@ -1609,6 +1617,12 @@ const GENIUS = (() => {
     const d = String(raw || "").replace(/\D/g, "").replace(/^0+/, "");
     return d.length >= 6 ? d.slice(-3) : "";
   }
+  /* The whole numbers, every one of them: a formation's cell reads
+     "395011, 395023." and unitNo keeps the last three digits of the last
+     one, which is what the books print. The berth-request road looks a
+     unit up by its full number and needs to find it whichever end of the
+     formation it is on. */
+  function unitList(raw) { return String(raw || "").match(/\d{6}/g) || []; }
   /* Returns the column numbers, or the names that are not there. An export
      can be the right report with the wrong columns picked - the 16/08
      Integrale Summary came out without Cov, Position and Last Train Note,
@@ -1789,7 +1803,7 @@ const GENIUS = (() => {
       // is the allocated unit when the controller has filled it in
       out.push({ date: shortDate((r[di] || "").trim()), diag: f[0], fleet: f[2],
                  pos: parseInt(f[4], 10) || 1, start: st,
-                 from: f[6], to: f[7], end: en, unit: unitNo(f[1]) });
+                 from: f[6], to: f[7], end: en, unit: unitNo(f[1]), units: unitList(f[1]) });
     }
     return out;
   }

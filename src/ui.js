@@ -739,7 +739,8 @@ function roadCard(spec) {
 /* ---------------- the mode switch ---------------- */
 const MODES = { wk: { tab: $("#mode_wk"), panel: $("#wkPanel") },
                 we: { tab: $("#mode_we"), panel: $("#wePanel") },
-                sv: { tab: $("#mode_sv"), panel: $("#svPanel") } };
+                sv: { tab: $("#mode_sv"), panel: $("#svPanel") },
+                br: { tab: $("#mode_br"), panel: $("#brPanel") } };
 function currentMode() {
   for (const k of Object.keys(MODES))
     if (MODES[k].tab && MODES[k].tab.getAttribute("aria-selected") === "true") return k;
@@ -865,6 +866,7 @@ const panels = {};
     roadsEl.textContent = "";
     P.showBars(false);
     built = null; lastRes = null; lastInputs = null;
+    window.__lastWeekdayBuild = null;
     return had;
   }
   const have = {};           // sum / det, whichever has arrived
@@ -880,6 +882,7 @@ const panels = {};
       ? GENIUS.buildIntegrale(lastInputs.pair, opts)
       : await GENIUS.build(lastInputs.pair, opts);
     lastRes = res;
+    window.__lastWeekdayBuild = res;       // the berth-request road reads it
     await renderBooks(res);
   }
   const rebuild = (msg, rerun) => enqueue(async () => {
@@ -1415,6 +1418,55 @@ function decodeText(u8) {
    Its own small panel: two reports in, one written list out. Nothing here
    builds a workbook, so it shares the drop furniture and the status line
    and none of the book machinery. */
+/* ---------------- berth requests ---------------- */
+(function brPanel() {
+  const plan = $("#brplan"), ignore = $("#brignore"), go = $("#brgo");
+  if (!plan || !go) return;
+  const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
+  const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
+  let text = "";
+  const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
+  const idle = () => {
+    const res = window.__lastWeekdayBuild;
+    if (!res) say("Build the weekday books first — this reads the same reports.");
+    else {
+      const filled = (res.summary || []).filter(r => r.units && r.units.length).length;
+      say(filled ? "Weekday books built for " + Object.values(res.labels).join(", ") + " — paste the plan and read it."
+                 : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation.", filled ? "" : "err");
+    }
+  };
+  idle();
+  for (const t of [$("#mode_br")]) if (t) t.addEventListener("click", () => { if (!text) idle(); });
+  go.addEventListener("click", () => {
+    const res = window.__lastWeekdayBuild;
+    if (!res) { say("Build the weekday books first — this reads the same reports.", "err"); return; }
+    if (!plan.value.trim()) { say("Paste the maintenance plan first.", "err"); return; }
+    let r;
+    try { r = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "" }); }
+    catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
+    text = SHEETS_BERTH.render(r);
+    out.textContent = text; out.hidden = false; bar.hidden = false;
+    rev.textContent = "";
+    for (const m of r.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
+    revWrap.hidden = r.reviews.length === 0;
+    note.textContent = r.units + " units on the plan, " + r.inTraffic + " in traffic on " + r.date +
+      (r.ignored ? ", " + r.ignored + " out of service" : "");
+    say(r.lines + " plan lines read against " + r.date + ". Nearest first.", "go");
+  });
+  if ($("#brcopy")) $("#brcopy").addEventListener("click", async () => {
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+    catch (e) { say("This browser would not let the page copy. Select the table and copy it by hand.", "err"); }
+  });
+  if ($("#brsave")) $("#brsave").addEventListener("click", () => {
+    if (!text) return;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "BERTH_REQUESTS.txt"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+})();
+
 (function svPanel() {
   const zone = $("#svberth"), input = $("#svfile"), statusEl = $("#svstatus");
   if (!zone || !input) return;

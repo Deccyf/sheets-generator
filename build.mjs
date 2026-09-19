@@ -66,6 +66,7 @@ const modules = [
   "src/genius.js",
   // after genius.js: it reads the same reports and borrows its PDF extractor
   "src/shortage.js",
+  "src/berth.js",
   "src/sprites.js",
   "src/ui.js",
 ];

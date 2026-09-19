@@ -161,6 +161,8 @@
       aria-selected="false" aria-controls="wePanel">Weekend · Sat &amp; Sun</button>
     <button type="button" class="mode" id="mode_sv" role="tab"
       aria-selected="false" aria-controls="svPanel">Shortages &amp; variations</button>
+    <button type="button" class="mode" id="mode_br" role="tab"
+      aria-selected="false" aria-controls="brPanel">Berth requests <span class="tag">experimental</span></button>
   </div>
 
   <section class="platform" id="wkPanel" role="tabpanel" aria-labelledby="mode_wk">
@@ -441,6 +443,130 @@
           <code>AFUS</code>, <code>DVPS</code>, <code>GPUS</code> — because a
           discrepancy is worked off a road. The two vocabularies are
           deliberately apart.</p>
+      </div>
+    </details>
+  </section>
+
+  <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
+    <h2 class="vh">Berth requests from the maintenance plan</h2>
+    <p class="whatfor">Works off the <strong>weekday books</strong> once they
+      are built — the same Diagram Summary and Diagram Detail, so drop those
+      on the weekday tab first, and drop the Summary that was printed
+      <strong>after allocation</strong> (the evening one), because the morning
+      print has no units on it. Then paste the maintenance plan out of the
+      Telex workbook below. For every line of it this says where that unit is
+      today, where and when it ends tonight, and whether it calls at the place
+      the plan wants it. Your own Action column is shown beside that and never
+      written over. This is the <em>facts</em> stage: nothing here decides
+      anything yet, and the rules it will decide by are written out at the
+      bottom, to be corrected before any of them fires.</p>
+
+    <div class="brgrid">
+      <label class="brfield">
+        <span class="opts-label">The plan, pasted from the workbook</span>
+        <textarea id="brplan" rows="9" spellcheck="false"
+          placeholder="Exams&#10;Unit Nr&#9;Exam&#9;&#9;Where&#9;Action&#10;375605&#9;A&#9;SAT AM 19/09&#9;RE&#9;STOPPED RE&#10;…"></textarea>
+      </label>
+      <label class="brfield brfield-small">
+        <span class="opts-label">Out of service — ignore these</span>
+        <textarea id="brignore" rows="3" spellcheck="false"
+          placeholder="376036 375924 …"></textarea>
+      </label>
+    </div>
+    <div class="opts-row">
+      <button class="btn" id="brgo" type="button">Read the plan</button>
+      <span class="note" id="brhint"></span>
+    </div>
+
+    <div class="board">
+      <p class="status" id="brstatus" role="status" aria-live="polite"></p>
+      <div class="board-acts" id="brbar" hidden>
+        <button class="btn light" id="brcopy" type="button">Copy the table</button>
+        <button class="btn light" id="brsave" type="button">Save as text</button>
+        <span class="note" id="brnote"></span>
+      </div>
+    </div>
+
+    <pre class="svout brout" id="brout" hidden></pre>
+
+    <div class="svreview" id="brreviewwrap" hidden>
+      <h3>Review</h3>
+      <ul id="brreview"></ul>
+    </div>
+
+    <details class="svrules" id="brrules">
+      <summary>What this table is working from, and the rules to come</summary>
+      <div class="svrules-body">
+        <p><b>What is read now.</b> Each plan line&rsquo;s unit is looked up on
+          the Diagram Summary&rsquo;s UNITS column for the day the books were
+          built for, which gives its diagram or diagrams; the Diagram Detail
+          gives that diagram&rsquo;s calls in order, so the table can say where
+          it ends tonight and when, and every call it makes at the place the
+          plan names. A time past midnight is said so. A unit with no diagram
+          that day is <i>not in traffic today</i> &mdash; usually because it is
+          already stopped for the work the plan lists.</p>
+        <p><b>Nearest first.</b> Lines due today, tomorrow, <code>ASAP</code>
+          or already overdue come first; then the rest of the week and the
+          mileage triggers; then everything later. One day&rsquo;s reports say
+          where a unit is today and where it ends tonight, not which diagram
+          it takes tomorrow &mdash; that is the allocator&rsquo;s choice each
+          morning &mdash; so the further out a line is, the less there is to
+          say beyond where the unit ends, which is what the plan itself writes
+          (<code>ENDS DVP</code>).</p>
+        <p><b>The plan&rsquo;s places.</b> <code>RE</code> is any road at
+          Ramsgate, <code>GP</code> any of the three Grove Park roads,
+          <code>SG</code> the Slade Green roads, <code>AFK</code> the Ashford
+          sidings and platform, <code>XSE</code> St Leonards,
+          <code>FKE</code> Folkestone East. <code>SU</code> is Selhurst, which
+          is off this network: a 377 bound there goes over on a fleet move
+          from Victoria, so a line for SU is answered by where the unit ends.</p>
+        <p><b>Out of service.</b> A unit listed in the box above is broken and
+          being dealt with directly, so its lines are marked and left out of
+          anything that follows.</p>
+
+        <h4>The rules to come &mdash; as the depot gave them, not yet applied</h4>
+        <p><b>Hold.</b> <code>RE HOLD</code> where the unit ends at Ramsgate
+          and the exam or maintenance is due the next morning; a PM job can
+          let it run the morning first. A defect with a target date needs the
+          unit back at Ramsgate by that date &mdash; arriving after midnight
+          on a diagram that gets there counts. Exams are wanted back by
+          <b>20 00</b> at the earliest where it can be done, and not after
+          <b>22 00</b>.</p>
+        <p><b>Changeovers.</b> Possible at Ramsgate and at the London
+          terminals, so long as nothing is delayed, and the unit can end back
+          at the depot. Where a unit is on a diagram through Ramsgate a
+          changeover there will be offered, in the depot&rsquo;s own notice
+          form (<i>2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS</i>). Never one
+          that loses maintenance or a defect back to the depot, and always
+          with the unit&rsquo;s restrictions in view.</p>
+        <p><b>Fleet moves.</b> The standing set of empty paths between depots
+          (5Y17 10+10 SG&nbsp;&ndash;&nbsp;RE, 5R00 11+12 GP&nbsp;&ndash;&nbsp;RE,
+          5Y39/41 VIC&nbsp;&ndash;&nbsp;SU and the rest): a unit that is at
+          the right place in time for one can be sent on it.</p>
+        <p><b>Swapping exams.</b> When the berth requests run out, exams that
+          arrive at Ramsgate earlier can be swapped around, so long as they do
+          not clash with other maintenance.</p>
+        <p><b>Defects, by kind.</b> The priority column is read down to its
+          kind and shown on the line: <code>EOD</code> is back at a
+          maintenance depot by the end of the day; <code>MO</code> and
+          <code>NM</code> are restrictions; <code>PERF</code> a performance
+          defect. Which depot is a matter of class, and the table already
+          asks for the right one: a <b>376</b> to Slade Green or Gillingham,
+          a <b>375</b> to Ramsgate, a <b>375/3</b> to Ramsgate or Ashford. A
+          377 is Selhurst&rsquo;s and is handed over at Ashford.</p>
+        <p><b>AMAT and MSE.</b> <code>AMAT</code> is awaiting materials: no
+          berth request, unless the defect is also a restriction, in which
+          case it still needs one. <code>MSE</code> is the mobile engineers,
+          who may go out to the unit in a van: if they are attending it needs
+          no berth request, and if they are not it goes to the nearest place
+          to the maintenance depot it can reach. Both words are picked up
+          wherever they are written on the line and shown; the question of
+          whether MSE are attending is one the panel will ask.</p>
+        <p><b>Splitting diagrams.</b> Nothing will be suggested that puts a
+          unit onto a diagram that splits.</p>
+        <p><b>Words.</b> <code>O/H</code> is on hand &mdash; there and usable;
+          <code>SP @</code> is spare there, the same thing. <code>O/O/S</code>
+          is out of service.</p>
       </div>
     </details>
   </section>

@@ -140,6 +140,71 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.3.0 — 19 September 2026 — berth requests, the facts first
+
+**A fourth tab, marked experimental.** The planner pastes the maintenance
+plan out of the Telex workbook — Exams, Campaigns, Scheduled Maint,
+Requests, UAT, MLT/Lathe, Defects, each with its own columns — and for
+every line of it the tab says where that unit is today, on which diagram,
+where and when it ends tonight, and every call it makes at the place the
+plan wants it. Read off the same Diagram Summary and Diagram Detail the
+weekday books were just built from, so it asks the reports the books came
+from and never a second copy. The planner's own Action column is shown
+beside the facts and never written over.
+
+**Nearest first.** Lines due today, tomorrow, `ASAP` or overdue; then the
+rest of the week and the mileage triggers; then everything later. One
+day's reports say where a unit is today and where it ends tonight, not
+which diagram it takes tomorrow — that is the allocator's choice each
+morning — so the further out a line is the less there is to say beyond
+where the unit ends, which is what the plan itself writes (`ENDS DVP`).
+Every way the plan writes a date is read: `SAT AM 19/09`, `EOD SUN 20/09`,
+`20 00 THU 24/09`, `AFTER AM PEAK MON 21/09`, the Defects'
+`30/09/2026 00:00:00`, and `AFTER 1250 MILES`, which is a trigger and not
+a date.
+
+**Held against the planner's own hand.** The plan for the week of 19/09,
+84 units over 115 lines, read against the Friday 18/09 reports: 73 of the
+84 are on a diagram that day, and the eleven that are not are exactly the
+ones the plan has stopped at a depot. Where the planner had written where a
+unit ends, the reports already agreed — `O/H SGUPS` against a unit ending
+in the Slade Green up sidings, `O/H FKE` against three ending at Folkestone
+East, `SP @ XSE` against two ending at St Leonards, `RE HOLD FOR MON`
+against one ending at Ramsgate at 19+54.
+
+**What was needed to make that work.** The Summary reader kept a unit's
+last three digits, which is what the books print, and for a formation kept
+the LAST unit's — so a plan line for the first unit of a pair found
+nothing. Every row now also carries the whole numbers, all of them. And
+the weekday build hands back what it read, the Summary rows and the Detail
+itineraries, as `summary` and `detail`.
+
+**What the facts say.** A call names the arrival, marked empty or not by
+what it came in on, a stand of an hour or more as a stand, and what it
+leaves on — the three things a berth request is written from:
+`calls AFK 05+35 off 2A01, AFK 10+40 (stands 3.3 h) off 5A05`. Where a
+unit started the day is not a call. A time past midnight is said so. A
+defect's home is a matter of class and the line asks for the right one — a
+376 for Slade Green or Gillingham, a 375 for Ramsgate, a 375/3 for either
+Ramsgate or Ashford — and its kind is read down from the priority column,
+`EOD`, `MO`, `NM` or `PERF`, and shown; `AMAT` and `MSE` are picked up
+wherever they are written and shown too. A box takes the units that are
+out of service, and their lines are marked and left alone.
+
+**What it does not yet do is decide.** The depot gave the rules and they
+are written into the tab's rulebook as given, marked as coming: `RE HOLD`
+where a unit ends at Ramsgate with the work due next morning; exams back
+by 20 00 where it can be done and never after 22 00; a defect's target date
+met by an after-midnight arrival; changeovers at Ramsgate and the London
+terminals in the depot's own notice form, never one that loses maintenance
+back to the depot; the standing fleet moves between depots; swapping exams
+that arrive earlier; AMAT needing no request unless restricted; MSE
+attending needing none, and not attending needing the nearest reachable
+place; nothing onto a splitting diagram. Shipping the facts first is the
+point: they are what those rules will be applied to, and they are to be
+proved against the planner's hand on real days before a suggestion is
+ever made off them.
+
 ## 3.2.8 — 19 September 2026 — the small hours, and a swap that has to be undone
 
 **Reported as the list not showing services after midnight.** It was not.
