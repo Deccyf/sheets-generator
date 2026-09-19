@@ -962,7 +962,7 @@ test("with no Diagram Summary the Allocation Summary places every unit, and the 
   rd.alloc = B().parseAllocation(ALLOC_CSV);
   const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375705\tB\tTUE AM 04/08\tRE\t", "375703\tA\tTUE AM 04/08\tRE\t"]), rd, {});
   assert.equal(out.date, "03/08/26");
-  assert.ok(out.reviews.some(m => /Allocation Summary for 03\/08\/26 places 3 units — no Diagram Summary, so it places every unit/.test(m)), out.reviews.join(" | "));
+  assert.ok(out.reviews.some(m => /Allocation Summary for 03\/08\/26 places 3 units — no Diagram Summary for 03\/08\/26, so it places every unit/.test(m)), out.reviews.join(" | "));
   assert.ok(!out.reviews.some(m => /has no units on it/.test(m)));
   const [a, b, c] = out.rows;
   assert.equal(a.inTraffic, true); assert.equal(a.ends.place, "GP");
@@ -986,4 +986,28 @@ test("with a Diagram Summary the Allocation Summary fills in the units it has no
   assert.equal(out.rows[0].viaAlloc, true);
   assert.equal(out.rows[0].suggest.action, "GP BERTH 5R00", JSON.stringify(out.rows[0].suggest));
   assert.equal(out.rows[1].viaAlloc, false, "375703 is on the Summary");
+});
+
+test("today's Allocation Summary with tomorrow's Summary and Detail: today is the allocation's day, the departures tomorrow's", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const rd = await N.GENIUS.read([p.summary, p.detail]);          // both for 03/08
+  // 375701 ends Sunday 02/08 at Grove Park; the plan wants it at Ramsgate on the Monday
+  rd.alloc = B().parseAllocation(allocRow("375701", "RM101", "02/08/26 05:00", "RAMSGTD", "RM101", "02/08/26 22:00", "GRVPCSD"));
+  const out = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t"]), rd, {});
+  assert.equal(out.date, "02/08/26", "the allocation's day is today, the Summary's tomorrow");
+  assert.ok(out.reviews.some(m => /Allocation Summary for 02\/08\/26 places 1 units — no Diagram Summary for 02\/08\/26/.test(m)), out.reviews.join(" | "));
+  assert.ok(out.reviews.some(m => /departures are off the 03\/08\/26 Detail, tomorrow's/.test(m)), out.reviews.join(" | "));
+  const r = out.rows[0];
+  assert.equal(r.viaAlloc, true); assert.equal(r.ends.place, "GP");
+  assert.match(r.suggest.action, /^GP BERTH 5(J01|R00)/, JSON.stringify(r.suggest));
+});
+
+test("an Allocation Summary for some other day places nothing, and is named", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const rd = await N.GENIUS.read([p.summary, p.detail]);
+  rd.alloc = B().parseAllocation(allocRow("375701", "RM101", "20/07/26 05:00", "RAMSGTD", "RM101", "20/07/26 22:00", "GRVPCSD"));
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.equal(out.date, "03/08/26");
+  assert.ok(out.reviews.some(m => /Allocation Summary dropped is for 20\/07\/26, not 03\/08\/26 — it places nothing today/.test(m)), out.reviews.join(" | "));
+  assert.equal(out.rows[0].viaAlloc, false, "the Summary places it");
 });

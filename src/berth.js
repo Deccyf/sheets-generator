@@ -401,6 +401,22 @@ function allocRows(rec, dets) {
 function allocFor(genius, date) {
   return genius && genius.alloc && genius.alloc.get ? (genius.alloc.get(date) || null) : null;
 }
+/* Today: the day the Diagram Summary is for; with none, the day the
+   Allocation Summary is for. An Allocation Summary for the day before the
+   Summary (up to three days before - the Friday's dropped with a Monday's)
+   is today instead: it says where every unit ends tonight, and the Summary
+   dropped with it is tomorrow's, for tomorrow's units. One for any other
+   day places nothing, and the review says so. */
+const dayOf = d => { const t = parseShort(d); return t ? t.getTime() : 0; };
+function runDate(sumDates, allocDates) {
+  const s = sumDates.slice().sort((a, b) => dayOf(a) - dayOf(b))[0] || null;
+  const as = allocDates.slice().sort((a, b) => dayOf(a) - dayOf(b));
+  for (const a of as) {
+    const n = s ? Math.round((dayOf(s) - dayOf(a)) / 86400000) : 0;
+    if (!s || (n >= 1 && n <= 3)) return a;
+  }
+  return s || as[0] || null;
+}
 
 /* ---------- the weekend diagram prints as a Detail ----------
    The prints name places the depot's short way - "Ram Depot", "G Pk Dep",
@@ -1270,7 +1286,8 @@ function run(planText, genius, opts) {
   const plan = mergeDefects(parsePlan(planText), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
-  const date = opts.date || ((genius && genius.summary && genius.summary.length) ? genius.summary[0].date : (allocDates[0] || null));
+  const sumDates = [...new Set((genius && genius.summary || []).map(r => r.date))].filter(Boolean);
+  const date = opts.date || runDate(sumDates, allocDates);
   const today = date ? parseShort(date) : null;
   if (!date) reviews.push("No weekday reports are loaded, so nothing can be said about where any unit is — build the weekday books first.");
   const ignore = new Set(String(opts.ignore || "").match(/\d{6}/g) || []);
@@ -1280,7 +1297,10 @@ function run(planText, genius, opts) {
   const filled = dayRows.filter(r => r.units && r.units.length).length;
   const allocHere = allocFor(genius, date);
   if (allocHere) reviews.push("The Allocation Summary for " + date + " places " + allocHere.size + " units" +
-    (dayRows.length ? " — used for any unit the Diagram Summary has no row for." : " — no Diagram Summary, so it places every unit."));
+    (dayRows.length ? " — used for any unit the Diagram Summary has no row for." : " — no Diagram Summary for " + date + ", so it places every unit."));
+  else if (allocDates.length && date)
+    reviews.push("The Allocation Summary dropped is for " + allocDates.join(", ") + ", not " + date + " — it places nothing today. " +
+                 "Drop the one for " + date + " (or the day before it, with tomorrow's Summary and Detail).");
   if (date && !filled && allocHere) { /* the allocation does the placing */ }
   else if (date && !filled)
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +

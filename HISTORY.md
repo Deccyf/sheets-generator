@@ -151,7 +151,12 @@ unit that Summary has no row for. A unit that starts on one diagram and
 finishes on another is read as two segments, the second beginning on the
 finishing diagram's first call after the first has ended, and a segment
 the Detail has no calls for still ends where its row says. The reader
-now takes a Detail on its own, for this.
+now takes a Detail on its own, for this. It is read for its own day:
+today's allocation dropped with tomorrow's Summary and Detail makes
+today the allocation's day and the departures tomorrow's (the day turn,
+with the allocation in place of the evening Summary), and one for any
+other day places nothing and is named in the review, not dropped
+silently.
 
 **The tab's introduction was a column down the left** with the rest of
 the width empty and a paragraph that had grown into a wall. It is two
