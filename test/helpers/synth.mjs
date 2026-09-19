@@ -891,3 +891,33 @@ export function geniusSummaryCsvWithUnits(units) {
       "-0.60", "100.00", "100.00", "", ""].join(",");
   }).join("\r\n");
 }
+
+/* ---- a weekday pair built from a list of diagrams ----
+   For the berth-request road, which needs particular shapes of day: two
+   diagrams standing at one depot with time in hand, two calling at one
+   London terminal around the same time. Each diagram is {code, fleet,
+   units, stops:[{code, name, arr, dep, hc, ev}]}; the Summary row is made
+   from its first and last stops, the Detail rows from each leg, and "ev"
+   goes in the activity column the way ATTACH and DETACH come out of
+   Genius. Monday 03/08/26, like the rest. */
+export function geniusPairCsv(diags) {
+  const summary = diags.map(d => {
+    const a = d.stops[0], z = d.stops[d.stops.length - 1];
+    return GHEAD + ['"' + d.code + '"', d.units ? '"' + d.units + '"' : "", '"' + (d.fleet || "375/6") + '"',
+      "0.00", d.pos || 1, '"' + a.dep + '"', '"' + a.code + '"', '"' + z.code + '"',
+      '"' + (z.arr || z.dep) + '"', "-0.60", "100.00", "100.00", "", ""].join(",");
+  }).join("\r\n");
+  const detail = [];
+  for (const d of diags) {
+    const head = GDET + '"Diagram","' + d.code + '","On","03/08/26","Notes",,"Miles","Fuel Miles",';
+    for (let i = 0; i + 1 < d.stops.length; i++) {
+      const a = d.stops[i], b = d.stops[i + 1];
+      detail.push(head + ['"' + a.code + '"', '"' + (a.name || a.code) + '"',
+        a.arr ? '"' + a.arr + '"' : "", a.dep ? '"' + a.dep + '"' : "", a.ev ? '"' + a.ev + '"' : "",
+        '"' + (a.hc || "") + '"', "1.00", "1.00",
+        '"' + b.code + '"', '"' + (b.name || b.code) + '"',
+        '"' + (b.arr || b.dep) + '"', '"Off Diagram"', '"  000"', '"Works"', '"  000"'].join(","));
+    }
+  }
+  return { summary, detail: detail.join("\r\n") };
+}

@@ -498,7 +498,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.4.0</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.5.0</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -1017,20 +1017,43 @@
           unit ends at a depot with a standing empty path to it that runs the
           next day, the path is named &mdash; <i>5Y17 10+10 SG&nbsp;&ndash;&nbsp;RE
           (SuX)</i>. The set is Engineering Planning&rsquo;s own sheet.</p>
+        <p><b>A berth request, not &ldquo;ends elsewhere&rdquo;.</b> A near
+          line whose unit neither ends nor calls where it is wanted is given
+          a working that <em>does</em> end there tonight, off the same
+          reports the books were built from, and the swap that gets the unit
+          onto it. The request is named the way that depot names workings:
+          <b>Gillingham, Victoria and Grove Park by headcode</b>, everywhere
+          else by the <b>time</b> the working left &mdash; off the platform
+          if it went into the platform first, off the stop if it ran empty
+          from somewhere &mdash; which is the time the berthing book writes
+          for it.</p>
+        <p><b>The swap.</b> Cross-referenced with the diagrams that are at
+          the same place around the same time and go on to end at the depot.
+          At <b>Ramsgate or a London terminal</b>, a changeover: the two
+          arrivals within ninety minutes, and each unit on the platform ten
+          minutes before the working it takes leaves, so nothing is delayed.
+          At a <b>depot both stand at</b> during the day &mdash; the weekday
+          AM berth &mdash; the afternoon workings are swapped, and the
+          request reads <code>GP BERTH 5J70/5F43</code>: in on the first, out
+          on the second. Formations have to match, neither diagram may split
+          or join after the swap point, and the unit displaced must not be
+          one the plan wants at that same depot. Where nothing is at the same
+          place, the working is still named for a depot swap.</p>
+        <p><b>The notice</b> is written out under the table in the
+          depot&rsquo;s own form, ready to send:
+          <i>375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE /
+          2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS /
+          1H76 10 50 HGS - CHX T/F 2R34 12 34 CHX - RAM</i>.</p>
         <p><b>Otherwise</b> the line says where the unit ends tonight,
           <code>ENDS DVP</code>, which is what the plan writes for a line not
-          yet near, and for a near one adds that it makes no call at the
-          place today.</p>
+          yet near.</p>
 
         <h4>The rules to come</h4>
-        <p><b>Changeover notices</b> in the depot&rsquo;s own form
-          (<i>2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS</i>), never one that
-          loses maintenance or a defect back to the depot, always with the
-          unit&rsquo;s restrictions in view. <b>Swapping exams</b> that arrive
-          earlier when the berth requests run out, so long as they do not
-          clash with other maintenance. <b>The swap list</b>: the diagrams
-          that DO end at the place tonight and the units on them, for a unit
-          that cannot get there itself.</p>
+        <p><b>Swapping exams</b> that arrive earlier when the berth requests
+          run out, so long as they do not clash with other maintenance.
+          <b>Route restrictions</b>: the notice says MO or NM, but which
+          routes a restricted unit may not take is not on any report read
+          here, so that is still the planner&rsquo;s check.</p>
         <p><b>Defects, by kind.</b> The priority column is read down to its
           kind and shown on the line: <code>EOD</code> is back at a
           maintenance depot by the end of the day; <code>MO</code> and
@@ -1065,7 +1088,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.4.0
+      works without an internet connection. Version 3.5.0
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -10570,6 +10593,11 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_SHORTAGE = SHEETS_SHORT
 "use strict";
 const SHEETS_BERTH = (() => {
 const stopsOf = GENIUS._stopsOf;
+/* The changeover notice names places the way the controller's list does -
+   DVP, CHX, HGS, RAM - so it borrows that road's table and falls back to
+   the plan's own words. */
+const STATION = (typeof SHEETS_SHORTAGE !== "undefined" && SHEETS_SHORTAGE.ABBR) || {};
+const stationOf = code => STATION[code] || CODE_TO_PLACE.get(code) || code || "?";
 
 /* ---------- the plan's places ----------
    The plan writes the depot; the reports write Genius location codes. RE is
@@ -10783,6 +10811,100 @@ const hhmm = (t, ecs) => {
   const m = ((t % 1440) + 1440) % 1440;
   return String(Math.floor(m / 60)).padStart(2, "0") + (ecs ? "+" : " ") + String(m % 60).padStart(2, "0");
 };
+/* ---------- every diagram's day ----------
+   The candidates for a swap are the diagrams that end tonight where a unit
+   is wanted, so the whole day is read once: each diagram's stops, its
+   units, where it ends, what it ends on. */
+function allDays(genius, date) {
+  const out = new Map();
+  const dets = genius.detail && genius.detail.get(date);
+  if (!dets) return out;
+  const unitsOf = new Map();
+  for (const r of genius.summary || []) if (r.date === date)
+    unitsOf.set(r.diag, (unitsOf.get(r.diag) || []).concat(r.units || (r.unit ? [r.unit] : [])));
+  for (const [diag, raw] of dets) {
+    const stops = stopsOf(raw).map(s => ({ ...s, diag }));
+    if (!stops.length) continue;
+    const last = stops[stops.length - 1];
+    const splitsAt = [];
+    for (const r of raw) if (/^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "")) {
+      const p = placeOf(r.code); if (splitsAt.indexOf(p) < 0) splitsAt.push(p);
+    }
+    out.set(diag, { diag, stops, units: [...new Set(unitsOf.get(diag) || [])],
+                    endCode: last.code, endPlace: placeOf(last.code), endDepot: depotOf(placeOf(last.code)),
+                    endTime: last.arr != null ? last.arr : last.dep, splitsAt,
+                    final: finalWorking(stops), raw });
+  }
+  return out;
+}
+/* The working a diagram ENDS on, and how the depot names it: Gillingham,
+   Victoria and Grove Park by its headcode; everywhere else by the time it
+   left - off the platform if it went into the platform first, off the
+   stop if it ran empty from somewhere. That is the time the berthing book
+   writes for it, and the berth request is written the same way. */
+const HEADCODE_DEPOTS = new Set(["GI", "VIC", "GP", "SU"]);
+function finalWorking(stops) {
+  const n = stops.length;
+  if (n < 2) return null;
+  const hc = stops[n - 2].hcOut;
+  let j = n - 2;
+  while (j > 0 && stops[j - 1].hcOut === hc && stops[j - 1].dep != null) j--;
+  const origin = stops[j];
+  return { hc, from: origin.code, dep: origin.dep, arr: stops[n - 1].arr, ecs: /^5/.test(hc || "") };
+}
+function requestName(depot, fin) {
+  if (!fin) return "";
+  return HEADCODE_DEPOTS.has(depot) ? (fin.hc || hhmm(fin.dep, fin.ecs)) : hhmm(fin.dep, fin.ecs);
+}
+/* Where a diagram calls at a place a changeover can be made - Ramsgate or
+   a London terminal - with what it came in on and from where, and what it
+   goes out on and to where. */
+function terminalCalls(stops) {
+  const out = [];
+  for (let i = 1; i < stops.length - 1; i++) {
+    const s = stops[i];
+    if (!CHANGEOVER_AT.has(s.code) || s.arr == null || s.dep == null) continue;
+    let j = i - 1;
+    while (j > 0 && stops[j - 1].hcOut === s.hcIn && stops[j - 1].dep != null) j--;
+    let k = i;
+    while (k < stops.length - 1 && stops[k].hcOut === s.hcOut && stops[k].dep != null) k++;
+    out.push({ idx: i, code: s.code, arr: s.arr, dep: s.dep, hcIn: s.hcIn, hcOut: s.hcOut,
+               inFrom: stops[j].code, inDep: stops[j].dep, outTo: stops[k].code });
+  }
+  return out;
+}
+/* Where a diagram STANDS at a depot during the day - an hour in the Grove
+   Park up sidings between the peaks, say - with what it came in on and
+   what it goes out on. That is the weekday AM berth, and the PM request is
+   the working it leaves on; a unit that has come out of Ramsgate to Grove
+   Park for the morning and is wanted back at a maintenance depot is got
+   there by swapping the afternoon working with one that ends there. */
+const DEPOT_CODES = (() => {
+  const m = new Map();
+  for (const [place, codes] of Object.entries(PLACES)) {
+    const d = depotOf(place);
+    if (d && DEPOTS.has(d)) for (const c of codes) m.set(c, d);
+  }
+  // a station platform is a call, not a stand
+  for (const c of ["RAMSGTE", "GLNGHMK", "ASHFKY", "VICTRIE"]) m.delete(c);
+  return m;
+})();
+const STAND_MIN = 30;
+function depotStands(stops) {
+  const out = [];
+  for (let i = 1; i < stops.length - 1; i++) {
+    const s = stops[i];
+    const depot = DEPOT_CODES.get(s.code);
+    if (!depot || s.arr == null || s.dep == null || s.dep - s.arr < STAND_MIN) continue;
+    let j = i - 1;
+    while (j > 0 && stops[j - 1].hcOut === s.hcIn && stops[j - 1].dep != null) j--;
+    let k = i;
+    while (k < stops.length - 1 && stops[k].hcOut === s.hcOut && stops[k].dep != null) k++;
+    out.push({ idx: i, code: s.code, depot, arr: s.arr, dep: s.dep, hcIn: s.hcIn, hcOut: s.hcOut,
+               inFrom: stops[j].code, inDep: stops[j].dep, outTo: stops[k].code });
+  }
+  return out;
+}
 /* Everything the day knows about one unit: its diagram(s), the stops in
    order, where it ends and when, whether the diagram splits. */
 function unitDay(unit, genius, date) {
@@ -10797,10 +10919,11 @@ function unitDay(unit, genius, date) {
      Dover, and 131 of the 296 diagrams on the 18/09 Detail do it. Said with
      the places, because "splits" alone tells the planner nothing they can
      check. */
-  let stops = [], splitsAt = [];
+  let stops = [], splitsAt = [], rawAll = [];
   for (const d of diags) {
     const raw = dets && dets.get(d);
     if (!raw) continue;
+    rawAll = rawAll.concat(raw);
     stops = stops.concat(stopsOf(raw).map(s => ({ ...s, diag: d })));
     for (const r of raw) if (/^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "")) {
       const p = placeOf(r.code);
@@ -10811,7 +10934,7 @@ function unitDay(unit, genius, date) {
   const last = rows[rows.length - 1];
   const lastStop = stops.length ? stops[stops.length - 1] : null;
   return {
-    unit, diags, rows, stops, splits, splitsAt,
+    unit, diags, rows, stops, splits, splitsAt, raw: rawAll,
     endCode: lastStop ? lastStop.code : last.to,
     endTime: lastStop ? (lastStop.arr != null ? lastStop.arr : lastStop.dep) : last.end,
     startCode: rows[0].from, startTime: rows[0].start,
@@ -10834,6 +10957,92 @@ function callsAt(day, places) {
   return out;
 }
 
+/* ---------- a swap ----------
+   A unit that does not reach the depot it is wanted at can change over
+   with a unit whose diagram does end there, at Ramsgate or a London
+   terminal, if the two are there around the same time. Cross-referenced,
+   as the depot put it: the diagrams that go into London around the same
+   time and form a service back out, that end back at the depot.
+
+   The conditions are the depot's. No delay to the next service: each unit
+   has to be on the platform ten minutes before the working it takes
+   leaves. Around the same time: the two arrivals within ninety minutes.
+   Splits and joins: the formations have to match, and neither diagram may
+   attach or detach after the swap point, because the other unit would be
+   taken into it. Nothing lost back to the depot: the unit displaced must
+   not be one the plan wants at that same depot. */
+const SWAP_MARGIN = 10, SWAP_WINDOW = 90;
+const classOf = u => /^3753/.test(u) ? "375/3" : String(u).slice(0, 3);
+function splitsAfter(day, idx) {
+  // an attach or detach at or after this stop, by the raw rows' clock
+  const t = day.stops[idx].dep;
+  return day.raw.some(r => /^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "") &&
+    r.dep != null && r.dep >= t);
+}
+function swapBetween(mine, theirs) {
+  let best = null;
+  const consider = (x, y, kind, at) => {
+    // each unit on hand before the working it takes leaves: no delay
+    if (x.arr + SWAP_MARGIN > y.dep || y.arr + SWAP_MARGIN > x.dep) return;
+    const cand = { kind, at, mine: x, theirs: y, gap: Math.abs(x.arr - y.arr),
+                   splitsMine: splitsAfter(mine, x.idx), splitsTheirs: splitsAfter(theirs, y.idx) };
+    if (cand.splitsTheirs) return;
+    // a swap where both stand at a depot is the easier one to make
+    const rank = (kind === "depot" ? 0 : 1000) + cand.gap;
+    if (!best || rank < best.rank) best = { ...cand, rank };
+  };
+  const ta = terminalCalls(mine.stops), tb = terminalCalls(theirs.stops);
+  for (const x of ta) for (const y of tb) {
+    if (x.code !== y.code) continue;
+    if (Math.abs(x.arr - y.arr) > SWAP_WINDOW) continue;   // around the same time
+    consider(x, y, "terminal", x.code);
+  }
+  const sa = depotStands(mine.stops), sb = depotStands(theirs.stops);
+  for (const x of sa) for (const y of sb) {
+    if (x.depot !== y.depot) continue;                   // any road of the same depot
+    consider(x, y, "depot", x.code);
+  }
+  return best;
+}
+function candidatesFor(r, mine, days, wanted) {
+  const targets = r.places.map(depotOf).filter(Boolean);
+  const out = [];
+  for (const d of days.values()) {
+    if (!d.endDepot || targets.indexOf(d.endDepot) < 0) continue;
+    if (mine.diags.indexOf(d.diag) >= 0) continue;
+    if (!d.units.length) continue;
+    if (d.units.length !== mine.rows.length && !(d.units.length === 1 && mine.rows.length >= 1)) continue;
+    if (d.units.some(u => classOf(u) !== classOf(r.unit))) continue;
+    // a unit the plan wants at that same depot is not to be taken off it
+    if (d.units.some(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0)) continue;
+    const swap = swapBetween(mine, d);
+    out.push({ day: d, swap, name: requestName(d.endDepot, d.final) });
+  }
+  // a swap that can be made first, then the earlier home the better
+  out.sort((p, q) => ((q.swap ? 1 : 0) - (p.swap ? 1 : 0)) || (p.day.endTime - q.day.endTime));
+  return out;
+}
+/* The notice, in the depot's own form:
+     375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE
+     2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS
+     1H76 10 50 HGS - CHX T/F 2R34 12 34 CHX - RAM */
+const leg = (hc, dep, from, to) => (hc || "????") + " " + hhmm(dep, /^5/.test(hc || "")) + " " + stationOf(from) + " - " + stationOf(to);
+function reasonOf(r) {
+  if (r.isDefect) return r.category === "MO" || r.category === "NM" ? r.category + " RESTRICTION"
+                       : r.category === "EOD" ? "EOD DEFECT" : "PERFORMANCE DEFECT";
+  if (r.section === "EXAMS") return (r.what || "").toUpperCase() + " EXAM";
+  return (r.what || r.section).toUpperCase();
+}
+function noticeOf(r, c) {
+  const sw = c.swap, x = sw.mine, y = sw.theirs;
+  const at = sw.kind === "depot" ? sw.mine.depot : stationOf(sw.at);
+  const lines = [r.unit + " CONTAINING " + reasonOf(r) + " - " + at + " PLEASE NOTE"];
+  lines.push(leg(x.hcIn, x.inDep, x.inFrom, x.code) + " T/F " + leg(y.hcOut, y.dep, y.code, y.outTo));
+  lines.push(leg(y.hcIn, y.inDep, y.inFrom, y.code) + " T/F " + leg(x.hcOut, x.dep, x.code, x.outTo) +
+             (sw.splitsMine ? "  (" + (c.day.units[0] || "the other unit") + " takes a working that splits)" : ""));
+  return lines;
+}
+
 /* ---------- the suggestion ----------
    The depot's rules, applied to the facts. In the depot's own words, and
    only where the facts support one; otherwise where the unit ends, which
@@ -10846,8 +11055,8 @@ function weekendHold(r) {
   const due = r.when.date.getUTCDay(), now = r.today.getUTCDay();
   return (due === 6 || due === 0 || due === 1) && (now === 5 || now === 6 || now === 0);
 }
-function suggest(r) {
-  const s = { action: "", notes: [] };
+function suggest(r, ctx) {
+  const s = { action: "", notes: [], notice: null };
   const t = r.places[0] || "";
   const targets = r.places.map(depotOf).filter(Boolean);
   if (r.ignored) { s.action = "O/O/S"; return s; }
@@ -10896,9 +11105,39 @@ function suggest(r) {
       (at.hc ? ", leaves on " + at.hc.slice(0, 4) : ""));
     return s;
   }
-  // nothing today: where it ends, and any standing fleet move from there
+  /* Nothing today. A berth request names a working that DOES end where
+     the unit is wanted - a swap onto it at a terminal where it can be
+     made, or failing that the working itself, for a depot swap. */
+  if (near && targets.length && ctx && ctx.mine) {
+    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted);
+    const c = cands[0];
+    if (c) {
+      const depot = c.day.endDepot, sw = c.swap;
+      if (sw && sw.kind === "depot") {
+        /* the AM berth it is already booked to make, and the PM working out
+           of it that ends where it is wanted - the depot's own "GP BERTH
+           5N32/5F28" - named the way that depot names workings */
+        const at = sw.mine.depot;
+        const nm = w => HEADCODE_DEPOTS.has(at) ? (w.hc || hhmm(w.dep, /^5/.test(w.hc || ""))) : hhmm(w.dep, /^5/.test(w.hc || ""));
+        s.action = at + " BERTH " + nm({ hc: sw.mine.hcIn, dep: sw.mine.inDep }) + "/" + nm({ hc: sw.theirs.hcOut, dep: sw.theirs.dep });
+        s.notes.push("AM at " + placeOf(sw.at) + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) + "–" + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) +
+                     "; PM take " + c.day.diag + "'s " + (sw.theirs.hcOut || "?") + " " + hhmm(sw.theirs.dep, /^5/.test(sw.theirs.hcOut || "")) +
+                     ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
+                     (c.day.units.length ? "; " + c.day.units.join("+") + " takes " + (sw.mine.hcOut || "?") : ""));
+      } else {
+        s.action = depot + " BERTH " + c.name + (sw ? " — T/F AT " + stationOf(sw.at) : " (no shared terminal — depot swap)");
+        s.notes.push("on " + c.day.diag + ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
+                     (c.day.units.length ? ", " + c.day.units.join("+") + " off it" : ""));
+      }
+      if (sw) s.notice = noticeOf(r, c);
+      if (c.day.splitsAt.length) s.notes.push(c.day.diag + " splits at " + c.day.splitsAt.join("/"));
+      if (cands.length > 1) s.notes.push("or " + cands.slice(1, 3).map(k => k.day.diag + " " + k.name).join(", "));
+      return s;
+    }
+  }
   s.action = "ENDS " + r.ends.place;
-  if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today");
+  if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
+    (ctx && ctx.days && ctx.days.size ? ", and nothing of its class ends at " + r.places.join("/") + " that it could take" : ""));
   if (r.today && endsAt && r.tier <= 2) {
     const dow = (r.today.getUTCDay() + 1) % 7;    // tomorrow, when it is where it ends
     for (const m of movesFrom(endsAt, targets, dow))
@@ -10922,7 +11161,15 @@ function run(planText, genius, opts) {
   if (date && !filled)
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
-  const out = [];
+  const days = date ? allDays(genius, date) : new Map();
+  /* What every unit on the plan wants, so a swap never takes a unit off the
+     diagram that was getting it home. */
+  const wanted = new Map();
+  for (const row of plan.rows) {
+    const ds = row.places.map(depotOf).filter(Boolean);
+    if (ds.length) wanted.set(row.unit, (wanted.get(row.unit) || []).concat(ds));
+  }
+  const out = [], notices = [];
   for (const row of plan.rows) {
     const when = whenOf(row.when, today);
     /* An end-of-day defect with no target date is due TODAY - back at a
@@ -10944,12 +11191,13 @@ function run(planText, genius, opts) {
       r.diags = []; r.ends = null; r.calls = []; r.endsAtTarget = false; r.splits = false; r.splitsAt = [];
     }
     r.inTraffic = !!day;
-    r.suggest = suggest(r);
+    r.suggest = suggest(r, { mine: day, days, wanted });
+    if (r.suggest.notice && !notices.some(n => n[0] === r.suggest.notice[0])) notices.push(r.suggest.notice);
     out.push(r);
   }
   const tiered = out.slice().sort((a, b) => (a.tier - b.tier) || (a.line - b.line));
   const inTraffic = new Set(out.filter(r => r.inTraffic).map(r => r.unit)).size;
-  return { rows: out, tiered, order: plan.order, reviews, date, today, lines: out.length,
+  return { rows: out, tiered, notices, order: plan.order, reviews, date, today, lines: out.length,
            units: new Set(plan.rows.map(r => r.unit)).size, inTraffic, ignored: ignore.size,
            suggested: out.filter(r => !r.action && r.suggest.action).length };
 }
@@ -11028,6 +11276,16 @@ function shape(res) {
   }
   return sections;
 }
+function noticesText(res) {
+  if (!res.notices || !res.notices.length) return "";
+  const out = ["CHANGEOVERS & BALANCING", "========================", ""];
+  res.notices.forEach((n, i) => {
+    out.push((i + 1) + ") " + n[0]);
+    for (const l of n.slice(1)) out.push("   " + l);
+    out.push("");
+  });
+  return out.join("\n");
+}
 function toText(res) {
   const out = [];
   for (const s of shape(res)) {
@@ -11036,7 +11294,8 @@ function toText(res) {
     out.push(s.headers.join("\t"));
     for (const row of s.rows) out.push(row.cells.join("\t"));
   }
-  return out.join("\n");
+  const n = noticesText(res);
+  return out.join("\n") + (n ? "\n\n" + n : "");
 }
 const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 function toHtml(res, inline) {
@@ -11055,6 +11314,10 @@ function toHtml(res, inline) {
       out.push("<tr" + style(row.cls) + ">" + tds.join("") + "</tr>");
     }
     out.push("</tbody></table>");
+  }
+  if (res.notices && res.notices.length) {
+    const pre = inline ? ' style="font-family:Calibri,Arial,sans-serif;font-size:11pt;font-weight:700;white-space:pre-wrap"' : ' class="brnotices"';
+    out.push("<pre" + pre + ">" + esc(noticesText(res)) + "</pre>");
   }
   return out.join("\n");
 }
@@ -11078,10 +11341,12 @@ function render(res) {
     lines.push(pad(r.unit, W.unit) + " " + pad(r.section, W.sec) + " " + pad(r.places.join("/") || "—", W.needs) + " " +
                pad(dueOf(r), W.due) + " " + pad(r.action, W.action) + " " + pad(r.suggest.action, W.sugg) + " " + factsOf(r));
   }
-  return lines.join("\n");
+  const n = noticesText(res);
+  return lines.join("\n") + (n ? "\n\n" + n : "");
 }
 
-return { run, render, shape, toText, toHtml, parsePlan, whenOf, suggest,
+return { run, render, shape, toText, toHtml, noticesText, parsePlan, whenOf, suggest,
+         finalWorking, requestName, terminalCalls, depotStands, swapBetween,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;

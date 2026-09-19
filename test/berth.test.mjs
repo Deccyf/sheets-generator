@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
-import { geniusSummaryCsv, geniusSummaryCsvWithUnits, geniusDetailCsv }
+import { geniusSummaryCsv, geniusSummaryCsvWithUnits, geniusDetailCsv, geniusPairCsv }
   from "./helpers/synth.mjs";
 
 const N = built();
@@ -197,4 +197,95 @@ test("a Summary printed before allocation is named as the reason nothing is plac
   const out = B().run(PLAN, res, {});
   assert.equal(out.inTraffic, 0);
   assert.match(out.reviews[0], /no units on it — it was printed before the day was allocated/);
+});
+
+/* ---- the swaps ----
+   A day shaped for them. 375701 comes out of Ramsgate to Grove Park for
+   the morning and stands there with RM102, which goes home to Ramsgate in
+   the afternoon. 375703 comes up to Charing Cross and has ninety minutes
+   there alongside RM104, which goes back to Ramsgate. 375705 gets to
+   Charing Cross ten minutes after RM104 has left. RM106 is RM104 with a
+   detach after the terminal. */
+const S = (code, arr, dep, hc, ev) => ({ code, arr, dep, hc, ev });
+const SWAP_DAY = [
+  /* straight out of the depot and up empty, so its only chance of Ramsgate
+     is the afternoon swap - a call at the Ramsgate platform on the way out
+     would be answered, rightly, with a changeover there */
+  { code: "RM101", units: "375701.", stops: [S("RAMSGTD", "", "05:00", "5J70"),
+      S("CHRX", "07:30", "07:40", "5J70"), S("GRVPCSD", "08:30", "13:45", "5F43"), S("CANONST", "14:20", "14:30", "2P43"),
+      S("GRVPKUS", "22:00", "", "")] },
+  { code: "RM102", units: "375702.", stops: [S("GRVPCSD", "", "06:00", "5J01"), S("CANONST", "06:40", "06:50", "2K01"),
+      S("GRVPCSD", "09:00", "14:10", "5R00"), S("RAMSGTE", "16:00", "16:10", "5R00"), S("RAMSGTD", "16:20", "", "")] },
+  { code: "RM103", units: "375703.", stops: [S("ASHFDNS", "", "05:00", "5A03"), S("ASHFKY", "05:10", "05:20", "2A03"),
+      S("CHRX", "07:00", "09:30", "2A04"), S("HASTING", "11:00", "11:10", "5H03"), S("HASTPSD", "11:20", "", "")] },
+  { code: "RM104", units: "375704.", stops: [S("RAMSGTD", "", "05:30", "5W04"), S("RAMSGTE", "05:50", "06:00", "2W04"),
+      S("CHRX", "07:40", "09:10", "2R04"), S("RAMSGTE", "11:00", "11:10", "5R04"), S("RAMSGTD", "11:20", "", "")] },
+  { code: "RM105", units: "375705.", stops: [S("ASHFDNS", "", "07:00", "5A05"), S("ASHFKY", "07:10", "07:20", "2A05"),
+      S("CHRX", "09:20", "09:25", "2A06"), S("HASTING", "11:30", "11:40", "5H05"), S("HASTPSD", "11:50", "", "")] },
+  { code: "RM106", units: "375706.", stops: [S("RAMSGTD", "", "05:35", "5W06"), S("RAMSGTE", "05:55", "06:05", "2W06"),
+      S("CHRX", "07:45", "09:15", "2R06"), S("RAMSGTE", "11:05", "11:15", "5R06", "DETACH"), S("RAMSGTD", "11:25", "", "")] },
+];
+const swapDay = async () => { const p = geniusPairCsv(SWAP_DAY); return N.GENIUS.build([p.summary, p.detail]); };
+const planFor = lines => ["Exams", "Unit Nr \tExam\t\tWhere\tAction"].concat(lines).join("\n");
+
+test("a working is named the way its depot names workings", async () => {
+  const res = await swapDay();
+  const det = res.detail.get("03/08/26");
+  const fin = d => B().finalWorking(N.GENIUS._stopsOf(det.get(d)));
+  // RM104 goes into the Ramsgate platform first and runs empty to the depot: the platform time
+  assert.equal(B().requestName("RE", fin("RM104")), "11+10");
+  assert.equal(fin("RM104").hc, "5R04");
+  // RM101 ends at Grove Park, a headcode depot
+  assert.equal(B().requestName("GP", fin("RM101")), "2P43");
+  // RM103 runs empty from Hastings to the park sidings: the time off the stop
+  assert.equal(B().requestName("XSE", fin("RM103")), "11+10");
+});
+
+test("a unit at Grove Park for the morning is got home by swapping the afternoon working", async () => {
+  const res = await swapDay();
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const r = out.rows[0];
+  assert.equal(r.suggest.action, "GP BERTH 5J70/5R00", JSON.stringify(r.suggest));
+  assert.match(r.suggest.notes.join("; "), /AM at GP 08\+30–13\+45; PM take RM102's 5R00 14\+10, ends RE 16\+20; 375702 takes 5F43/);
+  assert.deepEqual(norm(r.suggest.notice), [
+    "375701 CONTAINING A EXAM - GP PLEASE NOTE",
+    "5J70 05+00 RE - GP T/F 5R00 14+10 GP - RE",
+    "2K01 06 50 CST - GP T/F 5F43 13+45 GP - CST",
+  ], "the notice, in the depot's form, at the depot");
+  assert.equal(out.notices.length, 1);
+  assert.match(B().toText(out), /CHANGEOVERS & BALANCING\n=+\n\n1\) 375701 CONTAINING A EXAM - GP PLEASE NOTE\n   5J70 07\+40 CHX - GP T\/F 5R00 14\+10 GP - RAM/);
+});
+
+test("a changeover at a London terminal, and the two ways it is refused", async () => {
+  const res = await swapDay();
+  // 375703 and RM104 are both at Charing Cross with time in hand
+  const ok = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.equal(ok.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(ok));
+  assert.deepEqual(norm(ok.notice), [
+    "375703 CONTAINING A EXAM - CHX PLEASE NOTE",
+    "2A03 05 20 AFK - CHX T/F 2R04 09 10 CHX - RAM",
+    "2W04 06 00 RAM - CHX T/F 2A04 09 30 CHX - HGS",
+  ]);
+  // 375705 gets to Charing Cross after RM104's working has gone: taking it
+  // would delay it, so no changeover - the working is still named
+  const late = B().run(planFor(["375705\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.match(late.action, /^RE BERTH 11\+10 \(no shared terminal — depot swap\)$/, JSON.stringify(late));
+  assert.equal(late.notice, null);
+  // and the unit displaced must not be one the plan wants at Ramsgate too
+  const both = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
+  const s3 = both.rows[0].suggest;
+  assert.ok(!/RM104|375704/.test(s3.notes.join(" ")), "RM104 is not offered while 375704 is wanted at Ramsgate: " + JSON.stringify(s3));
+  assert.equal(both.rows[1].suggest.action, "RE HOLD", "375704 ends there and is held");
+});
+
+test("a diagram that splits after the swap point is not offered", async () => {
+  // RM106 is RM104 with a detach at Ramsgate after Charing Cross; with
+  // RM104 wanted by its own unit, RM106 is the only other way home and it
+  // must not be taken
+  const res = await swapDay();
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
+  const s = out.rows[0].suggest;
+  assert.equal(s.notice, null, "no changeover onto RM106: " + JSON.stringify(s));
+  assert.match(s.action, /no shared terminal — depot swap/);
+  assert.match(s.notes.join("; "), /RM106 splits at RAM/, "and the line says why");
 });

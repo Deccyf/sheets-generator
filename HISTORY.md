@@ -140,6 +140,57 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.5.0 — 19 September 2026 — a berth request names a working, and the changeover that gets it there
+
+**"Ends elsewhere" was not a request.** A near line whose unit neither
+ends nor calls where it is wanted used to be answered `ENDS GP`, which is
+where it is, not what to do. It is answered now with a working that
+**does** end at the depot tonight, found on the same reports the books
+were built from, and the swap that gets the unit onto it.
+
+**Named the way that depot names workings.** Gillingham, Victoria and
+Grove Park by headcode; everywhere else by the time the working left —
+off the platform if it went into the platform first, off the stop if it
+ran empty from somewhere — which is the time the berthing book writes for
+it, so `RE BERTH 20+52` and `GP BERTH 5J70` read as the books do.
+
+**The swap is cross-referenced, as the depot put it**: the diagrams that
+are at the same place around the same time and go on to end at the depot.
+Two kinds:
+
+- **At Ramsgate or a London terminal, a changeover.** The two arrivals
+  within ninety minutes, and each unit on the platform ten minutes before
+  the working it takes leaves — so nothing is delayed. Written out under
+  the table in the depot's own notice form, ready to send:
+  `375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE` /
+  `2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS` /
+  `1H76 10 50 HGS - CHX T/F 2R34 12 34 CHX - RAM`.
+- **At a depot both stand at during the day — the weekday AM berth.** A
+  unit that has come out of Ramsgate to Grove Park for the morning and is
+  wanted back at a maintenance depot is got there by swapping the
+  afternoon working with one that ends there, and the request reads
+  `GP BERTH 5J70/5F43`: in on the first, out on the second — the depot's
+  own `GP BERTH 5N32/5F28`, which is what those two headcodes were.
+
+Formations have to match, neither diagram may split or join after the
+swap point (the other unit would be taken into it), and the unit displaced
+must not be one the plan wants at that same depot — nothing lost back to
+the depot. Where nothing is at the same place, the working is still named
+for a depot swap and the line says so.
+
+**Measured on the 18/09 reports.** Forty-six diagrams stand at Grove Park
+between the peaks and five of them end at Ramsgate — so the afternoon swap
+is a real thing on a weekday. London changeovers are rarer than the
+notice form suggests: a London turnaround is ten minutes, and the rule
+would not let the 20 18 into Charing Cross take the 19 34 out of it,
+which is right. On the week-of-19/09 plan no near line had a shared stand
+or terminal, so the requests name the working and say "no shared terminal
+— depot swap".
+
+**Still to come:** swapping exams that arrive earlier when the requests
+run out, and route restrictions — the notice says MO or NM, but which
+routes a restricted unit may not take is on no report read here.
+
 ## 3.4.0 — 19 September 2026 — berth requests: the plan back in its own hand, with suggestions
 
 **The plan comes back as the plan.** The same sections in the same order,
