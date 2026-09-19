@@ -28,6 +28,8 @@ No training needed — if you can find the reports, the page does the rest.
 `Sheets Generator.html` is one file that turns the planning paperwork into
 the **unit berthing books** — the SHEETS — with every diagram number, AM and
 PM column, flag and note filled in the way the hand-built books do them.
+(`Sheets Generator (no berth requests).html` is the same page without the
+experimental *Berth requests* tab, for anyone who does not need it.)
 
 You give it:
 

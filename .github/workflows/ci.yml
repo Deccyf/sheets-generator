@@ -51,6 +51,7 @@ jobs:
         run: |
           git diff --exit-code -- \
             "Sheets Generator.html" \
+            "Sheets Generator (no berth requests).html" \
             "Diagram Analyser.html" \
             "BERTHING SHEET RULES.html" \
             "HOW TO USE.docx" \

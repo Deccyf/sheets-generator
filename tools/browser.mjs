@@ -45,6 +45,10 @@ export async function openPage(viewport) {
   return { browser, page };
 }
 
+/* The same page without the experimental berth-request road. */
+export const LITE = fileURLToPath(new URL("../Sheets Generator (no berth requests).html", import.meta.url));
+export const LITE_URL = "file://" + LITE.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29");
+
 /* The second deliverable, same treatment. */
 export const ANALYSER = fileURLToPath(new URL("../Diagram Analyser.html", import.meta.url));
 export const ANALYSER_URL = "file://" + ANALYSER.replace(/ /g, "%20");

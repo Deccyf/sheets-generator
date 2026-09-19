@@ -756,7 +756,10 @@ function switchMode(m) {
 }
 for (const k of Object.keys(MODES))
   if (MODES[k].tab) MODES[k].tab.addEventListener("click", () => switchMode(k));
-if (savedOpts.mode && savedOpts.mode !== "wk" && MODES[savedOpts.mode])
+/* …and only a tab this copy has: the copy without the berth-request road
+   shares the browser's memory with the full one, and a remembered tab it
+   does not carry would hide every panel */
+if (savedOpts.mode && savedOpts.mode !== "wk" && MODES[savedOpts.mode] && MODES[savedOpts.mode].panel)
   switchMode(savedOpts.mode);
 
 /* ---------------- one panel: what both share ---------------- */

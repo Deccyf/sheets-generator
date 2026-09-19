@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { loadSandbox } from "../test/helpers/sandbox.mjs";
 import { makePdf, makeDocx, SUMMARY_LINES, DETAIL_LINES, PRINTS_LINES,
          REISSUE_LINES } from "../test/helpers/synth.mjs";
-import { BUILT, BUILT_URL, launch } from "./browser.mjs";
+import { BUILT, BUILT_URL, LITE_URL, launch } from "./browser.mjs";
 
 const ctx = loadSandbox(BUILT);
 const dir = mkdtempSync(join(tmpdir(), "sheets-smoke-"));
@@ -367,6 +367,25 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.waitForFunction(() => /against 08\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 15000 });
   if (!/placed by the Allocation Summary/.test(await page.textContent("#brout"))) throw new Error("375601 should be placed off the allocation");
   console.log("br alloc    :", (await page.textContent("#brberthtxt")).trim());
+}
+
+/* ---- the copy without the berth-request road: three tabs, the weekday
+   books still build, and a tab remembered from the full copy does not
+   hide every panel ---- */
+{
+  await page.goto(BUILT_URL);
+  await page.locator("#mode_br").click();            // remembered as the last tab used
+  await page.goto(LITE_URL);
+  const tabs = await page.locator(".mode").count();
+  if (tabs !== 3) throw new Error("the lite copy should have three tabs: " + tabs);
+  if (await page.locator("#mode_br").count()) throw new Error("the lite copy should have no berth-request tab");
+  if (!(await page.locator("#wkPanel").isVisible())) throw new Error("the lite copy should open on the weekday tab");
+  await page.setInputFiles("#file", [sumPdf, detPdf]);
+  await page.waitForFunction(() =>
+    document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+  console.log("lite copy   :", await page.textContent("#status"));
+  await page.locator("#mode_sv").click();
+  if (!(await page.locator("#svPanel").isVisible())) throw new Error("the lite copy's shortages tab should open");
 }
 
 await browser.close();

@@ -2,7 +2,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { BUILT, built } from "./helpers/compare.mjs";
+import { loadSandbox } from "./helpers/sandbox.mjs";
 
 test("the built file is self-contained and lean", () => {
   const html = readFileSync(BUILT, "utf8");
@@ -88,6 +90,23 @@ test("the analyser says which build it is, with a stamp of its own", () => {
     "and so does its release date: " + a.released);
   assert.ok(!/\{\{[A-Z_]+\}\}/.test(html),
     "no build placeholder was left unsubstituted");
+});
+
+test("the copy without the berth-request road leaves out its tab, its panel and its module, and comes up clean", () => {
+  const lite = new URL("../Sheets Generator (no berth requests).html", import.meta.url);
+  const html = readFileSync(lite, "utf8");
+  const full = readFileSync(BUILT, "utf8");
+  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+  // the UI's own references to the module stay, behind the guard that returns when the panel is absent
+  assert.ok(!/id="mode_br"|id="brPanel"|(const|let|var|window\.)\s*SHEETS_BERTH\s*=/.test(html), "no tab, no panel, no module");
+  assert.ok(html.length < full.length, "and it is the smaller file");
+  assert.ok(html.includes(">" + pkg.version + "<"), "stamped with the same version as the full copy");
+  assert.match(html, /id="mode_sv"/, "the other three tabs are there");
+  assert.ok(!/\{\{[A-Z_]+\}\}/.test(html), "no build placeholder was left unsubstituted");
+  const ctx = loadSandbox(fileURLToPath(lite));
+  for (const name of ["SHEETS_DATA", "SHEETS_CORE", "GENIUS", "SHEETS_SHORTAGE", "SheetsEngine"])
+    assert.ok(ctx[name], name + " loaded");
+  assert.equal(ctx.SHEETS_BERTH, undefined, "the berth-request module is not in it");
 });
 
 test("all modules come up in a clean context", () => {

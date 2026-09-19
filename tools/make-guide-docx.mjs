@@ -272,7 +272,9 @@ const children = [
   h2("1. What this is"),
   lead("One file · no install · nothing leaves the machine"),
   p("`Sheets Generator.html` builds the unit berthing books — the SHEETS — from " +
-    "the paperwork you already produce."),
+    "the paperwork you already produce. (`Sheets Generator (no berth requests).html` " +
+    "is the same page without the experimental *Berth requests* tab, for anyone " +
+    "who does not need it.)"),
   ...bullets([
     "**Monday to Friday** — the *Diagram Summary* and *Diagram Detail* reports " +
       "for the date: from Genius as PDFs or CSVs, or from Integrale as its " +

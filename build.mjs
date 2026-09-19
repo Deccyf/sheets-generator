@@ -71,8 +71,9 @@ const modules = [
   "src/ui.js",
 ];
 
+const css = read("./src/styles.css").trimEnd();
 const html = fill(read("./src/page.html"), {
-  CSS: read("./src/styles.css").trimEnd(),
+  CSS: css,
   SCRIPTS: scriptBlocks(modules),
   VERSION: version,
   RELEASED: released,
@@ -81,6 +82,32 @@ const html = fill(read("./src/page.html"), {
 writeFileSync(new URL("./Sheets Generator.html", import.meta.url), html);
 console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes ` +
   `(${(html.length / 1024).toFixed(0)} KB)`);
+
+/* The same page without the experimental berth-request road - its tab, its
+   panel and its module left out - for the copy handed to people who should
+   not meet a feature still being proved. Everything else is the same
+   build, same version stamp, so a fault reported against either names the
+   same code. The tab and the panel are cut out of the template by their
+   ids, and the cut is checked: a tab left behind with no panel would open
+   on nothing. */
+function withoutExperimental(template) {
+  const out = template
+    .replace(/[ \t]*<button type="button" class="mode" id="mode_br"[\s\S]*?<\/button>\n/, "")
+    .replace(/[ \t]*<section class="platform" id="brPanel"[\s\S]*?<\/section>\n/, "");
+  if (/id="mode_br"|id="brPanel"/.test(out))
+    throw new Error("the berth-request tab was not cut out of src/page.html cleanly");
+  return out;
+}
+const liteName = "Sheets Generator (no berth requests).html";
+const liteHtml = fill(withoutExperimental(read("./src/page.html")), {
+  CSS: css,
+  SCRIPTS: scriptBlocks(modules.filter(m => m !== "src/berth.js")),
+  VERSION: version,
+  RELEASED: released,
+});
+writeFileSync(new URL("./" + liteName, import.meta.url), liteHtml);
+console.log(`built "${liteName}" v${version} — ${liteHtml.length} bytes ` +
+  `(${(liteHtml.length / 1024).toFixed(0)} KB)`);
 
 /* The second deliverable. It reads the same prints through the same reader
    and is otherwise its own tool: the berthing sheets say where a unit

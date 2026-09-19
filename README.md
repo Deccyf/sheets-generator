@@ -10,6 +10,11 @@ Two single-file, offline browser tools for a Southeastern depot:
   on screen exactly as they print, with a Review tab of everything the rules
   had to decide for themselves — and, on request, the Kent Coast stock
   requirements form.
+- **`Sheets Generator (no berth requests).html`** — the same page with the
+  experimental *Berth requests* tab left out: its tab, its panel and its
+  module are cut at build time and nothing else differs, so the copy handed
+  to people who should not meet a feature still being proved carries the
+  same version stamp as the full one.
 - **`Diagram Analyser.html`** — reads the same diagram prints and answers
   maintenance planning's questions: arrivals home, what stands still long
   enough to be worked on, what can carry a restricted unit, mileage per
@@ -49,7 +54,7 @@ them, in a fixed order, into the two HTML files.
 
 | Path | What it is |
 |---|---|
-| `Sheets Generator.html`, `Diagram Analyser.html` | **The built deliverables** — committed so they can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. CI fails if either is stale. |
+| `Sheets Generator.html`, `Sheets Generator (no berth requests).html`, `Diagram Analyser.html` | **The built deliverables** — committed so they can be downloaded and used directly. Regenerate with `node build.mjs`; never edit by hand. CI fails if any is stale. The second is the first with the experimental berth-request tab cut out at build time. |
 | `HOW TO USE.md` → `HOW TO USE.docx` | The user guide; the Word file is generated from the Markdown by `tools/make-guide-docx.mjs` on every build (needs the `docx` package from `npm ci`). |
 | `BERTHING SHEET RULES.html` | The rulebook for circulating, generated on every build by `tools/make-rules-doc.mjs` from the built file's own tables — nothing on it is typed out separately. |
 | `HISTORY.md` | Release history and the reasoning behind past changes. |
@@ -78,8 +83,9 @@ them, in a fixed order, into the two HTML files.
 
 ```
 npm ci             # once: the docx package for the Word guide, nothing else
-node build.mjs     # src/ -> "Sheets Generator.html" and "Diagram Analyser.html",
-                   # then BERTHING SHEET RULES.html and HOW TO USE.docx
+node build.mjs     # src/ -> "Sheets Generator.html", the same without the berth-request
+                   # tab as "Sheets Generator (no berth requests).html", and
+                   # "Diagram Analyser.html"; then BERTHING SHEET RULES.html and HOW TO USE.docx
 npm test           # build, then node --test "test/**/*.test.mjs"
 node tools/smoke.mjs        # Chromium: weekday PDFs, weekend prints, pasting, the stock form
 node tools/smoke-gcsv.mjs   # Chromium: the Genius CSV exports, dropped and pasted, the saved-book memory
