@@ -1443,13 +1443,15 @@ function decodeText(u8) {
     }
     try {
       own = await GENIUS.read(ownFiles);
-      if (zoneTxt) zoneTxt.textContent = "Reading " + own.dates.join(", ") + " — " +
-        own.summary.filter(r => r.units && r.units.length).length + " diagrams with units";
-      say("Reports for " + own.dates.join(", ") + " loaded — paste the plan and read it.", "go");
+      const detDates = [...own.detail.keys()];
+      const units = own.summary.filter(r => r.units && r.units.length).length;
+      if (zoneTxt) zoneTxt.textContent = "Summary " + own.dates.join(", ") + " — " + units + " workings with units" +
+        (detDates.length ? " · Detail " + detDates.join(", ") : " · no Detail yet: where each unit ends, and tomorrow's departures once a Detail is dropped");
+      say("Summary for " + own.dates.join(", ") + (detDates.length ? " and Detail for " + detDates.join(", ") : "") +
+          " loaded — paste the plan and read it.", "go");
     } catch (e) {
-      // half a pair is fine: it waits for the other half
+      // a Detail on its own waits for the Summary
       if (/Summary rows found/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too"; }
-      else if (/Detail itineraries/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Summary loaded — drop the Diagram Detail too"; }
       else { say("That pair could not be read: " + e.message, "err"); ownFiles = []; }
     }
   }
@@ -1553,10 +1555,23 @@ function decodeText(u8) {
   });
   /* The pair as READ, kept so a layout tick is a rebuild and not a re-read:
      the Diagram Detail's export runs to several megabytes. */
-  let source = null;
+  let source = null, lastRes = null;
+  /* The lettered list is laid out for the Excel text box it is pasted
+     into - 20.19 cm wide, Calibri 11 bold - so the lines are measured in
+     that face here, where there is a browser to measure them, and the
+     road gets the measure. Without one it estimates. */
+  const measure = (() => {
+    try {
+      const c = document.createElement("canvas").getContext("2d");
+      c.font = "bold 11pt Calibri, Carlito, Arial, sans-serif";
+      return s => c.measureText(s).width;
+    } catch (e) { return null; }
+  })();
+  const BOX_PX = 20.19 / 2.54 * 96 - 19;      // at 96 dpi, less Excel's inner margins
   const layout = () => ({
     fleetOrder: byFamily && byFamily.checked ? "family" : "place",
     arr: ramArr && ramArr.checked ? "ram" : "all",
+    measure: measure || undefined, width: measure ? BOX_PX : undefined,
   });
   /* The Diagram Summary is optional, and only one thing is read off it: the
      POS column, which says where a diagram stands in its formation. Without
@@ -1587,8 +1602,12 @@ function decodeText(u8) {
     /* Two layouts of ONE list: the plain run, and the depot's own lettered
        hand. What is on screen is what Copy and Save hand over, so the two
        can never disagree about what was sent. */
-    text = (lettered && lettered.checked ? res.lettered : res.text) || "";
+    lastRes = res;
+    const asBox = !!(lettered && lettered.checked);
+    text = (asBox ? res.lettered : res.text) || "";
     out.textContent = text || "Nothing to report — every diagram has what it was planned.";
+    // the lettered list previews as the text box will show it: the face, the width, the breaks
+    out.classList.toggle("svbox", asBox && !!text);
     out.hidden = false;
     bar.hidden = false;
     rev.textContent = "";
@@ -1649,9 +1668,13 @@ function decodeText(u8) {
     c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   if ($("#svcopy")) $("#svcopy").addEventListener("click", async () => {
     if (!text) return;
-    const html = '<pre style="font-family:Calibri,Arial,sans-serif;' +
-      'font-size:11pt;font-weight:700;white-space:pre-wrap">' +
-      esc(text) + "</pre>";
+    /* the lettered list goes over with its breaks and indents made here,
+       as non-breaking spaces, so Excel takes the lines as given */
+    const html = (lettered && lettered.checked && lastRes && lastRes.letteredHtml)
+      ? lastRes.letteredHtml
+      : '<pre style="font-family:Calibri,Arial,sans-serif;' +
+        'font-size:11pt;font-weight:700;white-space:pre-wrap">' +
+        esc(text) + "</pre>";
     try {
       if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({

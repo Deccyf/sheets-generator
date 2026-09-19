@@ -468,6 +468,10 @@
   .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#00B050} .brtable tr.ex-c{color:#FF0000}
   .brtable tr.ex-m{color:#7030A0} .brtable tr.ex-t{color:#0070C0} .brtable tr.ex-x{color:#0070C0}
   .brgrid-one{grid-template-columns:1fr}
+  /* the lettered list, as the Excel text box shows it: Calibri 11 bold,
+     20.19 cm wide, the breaks made by the road and not by the browser */
+  .svbox{font-family:Calibri,Carlito,Arial,sans-serif; font-weight:700; font-size:11pt;
+    white-space:pre; width:20.19cm; max-width:100%; overflow:auto; line-height:1.25}
   .platform > .brwarn{margin:14px 0 0}
   .platform > .brhow{margin-top:14px}
   .berth-small{margin-top:14px}

@@ -56,7 +56,9 @@ test("parseSummary / parseDetail are unchanged", () => {
   const L = legacy(), N = built();
   const sumTxt = L.GENIUS.pdfText(makePdf(SUMMARY_LINES, L.fflate));
   const detTxt = L.GENIUS.pdfText(makePdf(DETAIL_LINES, L.fflate));
-  assert.deepEqual(norm(N.GENIUS.parseSummary(sumTxt)), norm(L.GENIUS.parseSummary(sumTxt)));
+  // the new reader also carries the UNITS cell (unit, units), which the legacy one never read
+  const dropUnits = rows => rows.map(({ unit, units, ...r }) => r);
+  assert.deepEqual(norm(dropUnits(N.GENIUS.parseSummary(sumTxt))), norm(L.GENIUS.parseSummary(sumTxt)));
   assert.deepEqual(norm(dropAct(N.GENIUS.parseDetail(detTxt))),
                    norm(L.GENIUS.parseDetail(detTxt)));
 });
@@ -1144,12 +1146,20 @@ test("a Summary row is read whether or not the UNITS column is filled", () => {
     "ZY101  375999  375/6   0.00   2  05:14  AAAADEP  BBBBSDG  23:41  -12.30   402.10";
   const want = { date: "03/08/26", diag: "ZY101", fleet: "375/6", pos: 2,
                  start: 314, from: "AAAADEP", to: "BBBBSDG", end: 1421 };
+  /* and the UNITS cell itself is read - a PDF printed after allocation
+     gives the berth-request road the unit on each working, as the CSV
+     does; before this it read nothing and every unit was "not in traffic" */
+  const units = { "UNITS empty": { unit: "", units: [] }, "UNITS filled": { unit: "999", units: ["375999"] } };
   for (const [what, line] of [["UNITS empty", blank], ["UNITS filled", filled]]) {
     const got = G.parseSummary(head + "\n" + line);
     assert.equal(got.length, 1, what + ": the row is read at all");
-    assert.deepEqual({ ...got[0] }, want,
+    assert.deepEqual(norm({ ...got[0] }), { ...want, ...units[what] },
       what + ": every field read off the right column");
   }
+  // a formation's cell, "395011, 395023.", gives every unit and the last three digits of the last
+  const pair = G.parseSummary(head + "\n" + "ZY101  395011, 395023.  395/0   0.00   2  05:14  AAAADEP  BBBBSDG  23:41  -12.30   402.10");
+  assert.deepEqual(norm(pair[0].units), ["395011", "395023"]);
+  assert.equal(pair[0].unit, "023");
 });
 
 test("a fleet no book knows is named, not dropped three times in silence", async () => {

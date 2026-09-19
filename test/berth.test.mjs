@@ -764,3 +764,53 @@ test("tomorrow's working out of a place is given once: the next unit there is no
   assert.match(a.notes.join("; "), /today's RM159 stands RE 07\+50/);
   assert.equal(b.action, "ENDS XSE", "the one train is not given twice: " + JSON.stringify(b));
 });
+
+/* ---- the two turns: a Summary with tomorrow's Detail, and a Summary alone ---- */
+test("day turn: today's Summary with tomorrow's Diagram Detail gives tomorrow's departures as its own", async () => {
+  /* Today's pair says 375701 ends at Grove Park. Tomorrow's Detail, dropped
+     too, has RM150 out of Grove Park at 05:40 to Ramsgate - a diagram
+     today's Detail does not have - and that, not a proxy, is the request. */
+  const today = geniusPairCsv(SWAP_DAY);
+  const tomorrow = geniusPairCsv([
+    { code: "RM150", stops: [S("GRVPCSD", "", "05:40", "5J50"), S("RAMSGTE", "07:20", "07:25", "5J50"), S("RAMSGTD", "07:35", "", "")] },
+    { code: "RM102", stops: [S("GRVPCSD", "", "06:00", "5J01"), S("CANONST", "06:40", "06:50", "2K01"), S("GRVPCSD", "09:00", "14:10", "5R00"), S("RAMSGTE", "16:00", "16:10", "5R00"), S("RAMSGTD", "16:20", "", "")] },
+  ]).detail.replace(/03\/08\/26/g, "04/08/26");
+  const rd = await N.GENIUS.read([today.summary, today.detail, tomorrow]);
+  assert.deepEqual(norm([...rd.detail.keys()].sort()), ["03/08/26", "04/08/26"]);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.ok(out.reviews.some(m => /Tomorrow's departures are off the 04\/08\/26 Diagram Detail/.test(m)), out.reviews.join(" | "));
+  const s = out.rows[0].suggest;
+  // today's swap still comes first where there is one: RM102's 5R00 out of Grove Park
+  assert.equal(s.action, "GP BERTH 5R00", JSON.stringify(s));
+  // with 375702 wanted at Ramsgate, RM102 is its own and tomorrow's RM150 is the request, with no proxy note
+  const blocked = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375702\tA\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  const t = blocked.rows[0].suggest;
+  // tomorrow's RM102 is not allocated yet, so 375702's want today does not protect it
+  assert.equal(t.action, "GP BERTH 5J50/5J01", JSON.stringify(t));
+  assert.match(t.notes.join("; "), /tomorrow's 5J50 05\+40 from GP — tomorrow's RM150 ends RE 07\+35, not yet allocated/);
+  assert.ok(!/check tomorrow's diagram/.test(t.notes.join("; ")), "no proxy note when tomorrow's Detail is there: " + JSON.stringify(t));
+});
+
+test("a Summary on its own says where every unit ends tonight, and what it cannot see", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const rd = await N.GENIUS.read([p.summary]);
+  assert.equal(rd.summary.length, 7);
+  assert.equal(rd.detail.size, 0);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.equal(out.inTraffic, 2);
+  assert.equal(out.rows[0].ends.place, "GP");
+  assert.equal(out.rows[1].suggest.action, "RE HOLD", "375704 ends at Ramsgate, off the Summary alone");
+  assert.match(out.rows[0].suggest.action, /^ENDS GP/, "nothing can be swapped without the Detail: " + JSON.stringify(out.rows[0].suggest));
+  assert.ok(out.reviews.some(m => /No Diagram Detail for 03\/08\/26: where each unit ends tonight is read off the Summary alone/.test(m)), out.reviews.join(" | "));
+  assert.ok(!out.reviews.some(m => /has no units on it/.test(m)), "the Summary has units, and is not told it has none");
+});
+
+test("a Summary printed as a PDF after allocation carries its units, so the plan's units are in traffic", async () => {
+  const { makePdf, SUMMARY_LINES, DETAIL_LINES } = await import("./helpers/synth.mjs");
+  const withUnits = SUMMARY_LINES.map(l => l.startsWith("GT101") ? l.replace("GT101  375/6", "GT101  375601.  375/6") : l);
+  const res = await N.GENIUS.build([makePdf(withUnits, N.fflate), makePdf(DETAIL_LINES, N.fflate)]);
+  const out = B().run(planFor(["375601\tA\tTUE AM 04/08\tAFK\t"]), res, {});
+  assert.equal(out.rows[0].inTraffic, true, "375601 is found on GT101 off the PDF");
+  assert.equal(out.rows[0].suggest.action, "AFK BERTH off 2A01");
+  assert.ok(!out.reviews.some(m => /has no units on it/.test(m)), out.reviews.join(" | "));
+});

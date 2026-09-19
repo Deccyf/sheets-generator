@@ -368,7 +368,7 @@ function activeOpRow(diag,t,byOp) {
   return rs[0];
 }
 
-function formationForLeg(leg, legsAll, byOp, reportTime) {
+function formationForLeg(leg, legsAll, byOp, reportTime, missing) {
   const participants=unique(legsAll.filter(x=>x.key===leg.key).map(x=>x.diag));
   let expected=0,actual=0;
   for(const d of participants){
@@ -377,6 +377,10 @@ function formationForLeg(leg, legsAll, byOp, reportTime) {
     expected+=plannedLength(d,sample?.planned);
     const active=activeOpRow(d,leg.dep,byOp);
     if(active?.resource){actual+=resourceInfo(active.resource)?.length||plannedLength(d,active.planned);continue;}
+    /* a row of the shortage being written up is missing wherever it is in
+       the day: the window decides whether the shortage is RAISED, and then
+       the whole of its life is shown */
+    if(active && missing && missing.has(active)){ actual+=0; continue; }
     if(active && /Not allocated/i.test(active.discrepancy||"") && rowQualifiesUnallocated(active,reportTime)){
       actual+=0; continue;
     }
@@ -405,11 +409,15 @@ function segmentDescriptor(seg, occStruct, reviews) {
   return { text:serviceText(first.hcFull,dep,origin,dest,reviews,noteStart,noteEnd), dep:first.dep, hc:first.hcFull, origin,dest };
 }
 
-function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStruct, byOp, reportTime, reviews) {
+function statusOrder(a,b){
+  if(a==="CANCELLED")return -1;if(b==="CANCELLED")return 1;
+  const aa=parseInt(a,10)||999, bb=parseInt(b,10)||999; return aa-bb;
+}
+function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStruct, byOp, reportTime, reviews, missing) {
   const legs=(legsStruct.by.get(diag)||[]).filter(l=>l.rowIndex>=startIndex && l.nextIndex<=endIndex);
   const raw=[];
   for(const leg of legs){
-    const f=formationForLeg(leg,legsStruct.all,byOp,reportTime);
+    const f=formationForLeg(leg,legsStruct.all,byOp,reportTime,missing);
     const status=f.actual===0?"CANCELLED":`${f.actual} V ${f.expected}`;
     if(f.actual===f.expected) continue;
     // Always ignore the local depot shunts the rules say are not useful on the sheet.
@@ -428,11 +436,44 @@ function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStr
     if(!groups.has(seg.status))groups.set(seg.status,[]);
     if(!groups.get(seg.status).some(x=>x.text===d.text)) groups.get(seg.status).push(d);
   }
-  const statuses=[...groups.keys()].sort((a,b)=>{
-    if(a==="CANCELLED")return -1;if(b==="CANCELLED")return 1;
-    const aa=parseInt(a,10)||999, bb=parseInt(b,10)||999; return aa-bb;
-  });
+  const statuses=[...groups.keys()].sort(statusOrder);
   return statuses.map(status=>({status, services:groups.get(status).sort((a,b)=>a.dep-b.dep)}));
+}
+
+/* ---------- continuous shortages ----------
+   A shortage is a formation deficit that travels. The missing portion of
+   the 1H13 10 00 HGS - CHX on RM023 is the same missing portion of the
+   1R32 12 04 CHX - RAM on RM056 - the booked portion changed diagram at
+   Charing Cross, the train did not grow - so it is one item, (RM023/RM056),
+   and not two. Not Allocated rows are chained where one starts at the
+   place, and after the time, the last one ended, for the same booked
+   length; the diagrams are listed in the order the shortage passes
+   through them. The report-time window is untouched: a chain is raised
+   when one of its rows is in the window, as the row was before, and then
+   the whole of its life is shown under it. */
+const CHAIN_GAP=6*60;
+function sameSpot(a,b){
+  if(a===b)return true;
+  const x=ABBR[a]||a, y=ABBR[b]||b;
+  return masterKey(x)===masterKey(y);
+}
+function shortageChains(opRows, reportTime, isFinished) {
+  const cand=opRows.filter(r=>/Not allocated/i.test(r.discrepancy||"") && !isIgnoredShuntCodes(r.from,r.to) && !isFinished(r.diag))
+    .sort((a,b)=>a.depSort-b.depSort || a.arrSort-b.arrSort);
+  const chains=[];
+  for(const r of cand){
+    const cls=plannedClass(r.diag,r.planned);
+    let best=null;
+    for(const c of chains){
+      const last=c.rows[c.rows.length-1];
+      if(c.expectedLength!==r.expectedLength || c.cls!==cls) continue;
+      if(!sameSpot(last.to,r.from) || r.depSort<last.arrSort || r.depSort-last.arrSort>CHAIN_GAP) continue;
+      if(!best || last.arrSort>best.rows[best.rows.length-1].arrSort) best=c;
+    }
+    if(best) best.rows.push(r);
+    else chains.push({rows:[r], expectedLength:r.expectedLength, cls});
+  }
+  return chains.filter(c=>c.rows.some(r=>rowQualifiesUnallocated(r,reportTime)));
 }
 
 function endingDescriptor(diag, op, detail, legsStruct, occStruct, reviews) {
@@ -493,19 +534,79 @@ function letterFor(n) {
   do { s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26)-1; } while (n>=0);
   return s;
 }
-function letterList(blocks) {
-  return blocks.map((lines,i)=>{
-    const out=[];
+/* ---------- the Excel text box ----------
+   The lettered list is pasted into a text box 20.19 cm wide, in Calibri
+   11 bold, and Excel is not left to wrap it: a service is one thing and
+   never breaks across two lines, so the lines are laid out here, measured
+   in the face they will be read in. The letter and its bracket, then the
+   visual width of four spaces, then the text; a blank line before a
+   FOLLOWING; FOLLOWING seven spaces in from the edge; the first service
+   straight after "FOLLOWING 4 V 3:"; a service that will not fit goes
+   whole onto the next line, which starts directly under the first service
+   and not under FOLLOWING. In the ordinary variations block the letter
+   stands against the first line only and every other line starts where
+   that one's text does. Indents are given in spaces of the face - Calibri
+   is proportional, so the count is worked out from the measured widths -
+   and the copy carries them as non-breaking spaces with the breaks made
+   here, so Excel takes the lines as given. */
+const BOX_WIDTH_PT = 20.19 / 2.54 * 72 - 14.2;      // less Excel's own inner margins
+/* Calibri Bold at 11 pt, near enough, for where no browser is there to
+   measure it: the widths of the characters the list is made of. */
+const CAL_W = { " ":2.49, ".":2.78, ",":2.78, ":":2.94, "(":3.41, ")":3.41, "-":3.41, "/":4.28, "+":5.53,
+  "A":6.67, "B":6.17, "C":5.94, "D":6.85, "E":5.62, "F":5.36, "G":6.94, "H":6.95, "I":2.96, "J":3.73,
+  "K":6.16, "L":4.72, "M":9.42, "N":7.14, "O":7.36, "P":5.98, "Q":7.45, "R":6.43, "S":5.35, "T":5.51,
+  "U":7.05, "V":6.43, "W":9.92, "X":6.03, "Y":5.86, "Z":5.40 };
+function measureCalibri(s) {
+  let w=0;
+  for(const ch of String(s)) w+= CAL_W[ch] !== undefined ? CAL_W[ch] : /[0-9]/.test(ch) ? 5.58 : /[a-z]/.test(ch) ? 5.4 : 5.5;
+  return w;
+}
+const NOTE_RE=/^(FOLLOWING|THEN|ON ARR|\d+ CAR T\/F)/;
+function wrapNote(body, indent, measure, width, spaces) {
+  const m=/^([^:]*:\s*)(.*)$/.exec(body);
+  if(!m) return [{indent, text:body}];
+  const prefix=m[1], items=m[2].split(/,\s+/).filter(Boolean);
+  const first=" ".repeat(indent)+prefix;
+  const cont=spaces(measure(first));
+  const lines=[]; let cur=first, n=0;
+  items.forEach((it,k)=>{
+    const piece=it+(k<items.length-1?",":"");
+    const add=n===0?piece:" "+piece;
+    if(n>0 && measure(cur+add)>width){ lines.push(cur); cur=" ".repeat(cont)+piece; n=1; }
+    else { cur+=add; n++; }
+  });
+  lines.push(cur);
+  return lines.map(l=>{ const t=l.replace(/^ +/,""); return {indent:l.length-t.length, text:t}; });
+}
+function layoutLettered(blocks, measure, width) {
+  measure=measure||measureCalibri; width=width||BOX_WIDTH_PT;
+  const sp=measure(" ")||1;
+  const spaces=w=>Math.max(0,Math.round(w/sp));
+  const out=[];
+  blocks.forEach((lines,i)=>{
+    if(i) out.push({indent:0,text:""});
+    const letter=letterFor(i)+")", gap=4;
+    const hang=spaces(measure(letter)+gap*sp);
     lines.forEach((ln,j)=>{
       const body=String(ln).replace(/^\s+/,"");
-      if(j===0){ out.push(letterFor(i)+")\t"+body); return; }
+      if(j===0){ out.push({indent:0,text:letter+" ".repeat(gap)+body}); return; }
+      if(!body){ out.push({indent:0,text:""}); return; }
+      if(!NOTE_RE.test(body)){ out.push({indent:hang,text:body}); return; }
       // a case's notes are set off by a blank line; a run of list lines is not
-      const note=/^(FOLLOWING|THEN|ON ARR|\d+ CAR T\/F)/.test(body);
-      if(note && out[out.length-1]!=="") out.push("");
-      out.push(body?"\t"+body:"");
+      if(out[out.length-1].text!=="") out.push({indent:0,text:""});
+      for(const l of wrapNote(body,7,measure,width,spaces)) out.push(l);
     });
-    return out.join("\n");
-  }).join("\n\n");
+  });
+  return out;
+}
+function letterList(blocks, measure, width) {
+  return layoutLettered(blocks,measure,width).map(l=>" ".repeat(l.indent)+l.text).join("\n");
+}
+const escHtml=v=>String(v).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function letterHtml(blocks, measure, width) {
+  const lines=layoutLettered(blocks,measure,width).map(l=>
+    '<p style="margin:0">'+(l.text? "&nbsp;".repeat(l.indent)+escHtml(l.text) : "&nbsp;")+"</p>");
+  return '<div style="font-family:Calibri,Carlito,Arial,sans-serif;font-size:11pt;font-weight:700;white-space:nowrap">'+lines.join("")+"</div>";
 }
 
 function formatFollowing(groups) {
@@ -590,18 +691,33 @@ function buildDiscrepancies(op, detail, posAt, opts) {
 
   const isFinished=d=>omitFinishedBy1600(d,op.reportTime,detail);
 
-  // 1) qualifying Not Allocated rows -> shortage cases, one case per operating row/diagram.
-  for(const r of op.rows){
-    if(isFinished(r.diag) || !rowQualifiesUnallocated(r,op.reportTime))continue;
-    excluded.add(r.diag);
-    const rows=detail.get(r.diag)||[];
-    if(!rows.length){reviews.push(`${r.diag}: no Diagram Detail itinerary found for shortage.`);continue;}
-    const startIndex=findDetailIndexForOp(rows,r,"start"), endIndex=findDetailIndexForOp(rows,r,"end");
-    const end=endingDescriptor(r.diag,r,detail,legsStruct,occStruct,reviews);
-    const cls=plannedClass(r.diag,r.planned);
-    const label=`${r.expectedLength}.${cls} SHORTAGE`;
-    const groups=formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:r.depSort, lines:[headingWithEnd(label,r.diag,end,opts),...formatFollowing(groups)]});
+  /* 1) qualifying Not Allocated rows -> shortage cases, one per CONTINUOUS
+     shortage, however many diagrams it passes through. The heading is the
+     direct formation - 4.375 V 8.375 - where the effect is the same on
+     every service, and N.375 SHORTAGE where it changes during its life:
+     some 4 V 8, some 8 V 12, a cancellation. */
+  for(const c of shortageChains(op.rows,op.reportTime,isFinished)){
+    const missing=new Set(c.rows);
+    const groups=new Map();
+    for(const r of c.rows){
+      excluded.add(r.diag);
+      const rows=detail.get(r.diag)||[];
+      if(!rows.length){reviews.push(`${r.diag}: no Diagram Detail itinerary found for shortage.`);continue;}
+      const startIndex=findDetailIndexForOp(rows,r,"start"), endIndex=findDetailIndexForOp(rows,r,"end");
+      for(const g of formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews,missing)){
+        if(!groups.has(g.status))groups.set(g.status,[]);
+        for(const sv of g.services) if(!groups.get(g.status).some(x=>x.text===sv.text)) groups.get(g.status).push(sv);
+      }
+    }
+    // the ending is the final affected working, whichever diagram the shortage started on
+    const last=c.rows[c.rows.length-1];
+    const end=(detail.get(last.diag)||[]).length ? endingDescriptor(last.diag,last,detail,legsStruct,occStruct,reviews) : null;
+    const statuses=[...groups.keys()].sort(statusOrder);
+    const merged=statuses.map(st=>({status:st, services:groups.get(st).sort((a,b)=>a.dep-b.dep)}));
+    const diagText=unique(c.rows.map(r=>r.diag)).join("/");
+    const one=statuses.length===1 ? /^(\d+) V (\d+)$/.exec(statuses[0]) : null;
+    const label=one ? `${one[1]}.${c.cls} V ${one[2]}.${c.cls}` : `${c.expectedLength}.${c.cls} SHORTAGE`;
+    topCases.push({sort:c.rows[0].depSort, lines:[headingWithEnd(label,diagText,end,opts),...formatFollowing(merged)]});
   }
 
   // Work out each diagram's effective ending working and the allocation that actually covers that working.
@@ -782,7 +898,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
      so there is one list in two layouts and not two lists. */
   const blocks=topCases.map(c=>c.lines);
   if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
-  return {text,lettered:letterList(blocks),
+  return {text,lettered:letterList(blocks,opts.measure,opts.width),letteredHtml:letterHtml(blocks,opts.measure,opts.width),
           reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
 }
 
@@ -938,7 +1054,8 @@ function sniff(text) {
   return null;
 }
 
-return { run, read, build, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
+return { run, read, build, sniff, letterList, letterHtml, layoutLettered, measureCalibri, BOX_WIDTH_PT,
+         parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
          pdfText, ABBR, MASTER_GROUPS };
 })();

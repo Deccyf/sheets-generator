@@ -218,7 +218,7 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.waitForFunction(() =>
     /^A\)/.test(document.querySelector("#svout").textContent), null, { timeout: 10000 });
   const letters = (await page.textContent("#svout")).split("\n")
-    .filter(l => /^[A-Z]+\)\t/.test(l)).map(l => l.split(")")[0]);
+    .filter(l => /^[A-Z]+\)    /.test(l)).map(l => l.split(")")[0]);
   if (letters.join(",") !== "A,B,C,D")
     throw new Error("a letter per case and one for the fleet list: " + letters.join(","));
   console.log("sv lettered :", (await page.textContent("#svout")).split("\n")[0].replace(/\t/g, "  "));
@@ -325,7 +325,7 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.setInputFiles("#brfile", [
     f("satsum.csv", p.summary.replace(/03\/08\/26/g, "08/08/26")),
     f("satdet.csv", p.detail.replace(/03\/08\/26/g, "08/08/26"))]);
-  await page.waitForFunction(() => /Reading 08\/08\/26/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 10000 });
+  await page.waitForFunction(() => /Summary 08\/08\/26/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 10000 });
   console.log("br own pair :", (await page.textContent("#brberthtxt")).trim());
   await page.locator("#brgo").click();
   await page.waitForFunction(() => /against 08\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 10000 });

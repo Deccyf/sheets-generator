@@ -168,9 +168,14 @@ const GENIUS = (() => {
         notes.push(date + " " + t[0] + ": the Summary gives no Position for" +
           " this working — taken as 1, so a formation it is part of may print" +
           " the wrong way round. Check it against the real book.");
+      /* UNITS sits between the diagram and the fleet on a report printed
+         after allocation - "375609." or "395011, 395023." - and is what the
+         berth-request road looks a unit up by. Read from every cell before
+         the start time, since a blank cell leaves no token to count. */
+      const unitsRaw = t.slice(1, i1).filter(v => /\d{6}/.test(v)).join(" ");
       rows.push({ date, diag: t[0], fleet, pos,
                   start: mins(t[i1]), from: t[i1 + 1], to: t[i2 - 1],
-                  end: mins(t[i2]) });
+                  end: mins(t[i2]), unit: unitNo(unitsRaw), units: unitList(unitsRaw) });
     }
     return rows;
   }
@@ -1478,12 +1483,12 @@ const GENIUS = (() => {
      Saturday's plan can be read against a Saturday's reports without the
      weekday books, which do not exist for a Saturday. */
   async function read(inputs) {
-    const { sumRows, byDate } = await ingest(inputs, []);
+    const { sumRows, byDate } = await ingest(inputs, [], true);
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
     return { summary: sumRows, detail: byDate, dates,
              labels: Object.fromEntries(dates.map(d => [d, d])) };
   }
-  async function ingest(inputs, notes) {
+  async function ingest(inputs, notes, lenient) {
     let sumRows = [];
     const byDate = new Map();
     const mergeDetail = m1 => {
@@ -1505,7 +1510,8 @@ const GENIUS = (() => {
       if (/Diagram Detail Report/i.test(txt)) mergeDetail(parseDetail(txt));
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
-    if (!byDate.size) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
+    // a READ may stand on the Summary alone: it says where every unit ends
+    if (!byDate.size && !lenient) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
     return { sumRows, byDate };
   }
   async function build(inputs, opts) {

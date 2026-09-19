@@ -140,6 +140,56 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.7.0 — 19 September 2026 — the Summary PDF's units, the two turns, and the Excel text box
+
+**The Summary PDF never gave up its units.** The berth-request road looks
+a unit up on the Summary's UNITS column, and the PDF reader read every
+column but that one — only the CSV reader did — so a Summary printed after
+allocation as a PDF said every unit was *not in traffic today*, and the
+Review then said the Summary had no units on it, which it had. The PDF
+reader carries the UNITS cell now, "375609." or "395011, 395023.", the
+same as the CSV.
+
+**The two turns.** The tab takes the Summary printed after allocation with
+the Diagram Detail for today, tomorrow or both, or the Summary alone. A
+Summary on its own says where every unit ends tonight — it has a row per
+working segment with the unit on it — and the Review says a swap cannot be
+seen without a Detail. On the day turn, today's Summary with *tomorrow's*
+Detail gives tomorrow morning's departures out of wherever each unit ends,
+as its own diagrams and not today's taken as a proxy. On the night turn,
+today's Summary with today's Detail: a unit whose allocation finishes
+between 09+00 and 16+30 is on hand at a depot, and the departures it is
+offered are those between 09+00 and 16+30 first. Tomorrow's diagrams come
+with no units and no fleet, so the fleet is read off the diagram code and
+the line says *not yet allocated*.
+
+**Shortages: one shortage, however many diagrams it passes through.** The
+missing portion of the 1H13 on RM023 is the same missing portion of the
+1R32 on RM056, so it is one lettered item, `(RM023/RM056)`, the diagrams
+in the order the shortage passes through them, ending on its final
+affected working, every service under it in time order. The report-time
+window still decides whether it is raised, on the same rows as before;
+raised, the whole of its life is shown. Where the effect is the same on
+every service the heading is the formation, `4.375 V 8.375 (RM023/RM056)`;
+where it changes — some 4 V 8, some 8 V 12, a cancellation — it is
+`4.375 SHORTAGE (…)` with a FOLLOWING line per effect. Fleet-mismatch
+detection, the reciprocal cancellations, the endpoint, window and
+destination-sorting rules are as they were.
+
+**Shortages: laid out for the Excel text box.** The lettered list is
+pasted into a text box 20.19 cm wide in Calibri 11 bold, and Excel is not
+left to wrap it. The letter and bracket, then four spaces' worth, then the
+text; a blank line before a FOLLOWING, which sits seven spaces in with the
+first service straight after it; a service is one thing and never breaks
+across two lines — one that will not fit goes whole onto the next line,
+directly under the first service; in the fleet block the letter stands
+against the first line only and every other line starts where that one's
+text does. The lines are measured in the browser in the face they will be
+read in, and estimated for Calibri Bold 11 where there is none; the copy
+carries the breaks and indents as non-breaking spaces, and the preview
+shows the list at the box's width. TUNWELL is TBW and PKWD is PDW, as
+before.
+
 ## 3.6.1 — 19 September 2026 — one train, the three rules that were to come, and no notice at a depot
 
 **A unit's day is its own segments.** The Diagram Summary has a row per

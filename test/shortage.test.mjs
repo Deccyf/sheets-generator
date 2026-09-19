@@ -200,23 +200,26 @@ test("the lettered layout gives every case its own letter and the fleet one", ()
      one train, the last letter is the whole fleet list. */
   const res = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES),
                       txt(SHORTAGE_SUMMARY_LINES));
-  const heads = res.lettered.split("\n").filter(l => /^[A-Z]+\)\t/.test(l));
+  const heads = res.lettered.split("\n").filter(l => /^[A-Z]+\)    /.test(l));
   assert.deepEqual(norm(heads.map(l => l.split(")")[0])), ["A", "B", "C", "D"],
     "three cases and then the fleet block: " + heads.join(" | "));
-  assert.match(heads[0], /^A\)\t3 CAR WRONG END \(RM301\/RM901\)/);
-  assert.match(heads[1], /^B\)\t3\.375 V 4\.375 \(RM903\)/);
-  assert.match(heads[2], /^C\)\t3 CAR INTER VICE END \(RM302\/RM905\)/);
-  assert.match(heads[3], /^D\)\t375 V 375\/9 \(RM905\)/, "the fleet list shares the last letter");
-  // a case's own note is set off by a blank line and aligned, not stepped in
+  assert.match(heads[0], /^A\)    3 CAR WRONG END \(RM301\/RM901\)/);
+  assert.match(heads[1], /^B\)    3\.375 V 4\.375 \(RM903\)/);
+  assert.match(heads[2], /^C\)    3 CAR INTER VICE END \(RM302\/RM905\)/);
+  assert.match(heads[3], /^D\)    375 V 375\/9 \(RM905\)/, "the fleet list shares the last letter");
+  // a case's own note is set off by a blank line and sits seven spaces in
   const lines = res.lettered.split("\n");
   const at = lines.findIndex(l => /FOLLOWING 3 V 4/.test(l));
-  assert.equal(lines[at], "\tFOLLOWING 3 V 4: 2W14 06 36 RAM - CHX");
+  assert.equal(lines[at], "       FOLLOWING 3 V 4: 2W14 06 36 RAM - CHX");
   assert.equal(lines[at - 1], "", "a blank line above it");
-  // every fleet line sits under D, and no line is left without its indent
-  assert.ok(res.lettered.split("\n").every(l => l === "" || /^([A-Z]+\))?\t/.test(l)),
+  // every fleet line sits under D, starting where D's own text starts
+  assert.ok(res.lettered.split("\n").every(l => l === "" || /^[A-Z]+\)    \S|^ +\S/.test(l)),
     "every line is either a letter or indented under one");
+  const dAt = lines.findIndex(l => /^D\)/.test(l));
+  const under = lines.slice(dAt + 1).filter(Boolean);
+  assert.ok(under.length >= 1 && under.every(l => /^ {6,9}\S/.test(l)), "the other variations start where D's text does: " + JSON.stringify(under));
   // the same lines as the plain layout, just laid out differently
-  const strip = t => t.split("\n").map(l => l.replace(/^[A-Z]+\)\t|^\t/, "").trim())
+  const strip = t => t.split("\n").map(l => l.replace(/^[A-Z]+\)\s+|^\s+/, "").trim())
     .filter(Boolean).join("\n");
   assert.equal(strip(res.lettered), strip(res.text), "one list, two layouts");
 });
@@ -320,4 +323,85 @@ test("a diagram worked by two units is not carried into the next day", () => {
   assert.match(res.text, /^375\/9 V 375 \(RM008\) ENDS 5H16 22\+03 HGS - XSE \(ARR 22\+30\)$/m,
     "the night working, not the morning one carried forward: " + res.text);
   assert.ok(!/RM008\) ENDS 1H74/.test(res.text), "the 10:30 is not its ending");
+});
+
+/* ---- the Excel text box: measured lines, whole services ---- */
+test("a service never breaks across two lines: the next whole one goes onto the next line, under the first", () => {
+  const S2 = S();
+  const mono = t => t.length;          // one unit per character, so the widths can be counted
+  const blocks = [["4.375 V 3.375 (RM308) ENDS 5T73 23+01 SOO - GI",
+    "    FOLLOWING 4 V 3: 5T09 05+47 TONJS - TON, 2T09 05 55 TON - SOO, 2T12 07 03 SOO - PDW, 2T17 08 03 PDW - SOO"]];
+  const lines = S2.letterList(blocks, mono, 80).split("\n");
+  assert.equal(lines[0], "A)    4.375 V 3.375 (RM308) ENDS 5T73 23+01 SOO - GI");
+  assert.equal(lines[1], "");
+  assert.equal(lines[2], "       FOLLOWING 4 V 3: 5T09 05+47 TONJS - TON, 2T09 05 55 TON - SOO,");
+  assert.equal(lines[3], " ".repeat(7 + "FOLLOWING 4 V 3: ".length) + "2T12 07 03 SOO - PDW, 2T17 08 03 PDW - SOO",
+    "the continuation starts directly under the first service");
+  assert.ok(lines.every(l => mono(l) <= 80), "nothing over the width: " + JSON.stringify(lines));
+  // a service too long for the width still goes whole onto a line of its own
+  const tight = S2.letterList(blocks, mono, 40).split("\n");
+  for (const l of tight.slice(2)) assert.match(l, /^ +(\S.*?)?(\d[A-Z]\d\d \d\d[ +]\d\d [A-Z]+ - [A-Z]+,?)$/, "whole services only: " + l);
+  // the ordinary variations: the letter on the first, the rest start where its text starts
+  const vars = S2.letterList([["375 V 375/9 (RM001) ENDS X", "375/9 V 375 (RM002) ENDS Y", "", "375 V 375/9 (RM003) ENDS Z"]], mono, 80).split("\n");
+  assert.deepEqual(norm(vars), ["A)    375 V 375/9 (RM001) ENDS X", "      375/9 V 375 (RM002) ENDS Y", "", "      375 V 375/9 (RM003) ENDS Z"]);
+  // and the rich text carries the same breaks and indents, as non-breaking spaces
+  const html = S2.letterHtml(blocks, mono, 80);
+  assert.match(html, /Calibri/); assert.match(html, /font-weight:700/);
+  assert.match(html, /<p style="margin:0">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FOLLOWING 4 V 3: 5T09 05\+47 TONJS - TON, 2T09 05 55 TON - SOO,<\/p>/);
+  assert.match(html, /<p style="margin:0">(&nbsp;){24}2T12 07 03 SOO - PDW, 2T17 08 03 PDW - SOO<\/p>/);
+  // without a browser to measure, Calibri Bold 11 is estimated: a real line of the list fits the box
+  assert.ok(S2.measureCalibri("       FOLLOWING 4 V 3: 5T09 05+47 TONJS - TON, 2T09 05 55 TON - SOO, 2T12 07 03 SOO - PDW,") < S2.BOX_WIDTH_PT);
+});
+
+/* ---- a shortage that moves between diagrams is one shortage ---- */
+const CHAIN_OP = [
+  "GENIUS  Control  :SouthEastern Trains  OPERATING REPORT",
+  // printed at 16:30: the 12 04 is in the Not Allocated window, nothing is omitted as finished
+  "Controller:NA  Signon:X  Name:Y  Time:  16:30",
+  "Operating Report for:Depot RM, Owning Ctrl NE, 18/09/26 to 19/09/26. ",
+  "DIAGRAM  DATE  FROM  DEP.  ARR.  TO  TRAINID  DEPOT  PLANNED  ALLOCATED  RESOURCE  OWNING   DISCREPANCY",
+  // the missing 4-car is RM023's portion of the 1H13 and RM056's of the 1R32 - one shortage
+  "RM023  18/09/26  HASTING  10:00  11:30  CHRX  1H13BA  RM  375/6  NE  Not allocated.",
+  "RM024  18/09/26  HASTING  10:00  11:30  CHRX  1H13BA  RM  375/6  375/6  375601  NE  ok",
+  "RM056  18/09/26  CHRX  12:04  13:09  RAMSGTE  1R32BA  RM  375/6  NE  Not allocated.",
+  "RM057  18/09/26  CHRX  12:04  13:09  RAMSGTE  1R32BA  RM  375/6  375/6  375602  NE  ok",
+];
+const CHAIN_DET = [
+  "GENIUS  Diagram Detail Report",
+  "Diagram RM 0 2 3 On 18/09/26", "HASTING  Hastings  10:00  1H13BA", "CHRX  Charing Cross  11:30",
+  "Diagram RM 0 2 4 On 18/09/26", "HASTING  Hastings  10:00  1H13BA", "CHRX  Charing Cross  11:30",
+  "Diagram RM 0 5 6 On 18/09/26", "CHRX  Charing Cross  12:04  1R32BA", "RAMSGTE  Ramsgate  13:09",
+  "Diagram RM 0 5 7 On 18/09/26", "CHRX  Charing Cross  12:04  1R32BA", "RAMSGTE  Ramsgate  13:09",
+];
+test("a shortage that passes from one diagram to the next is one lettered item, ending on its final working", () => {
+  /* Only the 12 04 is in the report-time window, so the shortage is raised
+     on it as before; the 10 00 it grew out of is the same missing portion
+     and is shown under it, the diagrams in the order it passed through. */
+  const res = S().run(txt(CHAIN_OP), txt(CHAIN_DET));
+  const lines = res.text.split("\n");
+  assert.equal(lines[0], "4.375 V 8.375 (RM023/RM056) ENDS 1R32 12 04 CHX - RAM (ARR 13 09)", res.text);
+  assert.equal(lines[1].trim(), "FOLLOWING 4 V 8: 1H13 10 00 HGS - CHX, 1R32 12 04 CHX - RAM");
+  assert.equal(res.counts.top, 1, "one item, not two");
+  assert.match(res.lettered, /^A\)    4\.375 V 8\.375 \(RM023\/RM056\)/);
+});
+test("when the effect changes during the shortage's life the heading is SHORTAGE, with a FOLLOWING per effect", () => {
+  /* the same missing portion goes on from Ramsgate on the 2R40, which is
+     booked a 12-car: 8 V 12 there, 4 V 8 before, so the heading cannot name
+     one formation */
+  const op = CHAIN_OP.concat([
+    "RM056  18/09/26  RAMSGTE  14:00  15:00  MARGATE  2R40BA  RM  375/6  NE  Not allocated.",
+    "RM057  18/09/26  RAMSGTE  14:00  15:00  MARGATE  2R40BA  RM  375/6  375/6  375602  NE  ok",
+    "RM058  18/09/26  RAMSGTE  14:00  15:00  MARGATE  2R40BA  RM  375/6  375/6  375603  NE  ok",
+  ]);
+  const det = CHAIN_DET.map(l => l).concat(["Diagram RM 0 5 8 On 18/09/26", "RAMSGTE  Ramsgate  14:00  2R40BA", "MARGATE  Margate  15:00"]);
+  // RM056 and RM057 carry on from Ramsgate
+  const i56 = det.indexOf("Diagram RM 0 5 6 On 18/09/26"), i57 = det.indexOf("Diagram RM 0 5 7 On 18/09/26");
+  det.splice(i57 + 2, 1, "RAMSGTE  Ramsgate  13:09  14:00  2R40BA", "MARGATE  Margate  15:00");
+  det.splice(i56 + 2, 1, "RAMSGTE  Ramsgate  13:09  14:00  2R40BA", "MARGATE  Margate  15:00");
+  const res = S().run(txt(op), txt(det));
+  const lines = res.text.split("\n").map(l => l.trim());
+  assert.equal(lines[0], "4.375 SHORTAGE (RM023/RM056) ENDS 2R40 14 00 RAM - MAR (ARR 15 00)", res.text);
+  assert.equal(lines[1], "FOLLOWING 4 V 8: 1H13 10 00 HGS - CHX, 1R32 12 04 CHX - RAM");
+  assert.equal(lines[2], "FOLLOWING 8 V 12: 2R40 14 00 RAM - MAR");
+  assert.equal(res.counts.top, 1);
 });

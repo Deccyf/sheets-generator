@@ -370,10 +370,19 @@
         aria-controls="svoptshint">What each does</button>
     </div>
     <div class="opts-hints" id="svoptshint" hidden>
-      <p><b>Lettered</b> — the depot's own hand. Every shortage, swap or
-        length case takes a letter of its own, in the order they happen, and
-        the whole run of fleet variations shares the last one, so one letter
-        names one train and the last names the fleet list.</p>
+      <p><b>Lettered</b> — the depot's own hand, laid out for the Excel text
+        box it is pasted into: 20.19 cm wide, Calibri 11 bold. Every shortage,
+        swap or length case takes a letter of its own, in the order they
+        happen, and the whole run of fleet variations shares the last one, so
+        one letter names one train and the last names the fleet list. The
+        letter and bracket, then four spaces' worth, then the text; a blank
+        line before a <code>FOLLOWING</code>, which sits seven spaces in, the
+        first service straight after it; a service is one thing and never
+        breaks across two lines &mdash; one that will not fit goes whole onto
+        the next line, directly under the first service. In the fleet block
+        the letter stands against the first line only and every other line
+        starts where that one's text does. Copy carries the breaks and
+        indents over, so Excel does not decide its own.</p>
       <p><b>Variations by which way round</b> — the fleet block gathered by
         the mismatch rather than by where the unit ends up: every
         375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
@@ -412,6 +421,20 @@
           one run between eight and six takes departures between 12 00 and
           18 00. There is no window yet for a report run after 18 00, and one
           run then says so on the Review list rather than guessing.</p>
+        <p><b>A shortage that moves between diagrams is one shortage.</b> The
+          missing portion of the 1H13 on RM023 is the same missing portion of
+          the 1R32 on RM056 &mdash; the booked portion changed diagram at
+          Charing Cross, the train did not grow &mdash; so it is one lettered
+          item, <code>(RM023/RM056)</code>, the diagrams in the order it
+          passed through them, ending on its final affected working, with
+          every service under it in time order. The window above still
+          decides whether it is raised, on the same rows as before; once
+          raised, the whole of its life is shown. Where the effect is the
+          same on every service the heading is the formation itself,
+          <code>4.375 V 8.375 (RM023/RM056)</code>; where it changes during
+          the shortage&rsquo;s life &mdash; some 4 V 8, some 8 V 12, a
+          cancellation &mdash; it is <code>4.375 SHORTAGE (…)</code> with a
+          <code>FOLLOWING</code> line per effect.</p>
         <p><b>Variations.</b> A unit of the wrong length, the wrong fleet
           family or the wrong class against what the diagram planned. A 3-car
           and a 4-car that have simply swapped between two diagrams on one
@@ -459,30 +482,37 @@
       is an experimental tool. It is a reference only, to help you make a
       decision on berth requests, so please double-check all of its work
       against the reports before anything goes on the Telex.</p>
-    <p class="whatfor brhow">Works off the <strong>weekday books</strong> once they
-      are built — the same Diagram Summary and Diagram Detail, so drop those
-      on the weekday tab first, and drop the Summary that was printed
-      <strong>after allocation</strong> (the evening one), because the morning
-      print has no units on it. Then paste the maintenance plan out of the
-      Telex workbook below. For every line of it this says where that unit is
-      today, where and when it ends tonight, and whether it calls at the place
-      the plan wants it &mdash; and off those facts and the depot&rsquo;s own
-      rules it <strong>suggests</strong> an action in the depot&rsquo;s own
-      words. The plan comes back in its own shape, sections, columns, order
-      and colours, with <em>Suggested</em> and <em>Today</em> added on the
-      right; your own Action column is never written over, and a plan pasted
-      with it empty comes back with the suggestions filling it. The rules
-      are written out at the bottom, the ones applied and the ones still to
-      come.</p>
+    <p class="whatfor brhow"><strong>How it works.</strong> Drop the Diagram
+      Summary printed <strong>after allocation</strong> below &mdash; PDF or
+      CSV, it is the UNITS column that is read, and the morning print has it
+      empty &mdash; and with it the Diagram Detail for <strong>today,
+      tomorrow or both</strong>. Or leave the drop zone alone and the weekday
+      books&rsquo; own pair is used. Then paste the maintenance plan out of
+      the Telex workbook. For every line this says where that unit is today,
+      where and when it ends tonight and whether it calls at the place the
+      plan wants it, and off those facts and the depot&rsquo;s own rules it
+      <strong>suggests</strong> a request in the depot&rsquo;s own words.
+      <strong>On the day turn</strong>, drop today&rsquo;s Summary and
+      <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight comes off
+      the Summary, and the requests are tomorrow morning&rsquo;s departures
+      out of those places. <strong>On the night turn</strong>, drop
+      today&rsquo;s Summary and today&rsquo;s Detail: a unit whose allocation
+      finishes between 09+00 and 16+30 is on hand at a depot, and the
+      requests are the departures between 09+00 and 16+30 it could go out
+      on, the depot to choose. The plan comes back in its own shape, sections,
+      columns, order and colours, with <em>Suggested</em> and <em>Today</em>
+      added on the right; your own Action column is never written over, and
+      a plan pasted with it empty comes back with the suggestions filling
+      it. The rules are written out at the bottom.</p>
 
     <button class="berth berth-small" id="brberth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
-          <strong id="brberthtxt">Drop the day&rsquo;s Diagram Summary &amp; Detail here</strong>
-          <span>any day, a Saturday included &middot; the Summary printed after
-            allocation &middot; or leave it and the weekday books&rsquo; own pair
-            is used</span>
+          <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
+          <span>PDF or CSV &middot; any day, a Saturday included &middot; the
+            Summary alone says where every unit ends tonight &middot; or leave it
+            and the weekday books&rsquo; own pair is used</span>
         </span>
       </span>
     </button>
@@ -687,8 +717,21 @@
           <code>AFK BERTH RP 05 27/06 12</code>. Tomorrow&rsquo;s diagrams
           are on no report read here, so it is taken as today&rsquo;s Detail
           has it &mdash; the weekday ones repeat &mdash; and the line says
-          to check tomorrow&rsquo;s runs the same. It comes before a depot
-          swap with no place to make it, after a swap today.</p>
+          to check tomorrow&rsquo;s runs the same. Drop <b>tomorrow&rsquo;s
+          Diagram Detail</b> as well, or instead, and tomorrow&rsquo;s
+          departures are its own &mdash; the day turn&rsquo;s way of working,
+          today&rsquo;s Summary after allocation and tomorrow&rsquo;s Detail
+          &mdash; and no check is asked for. It comes after a swap today.</p>
+        <p><b>The Summary alone, and the two turns.</b> The Summary has a
+          row per working segment with its unit, so on its own it says where
+          every unit ends tonight and what it is on; nothing can be swapped
+          without a Detail, and the Review says so. On the <b>day turn</b>,
+          today&rsquo;s Summary with tomorrow&rsquo;s Detail gives tomorrow
+          morning&rsquo;s departures out of wherever each unit ends. On the
+          <b>night turn</b>, today&rsquo;s Summary with today&rsquo;s Detail:
+          a unit whose allocation finishes between <b>09+00 and 16+30</b> is
+          on hand at a depot, and the departures it is offered are those
+          between 09+00 and 16+30 first, any later ones after.</p>
         <p><b>The notice</b> is written out under the table in the
           depot&rsquo;s own form, ready to send:
           <i>375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE /

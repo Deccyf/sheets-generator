@@ -65,6 +65,10 @@ const CHANGEOVER_AT = new Set(["RAMSGTE", "CHRX", "CANONST", "VICTRIE", "LNDNBDG
    Faversham, and those two. */
 const NO_REQUEST_AT = new Set(["FKE", "HGS"]);
 const NO_SPLIT_AT = new Set(["FKE", "HGS", "FAV"]);
+/* The night turn's window: a unit whose allocation finishes between 09+00
+   and 16+30 is on hand at a depot, and the departures it is offered are
+   the ones between 09+00 and 16+30 first. Minutes from midnight. */
+const PM_WINDOW = [540, 990];
 /* A Genius code -> the plan's word for it, for saying where a unit ends. */
 const CODE_TO_PLACE = (() => {
   const m = new Map();
@@ -325,6 +329,17 @@ const hhmm = (t, ecs) => {
    is wanted, so the whole day is read once: each diagram's stops, its
    units, where it ends, what it ends on. */
 const workingKey = (code, hc, dep) => code + "@" + hc + "@" + dep;
+/* Tomorrow's diagrams come with no Summary, so their fleet is read off the
+   diagram code: RM3xx a 3-car, RM9xx a 375/9, any other RM a plain 375,
+   GT a 377, SG a 376. */
+function fleetFromDiag(diag) {
+  if (/^RM3/.test(diag)) return "375/3";
+  if (/^RM9/.test(diag)) return "375/9";
+  if (/^RM/.test(diag)) return "375/6";
+  if (/^GT/.test(diag)) return "377/5";
+  if (/^SG/.test(diag)) return "376/0";
+  return "";
+}
 /* How many units of this unit's kind make a 12-car: three 4-car 375s or
    377s, two 5-car 376s, four 3-car 375/3s. */
 function maxUnits(unit) {
@@ -359,7 +374,7 @@ function allDays(genius, date) {
     for (const r of raw) if (/^(ATTTT|ATTACH|DETACH|DETTT)$/.test(r.ev || "")) {
       const p = placeOf(r.code); if (splitsAt.indexOf(p) < 0) splitsAt.push(p);
     }
-    out.set(diag, { diag, stops, units: [...new Set(unitsOf.get(diag) || [])], fleet: fleetOf.get(diag) || "", pos: posOf.get(diag) || 1,
+    out.set(diag, { diag, stops, units: [...new Set(unitsOf.get(diag) || [])], fleet: fleetOf.get(diag) || fleetFromDiag(diag), pos: posOf.get(diag) || 1,
                     rows: rowsOf.get(diag) || [],
                     endCode: last.code, endPlace: placeOf(last.code), endDepot: depotOf(placeOf(last.code)),
                     endTime: last.arr != null ? last.arr : last.dep, splitsAt,
@@ -673,7 +688,7 @@ function matesOn(mine, swap, days) {
    read here, and the weekday ones repeat. Named the way that place names
    workings, with the portion where the train splits before the depot:
    "AFK BERTH RP 05 27". */
-function morningFrom(r, days, mates, wanted, taken) {
+function morningFrom(r, days, mates, wanted, taken, proxy) {
   const from = r.ends && r.ends.place, codes = PLACES[from] || [];
   if (!codes.length || !days || !days.size) return null;
   if (NO_REQUEST_AT.has(depotOf(from) || from)) return null;   // nobody there to ask
@@ -712,7 +727,7 @@ function morningFrom(r, days, mates, wanted, taken) {
     taken: { diag: c.day.diag, work: c.key },
     action: from + " BERTH " + (c.portion ? c.portion + " " : "") + c.name,
     notes: ["tomorrow's " + c.hc + " " + hhmm(c.dep, /^5/.test(c.hc)) + " from " + from + (c.portion ? ", " + c.portion + " (" + c.sharing.join("+") + ")" : "") +
-            " — today's " + c.day.diag + " " + where + "; check tomorrow's diagram runs the same"]
+            " — " + (proxy ? "today's " : "tomorrow's ") + c.day.diag + " " + where + (proxy ? "; check tomorrow's diagram runs the same" : "")]
       .concat(c.variation ? ["VARIATION — " + (c.day.fleet || "?") + " diagram, same fleets exhausted"] : [])
       .concat(cands.length > 1 ? ["or " + cands.slice(1, 3).map(k => k.day.diag + " " + (k.portion ? k.portion + " " : "") + k.name + (k.variation ? " (variation)" : "")).join(", ")] : []),
   };
@@ -723,16 +738,21 @@ function morningFrom(r, days, mates, wanted, taken) {
    Summary and can carry three requests, an 8-car two - less any unit on it
    the plan wants at that depot, which is not to be taken off it. Each
    request displaces one unit, so the formation is kept both ways. */
-function candidatesFor(r, mine, days, wanted, taken, keep) {
+function candidatesFor(r, mine, days, wanted, taken, keep, tomDays) {
   const targets = r.places.map(depotOf).filter(Boolean);
   const out = [];
   const myFleet = mine.rows[0] && mine.rows[0].fleet;
-  for (const d of days.values()) {
+  /* Today's diagrams are where a swap is made; tomorrow's, where they were
+     dropped, are where tomorrow's departures come from - otherwise today's
+     stand in for them and the line says to check. */
+  const proxy = !tomDays || tomDays === days;
+  const pools = proxy ? [[days, "both"]] : [[days, "swap"], [tomDays, "morning"]];
+  for (const [pool, mode] of pools) for (const d of pool.values()) {
     if (!d.endDepot || targets.indexOf(d.endDepot) < 0) continue;
     // its own diagram, if it is still on it at the end - a diagram it was
     // on in the morning, that another unit takes home, is a way home
     if (d.units.indexOf(r.unit) >= 0) continue;
-    if (!d.units.length) continue;
+    if (!d.units.length && mode !== "morning") continue;
     /* One unit per diagram: one request displaces it, and a unit the plan
        wants at that same depot is not to be taken off it. */
     if (d.units.some(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0)) continue;
@@ -741,8 +761,8 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
     const fitsBoth = fitOn => fitOn(r.unit, d.fleet) && (!myFleet || d.units.every(u => fitOn(u, myFleet)));
     const strict = fitsBoth(fits);
     if (!strict && !fitsBoth(fitsLoosely)) continue;
-    const displaced = d.units.join("/");
-    const swap = swapBetween(mine, d);
+    const displaced = d.units.join("/");        // empty for tomorrow's, not yet allocated
+    const swap = mode === "morning" ? null : swapBetween(mine, d);
     /* The working the unit would take is one train, whichever diagrams run
        it coupled - a 12-car is three diagrams on one working - and it
        carries a request per diagram, never more than a 12-car of this
@@ -750,7 +770,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
     const w = swap ? { code: swap.theirs.code, hc: swap.theirs.hcOut, dep: swap.theirs.dep }
                    : { code: d.final.from, hc: d.final.hc, dep: d.final.dep };
     const wkey = workingKey(w.code, w.hc, w.dep);
-    const sharing = (days.workings && days.workings.get(wkey)) || [d.diag];
+    const sharing = (pool.workings && pool.workings.get(wkey)) || [d.diag];
     const cap = Math.min(maxUnits(r.unit), sharing.length);
     // this diagram's unit on this working displaced once, not twice
     if (taken && taken.get("D:" + d.diag + "@" + wkey)) continue;
@@ -762,7 +782,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
     if (r.category === "MO" && sharing.length < 2) continue;
     /* the portion, where the train splits before the depot and only this
        diagram's goes there: "RP 5F87" */
-    const portion = portionOf(d, sharing, days, d.endDepot);
+    const portion = portionOf(d, sharing, pool, d.endDepot);
     /* the order: the unit's own fleet first, always - with a swap, then for
        a depot swap, then a diagram that splits with no swap point - and
        only once those are exhausted the variation, in the same order. A
@@ -787,13 +807,15 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
        a departure from where it ends. A working with no place to make the
        swap is no request, however well it ends. */
     if (!swap && !morning) continue;
+    if (mode === "swap" && !swap) continue;
+    if (mode === "morning" && !morning) continue;
     const cand = { day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank: 0, together, mates, portion,
                    displaced, work: wkey, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
     if (morning) {
       const k0 = workingKey(s0.code, s0.hcOut, s0.dep);
       if (taken && taken.get("D:" + d.diag + "@" + k0)) continue;
-      cand.morning = { from: r.ends.place, hc: s0.hcOut, dep: s0.dep, sharing: (days.workings && days.workings.get(k0)) || [d.diag] };
-      cand.morning.portion = portionOf(d, cand.morning.sharing, days, d.endDepot);
+      cand.morning = { from: r.ends.place, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag] };
+      cand.morning.portion = portionOf(d, cand.morning.sharing, pool, d.endDepot);
       cand.morning.name = HEADCODE_DEPOTS.has(depotOf(r.ends.place)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
       // the unit displaced is the one on the diagram's FIRST segment
       cand.displaced = (d.rows[0] && d.rows[0].units.length ? d.rows[0].units : d.units).join("/");
@@ -810,7 +832,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
     if (swap && swap.kind === "depot" && NO_REQUEST_AT.has(swap.mine.depot)) continue;
     if (morning && NO_REQUEST_AT.has(depotOf(r.ends.place) || r.ends.place)) continue;
     if (splitsTrain && where && NO_SPLIT_AT.has(depotOf(where) || where)) continue;
-    cand.splitsTrain = splitsTrain; cand.where = where;
+    cand.splitsTrain = splitsTrain; cand.where = where; cand.proxy = proxy;
     cand.rank = (strict ? 0 : 10) + (swap ? (swap.splitsTheirs ? 0.25 : 0) : morning ? 0.5 : 1) +
                 (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0) +
                 (splitsTrain && keep ? 5 : 0);
@@ -935,7 +957,7 @@ function suggest(r, ctx) {
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
   if (near && targets.length && ctx && ctx.mine) {
-    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep);
+    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep, ctx.tomDays);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
@@ -959,6 +981,11 @@ function suggest(r, ctx) {
           if (outs.indexOf(name) >= 0) continue;
           outs.push(name); listed.push(k);
         }
+        /* the night turn's window: the departures between 09+00 and 16+30
+           are the ones the depot works its AM/PM berth by, so they lead */
+        const inWin = k => k.swap.theirs.dep >= PM_WINDOW[0] && k.swap.theirs.dep <= PM_WINDOW[1];
+        const order = listed.map((k, n) => ({ k, name: outs[n] })).sort((a, b) => (inWin(b.k) ? 1 : 0) - (inWin(a.k) ? 1 : 0));
+        listed.splice(0, listed.length, ...order.map(o => o.k)); outs.splice(0, outs.length, ...order.map(o => o.name));
         s.action = at + " BERTH " + outs.join("/");
         s.notes.push("in on " + (sw.mine.hcIn || "?") + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) +
                      (sw.mine.dep != null ? ", booked out " + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) + " on " + (sw.mine.hcOut || "?") : ", stays"));
@@ -979,10 +1006,13 @@ function suggest(r, ctx) {
           const m = k.morning;
           s.notes.push("tomorrow's " + m.hc + " " + hhmm(m.dep, /^5/.test(m.hc)) + " from " + m.from +
                        (m.portion ? ", " + m.portion + " (" + m.sharing.join("+") + ")" : "") +
-                       " — today's " + k.day.diag + " ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
-                       ", " + k.displaced + " off it");
+                       " — " + (k.proxy ? "today's " : "tomorrow's ") + k.day.diag + " ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
+                       (k.displaced ? ", " + k.displaced + " off it" : ", not yet allocated"));
         }
-        s.notes.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same" + (outs.length > 1 ? "; the depot to choose" : ""));
+        const tail = [];
+        if (c.proxy) tail.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same");
+        if (outs.length > 1) tail.push("the depot to choose");
+        if (tail.length) s.notes.push(tail.join("; "));
       } else {
         s.action = depot + " BERTH " + (c.portion ? c.portion + " " : "") + c.name + (sw ? " — T/F AT " + stationOf(sw.at) : " (no shared terminal — depot swap)");
         s.notes.push("on " + c.day.diag + ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
@@ -1006,7 +1036,8 @@ function suggest(r, ctx) {
   /* Nothing today reaches the depot. Where it ends is a place with a
      berth: tomorrow's working out of there that does - "AFK BERTH RP
      05 27", the portion named where the train splits before the depot. */
-  const mf = near && targets.length && ctx && ctx.mine ? morningFrom(r, ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted, ctx.taken) : null;
+  const mf = near && targets.length && ctx && ctx.mine
+    ? morningFrom(r, ctx.tomDays || ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted, ctx.taken, !ctx.tomDays || ctx.tomDays === ctx.days) : null;
   if (mf) { s.action = mf.action; s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
   s.action = "ENDS " + r.ends.place;
   if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
@@ -1069,6 +1100,20 @@ function run(planText, genius, opts) {
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
   const days = date ? allDays(genius, date) : new Map();
+  /* Tomorrow's Diagram Detail, where it was dropped: then tomorrow's
+     departures are its own, not today's taken as a proxy. And without
+     today's Detail the Summary alone says where every unit ends tonight -
+     a swap today cannot be seen, a departure tomorrow can. */
+  let tomDate = null;
+  if (today && genius && genius.detail)
+    for (const k of genius.detail.keys()) { const d = parseShort(k); if (d && Math.round((d - today) / 86400000) === 1) tomDate = k; }
+  const tomDays = tomDate ? allDays(genius, tomDate) : days;
+  const haveToday = !!(date && genius && genius.detail && genius.detail.get(date));
+  if (date && !haveToday)
+    reviews.push("No Diagram Detail for " + date + ": where each unit ends tonight is read off the Summary alone, and no changeover " +
+                 "or depot swap today can be seen. " + (tomDate ? "Tomorrow's departures are off the " + tomDate + " Detail." : "Drop the Detail for " + date + ", or for the day after, for more."));
+  else if (tomDate)
+    reviews.push("Tomorrow's departures are off the " + tomDate + " Diagram Detail, not today's taken as a proxy.");
   /* When each line is due, first, because what a swap may not do depends
      on it. */
   const dated = plan.rows.map(row => {
@@ -1118,11 +1163,11 @@ function run(planText, genius, opts) {
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
     const legs = day ? day.stops.filter(s => s.hcOut && s.dep != null)
-      .map(s => ({ ...s, n: (days.workings.get(workingKey(s.code, s.hcOut, s.dep)) || [s.diag]).length })) : [];
+      .map(s => ({ ...s, n: ((days.workings && days.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
     r.formation = legs.reduce((m, l) => Math.max(m, l.n), day ? 1 : 0);
-    r.suggest = suggest(r, { mine: day, days, wanted, taken, mse, keep: !!opts.keep });
+    r.suggest = suggest(r, { mine: day, days, tomDays, wanted, taken, mse, keep: !!opts.keep });
     if (r.suggest.taken) {
       const t = r.suggest.taken;
       taken.set("D:" + t.diag + "@" + t.work, 1);                  // that diagram's unit displaced off that working
