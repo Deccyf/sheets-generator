@@ -481,11 +481,13 @@ function previewHtml(layout){
   };
   const xfCss = layout.opts && layout.opts.xfCss;
   const SIDES = ["left", "right", "top", "bottom"];
+  // compiled once: this runs four times per cell of the preview
+  const SIDE_RE = SIDES.map(s => new RegExp("border-" + s + ":([^;]*)"));
   /* What one cell draws on one of its sides, whichever dressing it wears. */
   function borderOf(cell, i){
     if (!cell) return null;
     if (xfCss && cell.xf !== undefined && xfCss[cell.xf]){
-      const m = new RegExp("border-" + SIDES[i] + ":([^;]*)").exec(xfCss[cell.xf]);
+      const m = SIDE_RE[i].exec(xfCss[cell.xf]);
       const v = m ? m[1].trim() : "";
       return (!v || v === "0" || v === "none") ? null : v;
     }
@@ -870,7 +872,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, esc,
          DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan,
-         UNIT_COL, TEXT_COLS, TEXT_FMT, V_LOOK };
+         UNIT_COL, TEXT_COLS, V_LOOK };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;

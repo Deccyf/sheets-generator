@@ -287,10 +287,10 @@ const children = [
   h2("2. The two-minute version"),
   ...steps([
     "Double-click **Sheets Generator.html**.",
-    "Drop the **two weekday reports** on the top panel — or the **weekend " +
-      "prints** on the bottom one.",
-    "The books appear straight away. Click **Look at it** on each and read the " +
-      "**Review** tab.",
+    "Pick **Weekday · Mon – Fri** or **Weekend · Sat & Sun** at the top.",
+    "Drop the **two weekday reports**, or the **weekend prints**, on the drop zone.",
+    "The books appear straight away with their sheets open on screen. Read " +
+      "each book's **Review** tab.",
     "Click **Save book** on each, or **Save all books (.zip)** for the lot.",
   ]),
   p("That's the whole job. The rest of this guide is detail for when you want it."),

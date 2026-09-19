@@ -128,7 +128,6 @@
   details.hint .pop ol.how img{margin:6px 0 2px}
   /* a screenshot is small in the fold; click it and it opens full size */
   .zoom{border:0; padding:0; background:none; cursor:zoom-in; display:block; width:100%; margin:0}
-  .zoom:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
   dialog.lightbox{border:0; padding:0; background:transparent; max-width:96vw; max-height:96vh}
   dialog.lightbox::backdrop{background:rgba(27,34,38,.86)}
   dialog.lightbox figure{margin:0; display:flex; flex-direction:column; align-items:center; gap:10px}
@@ -159,7 +158,7 @@
   }
   .berth-inner{
     border:2px dashed var(--rail); background:var(--paper);
-    padding:24px 24px; display:flex; gap:20px; align-items:center;
+    padding:24px; display:flex; gap:20px; align-items:center;
     transition:border-color .15s, background .15s, box-shadow .15s;
   }
   .berth:hover .berth-inner{border-color:var(--signal); box-shadow:0 0 0 3px rgba(14,124,66,.14)}
@@ -175,7 +174,7 @@
   /* the one setting that decides what the reports contain */
   .mustdo{
     display:block; margin:10px 0 0; padding:9px 12px; font-size:13px; line-height:1.5;
-    color:#3C464D; background:#FFF6E8; border-left:3px solid var(--amber); max-width:none;
+    color:#3C464D; background:#FFF6E8; border-left:3px solid var(--amber);
   }
   .mustdo b{color:var(--warn); font-family:var(--mono); font-size:11px;
     letter-spacing:.08em; text-transform:uppercase; margin-right:8px}
@@ -236,8 +235,12 @@
   .status.go{color:var(--board-go)}
   .status.warn{color:var(--board-warn)}
   .board-acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .board-acts .note{font-family:var(--mono); font-size:11px; color:var(--board-dim);
-    letter-spacing:.05em; flex:1 1 100%}
+  /* a small aside: under a box, beside a tick, or on the board in its own dim ink */
+  .note{font-family:var(--mono); font-size:11px; color:var(--chalk); letter-spacing:.05em}
+  .board-acts .note{color:var(--board-dim); flex:1 1 100%}
+  /* the focus ring on the near-black board: the flag colour, since the
+     signal green is lost against it */
+  .board :focus-visible{outline-color:var(--flag)}
   /* the analyser's status line sits on the apron, not on a board */
   .statusrow .status{color:var(--chalk)}
   .statusrow .status.err{color:#9B2226}
@@ -436,7 +439,10 @@
   @media print{
     body{background:#fff; color:#000}
     .mast, .modes, .berth, .orpaste, .pastebox, .board, .opts-row, .opts-hints,
-    details.howto, .track, .acts, .tabs, .chips, footer, .whatfor, .mustdo{display:none !important}
+    details.howto, .track, .acts, .tabs, .chips, footer, .whatfor, .mustdo,
+    .zonesum, .brfiles, .brgrid, .brticks, .bracts, details.svrules, .svreview{display:none !important}
+    /* the shortages list and the plan table print as the check copy */
+    .svout, .brout{border:0; padding:0}
     .wrap{max-width:none; padding:0}
     .roads{display:block}
     .road{border:0; padding:0; page-break-inside:avoid; margin:0 0 18px}
@@ -447,7 +453,7 @@
   /* ---- berth requests ---- */
   .brgrid{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:12px; margin-top:14px}
   .brfield{display:flex; flex-direction:column; gap:6px; min-width:0}
-  .brfield textarea{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px;
+  .brfield textarea{width:100%; font-family:var(--mono); font-size:12px;
     line-height:1.45; padding:8px 10px; border:1px solid var(--apron-dk); border-radius:4px;
     background:var(--paper); color:inherit; resize:vertical; white-space:pre; overflow:auto}
   .mode .tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; margin-left:6px}
@@ -465,9 +471,11 @@
   .brtable td:nth-child(6){font-style:italic; color:#3C464D}
   .brtable td.filled{font-style:normal; font-weight:700; color:inherit}
   .brtable td:nth-child(7){color:#5A646B; font-family:var(--mono); font-size:11px}
-  .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#00B050} .brtable tr.ex-c{color:#FF0000}
+  /* the workbook's exam colours, a shade darker on screen so the green and
+     the red read against the paper; the copy back to the workbook carries
+     the workbook's own */
+  .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#008A3E} .brtable tr.ex-c{color:#D40000}
   .brtable tr.ex-m{color:#7030A0} .brtable tr.ex-t{color:#0070C0} .brtable tr.ex-x{color:#0070C0}
-  .brgrid-one{grid-template-columns:1fr}
   /* the lettered list, as the Excel text box shows it: Calibri 11 bold,
      20.19 cm wide, the breaks made by the road and not by the browser */
   .svbox{font-family:Calibri,Carlito,Arial,sans-serif; font-weight:700; font-size:11pt;
@@ -475,22 +483,25 @@
   /* the reports dropped on the berth tab, each with its own remove, so one
      can be swapped without losing the plan and defects already pasted */
   .brfiles{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center}
-  .brfiles .chip{font:inherit; font-size:12.5px; padding:4px 10px; border:1px solid var(--apron-dk);
-    border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
+  .brfiles .chip{font:inherit; font-size:12.5px; text-transform:none; letter-spacing:0; padding:4px 10px;
+    border:1px solid var(--apron-dk); border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
   .brfiles .chip b{margin-left:8px; font-weight:700}
   .brfiles .chip:hover{border-color:var(--danger); color:var(--danger)}
   .brfiles .chip.all{border-style:dashed}
-  /* the berth tab's introduction: the blurb and the warning on the left,
-     how it works on the right, one column on a narrow screen */
-  /* the warning under the drop zone: the weekday tab's "before you export"
+  /* what the drop zone holds, under it, so the zone's own label stays its name */
+  .zonesum{margin:8px 0 0; font-size:12.5px; color:var(--chalk); line-height:1.45}
+  /* the warning above the drop zone: the weekday tab's "before you export"
      bar, in red, because this one is a warning and not a setting */
   .mustdo.brwarn{background:#FBEFEE; border-left-color:var(--danger)}
   .mustdo.brwarn b{color:var(--danger)}
   details.brhow{margin-top:10px}
   .brhow ul{margin:8px 0; padding-left:18px}
   .brhow li{margin:4px 0}
-  .bropts{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
-  .brticks{display:flex; flex-direction:column; gap:6px}
-  .brticks label{display:flex; align-items:center; gap:8px}
+  .brticks{display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:13.5px}
+  .brticks label{display:flex; align-items:baseline; gap:8px}
+  .brticks input{flex:0 0 auto; position:relative; top:2px}
+  .bracts{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px}
   .berth-small{margin-top:14px}
-  @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
+  /* one column below the wide layout's own breakpoint, so the narrow boxes
+     are never squeezed beside the plan on a laptop screen */
+  @media (max-width:999px){ .brgrid{grid-template-columns:1fr} }

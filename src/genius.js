@@ -857,10 +857,12 @@ const GENIUS = (() => {
          one train by then, so they always do, and a mixed answer means
          something is odd enough to leave alone. */
       const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
+      // the diagram tiebreak mirrors the position order, and equal diagrams compare equal
+      const byDiag = (a, b) => a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0;
       if (turned ? !asc : asc)
-        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
+        blocks.sort((x, y) => (x.pos - y.pos) || byDiag(y, x));
       else
-        blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+        blocks.sort((x, y) => (y.pos - x.pos) || byDiag(x, y));
       /* Called at the platform but a side is not in the table: the order is
          left exactly as it was, and said out loud rather than guessed. */
       if (blocks.length > 1 && blocks.some(x => x.turn === null))
@@ -1457,7 +1459,8 @@ const GENIUS = (() => {
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {
-      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0)) continue;
+      // tried by name, or applied through a superset order that covers the formation
+      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0 || c.applied === k)) continue;
       noteAll("The order correction " + k + " made on this computer matched" +
               " nothing in these reports — the working may have moved;" +
               " re-pin it or clear it");
@@ -1702,10 +1705,11 @@ const GENIUS = (() => {
         diag: code,
         fleet: (r[c["Type"]] || "").trim(),
         pos: parseInt(r[c["Position"]], 10) || 1,
-        start: st[1] ? mins(st[1]) : 0,
+        // tmin, not mins: an export that has been through Excel writes "8:34:00"
+        start: st[1] ? tmin(st[1]) : 0,
         from: (r[c["Start Location"]] || "").trim(),
         to: (r[c["End Location"]] || "").trim(),
-        end: et[1] ? mins(et[1]) : 0,
+        end: et[1] ? tmin(et[1]) : 0,
         uncovered: (r[c["Cov"]] || "").trim().toUpperCase() === "UNCOVERED",
         unit: stockAt >= 0 ? unitNo(r[stockAt]) : "",
       });

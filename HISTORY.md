@@ -140,6 +140,79 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.9.0 — 20 September 2026 — a second copy, three audits, and the page read through
+
+**Two copies of the tool.** `Sheets Generator (no berth requests).html`
+is the same build with the experimental *Berth requests* tab cut out —
+its tab, its panel, its module and its lines in the how-to — for the
+copy handed to people who should not meet a feature still being proved.
+Same version stamp, so a fault reported against either names the same
+code. The page's remembered tab is honoured only when this copy carries
+it, since both copies share the browser's memory; before that, a tab
+remembered from the full copy hid every panel of the other.
+
+**Three audits, and what they found.** The berth-request road, the
+engines and the page were each read through for faults, dead code and
+waste, and the real reports were driven through every tab in Chromium
+with the console watched. Fixed:
+
+- A unit on two defect lines of one kind for one date came back with
+  one of them missing — the export's rows were matched to the plan's by
+  a key that could hold only one line. Both lines come back now.
+- A weekend hold for a Selhurst unit lost its Monday when the move was
+  named: *VIC HOLD FOR MON - 5Y41* keeps both.
+- A request claimed on tomorrow's 5H91 used up today's 5H91 as well:
+  claims name the day now, so today's train and tomorrow's are two.
+- The printed Allocation Summary dropped every unit that finishes on the
+  diagram it started on, because the reader insisted on a finish
+  diagram that is blank in that case.
+- A plan date with no year, read from a late-December report, is next
+  year's, not eleven months overdue.
+- A section title with words after it — *Exams — wk 39* — is still the
+  Exams, not a section of its own read with the wrong columns.
+- On the berth tab, a slow read could finish after a later drop and put
+  stale reports back; every drop and chip goes through one queue now.
+  A tick on *A day still to run* set by hand is no longer reset by the
+  next drop. Reports that could not be read are no longer quietly
+  replaced by the weekday books' pair. The drag-over highlight was
+  missing on two of the four drop zones.
+- The Integrale Summary reader took `8:34:00` — an export that has been
+  through Excel — as 04 34; it reads it the tolerant way the two sibling
+  readers already did.
+- An order correction applied through a superset order was reported as
+  having matched nothing.
+- The High Speed sheet's *last night's arrivals* came from the previous
+  day in the build, not the previous calendar day, so a Wednesday and a
+  Friday built together made Wednesday the night before Friday.
+- The Rules tab said the Metro AM/PM sheets split at 20 00; they split
+  at 10 00, and now it says so.
+
+Removed as dead: an unused code table and PDF wrapper in the shortages
+road, three exports nothing called, and a comment describing a layout
+that no longer existed. Regexes compiled per cell of the preview and per
+paragraph of a Word document are compiled once. Measured on the real
+reports, nothing was slow: the berth road answers 115 lines in about 70
+ms, the weekday books build in half a second, so no engine was
+restructured for speed. The largest functions — the weekday day builder
+at 900 lines, the weekend generator at 400 — were left as they are, on
+purpose: they are golden-tested against the frozen legacy build and
+carving them up is a job for a release of its own, not a clean-up.
+
+**The page read through as a user.** The four tabs now follow one shape:
+what the tab needs, the drop zone, the status board, the options, the
+output, the rules. The *before you export* note and the berth tab's
+warning sit above the drop zone they govern, not below it. Every options
+row is labelled *Options*, says that a tick rebuilds, and is hidden until
+there is something to rebuild. The berth tab has a proper action row —
+*Read the plan* and *Start over* — under its boxes, a summary line under
+its drop zone in place of a drop-zone label that changed to a report
+summary, and a view button that says what it will show next. Status
+lines say what to do next, and a report that could not be read says what
+to do about it. The how-to names all four tabs. The tab strip takes the
+arrow keys; the chips say what removing them removes; the exam colours
+on screen clear the contrast line the workbook's own do not; printing
+either list prints the list and not the boxes.
+
 ## 3.8.3 — 20 September 2026 — two legs, the fleet moves as requests, and Selhurst
 
 Two of the planner's own filled plans, a Tuesday's and a Thursday's,

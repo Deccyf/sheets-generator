@@ -1097,7 +1097,8 @@ test("a line for Selhurst is answered at Victoria, with the move over - AFK BERT
   const [a, b] = out.rows.map(r => r.suggest);
   assert.equal(a.action, "AFK BERTH 06+00 - VIC BERTH 5Y41", JSON.stringify(a));
   assert.match(a.notes.join("; "), /over to Selhurst on 5Y39\/5Y41 11\+02 or 5Y40\/5Y41 20\+18 \(SuX\)/);
-  assert.equal(b.action, "VIC HOLD FOR 5Y41", "it ends at Victoria and is held for the move: " + JSON.stringify(b));
+  // a Monday exam seen from the Sunday: the weekend hold keeps its Monday, and names the move
+  assert.equal(b.action, "VIC HOLD FOR MON - 5Y41", "it ends at Victoria and is held for the move: " + JSON.stringify(b));
 });
 
 test("the standing fleet move is the request where the Detail has nothing - SG BERTH 5L17/5L19/5L92", async () => {

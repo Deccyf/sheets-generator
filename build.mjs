@@ -93,8 +93,10 @@ console.log(`built "Sheets Generator.html" v${version} — ${html.length} bytes 
 function withoutExperimental(template) {
   const out = template
     .replace(/[ \t]*<button type="button" class="mode" id="mode_br"[\s\S]*?<\/button>\n/, "")
-    .replace(/[ \t]*<section class="platform" id="brPanel"[\s\S]*?<\/section>\n/, "");
-  if (/id="mode_br"|id="brPanel"/.test(out))
+    .replace(/[ \t]*<section class="platform" id="brPanel"[\s\S]*?<\/section>\n/, "")
+    // …and the lines of the how-to that describe it
+    .replace(/[ \t]*<!-- experimental -->[\s\S]*?<!-- \/experimental -->\n/g, "");
+  if (/id="mode_br"|id="brPanel"|experimental -->/.test(out))
     throw new Error("the berth-request tab was not cut out of src/page.html cleanly");
   return out;
 }

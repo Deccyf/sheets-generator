@@ -142,7 +142,7 @@ function amPm(visits, flags) {
   return [am, "", flags];
 }
 
-return { pad2, norm, sheetStation, destTlc, fmtTime, amPm, csvParse,
+return { norm, sheetStation, destTlc, fmtTime, amPm, csvParse,
          AM_CUTOFF, BERTH_SHEETS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_CORE;

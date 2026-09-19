@@ -113,6 +113,16 @@
           and Ramsgate as berthing sheets, Metro and High Speed as the
           depot's own documents, plus the updated prints document when a
           reissue was spliced in.</li>
+        <li><b>Shortages &amp; variations</b> — not a book: the
+          controller&rsquo;s list of what is short, the wrong length or the
+          wrong fleet, read off the Operating Report and the Diagram Detail
+          and laid out ready to paste.</li>
+        <!-- experimental -->
+        <li><b>Berth requests</b> (experimental) — not a book either: the
+          maintenance plan pasted from the workbook, given back with a
+          suggested berth request beside each line, to check rather than to
+          copy.</li>
+        <!-- /experimental -->
       </ul>
       <p>The full rulebook — every rule a book followed — is on the Rules tab
         of that book, and in <i>BERTHING SHEET RULES</i> for circulating. Both
@@ -154,7 +164,7 @@
     <button type="button" class="btn light" id="lightbox_close">Close</button>
   </dialog>
 
-  <div class="modes" role="tablist" aria-label="Which books to build">
+  <div class="modes" role="tablist" aria-label="Which tool to use">
     <button type="button" class="mode" id="mode_wk" role="tab"
       aria-selected="true" aria-controls="wkPanel">Weekday · Mon – Fri</button>
     <button type="button" class="mode" id="mode_we" role="tab"
@@ -172,22 +182,22 @@
       from Integrale (its two CSV exports). A Monday pair builds the Monday
       books.</p>
 
-    <button class="berth" id="berth" type="button">
-      <span class="berth-inner">
-        <span class="buffer" aria-hidden="true"></span>
-        <span class="berth-txt">
-          <strong>Drop the Summary &amp; Detail reports here</strong>
-          <span>.pdf or .csv · both for the same date · or click to choose</span>
-        </span>
-      </span>
-    </button>
-    <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
-
     <p class="mustdo"><b>Before you export</b>In Genius, <code>File › Session
       Settings</code>, tick <strong>“Show diagram sections on the diagram
       summary report”</strong>. Without it the Summary carries only the
       morning positions, afternoon formations print the wrong way round, and
       it cannot be corrected later. The Review tab says if this happened.</p>
+
+    <button class="berth" id="berth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the Diagram Summary &amp; Diagram Detail here</strong>
+          <span>.pdf or .csv · both for the same date · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
     <p class="orpaste">
       <button type="button" class="linkish" id="pastetoggle"
@@ -218,11 +228,11 @@
         <button type="button" class="btn" id="paste_go">Build the books from the pasted reports</button>
         <button type="button" class="btn ghost" id="paste_clear">Clear both boxes</button>
       </div>
-      <p class="paste-say" id="paste_say" role="status" aria-live="polite"></p>
+      <p class="paste-say" id="paste_say" role="status"></p>
     </div>
 
     <div class="board">
-      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <p class="status" id="status" role="status"></p>
       <div class="board-acts" id="allbar" hidden>
         <button class="btn light" id="dlall" type="button">Save all books (.zip)</button>
         <button class="btn ghost light" id="clearall" type="button">Start over</button>
@@ -238,6 +248,8 @@
       <label><input type="checkbox" id="stockreq" autocomplete="off"> Stock requirements form</label>
       <button type="button" class="linkish" id="optshelp" aria-expanded="false"
         aria-controls="optshint">What each does</button>
+      <span class="opts-hint">Every tick rebuilds the books — save them again
+        afterwards. The options are remembered on this computer.</span>
     </div>
     <div class="opts-hints" id="optshint" hidden>
       <p><b>Headcodes on every line</b> — only Gillingham, Victoria and Grove
@@ -256,8 +268,6 @@
         diagram counted at the location it starts the day from, by unit type.
         POSITION and SEAT LOSS stay blank for the planner. Normally only wanted
         for a Monday built on a Sunday night, or the day after a bank holiday.</p>
-      <p><b>The options are remembered</b> on this computer, and every one
-        rebuilds the books as you tick it — save them again afterwards.</p>
     </div>
 
     <div class="roads" id="roads"></div>
@@ -310,11 +320,11 @@
         <button type="button" class="btn" id="we_paste_go">Build the books from the pasted prints</button>
         <button type="button" class="btn ghost" id="we_paste_clear">Clear both boxes</button>
       </div>
-      <p class="paste-say" id="we_paste_say" role="status" aria-live="polite"></p>
+      <p class="paste-say" id="we_paste_say" role="status"></p>
     </div>
 
     <div class="board">
-      <p class="status" id="we_status" role="status" aria-live="polite"></p>
+      <p class="status" id="we_status" role="status"></p>
       <div class="board-acts" id="we_allbar" hidden>
         <button class="btn light" id="we_dlall" type="button">Save all books (.zip)</button>
         <button class="btn light" id="we_dlupd" type="button" hidden>Save updated prints (.docx)</button>
@@ -324,27 +334,26 @@
     </div>
 
     <div class="opts-row" id="we_optsrow" hidden>
-      <span class="opts-label">Headcodes on every line</span>
-      <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Mainline &amp; Ramsgate</label>
+      <span class="opts-label">Options</span>
+      <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="we_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs" autocomplete="off"> High Speed</label>
-      <span class="opts-hint" style="flex:0 0 100%; margin:0">Only Gillingham,
-        Victoria and Grove Park carry a headcode as standard. Ticking a book
-        puts one on every line of it and rebuilds it — save again afterwards.</span>
+      <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
+        headcode as standard. Ticking a book puts one on every line of it and
+        rebuilds it — save again afterwards.</span>
     </div>
 
     <div class="roads" id="we_roads"></div>
   </section>
 
   <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
-    <h2 class="vh">Shortages and variations from the Operating Report</h2>
+    <h2 class="vh">Shortages &amp; variations from the Operating Report</h2>
     <p class="whatfor">Needs the <strong>Operating Report</strong> and the
-      <strong>Diagram Detail</strong> for the date — .pdf or .csv. This is not
-      a berthing book: it is the controller&rsquo;s list of what is short, what
-      is the wrong length and what is the wrong fleet, with every service each
-      one goes on to affect. The <strong>Diagram Summary</strong> is optional
-      and one column of it is read: <code>POS</code>, which is the only place
-      a diagram&rsquo;s place in its formation is written down.</p>
+      <strong>Diagram Detail</strong> for the date — .pdf or .csv. Not a
+      berthing book: the controller&rsquo;s list of what is short, the wrong
+      length or the wrong fleet, with every service each one goes on to
+      affect. Drop the <strong>Diagram Summary</strong> too when a formation
+      of three needs placing.</p>
 
     <button class="berth" id="svberth" type="button">
       <span class="berth-inner">
@@ -358,19 +367,31 @@
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
 
-    <div class="opts-row" id="svoptsrow">
-      <span class="opts-label">Layout</span>
+    <div class="board">
+      <p class="status" id="svstatus" role="status"></p>
+      <div class="board-acts" id="svbar" hidden>
+        <button class="btn light" id="svcopy" type="button">Copy the list</button>
+        <button class="btn light" id="svsave" type="button">Save as text</button>
+        <button class="btn ghost light" id="svclear" type="button">Start over</button>
+        <span class="note" id="svnote"></span>
+      </div>
+    </div>
+
+    <div class="opts-row" id="svoptsrow" hidden>
+      <span class="opts-label">Options</span>
       <label><input type="checkbox" id="svlettered" autocomplete="off">
-        Lettered</label>
+        Lettered, for the Excel text box</label>
       <label><input type="checkbox" id="svbyfamily" autocomplete="off">
-        Variations by which way round</label>
+        Variations grouped by which way round</label>
       <label><input type="checkbox" id="svramarr" autocomplete="off">
         Arrival times on Ramsgate only</label>
       <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
         aria-controls="svoptshint">What each does</button>
+      <span class="opts-hint">Each one re-lays the list on screen, and the
+        copy and the save follow it.</span>
     </div>
     <div class="opts-hints" id="svoptshint" hidden>
-      <p><b>Lettered</b> — the depot's own hand, laid out for the Excel text
+      <p><b>Lettered, for the Excel text box</b> — the depot's own hand, laid out for the Excel text
         box it is pasted into: 20.19 cm wide, Calibri 11 bold. Every shortage,
         swap or length case takes a letter of its own, in the order they
         happen, and the whole run of fleet variations shares the last one, so
@@ -383,7 +404,7 @@
         the letter stands against the first line only and every other line
         starts where that one's text does. Copy carries the breaks and
         indents over, so Excel does not decide its own.</p>
-      <p><b>Variations by which way round</b> — the fleet block gathered by
+      <p><b>Variations grouped by which way round</b> — the fleet block gathered by
         the mismatch rather than by where the unit ends up: every
         375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
         together, each in diagram order. A working carrying one of each —
@@ -393,16 +414,6 @@
       <p><b>Arrival times on Ramsgate only</b> — keeps <code>(ARR …)</code>
         where the working ends at Ramsgate, station or depot, and drops it
         everywhere else.</p>
-    </div>
-
-    <div class="board">
-      <p class="status" id="svstatus" role="status" aria-live="polite"></p>
-      <div class="board-acts" id="svbar" hidden>
-        <button class="btn light" id="svcopy" type="button">Copy the list</button>
-        <button class="btn light" id="svsave" type="button">Save as text</button>
-        <button class="btn ghost light" id="svclear" type="button">Start over</button>
-        <span class="note" id="svnote"></span>
-      </div>
     </div>
 
     <pre class="svout" id="svout" hidden></pre>
@@ -461,7 +472,11 @@
         <p><b>Left out.</b> Shunts inside the Ashford and Grove Park depot
           fences. And when both reports were produced between 08 00 and 16 00,
           a diagram that has finished by 16 00.</p>
-        <p class="secn">The place codes here are the <b>roads</b>, not the
+        <p><b>The Diagram Summary.</b> Optional, and one column of it is
+          read: <code>POS</code>, the only place a diagram&rsquo;s place in
+          its formation is written down. Without it a formation of three
+          cannot be placed, and the pair is named on the Review list.</p>
+        <p>The place codes here are the <b>roads</b>, not the
           berthing books&rsquo; station codes — <code>AFDS</code>,
           <code>AFUS</code>, <code>DVPS</code>, <code>GPUS</code> — because a
           discrepancy is worked off a road. The two vocabularies are
@@ -479,26 +494,26 @@
       Restrictions and Performance Defects out of <strong>Equinox or
       EMS</strong> into the defects box, as they come.</p>
 
-    <button class="berth berth-small" id="brberth" type="button">
-      <span class="berth-inner">
-        <span class="buffer" aria-hidden="true"></span>
-        <span class="berth-txt">
-          <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
-          <span>PDF or CSV &middot; any day, a Saturday included &middot; the
-            weekend diagram prints (.docx) stand in for a Detail &middot; the
-            <b>Allocation Summary</b> says where every unit starts and ends,
-            with or without a Diagram Summary &middot; or leave it and the
-            weekday books&rsquo; own pair is used</span>
-        </span>
-      </span>
-    </button>
-    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
-    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
-
     <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
       an experimental tool. It is a reference only, to help you make a
       decision on berth requests, so please double-check all of its work
       against the reports before anything goes on the Telex.</p>
+
+    <button class="berth berth-small" id="brberth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the Diagram Summary and Detail here</strong>
+          <span>.pdf or .csv &middot; the Summary printed after allocation, the
+            Detail for today, tomorrow or both &middot; the Allocation Summary
+            and the weekend prints (.docx) are read too &middot; any day &middot;
+            or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
+    <p class="zonesum" id="brberthtxt">No reports dropped yet — the weekday books&rsquo; own pair is used, where they are built.</p>
+    <div class="brfiles" id="brfiles" hidden role="group" aria-label="Reports dropped on this tab"></div>
 
     <details class="svrules brhow" id="brhow">
       <summary>How it works: the reports to drop, and the two turns</summary>
@@ -544,7 +559,7 @@
         <textarea id="brplan" rows="9" spellcheck="false"
           placeholder="Exams&#10;Unit Nr&#9;Exam&#9;&#9;Where&#9;Action&#10;375605&#9;A&#9;SAT AM 19/09&#9;RE&#9;STOPPED RE&#10;…"></textarea>
       </label>
-      <label class="brfield brfield-small">
+      <label class="brfield">
         <span class="opts-label">Out of service — ignore these</span>
         <textarea id="brignore" rows="3" spellcheck="false"
           placeholder="376036 375924 …"></textarea>
@@ -556,30 +571,31 @@
         <textarea id="brdefects" rows="6" spellcheck="false"
           placeholder="Date Occurred&#9;Days O/S&#9;Asset No&#9;Coach No&#9;Catalogue No.&#9;Stock Description&#9;Repair Location&#9;Diagram End Location&#9;Arrival Date&#9;System Code&#9;Fault Description&#9;Facility Failure&#9;Report&#9;Priority&#9;Target Due Date&#10;06/07/2026 15:48:00&#9;75&#9;375625&#9;67875&#9;&#9;&#9;+ AMAT&#9;RAMSGTD&#9;17/09/2026 19:54:00&#9;HA&#9;UMD8968 No Cab Air Con - Requires HVAC&#9;No&#9;WR0472231&#9;2. Restriction MO&#9;30/09/2026 00:00:00"></textarea>
       </label>
-      <label class="brfield brfield-small">
+      <label class="brfield">
         <span class="opts-label">MSE attending — no request for these</span>
         <textarea id="brmse" rows="3" spellcheck="false"
           placeholder="376020 375821 …"></textarea>
         <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
       </label>
     </div>
-    <div class="opts-row bropts">
+    <div class="brticks">
+      <label><input type="checkbox" id="brkeep" autocomplete="off">
+        Keep trains together &mdash; split a formation only where nothing else gets it home</label>
+      <label><input type="checkbox" id="brdaytorun" autocomplete="off">
+        A day still to run &mdash; every unit is where its first working starts, ask before it
+        goes out <span class="note">(ticked for you when the reports are for today or a day to come)</span></label>
+    </div>
+    <div class="bracts">
       <button class="btn" id="brgo" type="button">Read the plan</button>
-      <span class="brticks">
-        <label><input type="checkbox" id="brkeep" autocomplete="off">
-          Keep trains together &mdash; split a formation only where nothing else gets it home</label>
-        <label><input type="checkbox" id="brdaytorun" autocomplete="off">
-          A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
-      </span>
-      <span class="note" id="brhint"></span>
+      <button class="btn ghost" id="brclear" type="button">Start over</button>
     </div>
 
     <div class="board">
-      <p class="status" id="brstatus" role="status" aria-live="polite"></p>
+      <p class="status" id="brstatus" role="status"></p>
       <div class="board-acts" id="brbar" hidden>
         <button class="btn light" id="brcopy" type="button">Copy the plan back</button>
         <button class="btn light" id="brsave" type="button">Save as text</button>
-        <button class="btn ghost light" id="brlist" type="button">Nearest first</button>
+        <button class="btn ghost light" id="brlist" type="button">Show nearest first</button>
         <span class="note" id="brnote"></span>
       </div>
     </div>
@@ -949,7 +965,7 @@
     if (!ok) {
       var el = document.getElementById("oldbrowser");
       if (el) el.hidden = false;
-      var ids = ["berth", "we_berth"];
+      var ids = ["berth", "we_berth", "svberth", "brberth"];
       for (var i = 0; i < ids.length; i++) {
         var b = document.getElementById(ids[i]);
         if (b) b.style.display = "none";

@@ -69,6 +69,10 @@ const NO_SPLIT_AT = new Set(["FKE", "HGS", "FAV"]);
    and 16+30 is on hand at a depot, and the departures it is offered are
    the ones between 09+00 and 16+30 first. Minutes from midnight. */
 const PM_WINDOW = [540, 990];
+/* A unit into a depot in the morning that sits there is "ENDS GP AM", as
+   the plan writes it: a finish between 03+00 (after the night's arrivals)
+   and midday. Minutes from midnight. */
+const AM_FINISH = [180, 720];
 /* A Genius code -> the plan's word for it, for saying where a unit ends. */
 const CODE_TO_PLACE = (() => {
   const m = new Map();
@@ -205,6 +209,7 @@ function parseDefects(text) {
     } else continue;
     if (!UNIT_RE.test(row.unit)) continue;
     row.line = n;
+    rows.push(row);
     const rl = String(row.repairAt || "").toUpperCase();
     row.amat = /\bAMAT\b/.test(rl); row.mse = /\bMSE\b/.test(rl); row.red = /\bRED\b/.test(rl);
     row.con = /\bCON\b/.test(rl); row.gtr = /GTR/.test(rl);
@@ -212,8 +217,10 @@ function parseDefects(text) {
                       /GROVE/.test(rl) ? "GP" : /ASHFORD/.test(rl) ? "AFK" : /SELHURST/.test(rl) ? "VIC" : null;
     row.category = defectCategory(row.priority);
     row.summary = faultSummary(row.fault);
-    rows.push(row);
   }
+  // text in the box that read as no defect at all is said, not passed over
+  if (n && !rows.length)
+    reviews.push("The defects box holds " + n + " line" + (n === 1 ? "" : "s") + " but no defect row was read from it — paste the export as it comes, headings and all.");
   return { rows, reviews };
 }
 /* A couple of words for the notice, off the fault description: the codes
@@ -258,8 +265,10 @@ function parsePlan(text) {
     const f = raw.split("\t").map(x => x.trim());
     if (!f.some(Boolean)) continue;
     n++;
-    if (SECTION_RE.test(f[0]) && !UNIT_RE.test(f[0])) {
-      section = f[0].replace(/\s*\/\s*/, "/").toUpperCase();
+    const title = SECTION_RE.exec(f[0]);
+    if (title) {
+      // the section word alone: "Exams — wk 39" is still the Exams
+      section = title[1].replace(/\s*\/\s*/, "/").toUpperCase();
       if (order.indexOf(section) < 0) order.push(section);
       continue;
     }
@@ -316,7 +325,12 @@ function whenOf(text, today) {
     return out;
   }
   const dm = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2}))?/.exec(t);
-  if (dm) out.date = dateFrom(+dm[1], +dm[2], dm[3] ? +dm[3] : null, today);
+  if (dm) {
+    out.date = dateFrom(+dm[1], +dm[2], dm[3] ? +dm[3] : null, today);
+    // a day and month with no year, read from a late-December report: "02/01" is next year's
+    if (!dm[3] && today && out.date - today < -180 * 86400000)
+      out.date = new Date(Date.UTC(out.date.getUTCFullYear() + 1, out.date.getUTCMonth(), out.date.getUTCDate()));
+  }
   if (/\bEOD\b/.test(t)) out.half = "EOD";
   else if (/\bAFTER AM PEAK\b/.test(t)) out.half = "AFTER AM PEAK";
   else if (/\bAM\b/.test(t)) out.half = "AM";
@@ -387,11 +401,12 @@ function parseAllocation(text) {
     }
     if (out.size) return out;
   }
-  // the print: one unit per line, the two clocks as the anchor
-  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:\s+\S+)?\s+([A-Z]{2}\d{3})/;
+  /* the print: one unit per line, the two clocks as the anchor; the finish
+     diagram is there only where it differs from the start diagram */
+  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:(?:\s+\S+)?\s+([A-Z]{2}\d{3}))?/;
   for (const raw of txt.split("\n")) {
     const m = RE.exec(raw.trim().replace(/\s{2,}/g, "  "));
-    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10]));
+    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10] || null));
   }
   return out;
 }
@@ -511,9 +526,14 @@ function maxUnits(unit) {
   const f = familyOfUnit(unit);
   return Math.floor(12 / (f === "375/3" ? 3 : f === "376" ? 5 : 4));
 }
+/* A claim on a working names the day too: today's 5H91 06+01 and
+   tomorrow's are two trains, and a request on one must not use up the
+   other. */
+const dayKey = (pool, key) => ((pool && pool.date) || "") + "|" + key;
 function allDays(genius, date) {
   const out = new Map();
   out.workings = new Map();
+  out.date = date;
   const dets = genius.detail && genius.detail.get(date);
   if (!dets) return out;
   /* the Summary's rows per diagram, in time order: each is a working
@@ -893,7 +913,7 @@ function morningFrom(r, days, mates, wanted, taken, proxy) {
     if (!fits(r.unit, d.fleet) && !fitsLoosely(r.unit, d.fleet)) continue;
     const key = workingKey(s0.code, s0.hcOut, s0.dep);
     const sharing = (days.workings && days.workings.get(key)) || [d.diag];
-    reach.push({ d, key, hc: s0.hcOut, dep: s0.dep, sharing, depot });
+    reach.push({ d, key: dayKey(days, key), hc: s0.hcOut, dep: s0.dep, sharing, depot });
   }
   reach.sort((p, q) => p.dep - q.dep);
   if (NO_REQUEST_AT.has(depotOf(from) || from)) {   // nobody there to ask
@@ -1007,8 +1027,8 @@ function twoLeg(r, days, targets, taken, proxy, dow, mates, wanted) {
     if (!s0 || codes.indexOf(s0.code) < 0 || s0.dep == null || !s0.hcOut) continue;
     if (r.diags.indexOf(d1.diag) >= 0) continue;
     if (!fits(r.unit, d1.fleet) && !fitsLoosely(r.unit, d1.fleet)) continue;
-    const key1 = workingKey(s0.code, s0.hcOut, s0.dep);
-    const sharing1 = (days.workings && days.workings.get(key1)) || [d1.diag];
+    const wk1 = workingKey(s0.code, s0.hcOut, s0.dep), key1 = dayKey(days, wk1);
+    const sharing1 = (days.workings && days.workings.get(wk1)) || [d1.diag];
     if (taken && (taken.get("D:" + d1.diag + "@" + key1) || (taken.get("W:" + key1) || 0) >= Math.min(maxUnits(r.unit), sharing1.length))) continue;
     if (r.category === "MO" && sharing1.length < 2) continue;
     // every depot this diagram gets to that could send it on, in order
@@ -1093,12 +1113,12 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
        unit's kind: three 375s, two 376s. */
     const w = swap ? { code: swap.theirs.code, hc: swap.theirs.hcOut, dep: swap.theirs.dep }
                    : { code: d.final.from, hc: d.final.hc, dep: d.final.dep };
-    const wkey = workingKey(w.code, w.hc, w.dep);
+    const wkey = workingKey(w.code, w.hc, w.dep), wid = dayKey(pool, wkey);
     const sharing = (pool.workings && pool.workings.get(wkey)) || [d.diag];
     const cap = Math.min(maxUnits(r.unit), sharing.length);
     // this diagram's unit on this working displaced once, not twice
-    if (taken && taken.get("D:" + d.diag + "@" + wkey)) continue;
-    const usedW = taken ? (taken.get("W:" + wkey) || 0) : 0;
+    if (taken && taken.get("D:" + d.diag + "@" + wid)) continue;
+    const usedW = taken ? (taken.get("W:" + wid) || 0) : 0;
     if (usedW >= cap) continue;
     // a restriction is a formation: multiple only needs a train of two
     // diagrams or more. No multiple is no multiple on ONE END, which is
@@ -1117,7 +1137,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
     /* together: a mate is already on this working, or every mate is
        wanted at this same depot now and the train has room for them all,
        so they will follow */
-    const together = !!(taken && (taken.get("U:" + wkey) || []).some(u => mates.indexOf(u) >= 0)) ||
+    const together = !!(taken && (taken.get("U:" + wid) || []).some(u => mates.indexOf(u) >= 0)) ||
       (mates.length > 0 && cap >= mates.length + 1 && mates.every(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0));
     /* No swap, but the working starts tomorrow where my unit ends
        tonight: the request goes to that place and names the working out
@@ -1126,18 +1146,18 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
        here. That is a concrete request, so it comes before a depot swap
        with no place to make it. */
     const cand = { day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank: 0, together, mates, portion,
-                   displaced, work: wkey, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
+                   displaced, work: wid, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
     if (morning || start) {
       const from = homeOf(start ? r.starts.place : r.ends.place);
-      const k0 = workingKey(s0.code, s0.hcOut, s0.dep);
-      if (taken && taken.get("D:" + d.diag + "@" + k0)) continue;
+      const k0 = workingKey(s0.code, s0.hcOut, s0.dep), k0id = dayKey(pool, k0);
+      if (taken && taken.get("D:" + d.diag + "@" + k0id)) continue;
       cand.morning = { from, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag], today: !!start };
       cand.morning.portion = portionOf(d, cand.morning.sharing, pool, d.endDepot);
       cand.morning.name = HEADCODE_DEPOTS.has(depotOf(from)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
       // the unit displaced is the one on the diagram's FIRST segment
       cand.displaced = (d.rows[0] && d.rows[0].units.length ? d.rows[0].units : d.units).join("/");
-      cand.work = k0; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
-      cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0) || 0) : 0) + 1;
+      cand.work = k0id; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
+      cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0id) || 0) : 0) + 1;
       if (cand.slot > cand.slots) continue;
     }
     /* Splitting the train it arrived in. Never where there is nobody to
@@ -1219,7 +1239,8 @@ function suggest(r, ctx) {
   if (r.places.length === 1 && r.places[0] === "SU" && s.action) {
     const mv = FLEET_MOVES.filter(m => m.from === "VIC" && m.to === "SU");
     const name = mv.length ? moveName(mv[0]) : "5Y41";
-    if (/^VIC HOLD/.test(s.action)) s.action = "VIC HOLD FOR " + name;
+    // a weekend hold keeps its Monday: "VIC HOLD FOR MON - 5Y41"
+    if (/^VIC HOLD/.test(s.action)) s.action = "VIC HOLD FOR " + (/FOR MON$/.test(s.action) ? "MON - " : "") + name;
     else if (/ BERTH /.test(s.action) && !/^VIC BERTH/.test(s.action) && !/ - VIC BERTH /.test(s.action)) s.action += " - VIC BERTH " + name;
     if (/VIC/.test(s.action) && mv.length) s.notes.push("over to Selhurst on " + mv.map(m => m.hc + " " + m.time).join(" or ") + " (" + mv[0].days + ")");
   }
@@ -1250,7 +1271,8 @@ function suggestCore(r, ctx) {
   const endsAt = depotOf(r.ends.place);
   /* where it ends, the way the plan writes it: a unit into a depot in the
      morning that sits there is "ENDS GP AM" */
-  const endsWord = () => "ENDS " + r.ends.place + (r.ends.time != null && !r.afterMidnight && r.ends.time >= 180 && r.ends.time < 720 && DEPOTS.has(homeOf(r.ends.place)) ? " AM" : "");
+  const endsWord = () => "ENDS " + r.ends.place +
+    (r.ends.time != null && !r.afterMidnight && r.ends.time >= AM_FINISH[0] && r.ends.time < AM_FINISH[1] && DEPOTS.has(homeOf(r.ends.place)) ? " AM" : "");
   /* near: today, tomorrow, ASAP, overdue, or this coming weekend and
      Monday - holds and requests. Soon: the rest of the week - requests,
      after the near lines have had theirs, but no hold, since the unit
@@ -1447,12 +1469,17 @@ function mergeDefects(plan, defects) {
   if (!defects || !defects.rows.length) return plan;
   const planned = plan.rows.filter(r => r.section === "DEFECTS");
   const keyOf = r => r.unit + "|" + defectCategory(r.what || r.priority) + "|" + (r.when || r.target || "").slice(0, 10);
-  const kept = new Map(planned.map(r => [keyOf(r), r]));
+  /* the plan's defect lines by unit, category and date - a list per key,
+     since a unit can carry two lines of one kind for one date and both
+     have to come back */
+  const kept = new Map();
+  for (const r of planned) { const k = keyOf(r); if (!kept.has(k)) kept.set(k, []); kept.get(k).push(r); }
   const rows = plan.rows.filter(r => r.section !== "DEFECTS");
   const order = plan.order.slice();
   if (order.indexOf("DEFECTS") < 0) order.push("DEFECTS");
   for (const d of defects.rows) {
-    const twin = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
+    const twins = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
+    const twin = twins && twins.length ? twins.shift() : null;
     const row = {
       section: "DEFECTS", unit: d.unit, line: 100000 + d.line,
       days: d.days, what: d.priority, when: d.target, isDefect: true, category: d.category,
@@ -1464,11 +1491,10 @@ function mergeDefects(plan, defects) {
       endLoc: d.endLoc, arrival: d.arrival,
     };
     row.places = row.where.split(/[\/,]/).map(x => x.trim().toUpperCase()).filter(Boolean);
-    if (twin) kept.delete(keyOf(twin));
     rows.push(row);
   }
   // plan defect lines the export did not carry stay as they were
-  for (const r of kept.values()) rows.push(r);
+  for (const rs of kept.values()) for (const r of rs) rows.push(r);
   return { rows, reviews: plan.reviews.concat(defects.reviews), order };
 }
 function run(planText, genius, opts) {
@@ -1521,6 +1547,9 @@ function run(planText, genius, opts) {
       if (n >= 1 && (!tomDate || n < tomAhead)) { tomDate = k; tomAhead = n; }
     }
   const tomDays = tomDate ? allDays(genius, tomDate) : days;
+  // any other day's diagrams, read once
+  const dayCache = new Map([[date, days], [tomDate, tomDays]]);
+  const daysFor = k => { if (!dayCache.has(k)) dayCache.set(k, allDays(genius, k)); return dayCache.get(k); };
   /* how the lines name that day's workings: "tomorrow's 5H91", or
      "Monday's 5H91" when the Detail is for the day after that */
   if (tomDate) tomDays.on = tomAhead === 1 ? "tomorrow's" : LONG_DAYS[parseShort(tomDate).getUTCDay()] + "'s";
@@ -1614,11 +1643,11 @@ function run(planText, genius, opts) {
     /* how it runs today, working by working: the diagrams coupled with it
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
+    const legDays = r.placedOn ? daysFor(r.placedOn) : days;   // the day it was placed on, not today's
     const legs = day ? day.stops.filter(s => s.hcOut && s.dep != null)
-      .map(s => ({ ...s, n: ((days.workings && days.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
+      .map(s => ({ ...s, n: ((legDays.workings && legDays.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
-    r.formation = legs.reduce((m, l) => Math.max(m, l.n), day ? 1 : 0);
     r.suggest = suggest(r, { mine: day, days, tomDays, tomDow, wanted, taken, mse, keep: !!opts.keep, dayToRun: !!opts.dayToRun,
                              already: requested.get(row.unit) || null });
     if (/BERTH|C\/O/.test(r.suggest.action) && !requested.has(row.unit)) requested.set(row.unit, r.suggest.action);

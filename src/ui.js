@@ -414,6 +414,7 @@ function rulesEnv(b, res, secNames) {
     endStyle: SHEETS_DATA.END_STYLE,
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    metroSplit: METRO.AM_SHEET_END,       // the Metro AM/PM split, which is not the berthing books' break
     breakGap: SHEETS_XLSX.BREAK_GAP,
     hsDepots: [...HS.DEPOTS],
     gpSplit: isMain,
@@ -587,8 +588,8 @@ if (lightbox && typeof lightbox.showModal === "function") {
 function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
   head.className = "road-head";
-  head.innerHTML = '<span class="road-no">Road ' + (i + 1) + "</span>" +
-    '<h2 class="road-name">' + escHtml(road) + "</h2>" +
+  head.innerHTML = '<span class="road-no">Book ' + (i + 1) + "</span>" +
+    '<h3 class="road-name">' + escHtml(road) + "</h3>" +
     '<span class="road-fleet">' + escHtml(fleetLabel) + "</span>" +
     '<span class="road-sprite" aria-hidden="true">' + spritesOf(spriteCls) + "</span>";
   return head;
@@ -749,13 +750,26 @@ function currentMode() {
 function switchMode(m) {
   for (const k of Object.keys(MODES)) {
     const on = k === m;
-    if (MODES[k].tab) MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false");
+    if (MODES[k].tab) { MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false"); MODES[k].tab.tabIndex = on ? 0 : -1; }
     if (MODES[k].panel) MODES[k].panel.hidden = !on;
   }
   rememberOpts({ mode: m });
 }
 for (const k of Object.keys(MODES))
   if (MODES[k].tab) MODES[k].tab.addEventListener("click", () => switchMode(k));
+/* the tab strip is a tablist, so the arrow keys move along it the way the
+   cards' own strips do, and only the open tab is in the Tab order */
+const modeTabs = Object.keys(MODES).map(k => MODES[k].tab).filter(Boolean);
+modeTabs.forEach((t, i) => {
+  t.tabIndex = t.getAttribute("aria-selected") === "true" ? 0 : -1;
+  t.addEventListener("keydown", e => {
+    const n = modeTabs.length;
+    const j = e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i + n - 1) % n
+            : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); modeTabs[j].focus(); modeTabs[j].click();
+  });
+});
 /* …and only a tab this copy has: the copy without the berth-request road
    shares the browser's memory with the full one, and a remembered tab it
    does not carry would hide every panel */
@@ -1425,23 +1439,29 @@ function decodeText(u8) {
 (function brPanel() {
   const plan = $("#brplan"), ignore = $("#brignore"), go = $("#brgo");
   if (!plan || !go) return;
-  const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
+  const out = $("#brout"), bar = $("#brbar"), note = $("#brnote");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
   const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint"), keep = $("#brkeep"),
-        dayToRun = $("#brdaytorun");
+        dayToRun = $("#brdaytorun"), clear = $("#brclear");
   const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
   /* The pair this tab reads: the one dropped here, or failing that the
      weekday books' own. Dropped here it can be any day, a Saturday
-     included, because nothing is built from it - only read. */
+     included, because nothing is built from it - only read. Reports that
+     are dropped but could not be read are NOT quietly replaced by the
+     weekday books' pair: the chips say what is loaded, and so does this. */
   let own = null, ownFiles = [];
-  const source = () => own || window.__lastWeekdayBuild;
+  const source = () => ownFiles.length ? own : window.__lastWeekdayBuild;
+  /* Every drop, chip and re-read goes through one queue, so a slow PDF read
+     cannot finish after a later drop and put stale reports back. */
+  let q = Promise.resolve();
+  const enqueue = job => (q = q.then(job).catch(e => say("Those reports could not be read: " + (e && e.message || e), "err")));
   const chips = $("#brfiles");
-  const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
+  const ZONE_IDLE = "No reports dropped yet — the weekday books' own pair is used, where they are built.";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
     if (/ALLOCATION SUMMARY/i.test(txt)) {
-      const a = /Allocation Summary for:[^0-9]*(\d\d\/\d\d\/\d\d)/.exec(txt);
+      const a = /Allocation Summary for:[^0-9]{0,60}(\d\d\/\d\d\/\d\d)/.exec(txt);
       return "Allocation" + (a ? " " + a[1] : "");
     }
     const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
@@ -1458,22 +1478,28 @@ function decodeText(u8) {
     ownFiles.forEach((f, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "chip"; b.title = "Remove " + f.name;
+      b.setAttribute("aria-label", "Remove " + f.label + " (" + f.name + ")");
       b.textContent = f.label;
-      const x = document.createElement("b"); x.textContent = "×"; b.appendChild(x);
-      b.addEventListener("click", () => { ownFiles.splice(i, 1); reread(); });
+      const x = document.createElement("b"); x.textContent = "×"; x.setAttribute("aria-hidden", "true"); b.appendChild(x);
+      b.addEventListener("click", () => enqueue(() => { ownFiles.splice(i, 1); return reread(); }));
       chips.appendChild(b);
     });
     if (ownFiles.length > 1) {
       const all = document.createElement("button");
       all.type = "button"; all.className = "chip all"; all.textContent = "Remove all reports";
-      all.addEventListener("click", () => { ownFiles = []; reread(); });
+      all.addEventListener("click", () => enqueue(() => { ownFiles = []; return reread(); }));
       chips.appendChild(all);
     }
   }
+  /* "A day still to run" is ticked for the planner when the reports are for
+     today or a day to come - but a tick they have set by hand stays theirs
+     until the reports are all taken off again. */
+  let tickedByHand = false;
+  if (dayToRun) dayToRun.addEventListener("change", () => { tickedByHand = true; });
   async function reread() {
     showChips();
     if (!ownFiles.length) {
-      own = null;
+      own = null; tickedByHand = false;
       if (zoneTxt) zoneTxt.textContent = ZONE_IDLE;
       idle();
       return;
@@ -1509,7 +1535,7 @@ function decodeText(u8) {
       /* a Summary for today or a day to come is a day still to run: the
          units are where their first workings start and can be asked for
          from there before they go out - ticked for the planner to untick */
-      if (dayToRun) {
+      if (dayToRun && !tickedByHand) {
         const now = new Date(); const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
         const at = d => { const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d); return m ? Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]) : 0; };
         dayToRun.checked = own.dates.some(d => at(d) >= t0);
@@ -1526,19 +1552,20 @@ function decodeText(u8) {
       if (/Summary rows found/.test(e.message)) {
         if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too";
         say("Detail loaded — drop the Diagram Summary printed after allocation too.", "");
-      } else say("Those reports could not be read: " + e.message, "err");
+      } else say("Those reports could not be read: " + e.message + " — take them off with their chips and drop them again.", "err");
     }
   }
   async function takePair(files) {
-    const list = [...files];
-    if (!list.length) return;
-    for (const f of list) {
+    const dropped = [...files];
+    if (!dropped.length) return;
+    say(MSG.readingFiles(dropped.map(f => f.name)));
+    for (const f of dropped) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      catch (e) { say(MSG.readFailed(f.name, e), "err"); continue; }
       let txt, data;
       if (/\.pdf$/i.test(f.name)) {
-        try { txt = GENIUS.pdfText(u8); } catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(f.name), "err"); continue; }
         data = { pdfText: txt };           // extracted once, for the chip and the read alike
       } else if (/\.docx?$/i.test(f.name) || SHEETS_PRINTS.isDocxBytes(u8)) {
         // the weekend diagram prints
@@ -1559,31 +1586,34 @@ function decodeText(u8) {
     }
     await reread();
   }
-  if (zone && input) {
-    zone.addEventListener("click", () => input.click());
-    input.addEventListener("change", () => { takePair(input.files); input.value = ""; });
-    for (const ev of ["dragenter", "dragover"])
-      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
-    for (const ev of ["dragleave", "drop"])
-      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
-    zone.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files) takePair(e.dataTransfer.files); });
-  }
+  if (zone && input) wireDrop(zone, input, files => enqueue(() => takePair(files)));
   const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
+  const NO_REPORTS = "Nothing to read against yet — drop the day's reports above, or build the weekday books first.";
   const idle = () => {
     const res = source();
-    if (!res) say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.");
+    if (!res) say(ownFiles.length ? "Those reports could not be read — take them off with their chips and drop them again." : NO_REPORTS, ownFiles.length ? "err" : "");
     else {
       const filled = (res.summary || []).filter(r => r.units && r.units.length).length;
-      say(filled ? "Reports for " + Object.values(res.labels).join(", ") + " loaded — paste the plan and read it."
-                 : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation.", filled ? "" : "err");
+      const placed = filled || (res.alloc && res.alloc.size);
+      say(placed ? "Reports for " + Object.values(res.labels).join(", ") + " loaded — paste the plan below and press Read the plan."
+                 : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation, or the Allocation Summary.", placed ? "" : "err");
     }
   };
   idle();
   for (const t of [$("#mode_br")]) if (t) t.addEventListener("click", () => { if (!text) idle(); });
+  const showOutput = on => { out.hidden = !on; bar.hidden = !on; if (!on) { out.textContent = ""; revWrap.hidden = true; note.textContent = ""; } };
+  if (clear) clear.addEventListener("click", () => enqueue(() => {
+    for (const el of [plan, ignore, defects, mse]) if (el) el.value = "";
+    result = null; text = ""; view = "plan";
+    if (mseHint) mseHint.textContent = "The units the export flags MSE are listed here once the plan is read.";
+    showOutput(false);
+    ownFiles = [];
+    return reread();
+  }));
   go.addEventListener("click", () => {
     const res = source();
-    if (!res) { say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.", "err"); return; }
-    if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, first.", "err"); return; }
+    if (!res) { say(ownFiles.length ? "Those reports could not be read — take them off with their chips and drop them again." : NO_REPORTS, "err"); return; }
+    if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, into its box first.", "err"); return; }
     try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "",
                                                          keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked) }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
@@ -1597,21 +1627,22 @@ function decodeText(u8) {
     note.textContent = result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
       (result.ignored ? ", " + result.ignored + " out of service" : "") +
       (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
-    say(result.lines + " plan lines read against " + result.date + ".", "go");
+    say(result.lines + " plan lines read against " + result.date + " — look them over below, then copy the plan back or save it.", "go");
   });
-  /* The plan in its own shape, or the day's lines nearest first. */
+  /* The plan in its own shape, or the day's lines nearest first; the button
+     says which one it will show next. */
   function showPlan() {
     text = SHEETS_BERTH.toText(result);
     out.innerHTML = SHEETS_BERTH.toHtml(result, false);
     out.className = "brout"; out.hidden = false; bar.hidden = false;
-    if (list) list.textContent = "Nearest first";
+    if (list) list.textContent = "Show nearest first";
     view = "plan";
   }
   function showList() {
     text = SHEETS_BERTH.render(result);
     out.textContent = text;
     out.className = "brout brout-pre"; out.hidden = false;
-    if (list) list.textContent = "As the plan";
+    if (list) list.textContent = "Show as the plan";
     view = "list";
   }
   if (list) list.addEventListener("click", () => { if (!result) return; (view === "plan" ? showList : showPlan)(); });
@@ -1684,7 +1715,8 @@ function decodeText(u8) {
                  names: { op: "", det: "", sum: "" } };
   const HELD_LABEL = { op: "Operating Report", det: "Diagram Detail",
                        sum: "Diagram Summary" };
-  let text = "", stamp = "";
+  const optsRow = $("#svoptsrow");
+  let text = "";
   const say = (msg, kind) => {
     statusEl.textContent = msg;
     statusEl.className = "status" + (kind ? " " + kind : "");
@@ -1692,8 +1724,8 @@ function decodeText(u8) {
   const waiting = () => {
     const got = ["op", "det", "sum"].filter(k => held[k]).map(k => HELD_LABEL[k]);
     const want = ["op", "det"].filter(k => !held[k]).map(k => HELD_LABEL[k]);
-    if (!got.length) return "Waiting for the Operating Report and the Diagram Detail.";
-    return got.join(" and ") + " loaded — waiting for the " + want.join(" and ") + ".";
+    if (!got.length) return "Nothing read yet — drop the Operating Report and the Diagram Detail above.";
+    return got.join(" and ") + " loaded ✓ — now drop the " + want.join(" and ") + " above.";
   };
   function render() {
     if (!held.op || !held.det) { say(waiting()); return; }
@@ -1714,6 +1746,7 @@ function decodeText(u8) {
     out.classList.toggle("svbox", asBox && !!text);
     out.hidden = false;
     bar.hidden = false;
+    if (optsRow) optsRow.hidden = false;   // the layout switches act on a built list
     rev.textContent = "";
     for (const r of res.reviews) {
       const li = document.createElement("li");
@@ -1726,7 +1759,7 @@ function decodeText(u8) {
     note.textContent = res.diagrams + " diagrams on the report, " +
       res.detailDiagrams + " in the detail" +
       (res.positions ? ", positions from the Summary"
-                     : " · no Diagram Summary, so a formation of three cannot be placed");
+                     : " · no Diagram Summary, so a formation of three cannot be placed — drop the Diagram Summary too");
     say(n("top", "shortage or length case", "shortage and length cases") +
         " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
         ". Look them over, then copy or save.", "go");
@@ -1734,37 +1767,30 @@ function decodeText(u8) {
   async function take(files) {
     const list = [...files];
     if (!list.length) return;
+    say(MSG.readingFiles(list.map(f => f.name)));
+    const bad = [];
     for (const f of list) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      catch (e) { say(MSG.readFailed(f.name, e), "err"); return; }
       let txt;
       if (/\.pdf$/i.test(f.name)) {
         try { txt = GENIUS.pdfText(u8); }
-        catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        catch (e) { say(MSG.pdfUnreadable(f.name), "err"); return; }
       } else txt = decodeText(u8);
       const kind = SHEETS_SHORTAGE.sniff(txt);
       source = null;                       // a new report means a fresh read
       if (kind === "op") { held.op = txt; held.names.op = f.name; }
       else if (kind === "det") { held.det = txt; held.names.det = f.name; }
       else if (kind === "sum") { held.sum = txt; held.names.sum = f.name; }
-      else {
-        say(f.name + " does not read as an Operating Report or a Diagram " +
-            "Detail.", "err");
-      }
+      else bad.push(f.name);
     }
-    stamp = (held.names.op || held.names.det || "").replace(/\.[^.]+$/, "");
     render();
+    // a file that read as neither is named after the rest have been taken, not lost under the next status
+    if (bad.length) say("“" + bad.join("”, “") + "” does not read as an Operating Report or a Diagram Detail — " +
+      "save the report from Genius as PDF or CSV and drop that. " + statusEl.textContent, "err");
   }
-  zone.addEventListener("click", () => input.click());
-  input.addEventListener("change", () => { take(input.files); input.value = ""; });
-  for (const ev of ["dragenter", "dragover"])
-    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
-  for (const ev of ["dragleave", "drop"])
-    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
-  zone.addEventListener("drop", e => {
-    if (e.dataTransfer && e.dataTransfer.files) take(e.dataTransfer.files);
-  });
+  wireDrop(zone, input, take);
   /* The list is pasted into an email, so it goes onto the clipboard twice:
      as plain text, and as Calibri 11 bold, which is the face the depot's
      notes are written in. A browser without ClipboardItem gets the text. */
@@ -1810,9 +1836,11 @@ function decodeText(u8) {
     held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
     out.textContent = ""; out.hidden = true; bar.hidden = true;
+    if (optsRow) optsRow.hidden = true;
     revWrap.hidden = true; note.textContent = "";
     say(waiting());
   });
+  if (optsRow) optsRow.hidden = true;
   say(waiting());
 })();
 }

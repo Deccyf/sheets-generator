@@ -136,7 +136,6 @@
   details.hint .pop ol.how img{margin:6px 0 2px}
   /* a screenshot is small in the fold; click it and it opens full size */
   .zoom{border:0; padding:0; background:none; cursor:zoom-in; display:block; width:100%; margin:0}
-  .zoom:focus-visible{outline:2px solid var(--signal); outline-offset:2px}
   dialog.lightbox{border:0; padding:0; background:transparent; max-width:96vw; max-height:96vh}
   dialog.lightbox::backdrop{background:rgba(27,34,38,.86)}
   dialog.lightbox figure{margin:0; display:flex; flex-direction:column; align-items:center; gap:10px}
@@ -167,7 +166,7 @@
   }
   .berth-inner{
     border:2px dashed var(--rail); background:var(--paper);
-    padding:24px 24px; display:flex; gap:20px; align-items:center;
+    padding:24px; display:flex; gap:20px; align-items:center;
     transition:border-color .15s, background .15s, box-shadow .15s;
   }
   .berth:hover .berth-inner{border-color:var(--signal); box-shadow:0 0 0 3px rgba(14,124,66,.14)}
@@ -183,7 +182,7 @@
   /* the one setting that decides what the reports contain */
   .mustdo{
     display:block; margin:10px 0 0; padding:9px 12px; font-size:13px; line-height:1.5;
-    color:#3C464D; background:#FFF6E8; border-left:3px solid var(--amber); max-width:none;
+    color:#3C464D; background:#FFF6E8; border-left:3px solid var(--amber);
   }
   .mustdo b{color:var(--warn); font-family:var(--mono); font-size:11px;
     letter-spacing:.08em; text-transform:uppercase; margin-right:8px}
@@ -244,8 +243,12 @@
   .status.go{color:var(--board-go)}
   .status.warn{color:var(--board-warn)}
   .board-acts{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .board-acts .note{font-family:var(--mono); font-size:11px; color:var(--board-dim);
-    letter-spacing:.05em; flex:1 1 100%}
+  /* a small aside: under a box, beside a tick, or on the board in its own dim ink */
+  .note{font-family:var(--mono); font-size:11px; color:var(--chalk); letter-spacing:.05em}
+  .board-acts .note{color:var(--board-dim); flex:1 1 100%}
+  /* the focus ring on the near-black board: the flag colour, since the
+     signal green is lost against it */
+  .board :focus-visible{outline-color:var(--flag)}
   /* the analyser's status line sits on the apron, not on a board */
   .statusrow .status{color:var(--chalk)}
   .statusrow .status.err{color:#9B2226}
@@ -444,7 +447,10 @@
   @media print{
     body{background:#fff; color:#000}
     .mast, .modes, .berth, .orpaste, .pastebox, .board, .opts-row, .opts-hints,
-    details.howto, .track, .acts, .tabs, .chips, footer, .whatfor, .mustdo{display:none !important}
+    details.howto, .track, .acts, .tabs, .chips, footer, .whatfor, .mustdo,
+    .zonesum, .brfiles, .brgrid, .brticks, .bracts, details.svrules, .svreview{display:none !important}
+    /* the shortages list and the plan table print as the check copy */
+    .svout, .brout{border:0; padding:0}
     .wrap{max-width:none; padding:0}
     .roads{display:block}
     .road{border:0; padding:0; page-break-inside:avoid; margin:0 0 18px}
@@ -455,7 +461,7 @@
   /* ---- berth requests ---- */
   .brgrid{display:grid; grid-template-columns:minmax(0,3fr) minmax(0,1fr); gap:12px; margin-top:14px}
   .brfield{display:flex; flex-direction:column; gap:6px; min-width:0}
-  .brfield textarea{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px;
+  .brfield textarea{width:100%; font-family:var(--mono); font-size:12px;
     line-height:1.45; padding:8px 10px; border:1px solid var(--apron-dk); border-radius:4px;
     background:var(--paper); color:inherit; resize:vertical; white-space:pre; overflow:auto}
   .mode .tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; margin-left:6px}
@@ -473,9 +479,11 @@
   .brtable td:nth-child(6){font-style:italic; color:#3C464D}
   .brtable td.filled{font-style:normal; font-weight:700; color:inherit}
   .brtable td:nth-child(7){color:#5A646B; font-family:var(--mono); font-size:11px}
-  .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#00B050} .brtable tr.ex-c{color:#FF0000}
+  /* the workbook's exam colours, a shade darker on screen so the green and
+     the red read against the paper; the copy back to the workbook carries
+     the workbook's own */
+  .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#008A3E} .brtable tr.ex-c{color:#D40000}
   .brtable tr.ex-m{color:#7030A0} .brtable tr.ex-t{color:#0070C0} .brtable tr.ex-x{color:#0070C0}
-  .brgrid-one{grid-template-columns:1fr}
   /* the lettered list, as the Excel text box shows it: Calibri 11 bold,
      20.19 cm wide, the breaks made by the road and not by the browser */
   .svbox{font-family:Calibri,Carlito,Arial,sans-serif; font-weight:700; font-size:11pt;
@@ -483,25 +491,28 @@
   /* the reports dropped on the berth tab, each with its own remove, so one
      can be swapped without losing the plan and defects already pasted */
   .brfiles{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center}
-  .brfiles .chip{font:inherit; font-size:12.5px; padding:4px 10px; border:1px solid var(--apron-dk);
-    border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
+  .brfiles .chip{font:inherit; font-size:12.5px; text-transform:none; letter-spacing:0; padding:4px 10px;
+    border:1px solid var(--apron-dk); border-radius:14px; background:var(--paper); color:inherit; cursor:pointer}
   .brfiles .chip b{margin-left:8px; font-weight:700}
   .brfiles .chip:hover{border-color:var(--danger); color:var(--danger)}
   .brfiles .chip.all{border-style:dashed}
-  /* the berth tab's introduction: the blurb and the warning on the left,
-     how it works on the right, one column on a narrow screen */
-  /* the warning under the drop zone: the weekday tab's "before you export"
+  /* what the drop zone holds, under it, so the zone's own label stays its name */
+  .zonesum{margin:8px 0 0; font-size:12.5px; color:var(--chalk); line-height:1.45}
+  /* the warning above the drop zone: the weekday tab's "before you export"
      bar, in red, because this one is a warning and not a setting */
   .mustdo.brwarn{background:#FBEFEE; border-left-color:var(--danger)}
   .mustdo.brwarn b{color:var(--danger)}
   details.brhow{margin-top:10px}
   .brhow ul{margin:8px 0; padding-left:18px}
   .brhow li{margin:4px 0}
-  .bropts{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
-  .brticks{display:flex; flex-direction:column; gap:6px}
-  .brticks label{display:flex; align-items:center; gap:8px}
+  .brticks{display:flex; flex-direction:column; gap:6px; margin-top:12px; font-size:13.5px}
+  .brticks label{display:flex; align-items:baseline; gap:8px}
+  .brticks input{flex:0 0 auto; position:relative; top:2px}
+  .bracts{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px}
   .berth-small{margin-top:14px}
-  @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
+  /* one column below the wide layout's own breakpoint, so the narrow boxes
+     are never squeezed beside the plan on a laptop screen */
+  @media (max-width:999px){ .brgrid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -524,7 +535,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.8.3</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.9.0</b> · 20 September 2026</span>
     </div>
   </header>
 
@@ -608,6 +619,16 @@
           and Ramsgate as berthing sheets, Metro and High Speed as the
           depot's own documents, plus the updated prints document when a
           reissue was spliced in.</li>
+        <li><b>Shortages &amp; variations</b> — not a book: the
+          controller&rsquo;s list of what is short, the wrong length or the
+          wrong fleet, read off the Operating Report and the Diagram Detail
+          and laid out ready to paste.</li>
+        <!-- experimental -->
+        <li><b>Berth requests</b> (experimental) — not a book either: the
+          maintenance plan pasted from the workbook, given back with a
+          suggested berth request beside each line, to check rather than to
+          copy.</li>
+        <!-- /experimental -->
       </ul>
       <p>The full rulebook — every rule a book followed — is on the Rules tab
         of that book, and in <i>BERTHING SHEET RULES</i> for circulating. Both
@@ -649,7 +670,7 @@
     <button type="button" class="btn light" id="lightbox_close">Close</button>
   </dialog>
 
-  <div class="modes" role="tablist" aria-label="Which books to build">
+  <div class="modes" role="tablist" aria-label="Which tool to use">
     <button type="button" class="mode" id="mode_wk" role="tab"
       aria-selected="true" aria-controls="wkPanel">Weekday · Mon – Fri</button>
     <button type="button" class="mode" id="mode_we" role="tab"
@@ -667,22 +688,22 @@
       from Integrale (its two CSV exports). A Monday pair builds the Monday
       books.</p>
 
-    <button class="berth" id="berth" type="button">
-      <span class="berth-inner">
-        <span class="buffer" aria-hidden="true"></span>
-        <span class="berth-txt">
-          <strong>Drop the Summary &amp; Detail reports here</strong>
-          <span>.pdf or .csv · both for the same date · or click to choose</span>
-        </span>
-      </span>
-    </button>
-    <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
-
     <p class="mustdo"><b>Before you export</b>In Genius, <code>File › Session
       Settings</code>, tick <strong>“Show diagram sections on the diagram
       summary report”</strong>. Without it the Summary carries only the
       morning positions, afternoon formations print the wrong way round, and
       it cannot be corrected later. The Review tab says if this happened.</p>
+
+    <button class="berth" id="berth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the Diagram Summary &amp; Diagram Detail here</strong>
+          <span>.pdf or .csv · both for the same date · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="file" accept=".pdf,.csv" multiple hidden>
 
     <p class="orpaste">
       <button type="button" class="linkish" id="pastetoggle"
@@ -713,11 +734,11 @@
         <button type="button" class="btn" id="paste_go">Build the books from the pasted reports</button>
         <button type="button" class="btn ghost" id="paste_clear">Clear both boxes</button>
       </div>
-      <p class="paste-say" id="paste_say" role="status" aria-live="polite"></p>
+      <p class="paste-say" id="paste_say" role="status"></p>
     </div>
 
     <div class="board">
-      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <p class="status" id="status" role="status"></p>
       <div class="board-acts" id="allbar" hidden>
         <button class="btn light" id="dlall" type="button">Save all books (.zip)</button>
         <button class="btn ghost light" id="clearall" type="button">Start over</button>
@@ -733,6 +754,8 @@
       <label><input type="checkbox" id="stockreq" autocomplete="off"> Stock requirements form</label>
       <button type="button" class="linkish" id="optshelp" aria-expanded="false"
         aria-controls="optshint">What each does</button>
+      <span class="opts-hint">Every tick rebuilds the books — save them again
+        afterwards. The options are remembered on this computer.</span>
     </div>
     <div class="opts-hints" id="optshint" hidden>
       <p><b>Headcodes on every line</b> — only Gillingham, Victoria and Grove
@@ -751,8 +774,6 @@
         diagram counted at the location it starts the day from, by unit type.
         POSITION and SEAT LOSS stay blank for the planner. Normally only wanted
         for a Monday built on a Sunday night, or the day after a bank holiday.</p>
-      <p><b>The options are remembered</b> on this computer, and every one
-        rebuilds the books as you tick it — save them again afterwards.</p>
     </div>
 
     <div class="roads" id="roads"></div>
@@ -805,11 +826,11 @@
         <button type="button" class="btn" id="we_paste_go">Build the books from the pasted prints</button>
         <button type="button" class="btn ghost" id="we_paste_clear">Clear both boxes</button>
       </div>
-      <p class="paste-say" id="we_paste_say" role="status" aria-live="polite"></p>
+      <p class="paste-say" id="we_paste_say" role="status"></p>
     </div>
 
     <div class="board">
-      <p class="status" id="we_status" role="status" aria-live="polite"></p>
+      <p class="status" id="we_status" role="status"></p>
       <div class="board-acts" id="we_allbar" hidden>
         <button class="btn light" id="we_dlall" type="button">Save all books (.zip)</button>
         <button class="btn light" id="we_dlupd" type="button" hidden>Save updated prints (.docx)</button>
@@ -819,27 +840,26 @@
     </div>
 
     <div class="opts-row" id="we_optsrow" hidden>
-      <span class="opts-label">Headcodes on every line</span>
-      <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Mainline &amp; Ramsgate</label>
+      <span class="opts-label">Options</span>
+      <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="we_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs" autocomplete="off"> High Speed</label>
-      <span class="opts-hint" style="flex:0 0 100%; margin:0">Only Gillingham,
-        Victoria and Grove Park carry a headcode as standard. Ticking a book
-        puts one on every line of it and rebuilds it — save again afterwards.</span>
+      <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
+        headcode as standard. Ticking a book puts one on every line of it and
+        rebuilds it — save again afterwards.</span>
     </div>
 
     <div class="roads" id="we_roads"></div>
   </section>
 
   <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
-    <h2 class="vh">Shortages and variations from the Operating Report</h2>
+    <h2 class="vh">Shortages &amp; variations from the Operating Report</h2>
     <p class="whatfor">Needs the <strong>Operating Report</strong> and the
-      <strong>Diagram Detail</strong> for the date — .pdf or .csv. This is not
-      a berthing book: it is the controller&rsquo;s list of what is short, what
-      is the wrong length and what is the wrong fleet, with every service each
-      one goes on to affect. The <strong>Diagram Summary</strong> is optional
-      and one column of it is read: <code>POS</code>, which is the only place
-      a diagram&rsquo;s place in its formation is written down.</p>
+      <strong>Diagram Detail</strong> for the date — .pdf or .csv. Not a
+      berthing book: the controller&rsquo;s list of what is short, the wrong
+      length or the wrong fleet, with every service each one goes on to
+      affect. Drop the <strong>Diagram Summary</strong> too when a formation
+      of three needs placing.</p>
 
     <button class="berth" id="svberth" type="button">
       <span class="berth-inner">
@@ -853,19 +873,31 @@
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
 
-    <div class="opts-row" id="svoptsrow">
-      <span class="opts-label">Layout</span>
+    <div class="board">
+      <p class="status" id="svstatus" role="status"></p>
+      <div class="board-acts" id="svbar" hidden>
+        <button class="btn light" id="svcopy" type="button">Copy the list</button>
+        <button class="btn light" id="svsave" type="button">Save as text</button>
+        <button class="btn ghost light" id="svclear" type="button">Start over</button>
+        <span class="note" id="svnote"></span>
+      </div>
+    </div>
+
+    <div class="opts-row" id="svoptsrow" hidden>
+      <span class="opts-label">Options</span>
       <label><input type="checkbox" id="svlettered" autocomplete="off">
-        Lettered</label>
+        Lettered, for the Excel text box</label>
       <label><input type="checkbox" id="svbyfamily" autocomplete="off">
-        Variations by which way round</label>
+        Variations grouped by which way round</label>
       <label><input type="checkbox" id="svramarr" autocomplete="off">
         Arrival times on Ramsgate only</label>
       <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
         aria-controls="svoptshint">What each does</button>
+      <span class="opts-hint">Each one re-lays the list on screen, and the
+        copy and the save follow it.</span>
     </div>
     <div class="opts-hints" id="svoptshint" hidden>
-      <p><b>Lettered</b> — the depot's own hand, laid out for the Excel text
+      <p><b>Lettered, for the Excel text box</b> — the depot's own hand, laid out for the Excel text
         box it is pasted into: 20.19 cm wide, Calibri 11 bold. Every shortage,
         swap or length case takes a letter of its own, in the order they
         happen, and the whole run of fleet variations shares the last one, so
@@ -878,7 +910,7 @@
         the letter stands against the first line only and every other line
         starts where that one's text does. Copy carries the breaks and
         indents over, so Excel does not decide its own.</p>
-      <p><b>Variations by which way round</b> — the fleet block gathered by
+      <p><b>Variations grouped by which way round</b> — the fleet block gathered by
         the mismatch rather than by where the unit ends up: every
         375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
         together, each in diagram order. A working carrying one of each —
@@ -888,16 +920,6 @@
       <p><b>Arrival times on Ramsgate only</b> — keeps <code>(ARR …)</code>
         where the working ends at Ramsgate, station or depot, and drops it
         everywhere else.</p>
-    </div>
-
-    <div class="board">
-      <p class="status" id="svstatus" role="status" aria-live="polite"></p>
-      <div class="board-acts" id="svbar" hidden>
-        <button class="btn light" id="svcopy" type="button">Copy the list</button>
-        <button class="btn light" id="svsave" type="button">Save as text</button>
-        <button class="btn ghost light" id="svclear" type="button">Start over</button>
-        <span class="note" id="svnote"></span>
-      </div>
     </div>
 
     <pre class="svout" id="svout" hidden></pre>
@@ -956,7 +978,11 @@
         <p><b>Left out.</b> Shunts inside the Ashford and Grove Park depot
           fences. And when both reports were produced between 08 00 and 16 00,
           a diagram that has finished by 16 00.</p>
-        <p class="secn">The place codes here are the <b>roads</b>, not the
+        <p><b>The Diagram Summary.</b> Optional, and one column of it is
+          read: <code>POS</code>, the only place a diagram&rsquo;s place in
+          its formation is written down. Without it a formation of three
+          cannot be placed, and the pair is named on the Review list.</p>
+        <p>The place codes here are the <b>roads</b>, not the
           berthing books&rsquo; station codes — <code>AFDS</code>,
           <code>AFUS</code>, <code>DVPS</code>, <code>GPUS</code> — because a
           discrepancy is worked off a road. The two vocabularies are
@@ -974,26 +1000,26 @@
       Restrictions and Performance Defects out of <strong>Equinox or
       EMS</strong> into the defects box, as they come.</p>
 
-    <button class="berth berth-small" id="brberth" type="button">
-      <span class="berth-inner">
-        <span class="buffer" aria-hidden="true"></span>
-        <span class="berth-txt">
-          <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
-          <span>PDF or CSV &middot; any day, a Saturday included &middot; the
-            weekend diagram prints (.docx) stand in for a Detail &middot; the
-            <b>Allocation Summary</b> says where every unit starts and ends,
-            with or without a Diagram Summary &middot; or leave it and the
-            weekday books&rsquo; own pair is used</span>
-        </span>
-      </span>
-    </button>
-    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
-    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
-
     <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
       an experimental tool. It is a reference only, to help you make a
       decision on berth requests, so please double-check all of its work
       against the reports before anything goes on the Telex.</p>
+
+    <button class="berth berth-small" id="brberth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the Diagram Summary and Detail here</strong>
+          <span>.pdf or .csv &middot; the Summary printed after allocation, the
+            Detail for today, tomorrow or both &middot; the Allocation Summary
+            and the weekend prints (.docx) are read too &middot; any day &middot;
+            or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
+    <p class="zonesum" id="brberthtxt">No reports dropped yet — the weekday books&rsquo; own pair is used, where they are built.</p>
+    <div class="brfiles" id="brfiles" hidden role="group" aria-label="Reports dropped on this tab"></div>
 
     <details class="svrules brhow" id="brhow">
       <summary>How it works: the reports to drop, and the two turns</summary>
@@ -1039,7 +1065,7 @@
         <textarea id="brplan" rows="9" spellcheck="false"
           placeholder="Exams&#10;Unit Nr&#9;Exam&#9;&#9;Where&#9;Action&#10;375605&#9;A&#9;SAT AM 19/09&#9;RE&#9;STOPPED RE&#10;…"></textarea>
       </label>
-      <label class="brfield brfield-small">
+      <label class="brfield">
         <span class="opts-label">Out of service — ignore these</span>
         <textarea id="brignore" rows="3" spellcheck="false"
           placeholder="376036 375924 …"></textarea>
@@ -1051,30 +1077,31 @@
         <textarea id="brdefects" rows="6" spellcheck="false"
           placeholder="Date Occurred&#9;Days O/S&#9;Asset No&#9;Coach No&#9;Catalogue No.&#9;Stock Description&#9;Repair Location&#9;Diagram End Location&#9;Arrival Date&#9;System Code&#9;Fault Description&#9;Facility Failure&#9;Report&#9;Priority&#9;Target Due Date&#10;06/07/2026 15:48:00&#9;75&#9;375625&#9;67875&#9;&#9;&#9;+ AMAT&#9;RAMSGTD&#9;17/09/2026 19:54:00&#9;HA&#9;UMD8968 No Cab Air Con - Requires HVAC&#9;No&#9;WR0472231&#9;2. Restriction MO&#9;30/09/2026 00:00:00"></textarea>
       </label>
-      <label class="brfield brfield-small">
+      <label class="brfield">
         <span class="opts-label">MSE attending — no request for these</span>
         <textarea id="brmse" rows="3" spellcheck="false"
           placeholder="376020 375821 …"></textarea>
         <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
       </label>
     </div>
-    <div class="opts-row bropts">
+    <div class="brticks">
+      <label><input type="checkbox" id="brkeep" autocomplete="off">
+        Keep trains together &mdash; split a formation only where nothing else gets it home</label>
+      <label><input type="checkbox" id="brdaytorun" autocomplete="off">
+        A day still to run &mdash; every unit is where its first working starts, ask before it
+        goes out <span class="note">(ticked for you when the reports are for today or a day to come)</span></label>
+    </div>
+    <div class="bracts">
       <button class="btn" id="brgo" type="button">Read the plan</button>
-      <span class="brticks">
-        <label><input type="checkbox" id="brkeep" autocomplete="off">
-          Keep trains together &mdash; split a formation only where nothing else gets it home</label>
-        <label><input type="checkbox" id="brdaytorun" autocomplete="off">
-          A day still to run &mdash; every unit is where its first working starts, ask before it goes out</label>
-      </span>
-      <span class="note" id="brhint"></span>
+      <button class="btn ghost" id="brclear" type="button">Start over</button>
     </div>
 
     <div class="board">
-      <p class="status" id="brstatus" role="status" aria-live="polite"></p>
+      <p class="status" id="brstatus" role="status"></p>
       <div class="board-acts" id="brbar" hidden>
         <button class="btn light" id="brcopy" type="button">Copy the plan back</button>
         <button class="btn light" id="brsave" type="button">Save as text</button>
-        <button class="btn ghost light" id="brlist" type="button">Nearest first</button>
+        <button class="btn ghost light" id="brlist" type="button">Show nearest first</button>
         <span class="note" id="brnote"></span>
       </div>
     </div>
@@ -1430,8 +1457,8 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.8.3
-      &middot; 19 September 2026. If something looks wrong, check you have the
+      works without an internet connection. Version 3.9.0
+      &middot; 20 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
   </footer>
@@ -1444,7 +1471,7 @@
     if (!ok) {
       var el = document.getElementById("oldbrowser");
       if (el) el.hidden = false;
-      var ids = ["berth", "we_berth"];
+      var ids = ["berth", "we_berth", "svberth", "brberth"];
       for (var i = 0; i < ids.length; i++) {
         var b = document.getElementById(ids[i]);
         if (b) b.style.display = "none";
@@ -2424,7 +2451,7 @@ return {
   PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
-  TRANSIT, STATION_TABLE, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
+  TRANSIT, STATIONS, MANUAL_LOC, END_MARKERS_PRINTS,
   PLACE_NAMES, NON_BERTH_PRINTS,
   PROFILES,
 };
@@ -2660,7 +2687,7 @@ const SHEETS_RULES = (() => {
              "there through the day in the order they leave. One line is " +
              "one unit, so a pair is two lines and a twelve-car is three." },
         { p: "Grove Park and Slade Green get an AM sheet and a PM sheet, " +
-             "split at " + hhmm(env.pmBreak || 1200) + ", the way the " +
+             "split at " + hhmm(env.metroSplit || 600) + ", the way the " +
              "hand-kept workbook splits them." },
         { p: "Reading a line from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
@@ -3200,12 +3227,14 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_RULES = SHEETS_RULES;
     const paras = [];
     const re = paraRe();
     let m;
+    // one token pattern for every paragraph; exec runs it to the end of each body, which resets it
+    const tok = /<w:tab\/>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/?>|<w:cr\/>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:t(?:\s[^>]*)?\/>/g;
     while ((m = re.exec(documentXml)) !== null){
       const inner = m[1];
       if (inner === undefined){ paras.push(""); continue; }
       const body = inner.replace(/<w:pPr>[\s\S]*?<\/w:pPr>/g, "");
       let text = "";
-      const tok = /<w:tab\/>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/?>|<w:cr\/>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:t(?:\s[^>]*)?\/>/g;
+      tok.lastIndex = 0;
       let t;
       while ((t = tok.exec(body)) !== null){
         const raw = t[0];
@@ -3224,9 +3253,9 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_RULES = SHEETS_RULES;
       throw new Error("That file is damaged or isn't a Word document. " +
                       "Try re-saving the prints from Word as .docx.");
     }
-    const key = Object.keys(files).find(k => k === "word/document.xml");
-    if (!key) throw new Error("That doesn't look like a Word file — no document body inside.");
-    const xml = new TextDecoder("utf-8").decode(files[key]);
+    const doc = files["word/document.xml"];
+    if (!doc) throw new Error("That doesn't look like a Word file — no document body inside.");
+    const xml = new TextDecoder("utf-8").decode(doc);
     return docxParagraphs(xml);
   }
 
@@ -3648,7 +3677,7 @@ function amPm(visits, flags) {
   return [am, "", flags];
 }
 
-return { pad2, norm, sheetStation, destTlc, fmtTime, amPm, csvParse,
+return { norm, sheetStation, destTlc, fmtTime, amPm, csvParse,
          AM_CUTOFF, BERTH_SHEETS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_CORE;
@@ -4181,11 +4210,13 @@ function previewHtml(layout){
   };
   const xfCss = layout.opts && layout.opts.xfCss;
   const SIDES = ["left", "right", "top", "bottom"];
+  // compiled once: this runs four times per cell of the preview
+  const SIDE_RE = SIDES.map(s => new RegExp("border-" + s + ":([^;]*)"));
   /* What one cell draws on one of its sides, whichever dressing it wears. */
   function borderOf(cell, i){
     if (!cell) return null;
     if (xfCss && cell.xf !== undefined && xfCss[cell.xf]){
-      const m = new RegExp("border-" + SIDES[i] + ":([^;]*)").exec(xfCss[cell.xf]);
+      const m = SIDE_RE[i].exec(xfCss[cell.xf]);
       const v = m ? m[1].trim() : "";
       return (!v || v === "0" || v === "none") ? null : v;
     }
@@ -4570,7 +4601,7 @@ function dayPreviewHtml(secs, label, ram, order, allHc, gpSplit, miles) {
 return { writeBooks, bookOrder, layoutSheet, rowsToLayout, writeWorkbook,
          previewHtml, dayPreviewHtml, esc,
          DAY_SHEET, MAIN_ORDER, METRO_ORDER, HS_ORDER, BREAK_GAP, printPlan,
-         UNIT_COL, TEXT_COLS, TEXT_FMT, V_LOOK };
+         UNIT_COL, TEXT_COLS, V_LOOK };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_XLSX;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_XLSX = SHEETS_XLSX;
@@ -5112,7 +5143,7 @@ function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates, dayWords) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeMetroBook, sheetsFor, layoutSection, fitWidths, headings, WIDTHS };
+return { writeMetroBook, sheetsFor, layoutSection, fitWidths, headings, WIDTHS, AM_SHEET_END };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;
@@ -6870,8 +6901,12 @@ function sheetsFor(hsSecs, labels, dates) {
     const name = m
       ? m[1].charAt(0) + m[1].slice(1).toLowerCase() + " " + m[2] + " " + m[3]
       : lbl || "SHEET";
+    /* last night's arrivals are the previous CALENDAR day's, where it is in
+       the build - a Wednesday and a Friday built together do not make
+       Wednesday the night before Friday */
+    const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 ? days[i - 1] : null) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -8893,10 +8928,12 @@ const GENIUS = (() => {
          one train by then, so they always do, and a mixed answer means
          something is odd enough to leave alone. */
       const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
+      // the diagram tiebreak mirrors the position order, and equal diagrams compare equal
+      const byDiag = (a, b) => a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0;
       if (turned ? !asc : asc)
-        blocks.sort((x, y) => (x.pos - y.pos) || (x.diag > y.diag ? -1 : 1));
+        blocks.sort((x, y) => (x.pos - y.pos) || byDiag(y, x));
       else
-        blocks.sort((x, y) => (y.pos - x.pos) || (x.diag < y.diag ? -1 : 1));
+        blocks.sort((x, y) => (y.pos - x.pos) || byDiag(x, y));
       /* Called at the platform but a side is not in the table: the order is
          left exactly as it was, and said out loud rather than guessed. */
       if (blocks.length > 1 && blocks.some(x => x.turn === null))
@@ -9493,7 +9530,8 @@ const GENIUS = (() => {
     /* Every edit that reached nothing is a pin quietly doing nothing - the
        same silent miss the table itself has, so say it here too. */
     for (const k of Object.keys(edits)) {
-      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0)) continue;
+      // tried by name, or applied through a superset order that covers the formation
+      if (fx.coupled.some(c => c.keysTried.indexOf(k) >= 0 || c.applied === k)) continue;
       noteAll("The order correction " + k + " made on this computer matched" +
               " nothing in these reports — the working may have moved;" +
               " re-pin it or clear it");
@@ -9738,10 +9776,11 @@ const GENIUS = (() => {
         diag: code,
         fleet: (r[c["Type"]] || "").trim(),
         pos: parseInt(r[c["Position"]], 10) || 1,
-        start: st[1] ? mins(st[1]) : 0,
+        // tmin, not mins: an export that has been through Excel writes "8:34:00"
+        start: st[1] ? tmin(st[1]) : 0,
         from: (r[c["Start Location"]] || "").trim(),
         to: (r[c["End Location"]] || "").trim(),
-        end: et[1] ? mins(et[1]) : 0,
+        end: et[1] ? tmin(et[1]) : 0,
         uncovered: (r[c["Cov"]] || "").trim().toUpperCase() === "UNCOVERED",
         unit: stockAt >= 0 ? unitNo(r[stockAt]) : "",
       });
@@ -10007,7 +10046,6 @@ if (typeof globalThis !== "undefined") globalThis.GENIUS = GENIUS;
    apart and neither is the other's master. */
 "use strict";
 const SHEETS_SHORTAGE = (() => {
-const pdfText = txt => GENIUS.pdfText(txt);
 const { csvParse } = SHEETS_CORE;
 
 // ---------- basic helpers ----------
@@ -10043,7 +10081,6 @@ const ABBR = {
      "??? - TON" for RM020 and RM021 on the Saturday 19/09 report. */
   TUNWELL:"TBW", PKWD:"PDW"
 };
-const KNOWN_CODES = new Set(Object.keys(ABBR));
 const MASTER_GROUPS = [
   ["AFDS","AFES","AFUS"], ["FAV","FAVBRD","FAVUS"], ["DVP","DVPS"],
   ["TON","TONJS","TONDMS"], ["RAM","RE"], ["HGS","HGPS"], ["VICS","VIC"]
@@ -10397,6 +10434,7 @@ function segmentDescriptor(seg, occStruct, reviews) {
 }
 
 function statusOrder(a,b){
+  if(a==="CANCELLED"&&b==="CANCELLED")return 0;
   if(a==="CANCELLED")return -1;if(b==="CANCELLED")return 1;
   const aa=parseInt(a,10)||999, bb=parseInt(b,10)||999; return aa-bb;
 }
@@ -11044,7 +11082,7 @@ function sniff(text) {
 return { run, read, build, sniff, letterList, letterHtml, layoutLettered, measureCalibri, BOX_WIDTH_PT,
          parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
-         pdfText, ABBR, MASTER_GROUPS };
+         ABBR, MASTER_GROUPS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_SHORTAGE;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_SHORTAGE = SHEETS_SHORTAGE;
@@ -11121,6 +11159,10 @@ const NO_SPLIT_AT = new Set(["FKE", "HGS", "FAV"]);
    and 16+30 is on hand at a depot, and the departures it is offered are
    the ones between 09+00 and 16+30 first. Minutes from midnight. */
 const PM_WINDOW = [540, 990];
+/* A unit into a depot in the morning that sits there is "ENDS GP AM", as
+   the plan writes it: a finish between 03+00 (after the night's arrivals)
+   and midday. Minutes from midnight. */
+const AM_FINISH = [180, 720];
 /* A Genius code -> the plan's word for it, for saying where a unit ends. */
 const CODE_TO_PLACE = (() => {
   const m = new Map();
@@ -11257,6 +11299,7 @@ function parseDefects(text) {
     } else continue;
     if (!UNIT_RE.test(row.unit)) continue;
     row.line = n;
+    rows.push(row);
     const rl = String(row.repairAt || "").toUpperCase();
     row.amat = /\bAMAT\b/.test(rl); row.mse = /\bMSE\b/.test(rl); row.red = /\bRED\b/.test(rl);
     row.con = /\bCON\b/.test(rl); row.gtr = /GTR/.test(rl);
@@ -11264,8 +11307,10 @@ function parseDefects(text) {
                       /GROVE/.test(rl) ? "GP" : /ASHFORD/.test(rl) ? "AFK" : /SELHURST/.test(rl) ? "VIC" : null;
     row.category = defectCategory(row.priority);
     row.summary = faultSummary(row.fault);
-    rows.push(row);
   }
+  // text in the box that read as no defect at all is said, not passed over
+  if (n && !rows.length)
+    reviews.push("The defects box holds " + n + " line" + (n === 1 ? "" : "s") + " but no defect row was read from it — paste the export as it comes, headings and all.");
   return { rows, reviews };
 }
 /* A couple of words for the notice, off the fault description: the codes
@@ -11310,8 +11355,10 @@ function parsePlan(text) {
     const f = raw.split("\t").map(x => x.trim());
     if (!f.some(Boolean)) continue;
     n++;
-    if (SECTION_RE.test(f[0]) && !UNIT_RE.test(f[0])) {
-      section = f[0].replace(/\s*\/\s*/, "/").toUpperCase();
+    const title = SECTION_RE.exec(f[0]);
+    if (title) {
+      // the section word alone: "Exams — wk 39" is still the Exams
+      section = title[1].replace(/\s*\/\s*/, "/").toUpperCase();
       if (order.indexOf(section) < 0) order.push(section);
       continue;
     }
@@ -11368,7 +11415,12 @@ function whenOf(text, today) {
     return out;
   }
   const dm = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2}))?/.exec(t);
-  if (dm) out.date = dateFrom(+dm[1], +dm[2], dm[3] ? +dm[3] : null, today);
+  if (dm) {
+    out.date = dateFrom(+dm[1], +dm[2], dm[3] ? +dm[3] : null, today);
+    // a day and month with no year, read from a late-December report: "02/01" is next year's
+    if (!dm[3] && today && out.date - today < -180 * 86400000)
+      out.date = new Date(Date.UTC(out.date.getUTCFullYear() + 1, out.date.getUTCMonth(), out.date.getUTCDate()));
+  }
   if (/\bEOD\b/.test(t)) out.half = "EOD";
   else if (/\bAFTER AM PEAK\b/.test(t)) out.half = "AFTER AM PEAK";
   else if (/\bAM\b/.test(t)) out.half = "AM";
@@ -11439,11 +11491,12 @@ function parseAllocation(text) {
     }
     if (out.size) return out;
   }
-  // the print: one unit per line, the two clocks as the anchor
-  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:\s+\S+)?\s+([A-Z]{2}\d{3})/;
+  /* the print: one unit per line, the two clocks as the anchor; the finish
+     diagram is there only where it differs from the start diagram */
+  const RE = /^(\d{6})\s+([A-Z]{2})\s+([A-Z]{2}\d{3})\s+\S+\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)\s+(\d\d\/\d\d\/\d\d)\s+(\d\d:\d\d)\s+([A-Z0-9]+)(?:(?:\s+\S+)?\s+([A-Z]{2}\d{3}))?/;
   for (const raw of txt.split("\n")) {
     const m = RE.exec(raw.trim().replace(/\s{2,}/g, "  "));
-    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10]));
+    if (m) add(make(m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10] || null));
   }
   return out;
 }
@@ -11563,9 +11616,14 @@ function maxUnits(unit) {
   const f = familyOfUnit(unit);
   return Math.floor(12 / (f === "375/3" ? 3 : f === "376" ? 5 : 4));
 }
+/* A claim on a working names the day too: today's 5H91 06+01 and
+   tomorrow's are two trains, and a request on one must not use up the
+   other. */
+const dayKey = (pool, key) => ((pool && pool.date) || "") + "|" + key;
 function allDays(genius, date) {
   const out = new Map();
   out.workings = new Map();
+  out.date = date;
   const dets = genius.detail && genius.detail.get(date);
   if (!dets) return out;
   /* the Summary's rows per diagram, in time order: each is a working
@@ -11945,7 +12003,7 @@ function morningFrom(r, days, mates, wanted, taken, proxy) {
     if (!fits(r.unit, d.fleet) && !fitsLoosely(r.unit, d.fleet)) continue;
     const key = workingKey(s0.code, s0.hcOut, s0.dep);
     const sharing = (days.workings && days.workings.get(key)) || [d.diag];
-    reach.push({ d, key, hc: s0.hcOut, dep: s0.dep, sharing, depot });
+    reach.push({ d, key: dayKey(days, key), hc: s0.hcOut, dep: s0.dep, sharing, depot });
   }
   reach.sort((p, q) => p.dep - q.dep);
   if (NO_REQUEST_AT.has(depotOf(from) || from)) {   // nobody there to ask
@@ -12059,8 +12117,8 @@ function twoLeg(r, days, targets, taken, proxy, dow, mates, wanted) {
     if (!s0 || codes.indexOf(s0.code) < 0 || s0.dep == null || !s0.hcOut) continue;
     if (r.diags.indexOf(d1.diag) >= 0) continue;
     if (!fits(r.unit, d1.fleet) && !fitsLoosely(r.unit, d1.fleet)) continue;
-    const key1 = workingKey(s0.code, s0.hcOut, s0.dep);
-    const sharing1 = (days.workings && days.workings.get(key1)) || [d1.diag];
+    const wk1 = workingKey(s0.code, s0.hcOut, s0.dep), key1 = dayKey(days, wk1);
+    const sharing1 = (days.workings && days.workings.get(wk1)) || [d1.diag];
     if (taken && (taken.get("D:" + d1.diag + "@" + key1) || (taken.get("W:" + key1) || 0) >= Math.min(maxUnits(r.unit), sharing1.length))) continue;
     if (r.category === "MO" && sharing1.length < 2) continue;
     // every depot this diagram gets to that could send it on, in order
@@ -12145,12 +12203,12 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
        unit's kind: three 375s, two 376s. */
     const w = swap ? { code: swap.theirs.code, hc: swap.theirs.hcOut, dep: swap.theirs.dep }
                    : { code: d.final.from, hc: d.final.hc, dep: d.final.dep };
-    const wkey = workingKey(w.code, w.hc, w.dep);
+    const wkey = workingKey(w.code, w.hc, w.dep), wid = dayKey(pool, wkey);
     const sharing = (pool.workings && pool.workings.get(wkey)) || [d.diag];
     const cap = Math.min(maxUnits(r.unit), sharing.length);
     // this diagram's unit on this working displaced once, not twice
-    if (taken && taken.get("D:" + d.diag + "@" + wkey)) continue;
-    const usedW = taken ? (taken.get("W:" + wkey) || 0) : 0;
+    if (taken && taken.get("D:" + d.diag + "@" + wid)) continue;
+    const usedW = taken ? (taken.get("W:" + wid) || 0) : 0;
     if (usedW >= cap) continue;
     // a restriction is a formation: multiple only needs a train of two
     // diagrams or more. No multiple is no multiple on ONE END, which is
@@ -12169,7 +12227,7 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
     /* together: a mate is already on this working, or every mate is
        wanted at this same depot now and the train has room for them all,
        so they will follow */
-    const together = !!(taken && (taken.get("U:" + wkey) || []).some(u => mates.indexOf(u) >= 0)) ||
+    const together = !!(taken && (taken.get("U:" + wid) || []).some(u => mates.indexOf(u) >= 0)) ||
       (mates.length > 0 && cap >= mates.length + 1 && mates.every(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0));
     /* No swap, but the working starts tomorrow where my unit ends
        tonight: the request goes to that place and names the working out
@@ -12178,18 +12236,18 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
        here. That is a concrete request, so it comes before a depot swap
        with no place to make it. */
     const cand = { day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank: 0, together, mates, portion,
-                   displaced, work: wkey, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
+                   displaced, work: wid, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
     if (morning || start) {
       const from = homeOf(start ? r.starts.place : r.ends.place);
-      const k0 = workingKey(s0.code, s0.hcOut, s0.dep);
-      if (taken && taken.get("D:" + d.diag + "@" + k0)) continue;
+      const k0 = workingKey(s0.code, s0.hcOut, s0.dep), k0id = dayKey(pool, k0);
+      if (taken && taken.get("D:" + d.diag + "@" + k0id)) continue;
       cand.morning = { from, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag], today: !!start };
       cand.morning.portion = portionOf(d, cand.morning.sharing, pool, d.endDepot);
       cand.morning.name = HEADCODE_DEPOTS.has(depotOf(from)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
       // the unit displaced is the one on the diagram's FIRST segment
       cand.displaced = (d.rows[0] && d.rows[0].units.length ? d.rows[0].units : d.units).join("/");
-      cand.work = k0; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
-      cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0) || 0) : 0) + 1;
+      cand.work = k0id; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
+      cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0id) || 0) : 0) + 1;
       if (cand.slot > cand.slots) continue;
     }
     /* Splitting the train it arrived in. Never where there is nobody to
@@ -12271,7 +12329,8 @@ function suggest(r, ctx) {
   if (r.places.length === 1 && r.places[0] === "SU" && s.action) {
     const mv = FLEET_MOVES.filter(m => m.from === "VIC" && m.to === "SU");
     const name = mv.length ? moveName(mv[0]) : "5Y41";
-    if (/^VIC HOLD/.test(s.action)) s.action = "VIC HOLD FOR " + name;
+    // a weekend hold keeps its Monday: "VIC HOLD FOR MON - 5Y41"
+    if (/^VIC HOLD/.test(s.action)) s.action = "VIC HOLD FOR " + (/FOR MON$/.test(s.action) ? "MON - " : "") + name;
     else if (/ BERTH /.test(s.action) && !/^VIC BERTH/.test(s.action) && !/ - VIC BERTH /.test(s.action)) s.action += " - VIC BERTH " + name;
     if (/VIC/.test(s.action) && mv.length) s.notes.push("over to Selhurst on " + mv.map(m => m.hc + " " + m.time).join(" or ") + " (" + mv[0].days + ")");
   }
@@ -12302,7 +12361,8 @@ function suggestCore(r, ctx) {
   const endsAt = depotOf(r.ends.place);
   /* where it ends, the way the plan writes it: a unit into a depot in the
      morning that sits there is "ENDS GP AM" */
-  const endsWord = () => "ENDS " + r.ends.place + (r.ends.time != null && !r.afterMidnight && r.ends.time >= 180 && r.ends.time < 720 && DEPOTS.has(homeOf(r.ends.place)) ? " AM" : "");
+  const endsWord = () => "ENDS " + r.ends.place +
+    (r.ends.time != null && !r.afterMidnight && r.ends.time >= AM_FINISH[0] && r.ends.time < AM_FINISH[1] && DEPOTS.has(homeOf(r.ends.place)) ? " AM" : "");
   /* near: today, tomorrow, ASAP, overdue, or this coming weekend and
      Monday - holds and requests. Soon: the rest of the week - requests,
      after the near lines have had theirs, but no hold, since the unit
@@ -12499,12 +12559,17 @@ function mergeDefects(plan, defects) {
   if (!defects || !defects.rows.length) return plan;
   const planned = plan.rows.filter(r => r.section === "DEFECTS");
   const keyOf = r => r.unit + "|" + defectCategory(r.what || r.priority) + "|" + (r.when || r.target || "").slice(0, 10);
-  const kept = new Map(planned.map(r => [keyOf(r), r]));
+  /* the plan's defect lines by unit, category and date - a list per key,
+     since a unit can carry two lines of one kind for one date and both
+     have to come back */
+  const kept = new Map();
+  for (const r of planned) { const k = keyOf(r); if (!kept.has(k)) kept.set(k, []); kept.get(k).push(r); }
   const rows = plan.rows.filter(r => r.section !== "DEFECTS");
   const order = plan.order.slice();
   if (order.indexOf("DEFECTS") < 0) order.push("DEFECTS");
   for (const d of defects.rows) {
-    const twin = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
+    const twins = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
+    const twin = twins && twins.length ? twins.shift() : null;
     const row = {
       section: "DEFECTS", unit: d.unit, line: 100000 + d.line,
       days: d.days, what: d.priority, when: d.target, isDefect: true, category: d.category,
@@ -12516,11 +12581,10 @@ function mergeDefects(plan, defects) {
       endLoc: d.endLoc, arrival: d.arrival,
     };
     row.places = row.where.split(/[\/,]/).map(x => x.trim().toUpperCase()).filter(Boolean);
-    if (twin) kept.delete(keyOf(twin));
     rows.push(row);
   }
   // plan defect lines the export did not carry stay as they were
-  for (const r of kept.values()) rows.push(r);
+  for (const rs of kept.values()) for (const r of rs) rows.push(r);
   return { rows, reviews: plan.reviews.concat(defects.reviews), order };
 }
 function run(planText, genius, opts) {
@@ -12573,6 +12637,9 @@ function run(planText, genius, opts) {
       if (n >= 1 && (!tomDate || n < tomAhead)) { tomDate = k; tomAhead = n; }
     }
   const tomDays = tomDate ? allDays(genius, tomDate) : days;
+  // any other day's diagrams, read once
+  const dayCache = new Map([[date, days], [tomDate, tomDays]]);
+  const daysFor = k => { if (!dayCache.has(k)) dayCache.set(k, allDays(genius, k)); return dayCache.get(k); };
   /* how the lines name that day's workings: "tomorrow's 5H91", or
      "Monday's 5H91" when the Detail is for the day after that */
   if (tomDate) tomDays.on = tomAhead === 1 ? "tomorrow's" : LONG_DAYS[parseShort(tomDate).getUTCDay()] + "'s";
@@ -12666,11 +12733,11 @@ function run(planText, genius, opts) {
     /* how it runs today, working by working: the diagrams coupled with it
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
+    const legDays = r.placedOn ? daysFor(r.placedOn) : days;   // the day it was placed on, not today's
     const legs = day ? day.stops.filter(s => s.hcOut && s.dep != null)
-      .map(s => ({ ...s, n: ((days.workings && days.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
+      .map(s => ({ ...s, n: ((legDays.workings && legDays.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
-    r.formation = legs.reduce((m, l) => Math.max(m, l.n), day ? 1 : 0);
     r.suggest = suggest(r, { mine: day, days, tomDays, tomDow, wanted, taken, mse, keep: !!opts.keep, dayToRun: !!opts.dayToRun,
                              already: requested.get(row.unit) || null });
     if (/BERTH|C\/O/.test(r.suggest.action) && !requested.has(row.unit)) requested.set(row.unit, r.suggest.action);
@@ -13442,6 +13509,7 @@ function rulesEnv(b, res, secNames) {
     endStyle: SHEETS_DATA.END_STYLE,
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    metroSplit: METRO.AM_SHEET_END,       // the Metro AM/PM split, which is not the berthing books' break
     breakGap: SHEETS_XLSX.BREAK_GAP,
     hsDepots: [...HS.DEPOTS],
     gpSplit: isMain,
@@ -13615,8 +13683,8 @@ if (lightbox && typeof lightbox.showModal === "function") {
 function roadHead(i, road, fleetLabel, spriteCls) {
   const head = document.createElement("div");
   head.className = "road-head";
-  head.innerHTML = '<span class="road-no">Road ' + (i + 1) + "</span>" +
-    '<h2 class="road-name">' + escHtml(road) + "</h2>" +
+  head.innerHTML = '<span class="road-no">Book ' + (i + 1) + "</span>" +
+    '<h3 class="road-name">' + escHtml(road) + "</h3>" +
     '<span class="road-fleet">' + escHtml(fleetLabel) + "</span>" +
     '<span class="road-sprite" aria-hidden="true">' + spritesOf(spriteCls) + "</span>";
   return head;
@@ -13777,13 +13845,26 @@ function currentMode() {
 function switchMode(m) {
   for (const k of Object.keys(MODES)) {
     const on = k === m;
-    if (MODES[k].tab) MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false");
+    if (MODES[k].tab) { MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false"); MODES[k].tab.tabIndex = on ? 0 : -1; }
     if (MODES[k].panel) MODES[k].panel.hidden = !on;
   }
   rememberOpts({ mode: m });
 }
 for (const k of Object.keys(MODES))
   if (MODES[k].tab) MODES[k].tab.addEventListener("click", () => switchMode(k));
+/* the tab strip is a tablist, so the arrow keys move along it the way the
+   cards' own strips do, and only the open tab is in the Tab order */
+const modeTabs = Object.keys(MODES).map(k => MODES[k].tab).filter(Boolean);
+modeTabs.forEach((t, i) => {
+  t.tabIndex = t.getAttribute("aria-selected") === "true" ? 0 : -1;
+  t.addEventListener("keydown", e => {
+    const n = modeTabs.length;
+    const j = e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i + n - 1) % n
+            : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); modeTabs[j].focus(); modeTabs[j].click();
+  });
+});
 /* …and only a tab this copy has: the copy without the berth-request road
    shares the browser's memory with the full one, and a remembered tab it
    does not carry would hide every panel */
@@ -14453,23 +14534,29 @@ function decodeText(u8) {
 (function brPanel() {
   const plan = $("#brplan"), ignore = $("#brignore"), go = $("#brgo");
   if (!plan || !go) return;
-  const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
+  const out = $("#brout"), bar = $("#brbar"), note = $("#brnote");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
   const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint"), keep = $("#brkeep"),
-        dayToRun = $("#brdaytorun");
+        dayToRun = $("#brdaytorun"), clear = $("#brclear");
   const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
   /* The pair this tab reads: the one dropped here, or failing that the
      weekday books' own. Dropped here it can be any day, a Saturday
-     included, because nothing is built from it - only read. */
+     included, because nothing is built from it - only read. Reports that
+     are dropped but could not be read are NOT quietly replaced by the
+     weekday books' pair: the chips say what is loaded, and so does this. */
   let own = null, ownFiles = [];
-  const source = () => own || window.__lastWeekdayBuild;
+  const source = () => ownFiles.length ? own : window.__lastWeekdayBuild;
+  /* Every drop, chip and re-read goes through one queue, so a slow PDF read
+     cannot finish after a later drop and put stale reports back. */
+  let q = Promise.resolve();
+  const enqueue = job => (q = q.then(job).catch(e => say("Those reports could not be read: " + (e && e.message || e), "err")));
   const chips = $("#brfiles");
-  const ZONE_IDLE = "Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both";
+  const ZONE_IDLE = "No reports dropped yet — the weekday books' own pair is used, where they are built.";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
     if (/ALLOCATION SUMMARY/i.test(txt)) {
-      const a = /Allocation Summary for:[^0-9]*(\d\d\/\d\d\/\d\d)/.exec(txt);
+      const a = /Allocation Summary for:[^0-9]{0,60}(\d\d\/\d\d\/\d\d)/.exec(txt);
       return "Allocation" + (a ? " " + a[1] : "");
     }
     const kind = /DIAGRAM SUMMARY|Diagram Summary/i.test(txt) ? "Summary" : /Diagram Detail/i.test(txt) ? "Detail" : "Report";
@@ -14486,22 +14573,28 @@ function decodeText(u8) {
     ownFiles.forEach((f, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "chip"; b.title = "Remove " + f.name;
+      b.setAttribute("aria-label", "Remove " + f.label + " (" + f.name + ")");
       b.textContent = f.label;
-      const x = document.createElement("b"); x.textContent = "×"; b.appendChild(x);
-      b.addEventListener("click", () => { ownFiles.splice(i, 1); reread(); });
+      const x = document.createElement("b"); x.textContent = "×"; x.setAttribute("aria-hidden", "true"); b.appendChild(x);
+      b.addEventListener("click", () => enqueue(() => { ownFiles.splice(i, 1); return reread(); }));
       chips.appendChild(b);
     });
     if (ownFiles.length > 1) {
       const all = document.createElement("button");
       all.type = "button"; all.className = "chip all"; all.textContent = "Remove all reports";
-      all.addEventListener("click", () => { ownFiles = []; reread(); });
+      all.addEventListener("click", () => enqueue(() => { ownFiles = []; return reread(); }));
       chips.appendChild(all);
     }
   }
+  /* "A day still to run" is ticked for the planner when the reports are for
+     today or a day to come - but a tick they have set by hand stays theirs
+     until the reports are all taken off again. */
+  let tickedByHand = false;
+  if (dayToRun) dayToRun.addEventListener("change", () => { tickedByHand = true; });
   async function reread() {
     showChips();
     if (!ownFiles.length) {
-      own = null;
+      own = null; tickedByHand = false;
       if (zoneTxt) zoneTxt.textContent = ZONE_IDLE;
       idle();
       return;
@@ -14537,7 +14630,7 @@ function decodeText(u8) {
       /* a Summary for today or a day to come is a day still to run: the
          units are where their first workings start and can be asked for
          from there before they go out - ticked for the planner to untick */
-      if (dayToRun) {
+      if (dayToRun && !tickedByHand) {
         const now = new Date(); const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
         const at = d => { const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d); return m ? Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]) : 0; };
         dayToRun.checked = own.dates.some(d => at(d) >= t0);
@@ -14554,19 +14647,20 @@ function decodeText(u8) {
       if (/Summary rows found/.test(e.message)) {
         if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too";
         say("Detail loaded — drop the Diagram Summary printed after allocation too.", "");
-      } else say("Those reports could not be read: " + e.message, "err");
+      } else say("Those reports could not be read: " + e.message + " — take them off with their chips and drop them again.", "err");
     }
   }
   async function takePair(files) {
-    const list = [...files];
-    if (!list.length) return;
-    for (const f of list) {
+    const dropped = [...files];
+    if (!dropped.length) return;
+    say(MSG.readingFiles(dropped.map(f => f.name)));
+    for (const f of dropped) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      catch (e) { say(MSG.readFailed(f.name, e), "err"); continue; }
       let txt, data;
       if (/\.pdf$/i.test(f.name)) {
-        try { txt = GENIUS.pdfText(u8); } catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(f.name), "err"); continue; }
         data = { pdfText: txt };           // extracted once, for the chip and the read alike
       } else if (/\.docx?$/i.test(f.name) || SHEETS_PRINTS.isDocxBytes(u8)) {
         // the weekend diagram prints
@@ -14587,31 +14681,34 @@ function decodeText(u8) {
     }
     await reread();
   }
-  if (zone && input) {
-    zone.addEventListener("click", () => input.click());
-    input.addEventListener("change", () => { takePair(input.files); input.value = ""; });
-    for (const ev of ["dragenter", "dragover"])
-      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
-    for (const ev of ["dragleave", "drop"])
-      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
-    zone.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files) takePair(e.dataTransfer.files); });
-  }
+  if (zone && input) wireDrop(zone, input, files => enqueue(() => takePair(files)));
   const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
+  const NO_REPORTS = "Nothing to read against yet — drop the day's reports above, or build the weekday books first.";
   const idle = () => {
     const res = source();
-    if (!res) say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.");
+    if (!res) say(ownFiles.length ? "Those reports could not be read — take them off with their chips and drop them again." : NO_REPORTS, ownFiles.length ? "err" : "");
     else {
       const filled = (res.summary || []).filter(r => r.units && r.units.length).length;
-      say(filled ? "Reports for " + Object.values(res.labels).join(", ") + " loaded — paste the plan and read it."
-                 : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation.", filled ? "" : "err");
+      const placed = filled || (res.alloc && res.alloc.size);
+      say(placed ? "Reports for " + Object.values(res.labels).join(", ") + " loaded — paste the plan below and press Read the plan."
+                 : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation, or the Allocation Summary.", placed ? "" : "err");
     }
   };
   idle();
   for (const t of [$("#mode_br")]) if (t) t.addEventListener("click", () => { if (!text) idle(); });
+  const showOutput = on => { out.hidden = !on; bar.hidden = !on; if (!on) { out.textContent = ""; revWrap.hidden = true; note.textContent = ""; } };
+  if (clear) clear.addEventListener("click", () => enqueue(() => {
+    for (const el of [plan, ignore, defects, mse]) if (el) el.value = "";
+    result = null; text = ""; view = "plan";
+    if (mseHint) mseHint.textContent = "The units the export flags MSE are listed here once the plan is read.";
+    showOutput(false);
+    ownFiles = [];
+    return reread();
+  }));
   go.addEventListener("click", () => {
     const res = source();
-    if (!res) { say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.", "err"); return; }
-    if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, first.", "err"); return; }
+    if (!res) { say(ownFiles.length ? "Those reports could not be read — take them off with their chips and drop them again." : NO_REPORTS, "err"); return; }
+    if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, into its box first.", "err"); return; }
     try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "",
                                                          keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked) }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
@@ -14625,21 +14722,22 @@ function decodeText(u8) {
     note.textContent = result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
       (result.ignored ? ", " + result.ignored + " out of service" : "") +
       (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
-    say(result.lines + " plan lines read against " + result.date + ".", "go");
+    say(result.lines + " plan lines read against " + result.date + " — look them over below, then copy the plan back or save it.", "go");
   });
-  /* The plan in its own shape, or the day's lines nearest first. */
+  /* The plan in its own shape, or the day's lines nearest first; the button
+     says which one it will show next. */
   function showPlan() {
     text = SHEETS_BERTH.toText(result);
     out.innerHTML = SHEETS_BERTH.toHtml(result, false);
     out.className = "brout"; out.hidden = false; bar.hidden = false;
-    if (list) list.textContent = "Nearest first";
+    if (list) list.textContent = "Show nearest first";
     view = "plan";
   }
   function showList() {
     text = SHEETS_BERTH.render(result);
     out.textContent = text;
     out.className = "brout brout-pre"; out.hidden = false;
-    if (list) list.textContent = "As the plan";
+    if (list) list.textContent = "Show as the plan";
     view = "list";
   }
   if (list) list.addEventListener("click", () => { if (!result) return; (view === "plan" ? showList : showPlan)(); });
@@ -14712,7 +14810,8 @@ function decodeText(u8) {
                  names: { op: "", det: "", sum: "" } };
   const HELD_LABEL = { op: "Operating Report", det: "Diagram Detail",
                        sum: "Diagram Summary" };
-  let text = "", stamp = "";
+  const optsRow = $("#svoptsrow");
+  let text = "";
   const say = (msg, kind) => {
     statusEl.textContent = msg;
     statusEl.className = "status" + (kind ? " " + kind : "");
@@ -14720,8 +14819,8 @@ function decodeText(u8) {
   const waiting = () => {
     const got = ["op", "det", "sum"].filter(k => held[k]).map(k => HELD_LABEL[k]);
     const want = ["op", "det"].filter(k => !held[k]).map(k => HELD_LABEL[k]);
-    if (!got.length) return "Waiting for the Operating Report and the Diagram Detail.";
-    return got.join(" and ") + " loaded — waiting for the " + want.join(" and ") + ".";
+    if (!got.length) return "Nothing read yet — drop the Operating Report and the Diagram Detail above.";
+    return got.join(" and ") + " loaded ✓ — now drop the " + want.join(" and ") + " above.";
   };
   function render() {
     if (!held.op || !held.det) { say(waiting()); return; }
@@ -14742,6 +14841,7 @@ function decodeText(u8) {
     out.classList.toggle("svbox", asBox && !!text);
     out.hidden = false;
     bar.hidden = false;
+    if (optsRow) optsRow.hidden = false;   // the layout switches act on a built list
     rev.textContent = "";
     for (const r of res.reviews) {
       const li = document.createElement("li");
@@ -14754,7 +14854,7 @@ function decodeText(u8) {
     note.textContent = res.diagrams + " diagrams on the report, " +
       res.detailDiagrams + " in the detail" +
       (res.positions ? ", positions from the Summary"
-                     : " · no Diagram Summary, so a formation of three cannot be placed");
+                     : " · no Diagram Summary, so a formation of three cannot be placed — drop the Diagram Summary too");
     say(n("top", "shortage or length case", "shortage and length cases") +
         " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
         ". Look them over, then copy or save.", "go");
@@ -14762,37 +14862,30 @@ function decodeText(u8) {
   async function take(files) {
     const list = [...files];
     if (!list.length) return;
+    say(MSG.readingFiles(list.map(f => f.name)));
+    const bad = [];
     for (const f of list) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
-      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      catch (e) { say(MSG.readFailed(f.name, e), "err"); return; }
       let txt;
       if (/\.pdf$/i.test(f.name)) {
         try { txt = GENIUS.pdfText(u8); }
-        catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
+        catch (e) { say(MSG.pdfUnreadable(f.name), "err"); return; }
       } else txt = decodeText(u8);
       const kind = SHEETS_SHORTAGE.sniff(txt);
       source = null;                       // a new report means a fresh read
       if (kind === "op") { held.op = txt; held.names.op = f.name; }
       else if (kind === "det") { held.det = txt; held.names.det = f.name; }
       else if (kind === "sum") { held.sum = txt; held.names.sum = f.name; }
-      else {
-        say(f.name + " does not read as an Operating Report or a Diagram " +
-            "Detail.", "err");
-      }
+      else bad.push(f.name);
     }
-    stamp = (held.names.op || held.names.det || "").replace(/\.[^.]+$/, "");
     render();
+    // a file that read as neither is named after the rest have been taken, not lost under the next status
+    if (bad.length) say("“" + bad.join("”, “") + "” does not read as an Operating Report or a Diagram Detail — " +
+      "save the report from Genius as PDF or CSV and drop that. " + statusEl.textContent, "err");
   }
-  zone.addEventListener("click", () => input.click());
-  input.addEventListener("change", () => { take(input.files); input.value = ""; });
-  for (const ev of ["dragenter", "dragover"])
-    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
-  for (const ev of ["dragleave", "drop"])
-    zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
-  zone.addEventListener("drop", e => {
-    if (e.dataTransfer && e.dataTransfer.files) take(e.dataTransfer.files);
-  });
+  wireDrop(zone, input, take);
   /* The list is pasted into an email, so it goes onto the clipboard twice:
      as plain text, and as Calibri 11 bold, which is the face the depot's
      notes are written in. A browser without ClipboardItem gets the text. */
@@ -14838,9 +14931,11 @@ function decodeText(u8) {
     held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
     out.textContent = ""; out.hidden = true; bar.hidden = true;
+    if (optsRow) optsRow.hidden = true;
     revWrap.hidden = true; note.textContent = "";
     say(waiting());
   });
+  if (optsRow) optsRow.hidden = true;
   say(waiting());
 })();
 }

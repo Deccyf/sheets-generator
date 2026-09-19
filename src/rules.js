@@ -225,7 +225,7 @@ const SHEETS_RULES = (() => {
              "there through the day in the order they leave. One line is " +
              "one unit, so a pair is two lines and a twelve-car is three." },
         { p: "Grove Park and Slade Green get an AM sheet and a PM sheet, " +
-             "split at " + hhmm(env.pmBreak || 1200) + ", the way the " +
+             "split at " + hhmm(env.metroSplit || 600) + ", the way the " +
              "hand-kept workbook splits them." },
         { p: "Reading a line from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [

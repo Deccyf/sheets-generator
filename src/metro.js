@@ -294,7 +294,7 @@ function writeMetroBook(secsByDay, dateLabels, order, zipFn, dates, dayWords) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeMetroBook, sheetsFor, layoutSection, fitWidths, headings, WIDTHS };
+return { writeMetroBook, sheetsFor, layoutSection, fitWidths, headings, WIDTHS, AM_SHEET_END };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_METRO;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_METRO = SHEETS_METRO;

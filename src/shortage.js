@@ -20,7 +20,6 @@
    apart and neither is the other's master. */
 "use strict";
 const SHEETS_SHORTAGE = (() => {
-const pdfText = txt => GENIUS.pdfText(txt);
 const { csvParse } = SHEETS_CORE;
 
 // ---------- basic helpers ----------
@@ -56,7 +55,6 @@ const ABBR = {
      "??? - TON" for RM020 and RM021 on the Saturday 19/09 report. */
   TUNWELL:"TBW", PKWD:"PDW"
 };
-const KNOWN_CODES = new Set(Object.keys(ABBR));
 const MASTER_GROUPS = [
   ["AFDS","AFES","AFUS"], ["FAV","FAVBRD","FAVUS"], ["DVP","DVPS"],
   ["TON","TONJS","TONDMS"], ["RAM","RE"], ["HGS","HGPS"], ["VICS","VIC"]
@@ -410,6 +408,7 @@ function segmentDescriptor(seg, occStruct, reviews) {
 }
 
 function statusOrder(a,b){
+  if(a==="CANCELLED"&&b==="CANCELLED")return 0;
   if(a==="CANCELLED")return -1;if(b==="CANCELLED")return 1;
   const aa=parseInt(a,10)||999, bb=parseInt(b,10)||999; return aa-bb;
 }
@@ -1057,7 +1056,7 @@ function sniff(text) {
 return { run, read, build, sniff, letterList, letterHtml, layoutLettered, measureCalibri, BOX_WIDTH_PT,
          parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
-         pdfText, ABBR, MASTER_GROUPS };
+         ABBR, MASTER_GROUPS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_SHORTAGE;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_SHORTAGE = SHEETS_SHORTAGE;

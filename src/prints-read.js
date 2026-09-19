@@ -50,12 +50,14 @@
     const paras = [];
     const re = paraRe();
     let m;
+    // one token pattern for every paragraph; exec runs it to the end of each body, which resets it
+    const tok = /<w:tab\/>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/?>|<w:cr\/>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:t(?:\s[^>]*)?\/>/g;
     while ((m = re.exec(documentXml)) !== null){
       const inner = m[1];
       if (inner === undefined){ paras.push(""); continue; }
       const body = inner.replace(/<w:pPr>[\s\S]*?<\/w:pPr>/g, "");
       let text = "";
-      const tok = /<w:tab\/>|<w:tab\s*\/>|<w:br(?:\s[^>]*)?\/?>|<w:cr\/>|<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:t(?:\s[^>]*)?\/>/g;
+      tok.lastIndex = 0;
       let t;
       while ((t = tok.exec(body)) !== null){
         const raw = t[0];
@@ -74,9 +76,9 @@
       throw new Error("That file is damaged or isn't a Word document. " +
                       "Try re-saving the prints from Word as .docx.");
     }
-    const key = Object.keys(files).find(k => k === "word/document.xml");
-    if (!key) throw new Error("That doesn't look like a Word file — no document body inside.");
-    const xml = new TextDecoder("utf-8").decode(files[key]);
+    const doc = files["word/document.xml"];
+    if (!doc) throw new Error("That doesn't look like a Word file — no document body inside.");
+    const xml = new TextDecoder("utf-8").decode(doc);
     return docxParagraphs(xml);
   }
 

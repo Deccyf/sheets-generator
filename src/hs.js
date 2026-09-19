@@ -270,8 +270,12 @@ function sheetsFor(hsSecs, labels, dates) {
     const name = m
       ? m[1].charAt(0) + m[1].slice(1).toLowerCase() + " " + m[2] + " " + m[3]
       : lbl || "SHEET";
+    /* last night's arrivals are the previous CALENDAR day's, where it is in
+       the build - a Wednesday and a Friday built together do not make
+       Wednesday the night before Friday */
+    const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 ? days[i - 1] : null) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,

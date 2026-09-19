@@ -48,8 +48,13 @@ test("the built file is self-contained and lean", () => {
      plan's own Action, and lays the shortages list out for the Excel text
      box (~35 KB over 3.6.0). Still no library: the prints reader and the
      weekend engine's parser were already here and are called, not copied. */
-  assert.ok(html.length < 900 * 1024,
-    "under 900 KB (was 1.2 MB); this build is " +
+  /* 950 KB at 3.8.3: the berth-request road answers in two legs, takes the
+     standing fleet moves as requests and says why a line got none (~25 KB
+     over 3.8.0), and the how-to names all four tabs. Still no library. The
+     copy without that road is ~140 KB smaller, and is what most people
+     open. */
+  assert.ok(html.length < 950 * 1024,
+    "under 950 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");
