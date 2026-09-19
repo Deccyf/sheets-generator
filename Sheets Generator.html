@@ -1081,11 +1081,15 @@
           arrivals within ninety minutes, and each unit on the platform ten
           minutes before the working it takes leaves, so nothing is delayed.
           At a <b>depot both stand at</b> during the day &mdash; the weekday
-          AM berth &mdash; the afternoon workings are swapped, and the
-          request reads <code>GP BERTH 5J70/5F43</code>: in on the first, out
-          on the second. No changeover notice for that: the unit went to
-          Grove Park empty and sits there to the PM, so it ends GP in the AM
-          and the request is all that is needed. The same number of units go on the service, and
+          AM berth &mdash; the request names the <b>PM departures out of
+          the depot</b> that end where the unit is wanted, every one that
+          fits, for the depot to choose from: <code>GP BERTH
+          5F87/5F85/5F91</code>. Never the arrival: the depot has that on its
+          own allocation. No changeover notice for that either: the unit
+          went to Grove Park empty and sits there to the PM, so it ends GP
+          in the AM and the request is all that is needed. The line says
+          which unit comes off each departure and what it takes instead.
+          The same number of units go on the service, and
           <b>fleets stay on their own diagrams</b> both ways: a 375/9 on a
           375/9 diagram, a 3-car on a 3-car one, a 375/6, /7 or /8 on a plain
           375 one, a 376 on a 376 diagram, a 377 on a GT diagram &mdash; none
@@ -1133,7 +1137,7 @@
           portion goes there, the request says which: the diagram in the
           lowest position on the Summary leads and is <code>FP</code>, the
           front portion, the highest is <code>RP</code>, the rear, anything
-          between <code>MP</code> &mdash; <code>GP BERTH 5J70/RP 5F87</code>.
+          between <code>MP</code> &mdash; <code>GP BERTH RP 5F87</code>.
           Position is the order the formation left its berth in, so a train
           that has turned since is the planner&rsquo;s check.</p>
         <p><b>Tomorrow&rsquo;s working from where it ends.</b> A unit that
@@ -1141,7 +1145,8 @@
           West Marina &mdash; and is wanted at a depot nothing today
           reaches is given the working out of that place tomorrow that
           does, named the way that place names workings and with the
-          portion: <code>AFK BERTH RP 05 27</code>. Tomorrow&rsquo;s diagrams
+          portion, every one that fits for the place to choose from:
+          <code>AFK BERTH RP 05 27/06 12</code>. Tomorrow&rsquo;s diagrams
           are on no report read here, so it is taken as today&rsquo;s Detail
           has it &mdash; the weekday ones repeat &mdash; and the line says
           to check tomorrow&rsquo;s runs the same. It comes before a depot
@@ -11632,31 +11637,51 @@ function suggest(r, ctx) {
       s.taken = { diag: c.day.diag, work: c.work };
       s.matesOn = c.mates;
       if (c.variation) s.notes.push("VARIATION — " + (c.day.fleet || "?") + " diagram, same fleets exhausted");
+      /* every departure the depot could put it on, the depot to choose -
+         never the arrival, the depot has that on its own allocation */
+      const listed = [c];
       if (sw && sw.kind === "depot") {
-        /* the AM berth it is already booked to make, and the PM working out
-           of it that ends where it is wanted - the depot's own "GP BERTH
-           5N32/5F28" - named the way that depot names workings */
+        /* on hand at the depot from the AM berth: the PM workings out of
+           it that end where it is wanted - "GP BERTH 5F87/5F85/5F91" -
+           named the way that depot names workings */
         const at = sw.mine.depot;
         const nm = w => HEADCODE_DEPOTS.has(at) ? (w.hc || hhmm(w.dep, /^5/.test(w.hc || ""))) : hhmm(w.dep, /^5/.test(w.hc || ""));
-        s.action = at + " BERTH " + nm({ hc: sw.mine.hcIn, dep: sw.mine.inDep }) + "/" + (c.portion ? c.portion + " " : "") + nm({ hc: sw.theirs.hcOut, dep: sw.theirs.dep });
-        s.notes.push("AM at " + placeOf(sw.at) + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) +
-                     (sw.mine.dep != null ? "–" + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) : ", stays") +
-                     "; PM take " + c.day.diag + "'s " + (sw.theirs.hcOut || "?") + " " + hhmm(sw.theirs.dep, /^5/.test(sw.theirs.hcOut || "")) +
-                     ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
-                     "; " + c.displaced + (sw.mine.hcOut ? " takes " + sw.mine.hcOut : " stays at " + placeOf(sw.at)));
-      } else {
-        if (c.morning) {
-          const m = c.morning;
-          s.action = m.from + " BERTH " + (m.portion ? m.portion + " " : "") + m.name;
+        const outName = k => (k.portion ? k.portion + " " : "") + nm({ hc: k.swap.theirs.hcOut, dep: k.swap.theirs.dep });
+        const outs = [outName(c)];
+        for (const k of cands.slice(1)) {
+          if (!k.swap || k.swap.kind !== "depot" || k.swap.mine.depot !== at || k.variation !== c.variation) continue;
+          const name = outName(k);
+          if (outs.indexOf(name) >= 0) continue;
+          outs.push(name); listed.push(k);
+        }
+        s.action = at + " BERTH " + outs.join("/");
+        s.notes.push("in on " + (sw.mine.hcIn || "?") + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) +
+                     (sw.mine.dep != null ? ", booked out " + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) + " on " + (sw.mine.hcOut || "?") : ", stays"));
+        listed.forEach((k, n) => s.notes.push("out on " + outs[n] + ": " + k.day.diag + ", ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
+                     ", " + k.displaced + " off it" + (sw.mine.hcOut ? " (takes " + sw.mine.hcOut + ")" : " (stays at " + placeOf(sw.at) + ")")));
+        if (outs.length > 1) s.notes.push("the depot to choose");
+      } else if (c.morning) {
+        /* tomorrow's departures out of where it ends tonight, every one that fits */
+        const outs = [];
+        for (const k of cands) {
+          if (!k.morning || k.morning.from !== c.morning.from || k.variation !== c.variation) continue;
+          const name = (k.morning.portion ? k.morning.portion + " " : "") + k.morning.name;
+          if (outs.indexOf(name) >= 0) continue;
+          outs.push(name); if (k !== c) listed.push(k);
+        }
+        s.action = c.morning.from + " BERTH " + outs.join("/");
+        for (const k of listed) {
+          const m = k.morning;
           s.notes.push("tomorrow's " + m.hc + " " + hhmm(m.dep, /^5/.test(m.hc)) + " from " + m.from +
                        (m.portion ? ", " + m.portion + " (" + m.sharing.join("+") + ")" : "") +
-                       " — today's " + c.day.diag + " ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
-                       ", " + c.displaced + " off it; check tomorrow's diagram runs the same");
-        } else {
-          s.action = depot + " BERTH " + (c.portion ? c.portion + " " : "") + c.name + (sw ? " — T/F AT " + stationOf(sw.at) : " (no shared terminal — depot swap)");
-          s.notes.push("on " + c.day.diag + ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
-                       ", " + c.displaced + " off it");
+                       " — today's " + k.day.diag + " ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
+                       ", " + k.displaced + " off it");
         }
+        s.notes.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same" + (outs.length > 1 ? "; the depot to choose" : ""));
+      } else {
+        s.action = depot + " BERTH " + (c.portion ? c.portion + " " : "") + c.name + (sw ? " — T/F AT " + stationOf(sw.at) : " (no shared terminal — depot swap)");
+        s.notes.push("on " + c.day.diag + ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
+                     ", " + c.displaced + " off it");
       }
       // a 12-car carries three requests, an 8-car two: which this one is
       if (c.slots > 1) s.notes.push(c.workName + " runs as " + c.slots + " units (" + c.sharing.join("+") + ") — request " + c.slot + " of " + c.slots);
@@ -11666,7 +11691,8 @@ function suggest(r, ctx) {
          needed. */
       if (sw && sw.kind !== "depot") s.notice = noticeOf(r, c);
       if (c.day.splitsAt.length) s.notes.push(c.day.diag + " splits at " + c.day.splitsAt.join("/"));
-      if (cands.length > 1) s.notes.push("or " + cands.slice(1, 3).map(k => k.day.diag + " " + k.name + (k.variation ? " (variation)" : "")).join(", "));
+      const rest = cands.filter(k => listed.indexOf(k) < 0).slice(0, 2);
+      if (rest.length) s.notes.push("or " + rest.map(k => k.day.diag + " " + k.name + (k.variation ? " (variation)" : "")).join(", "));
       return s;
     }
   }

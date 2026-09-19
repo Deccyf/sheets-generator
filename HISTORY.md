@@ -201,10 +201,19 @@ Detail has it and the line says to check tomorrow's runs the same. It
 comes after a swap today and before a depot swap with no place to make
 it.
 
-**No changeover notice at a depot.** The `GP BERTH 5J70/5F43` request is
-all: the unit went to Grove Park empty in the AM and sits there to the
-PM, so it ends GP in the AM and there is nothing to change over. The
-notice is written for a changeover at a terminal only.
+**The depot request names the departures only.** The depot has the
+arrival on its own allocation summary, so `GP BERTH 5J93/5F87` — in on
+the first, out on the second, which is how 3.5.0 read the plan's own
+`GP BERTH 5N32/5F28` — is now `GP BERTH 5F87/5F85/5F91`: every PM
+departure out of the depot that ends where the unit is wanted, for the
+depot to choose from, and the line says which unit comes off each and
+what it takes instead. The same for tomorrow's departures out of where a
+unit ends: `AFK BERTH RP 05 27/06 12`.
+
+**No changeover notice at a depot.** The request is all: the unit went
+to Grove Park empty in the AM and sits there to the PM, so it ends GP in
+the AM and there is nothing to change over. The notice is written for a
+changeover at a terminal only.
 
 **Swapping exams.** When the requests run out for an exam that is near,
 the exams are swapped around: another unit on the plan whose exam is due

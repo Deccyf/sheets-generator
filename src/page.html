@@ -608,11 +608,15 @@
           arrivals within ninety minutes, and each unit on the platform ten
           minutes before the working it takes leaves, so nothing is delayed.
           At a <b>depot both stand at</b> during the day &mdash; the weekday
-          AM berth &mdash; the afternoon workings are swapped, and the
-          request reads <code>GP BERTH 5J70/5F43</code>: in on the first, out
-          on the second. No changeover notice for that: the unit went to
-          Grove Park empty and sits there to the PM, so it ends GP in the AM
-          and the request is all that is needed. The same number of units go on the service, and
+          AM berth &mdash; the request names the <b>PM departures out of
+          the depot</b> that end where the unit is wanted, every one that
+          fits, for the depot to choose from: <code>GP BERTH
+          5F87/5F85/5F91</code>. Never the arrival: the depot has that on its
+          own allocation. No changeover notice for that either: the unit
+          went to Grove Park empty and sits there to the PM, so it ends GP
+          in the AM and the request is all that is needed. The line says
+          which unit comes off each departure and what it takes instead.
+          The same number of units go on the service, and
           <b>fleets stay on their own diagrams</b> both ways: a 375/9 on a
           375/9 diagram, a 3-car on a 3-car one, a 375/6, /7 or /8 on a plain
           375 one, a 376 on a 376 diagram, a 377 on a GT diagram &mdash; none
@@ -660,7 +664,7 @@
           portion goes there, the request says which: the diagram in the
           lowest position on the Summary leads and is <code>FP</code>, the
           front portion, the highest is <code>RP</code>, the rear, anything
-          between <code>MP</code> &mdash; <code>GP BERTH 5J70/RP 5F87</code>.
+          between <code>MP</code> &mdash; <code>GP BERTH RP 5F87</code>.
           Position is the order the formation left its berth in, so a train
           that has turned since is the planner&rsquo;s check.</p>
         <p><b>Tomorrow&rsquo;s working from where it ends.</b> A unit that
@@ -668,7 +672,8 @@
           West Marina &mdash; and is wanted at a depot nothing today
           reaches is given the working out of that place tomorrow that
           does, named the way that place names workings and with the
-          portion: <code>AFK BERTH RP 05 27</code>. Tomorrow&rsquo;s diagrams
+          portion, every one that fits for the place to choose from:
+          <code>AFK BERTH RP 05 27/06 12</code>. Tomorrow&rsquo;s diagrams
           are on no report read here, so it is taken as today&rsquo;s Detail
           has it &mdash; the weekday ones repeat &mdash; and the line says
           to check tomorrow&rsquo;s runs the same. It comes before a depot
