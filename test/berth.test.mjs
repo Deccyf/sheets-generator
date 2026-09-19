@@ -745,3 +745,22 @@ test("nobody at Folkestone East or Hastings, and Faversham can be asked but neve
   assert.match(a.notes.join("; "), /with its formation 375731/);
   assert.match(b.notes.join("; "), /with its formation 375730/);
 });
+
+test("tomorrow's working out of a place is given once: the next unit there is not handed the same train", async () => {
+  /* 375750 and 375760 both end at West Marina tonight, alone, wanted at
+     Ramsgate; tomorrow's 5H91 out of there is one diagram that stands at
+     Ramsgate during the day. One of them gets it, the other is told where
+     it ends. */
+  const day = SWAP_DAY.concat([
+    { code: "RM150", units: "375750.", stops: [S("ASHFDNS", "", "05:00", "5A50"), S("STLNWMS", "06:30", "", "")] },
+    { code: "RM160", units: "375760.", stops: [S("ASHFDNS", "", "05:10", "5A60"), S("STLNWMS", "06:40", "", "")] },
+    { code: "RM159", units: "375759.", stops: [S("STLNWMS", "", "06:01", "5H91"), S("RAMSGTE", "07:30", "07:40", "5H91"), S("RAMSGTD", "07:50", "12:00", "2R59"), S("MARGATE", "12:30", "", "")] },
+  ]);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  const block = ["375704\tA\tTUE AM 04/08\tRE\t", "375702\tA\tTUE AM 04/08\tRE\t", "375706\tA\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"];
+  const out = B().run(planFor(["375750\tA\tTUE AM 04/08\tRE\t", "375760\tB\tTUE AM 04/08\tRE\t"].concat(block)), res, {});
+  const [a, b] = out.rows.map(r => r.suggest);
+  assert.equal(a.action, "XSE BERTH 06+01", JSON.stringify(a));
+  assert.match(a.notes.join("; "), /today's RM159 stands RE 07\+50/);
+  assert.equal(b.action, "ENDS XSE", "the one train is not given twice: " + JSON.stringify(b));
+});
