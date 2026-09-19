@@ -228,6 +228,24 @@ export const METRO_MOVE_PRINTS = printsLines([
   "\t\tC St\t07:10\t\t\t#\t\t",
 ]);
 
+/* A pair that turns round inside its own section, copied off the Saturday
+   19/09 prints. SG417 and SG418 leave the Grove Park shed at 10+09 with 417
+   leading, run into the country end extension - still Grove Park - and come
+   back out at 10+21 with 418 leading. The berthing row is timed off the
+   10+09, so it has to be dressed off the 10+09 too. */
+export const SECTION_TURN_PRINTS = printsLines(
+  ["417", "418"].flatMap(d => [
+    "Diagram:\tSG\t" + d + "\tSat",
+    "Fleet:\t465/9",
+    "From:\t01/08/2026",
+    "\t\tG Pk Dep\t\t10+09\t5H76\t\t0.10\t417(1)\\418(2)",
+    "\t\tGrPkDCtEE\t10+14\t10+21\t5H76\t\t26.07\t418(1)\\417(2)",
+    "\t\tTunWellTB\t11+02\t11+12\t5H76\t\t26.48\t417(1)\\418(2)",
+    "\t\tTunbdgWls\t11+16\t11.19\t2H76\t\t60.91\t417(1)\\418(2)",
+    "\t\tCX\t12.15\t12+27\t5J76\t\t69.65\t418(1)\\417(2)",
+    "\t\tG Pk UpSd\t12+54\t\t\t\t\t",
+  ]));
+
 function xmlEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

@@ -5,7 +5,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
-import { makeDocx, PRINTS_LINES, REISSUE_LINES, STABLED_PRINTS } from "./helpers/synth.mjs";
+import { makeDocx, PRINTS_LINES, REISSUE_LINES, SECTION_TURN_PRINTS,
+         STABLED_PRINTS } from "./helpers/synth.mjs";
 
 const N = built();
 const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f) };
@@ -498,4 +499,32 @@ test("a brief call at a shunt spur is a turnround, not a berthing", () => {
   const long = timesAt(stand);
   assert.ok(long.rows.some(v => /^09\+40/.test(v)),
     "but two hours standing there is a berthing: " + long.rows.join(" | "));
+});
+
+test("a unit that turns round inside its section is listed the way up it leaves", () => {
+  /* SG417 and SG418 came out of the Grove Park book as "1 SG418 / 2 SG417"
+     against a 10+09 the prints show as 417(1)\418(2). The row is timed off
+     the first move out of the section, but the formation was being read off
+     the LAST one - and between the two the pair runs into the country end
+     extension and comes back out the other way up. Anyone standing at Grove
+     Park at 10+09 wrote both numbers in the wrong box. */
+  const res = run([docx(SECTION_TURN_PRINTS, "prints.docx")]);
+  const metro = res.books.find(b => b.road === "Metro");
+  const page = metro.sheets.find(s => s.name === "GROVE PARK PM").layout;
+  const at = (r, c) => {
+    const cell = Array.from(page.cells).find(x => x.r === r && x.c === c);
+    return cell ? String(cell.v) : "";
+  };
+  const diagRow = n => Array.from(page.cells)
+    .filter(c => c.c === 6 && String(c.v) === n).map(c => c.r)[0];
+  assert.equal(at(3, 1), "5H76", "the row is the 5H76");
+  assert.equal(at(3, 2), "10+09", "timed off the first move out of the shed");
+  assert.equal(at(3, 4), "TUNBRIDGE WELLS",
+    "and still bound where the service it forms goes, not where it turns");
+  assert.equal(at(diagRow("SG417"), 5), "1", "417 leads at 10+09");
+  assert.equal(at(diagRow("SG418"), 5), "2", "418 is second at 10+09");
+  // the 10+21 back out of the extension is 418(1)\417(2) - the way up the
+  // row must NOT be dressed, and no second row of its own either
+  assert.deepEqual(norm(col1(metro).filter(v => /^\d\d[+.:]\d\d$/.test(v))), [],
+    "one entry for the pair, not one per leg");
 });

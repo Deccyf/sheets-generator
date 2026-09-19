@@ -446,9 +446,15 @@ function generate(diags, prof, stabling, warn){
       }
       e.units.push({dk, si, ei});
       e.origins.add(origin);
+      // POS 1 and 2 are read off the leg the row is TIMED from, not the leg
+      // it is bound for. Where those differ the unit has turned round inside
+      // its own section - Grove Park's country end extension, the Slade Green
+      // down end headshunt, the Victoria shed - and comes back out the other
+      // way up. The person writing the numbers down is standing there at the
+      // time printed on the sheet, so that is the order they see.
       if (e.exit_fm.size === 0){
-        const f1 = fmtParse(fmRow.fm);
-        e.exit_fm = f1.size ? f1 : fmtParse(er.fm);
+        const f1 = fmtParse(er.fm);
+        e.exit_fm = f1.size ? f1 : fmtParse(fmRow.fm);
       }
     }
   }

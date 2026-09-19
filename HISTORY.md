@@ -140,6 +140,68 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.3 — 19 September 2026 — dressed off the leg it is timed from
+
+**Reported as SG417 and SG418 the wrong way round on Saturday's Grove Park
+sheet.** The row reads `5H76 | 10+09 | TUNBRIDGE WELLS | 1 SG418 / 2 SG417`.
+The prints, against that 10+09, read `417(1)\418(2)`.
+
+Both halves of that row were right, and they had come off different legs. A
+weekend row in a section the depot times off its FIRST move — the Metro and
+High Speed documents everywhere (`firstDepAll`), mainline Grove Park and
+Slade Green (`firstDep`) — carries the time and headcode of the first
+departure and the destination of the service it forms. That split is
+deliberate and long-standing: the 10+09 out of the shed is only going as far
+as the country end extension, and a sheet that said so would be no use to
+anybody. The FORMATION was travelling with the destination instead of with
+the time.
+
+Usually that makes no difference, because the two legs are the same train
+the same way up. It matters when the unit turns round inside its own
+section:
+
+```
+G Pk Dep              10+09  5H76   417(1)\418(2)   ← the row's time
+GrPkDCtEE      10+14  10+21  5H76   418(1)\417(2)   ← the row's destination
+TunWellTB      11+02  11+12  5H76   417(1)\418(2)
+```
+
+The pair runs into the Grove Park country end extension and comes back out
+the other way up. The sheet was timed at 10+09 and dressed at 10+21, so
+somebody standing at Grove Park at 10+09 wrote **both** numbers into the
+wrong box — and the sheet is the record the rest of the day is built on.
+
+POS is read off the leg the row is timed from now. On Saturday 19/09 that
+moves ten entries, every one of them a turn in a shed, a headshunt or an
+extension inside the section, and every one now agreeing with its own print
+against the time on the sheet:
+
+| Book | Row | Turns at | Was | Now |
+|---|---|---|---|---|
+| Mainline | 07+51 ORP | GrPkDCtEE 08+03 | 802, 801 | 801, 802 |
+| Mainline | 08+17 ORP | GrPkDCtEE 08+29 | 804, 803 | 803, 804 |
+| Mainline | 05+43 BNH | SldGrDEHs 05+52 | 812, 811 | 811, 812 |
+| Metro GILLINGHAM | 5U89 21+35 | Gill 21+55 | 414, 413 | 413, 414 |
+| Metro GROVE PARK AM | 5S13 06+52 | GrPkDCtEE 07+04 | 714, 713 | 713, 714 |
+| Metro GROVE PARK AM | 5H74 09+39 | GrPkDCtEE 09+51 | 416, 415 | 415, 416 |
+| Metro GROVE PARK PM | 5H76 10+09 | GrPkDCtEE 10+21 | 418, 417 | **417, 418** |
+| Metro SLADE GREEN AM | 5C05 05+27 | SldGrDEHs 05+36 | 439, 438 | 438, 439 |
+| Metro SLADE GREEN AM | 5C07 05+58 | SldGrDEHs 06+07 | 441, 440 | 440, 441 |
+| Metro VICTORIA | 5L34 04+50 | Vic (E) 05.03 | 461, 460 | 460, 461 |
+
+Ten entries of 289 rows; nothing else in the day moves, and the weekday
+road does not move at all — it was measured both ways on the 18/09 reports
+to be sure, because the two roads share their writers.
+
+All ten come out ascending, which looked like a sort until each was held
+against its own print. It is not one. On this Saturday every pair that turns
+inside its section happens to leave the depot with the lower diagram leading;
+what the rule reads is the print, at the time on the sheet, whichever way up
+that is.
+
+A first leg with no formation printed — a single unit, or a shed move the
+prints leave blank — still falls back to the later leg, as before.
+
 ## 3.2.2 — 18 September 2026 — the two books are dressed the same
 
 **Reported as the weekend book not being formatted for text and not matching

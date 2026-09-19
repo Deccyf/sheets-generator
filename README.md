@@ -188,7 +188,10 @@ repeated here. The shape of it:
   the section — the moment the unit leaves the area; the Metro and 395
   documents (`firstDepAll`) off the first move. The stint walk stops at the
   stint's end boundary; running past it was the source of the phantom rows
-  fixed in 3.0.0.
+  fixed in 3.0.0. Whichever leg times a weekend row also DRESSES it — the
+  POS numbers come off that leg's formation, because a unit that turns
+  round inside its own section is a different way up a few minutes later
+  (3.2.3). The destination stays with the service the row forms.
 - **Which unit prints first.** Each section reads from one end
   (`posAsc`, with `roadPosAsc` for a road that faces the other way); a
   formation that turned round in the platform prints the other way up; the
