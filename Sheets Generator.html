@@ -458,7 +458,8 @@
   .brfield textarea{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px;
     line-height:1.45; padding:8px 10px; border:1px solid var(--apron-dk); border-radius:4px;
     background:var(--paper); color:inherit; resize:vertical; white-space:pre; overflow:auto}
-  .brout{font-size:12px; line-height:1.5}
+  /* a fixed-column table: never wrapped, scrolled sideways if it must be */
+  .brout{font-size:12px; line-height:1.5; white-space:pre; overflow-x:auto}
   .mode .tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; margin-left:6px}
   .svrules-body h4{margin:14px 0 6px; font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase}
   @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
