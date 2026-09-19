@@ -422,9 +422,17 @@ function endingDescriptor(diag, op, detail, legsStruct, occStruct, reviews) {
   }
   return null;
 }
-function headingWithEnd(label, diagText, end) {
+/* The arrival time is on every line as standard. The depot's own hand keeps
+   it only where it answers something - a working INTO Ramsgate, station or
+   depot, where what matters is when the unit gets there to be dealt with -
+   and leaves it off everything else, so the list reads shorter. RAM_END is
+   both of those: RAM the station, RE any of the depot roads. */
+const RAM_END = /^(?:RAM|RE)$/;
+function headingWithEnd(label, diagText, end, opts) {
   if(!end)return `${label} (${diagText})`;
-  return `${label} (${diagText}) ENDS ${end.text} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
+  const line=`${label} (${diagText}) ENDS ${end.text}`;
+  if(opts && opts.arr==="ram" && !RAM_END.test(end.endAbbr||"")) return line;
+  return `${line} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
 }
 
 /* ---------- the lettered layout ----------
@@ -466,7 +474,62 @@ function formatFollowing(groups) {
   return lines;
 }
 
-function buildDiscrepancies(op, detail, posAt) {
+/* ---------- how the fleet variations are gathered ----------
+   Two ways of reading the same block, and the depot uses both.
+
+   BY PLACE groups on the master location the unit ends at and sorts each
+   group by arrival, which is how you read it standing at one depot: these
+   are the ones coming to me, in the order they turn up.
+
+   BY WHICH WAY ROUND puts every 375/9-on-a-375-diagram together and every
+   375-on-a-375/9-diagram together, each in diagram order, which is how you
+   read it looking for a unit: the 9s that are out and the 9s that are
+   missing, as two lists.
+
+   A working that carries BOTH - one of each, swapped with each other -
+   belongs to neither, so it keeps a block of its own between them rather
+   than being torn in half. Nothing reaches that branch today, because a
+   reciprocal pair on one ending working cancels out further up: the cars
+   are all there and only their badges are crossed. It is here because the
+   depot's own lists DO show such a pair (RM035/RM920 on the 5H04 19+17
+   HGS - XSE), so if that cancelling is ever relaxed the grouping already
+   knows where to put them. */
+function byPlace(normal) {
+  const groups=new Map();
+  for(const n of normal){const k=masterKey(n.end.endAbbr);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
+  const out=[];
+  for(const k of [...groups.keys()].sort((a,b)=>a.localeCompare(b))){
+    const xs=groups.get(k).sort((a,b)=>a.end.arr-b.end.arr || a.diag.localeCompare(b.diag));
+    out.push(xs.map(x=>x.line).join("\n"));
+  }
+  return out;
+}
+function byWhichWayRound(normal) {
+  const byWorking=new Map();
+  for(const n of normal){
+    const k=(n.end.hcFull||"")+"|"+n.end.dep;
+    if(!byWorking.has(k))byWorking.set(k,[]);
+    byWorking.get(k).push(n);
+  }
+  const bothWays=new Set();
+  for(const xs of byWorking.values())
+    if(new Set(xs.map(x=>x.label)).size>1) for(const x of xs) bothWays.add(x);
+  const diag=(a,b)=>a.diag.localeCompare(b.diag);
+  const pool=lab=>normal.filter(n=>!bothWays.has(n) && n.label===lab).sort(diag);
+  const out=[];
+  const nines=pool("375/9 V 375");
+  if(nines.length) out.push(nines.map(x=>x.line).join("\n"));
+  for(const k of [...byWorking.keys()].sort()){
+    const xs=byWorking.get(k).filter(x=>bothWays.has(x)).sort(diag);
+    if(xs.length) out.push(xs.map(x=>x.line).join("\n"));
+  }
+  const rest=pool("375 V 375/9");
+  if(rest.length) out.push(rest.map(x=>x.line).join("\n"));
+  return out;
+}
+
+function buildDiscrepancies(op, detail, posAt, opts) {
+  opts = opts || {};
   const reviews=[];
   const byOp=rowsByDiag(op.rows);
   const selected=selectedAllocatedRows(op.rows);
@@ -497,7 +560,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const cls=plannedClass(r.diag,r.planned);
     const label=`${r.expectedLength}.${cls} SHORTAGE`;
     const groups=formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:r.depMin, lines:[headingWithEnd(label,r.diag,end),...formatFollowing(groups)]});
+    topCases.push({sort:r.depMin, lines:[headingWithEnd(label,r.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // Work out each diagram's effective ending working and the allocation that actually covers that working.
@@ -581,7 +644,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const last=sameUnit.length
       ? sameUnit.slice().sort((x,y)=>x.arrExt-y.arrExt).at(-1) : a;
     const end=endingDescriptor(a.diag,last,detail,legsStruct,occStruct,reviews);
-    topCases.push({sort:a.depMin,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end)]});
+    topCases.push({sort:a.depMin,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end,opts)]});
   }
   /* What is left is a real length difference: the formation is short or long,
      not merely out of order. Judged on the diagram's effective allocation, as
@@ -601,7 +664,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const end=c.end||endingDescriptor(c.diag,c.row,detail,legsStruct,occStruct,reviews);
     const label=`${c.row.actual.length}.375 V ${c.row.expectedLength}.375`;
     const groups=formationDetails(c.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:c.row.depMin,lines:[headingWithEnd(label,c.diag,end),...formatFollowing(groups)]});
+    topCases.push({sort:c.row.depMin,lines:[headingWithEnd(label,c.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // 3) Cross-fleet substitutions: 377 on RM diagrams or 375 on GT diagrams.
@@ -631,7 +694,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const label=`${actualLen}.${actualCls} V ${expectedLen}.${expectedCls}`;
     const diagText=cs.map(c=>c.diag).join("/");
     const end=cs.map(c=>c.end).filter(Boolean).sort((a,b)=>b.arr-a.arr)[0]||null;
-    topCases.push({sort:Math.min(...cs.map(c=>c.row.depMin)),lines:[headingWithEnd(label,diagText,end)]});
+    topCases.push({sort:Math.min(...cs.map(c=>c.row.depMin)),lines:[headingWithEnd(label,diagText,end,opts)]});
   }
 
   // 4) ordinary 375 / 375-9 fleet-family mismatches on the effective ending working.
@@ -669,17 +732,11 @@ function buildDiscrepancies(op, detail, posAt) {
     if(f.actual==="9"&&f.expected==="N")label="375/9 V 375";
     else if(f.actual==="N"&&f.expected==="9")label="375 V 375/9";
     else {reviews.push(`${f.diag}: unhandled fleet family ${f.actual} V ${f.expected}.`);continue;}
-    normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end)});
+    normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end,opts)});
   }
 
-  // Group master locations together, but print no headings; just a blank line between groups.
-  const groups=new Map();
-  for(const n of normal){const k=masterKey(n.end.endAbbr);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
-  const normalBlocks=[];
-  for(const k of [...groups.keys()].sort((a,b)=>a.localeCompare(b))){
-    const xs=groups.get(k).sort((a,b)=>a.end.arr-b.end.arr || a.diag.localeCompare(b.diag));
-    normalBlocks.push(xs.map(x=>x.line).join("\n"));
-  }
+  const normalBlocks = opts.fleetOrder==="family"
+    ? byWhichWayRound(normal) : byPlace(normal);
 
   topCases.sort((a,b)=>a.sort-b.sort);
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
@@ -809,25 +866,33 @@ function detDateOf(text){
 }
 /* One build: the Operating Report's text and the Diagram Detail's, however
    each arrived. Returns the list, the review lines and the counts. */
-function run(opText, detailText, summaryText) {
-  const op = operatingFrom(opText);
-  const detail = detailFrom(detailText);
-  const posAt = positionsFrom(summaryText);
-  const out = buildDiscrepancies(op, detail, posAt);
+/* Read once, build as often as you like. The Diagram Detail's export runs
+   to several megabytes, so re-reading it every time a layout switch is
+   ticked was never going to feel right: the page holds what READ gives it
+   and calls BUILD again. */
+function read(opText, detailText, summaryText) {
+  return { op: operatingFrom(opText), detail: detailFrom(detailText),
+           posAt: positionsFrom(summaryText),
+           opDate: opDateOf(opText), detDate: detDateOf(detailText) };
+}
+function build(src, opts) {
+  const out = buildDiscrepancies(src.op, src.detail, src.posAt, opts);
   /* Two reports from different days read perfectly well and answer nothing:
      every working is matched against a plan that was not in force. Said, not
      refused - the depot knows what it dropped. */
-  const opDate = opDateOf(opText), detDate = detDateOf(detailText);
-  const reviews = (opDate && detDate && opDate !== detDate)
-    ? [`The Operating Report is for ${opDate} and the Diagram Detail for ` +
-       `${detDate}. The list below matches each working against the other ` +
-       `day's plan, so it cannot be trusted — drop the pair for one date.`]
+  const reviews = (src.opDate && src.detDate && src.opDate !== src.detDate)
+    ? [`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
+       `for ${src.detDate}. The list below matches each working against the ` +
+       `other day's plan, so it cannot be trusted — drop the pair for one date.`]
       .concat(out.reviews)
     : out.reviews;
-  return { ...out, reviews, positions: !!posAt,
-           reportTime: op.reportTime, rows: op.rows.length,
-           diagrams: new Set(op.rows.map(r => r.diag)).size,
-           detailDiagrams: detail.size };
+  return { ...out, reviews, positions: !!src.posAt,
+           reportTime: src.op.reportTime, rows: src.op.rows.length,
+           diagrams: new Set(src.op.rows.map(r => r.diag)).size,
+           detailDiagrams: src.detail.size };
+}
+function run(opText, detailText, summaryText, opts) {
+  return build(read(opText, detailText, summaryText), opts);
 }
 /* What the report is, so a file dropped on the wrong road says so rather
    than building an empty list. */
@@ -838,7 +903,7 @@ function sniff(text) {
   return null;
 }
 
-return { run, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
+return { run, read, build, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
          pdfText, ABBR, MASTER_GROUPS };
 })();

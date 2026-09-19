@@ -1420,7 +1420,21 @@ function decodeText(u8) {
   if (!zone || !input) return;
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
-  const lettered = $("#svlettered");
+  const lettered = $("#svlettered"), byFamily = $("#svbyfamily"),
+        ramArr = $("#svramarr");
+  const svHelp = $("#svoptshelp"), svHint = $("#svoptshint");
+  if (svHelp && svHint) svHelp.addEventListener("click", () => {
+    const open = svHint.hidden;
+    svHint.hidden = !open;
+    svHelp.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  /* The pair as READ, kept so a layout tick is a rebuild and not a re-read:
+     the Diagram Detail's export runs to several megabytes. */
+  let source = null;
+  const layout = () => ({
+    fleetOrder: byFamily && byFamily.checked ? "family" : "place",
+    arr: ramArr && ramArr.checked ? "ram" : "all",
+  });
   /* The Diagram Summary is optional, and only one thing is read off it: the
      POS column, which says where a diagram stands in its formation. Without
      it a formation of three cannot be placed and the road says so. */
@@ -1442,7 +1456,10 @@ function decodeText(u8) {
   function render() {
     if (!held.op || !held.det) { say(waiting()); return; }
     let res;
-    try { res = SHEETS_SHORTAGE.run(held.op, held.det, held.sum); }
+    try {
+      if (!source) source = SHEETS_SHORTAGE.read(held.op, held.det, held.sum);
+      res = SHEETS_SHORTAGE.build(source, layout());
+    }
     catch (e) { say("That pair could not be read: " + e.message, "err"); return; }
     /* Two layouts of ONE list: the plain run, and the depot's own lettered
        hand. What is on screen is what Copy and Save hand over, so the two
@@ -1481,6 +1498,7 @@ function decodeText(u8) {
         catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
       } else txt = decodeText(u8);
       const kind = SHEETS_SHORTAGE.sniff(txt);
+      source = null;                       // a new report means a fresh read
       if (kind === "op") { held.op = txt; held.names.op = f.name; }
       else if (kind === "det") { held.det = txt; held.names.det = f.name; }
       else if (kind === "sum") { held.sum = txt; held.names.sum = f.name; }
@@ -1536,11 +1554,10 @@ function decodeText(u8) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  if (lettered) lettered.addEventListener("change", () => {
-    if (held.op && held.det) render();
-  });
+  for (const box of [lettered, byFamily, ramArr]) if (box)
+    box.addEventListener("change", () => { if (held.op && held.det) render(); });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
-    held.op = held.det = held.sum = null; text = "";
+    held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
     out.textContent = ""; out.hidden = true; bar.hidden = true;
     revWrap.hidden = true; note.textContent = "";

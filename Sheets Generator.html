@@ -473,7 +473,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.2.6</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.2.7</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -803,9 +803,29 @@
     <div class="opts-row" id="svoptsrow">
       <span class="opts-label">Layout</span>
       <label><input type="checkbox" id="svlettered" autocomplete="off">
-        Lettered, as the depot writes it</label>
-      <span class="note">A letter per shortage, swap or length case; the
-        whole fleet list under the last one</span>
+        Lettered</label>
+      <label><input type="checkbox" id="svbyfamily" autocomplete="off">
+        Variations by which way round</label>
+      <label><input type="checkbox" id="svramarr" autocomplete="off">
+        Arrival times on Ramsgate only</label>
+      <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
+        aria-controls="svoptshint">What each does</button>
+    </div>
+    <div class="opts-hints" id="svoptshint" hidden>
+      <p><b>Lettered</b> — the depot's own hand. Every shortage, swap or
+        length case takes a letter of its own, in the order they happen, and
+        the whole run of fleet variations shares the last one, so one letter
+        names one train and the last names the fleet list.</p>
+      <p><b>Variations by which way round</b> — the fleet block gathered by
+        the mismatch rather than by where the unit ends up: every
+        375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
+        together, each in diagram order. A working carrying one of each —
+        swapped with each other — keeps a block of its own between them.
+        Untick it and the block is grouped by the place the unit ends at, in
+        the order they turn up there.</p>
+      <p><b>Arrival times on Ramsgate only</b> — keeps <code>(ARR …)</code>
+        where the working ends at Ramsgate, station or depot, and drops it
+        everywhere else.</p>
     </div>
 
     <div class="board">
@@ -875,7 +895,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.2.6
+      works without an internet connection. Version 3.2.7
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -9812,9 +9832,17 @@ function endingDescriptor(diag, op, detail, legsStruct, occStruct, reviews) {
   }
   return null;
 }
-function headingWithEnd(label, diagText, end) {
+/* The arrival time is on every line as standard. The depot's own hand keeps
+   it only where it answers something - a working INTO Ramsgate, station or
+   depot, where what matters is when the unit gets there to be dealt with -
+   and leaves it off everything else, so the list reads shorter. RAM_END is
+   both of those: RAM the station, RE any of the depot roads. */
+const RAM_END = /^(?:RAM|RE)$/;
+function headingWithEnd(label, diagText, end, opts) {
   if(!end)return `${label} (${diagText})`;
-  return `${label} (${diagText}) ENDS ${end.text} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
+  const line=`${label} (${diagText}) ENDS ${end.text}`;
+  if(opts && opts.arr==="ram" && !RAM_END.test(end.endAbbr||"")) return line;
+  return `${line} (ARR ${hhmm(end.arr,isClass5(end.hcFull))})`;
 }
 
 /* ---------- the lettered layout ----------
@@ -9856,7 +9884,62 @@ function formatFollowing(groups) {
   return lines;
 }
 
-function buildDiscrepancies(op, detail, posAt) {
+/* ---------- how the fleet variations are gathered ----------
+   Two ways of reading the same block, and the depot uses both.
+
+   BY PLACE groups on the master location the unit ends at and sorts each
+   group by arrival, which is how you read it standing at one depot: these
+   are the ones coming to me, in the order they turn up.
+
+   BY WHICH WAY ROUND puts every 375/9-on-a-375-diagram together and every
+   375-on-a-375/9-diagram together, each in diagram order, which is how you
+   read it looking for a unit: the 9s that are out and the 9s that are
+   missing, as two lists.
+
+   A working that carries BOTH - one of each, swapped with each other -
+   belongs to neither, so it keeps a block of its own between them rather
+   than being torn in half. Nothing reaches that branch today, because a
+   reciprocal pair on one ending working cancels out further up: the cars
+   are all there and only their badges are crossed. It is here because the
+   depot's own lists DO show such a pair (RM035/RM920 on the 5H04 19+17
+   HGS - XSE), so if that cancelling is ever relaxed the grouping already
+   knows where to put them. */
+function byPlace(normal) {
+  const groups=new Map();
+  for(const n of normal){const k=masterKey(n.end.endAbbr);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
+  const out=[];
+  for(const k of [...groups.keys()].sort((a,b)=>a.localeCompare(b))){
+    const xs=groups.get(k).sort((a,b)=>a.end.arr-b.end.arr || a.diag.localeCompare(b.diag));
+    out.push(xs.map(x=>x.line).join("\n"));
+  }
+  return out;
+}
+function byWhichWayRound(normal) {
+  const byWorking=new Map();
+  for(const n of normal){
+    const k=(n.end.hcFull||"")+"|"+n.end.dep;
+    if(!byWorking.has(k))byWorking.set(k,[]);
+    byWorking.get(k).push(n);
+  }
+  const bothWays=new Set();
+  for(const xs of byWorking.values())
+    if(new Set(xs.map(x=>x.label)).size>1) for(const x of xs) bothWays.add(x);
+  const diag=(a,b)=>a.diag.localeCompare(b.diag);
+  const pool=lab=>normal.filter(n=>!bothWays.has(n) && n.label===lab).sort(diag);
+  const out=[];
+  const nines=pool("375/9 V 375");
+  if(nines.length) out.push(nines.map(x=>x.line).join("\n"));
+  for(const k of [...byWorking.keys()].sort()){
+    const xs=byWorking.get(k).filter(x=>bothWays.has(x)).sort(diag);
+    if(xs.length) out.push(xs.map(x=>x.line).join("\n"));
+  }
+  const rest=pool("375 V 375/9");
+  if(rest.length) out.push(rest.map(x=>x.line).join("\n"));
+  return out;
+}
+
+function buildDiscrepancies(op, detail, posAt, opts) {
+  opts = opts || {};
   const reviews=[];
   const byOp=rowsByDiag(op.rows);
   const selected=selectedAllocatedRows(op.rows);
@@ -9887,7 +9970,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const cls=plannedClass(r.diag,r.planned);
     const label=`${r.expectedLength}.${cls} SHORTAGE`;
     const groups=formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:r.depMin, lines:[headingWithEnd(label,r.diag,end),...formatFollowing(groups)]});
+    topCases.push({sort:r.depMin, lines:[headingWithEnd(label,r.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // Work out each diagram's effective ending working and the allocation that actually covers that working.
@@ -9971,7 +10054,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const last=sameUnit.length
       ? sameUnit.slice().sort((x,y)=>x.arrExt-y.arrExt).at(-1) : a;
     const end=endingDescriptor(a.diag,last,detail,legsStruct,occStruct,reviews);
-    topCases.push({sort:a.depMin,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end)]});
+    topCases.push({sort:a.depMin,lines:[headingWithEnd(label,`${a.diag}/${b.diag}`,end,opts)]});
   }
   /* What is left is a real length difference: the formation is short or long,
      not merely out of order. Judged on the diagram's effective allocation, as
@@ -9991,7 +10074,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const end=c.end||endingDescriptor(c.diag,c.row,detail,legsStruct,occStruct,reviews);
     const label=`${c.row.actual.length}.375 V ${c.row.expectedLength}.375`;
     const groups=formationDetails(c.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
-    topCases.push({sort:c.row.depMin,lines:[headingWithEnd(label,c.diag,end),...formatFollowing(groups)]});
+    topCases.push({sort:c.row.depMin,lines:[headingWithEnd(label,c.diag,end,opts),...formatFollowing(groups)]});
   }
 
   // 3) Cross-fleet substitutions: 377 on RM diagrams or 375 on GT diagrams.
@@ -10021,7 +10104,7 @@ function buildDiscrepancies(op, detail, posAt) {
     const label=`${actualLen}.${actualCls} V ${expectedLen}.${expectedCls}`;
     const diagText=cs.map(c=>c.diag).join("/");
     const end=cs.map(c=>c.end).filter(Boolean).sort((a,b)=>b.arr-a.arr)[0]||null;
-    topCases.push({sort:Math.min(...cs.map(c=>c.row.depMin)),lines:[headingWithEnd(label,diagText,end)]});
+    topCases.push({sort:Math.min(...cs.map(c=>c.row.depMin)),lines:[headingWithEnd(label,diagText,end,opts)]});
   }
 
   // 4) ordinary 375 / 375-9 fleet-family mismatches on the effective ending working.
@@ -10059,17 +10142,11 @@ function buildDiscrepancies(op, detail, posAt) {
     if(f.actual==="9"&&f.expected==="N")label="375/9 V 375";
     else if(f.actual==="N"&&f.expected==="9")label="375 V 375/9";
     else {reviews.push(`${f.diag}: unhandled fleet family ${f.actual} V ${f.expected}.`);continue;}
-    normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end)});
+    normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end,opts)});
   }
 
-  // Group master locations together, but print no headings; just a blank line between groups.
-  const groups=new Map();
-  for(const n of normal){const k=masterKey(n.end.endAbbr);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
-  const normalBlocks=[];
-  for(const k of [...groups.keys()].sort((a,b)=>a.localeCompare(b))){
-    const xs=groups.get(k).sort((a,b)=>a.end.arr-b.end.arr || a.diag.localeCompare(b.diag));
-    normalBlocks.push(xs.map(x=>x.line).join("\n"));
-  }
+  const normalBlocks = opts.fleetOrder==="family"
+    ? byWhichWayRound(normal) : byPlace(normal);
 
   topCases.sort((a,b)=>a.sort-b.sort);
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
@@ -10199,25 +10276,33 @@ function detDateOf(text){
 }
 /* One build: the Operating Report's text and the Diagram Detail's, however
    each arrived. Returns the list, the review lines and the counts. */
-function run(opText, detailText, summaryText) {
-  const op = operatingFrom(opText);
-  const detail = detailFrom(detailText);
-  const posAt = positionsFrom(summaryText);
-  const out = buildDiscrepancies(op, detail, posAt);
+/* Read once, build as often as you like. The Diagram Detail's export runs
+   to several megabytes, so re-reading it every time a layout switch is
+   ticked was never going to feel right: the page holds what READ gives it
+   and calls BUILD again. */
+function read(opText, detailText, summaryText) {
+  return { op: operatingFrom(opText), detail: detailFrom(detailText),
+           posAt: positionsFrom(summaryText),
+           opDate: opDateOf(opText), detDate: detDateOf(detailText) };
+}
+function build(src, opts) {
+  const out = buildDiscrepancies(src.op, src.detail, src.posAt, opts);
   /* Two reports from different days read perfectly well and answer nothing:
      every working is matched against a plan that was not in force. Said, not
      refused - the depot knows what it dropped. */
-  const opDate = opDateOf(opText), detDate = detDateOf(detailText);
-  const reviews = (opDate && detDate && opDate !== detDate)
-    ? [`The Operating Report is for ${opDate} and the Diagram Detail for ` +
-       `${detDate}. The list below matches each working against the other ` +
-       `day's plan, so it cannot be trusted — drop the pair for one date.`]
+  const reviews = (src.opDate && src.detDate && src.opDate !== src.detDate)
+    ? [`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
+       `for ${src.detDate}. The list below matches each working against the ` +
+       `other day's plan, so it cannot be trusted — drop the pair for one date.`]
       .concat(out.reviews)
     : out.reviews;
-  return { ...out, reviews, positions: !!posAt,
-           reportTime: op.reportTime, rows: op.rows.length,
-           diagrams: new Set(op.rows.map(r => r.diag)).size,
-           detailDiagrams: detail.size };
+  return { ...out, reviews, positions: !!src.posAt,
+           reportTime: src.op.reportTime, rows: src.op.rows.length,
+           diagrams: new Set(src.op.rows.map(r => r.diag)).size,
+           detailDiagrams: src.detail.size };
+}
+function run(opText, detailText, summaryText, opts) {
+  return build(read(opText, detailText, summaryText), opts);
 }
 /* What the report is, so a file dropped on the wrong road says so rather
    than building an empty list. */
@@ -10228,7 +10313,7 @@ function sniff(text) {
   return null;
 }
 
-return { run, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
+return { run, read, build, sniff, letterList, parseOperating, parseOperatingCsv, operatingFrom,
          parseDetail, parseDetailCsv, detailFrom, buildDiscrepancies,
          pdfText, ABBR, MASTER_GROUPS };
 })();
@@ -11771,7 +11856,21 @@ function decodeText(u8) {
   if (!zone || !input) return;
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
-  const lettered = $("#svlettered");
+  const lettered = $("#svlettered"), byFamily = $("#svbyfamily"),
+        ramArr = $("#svramarr");
+  const svHelp = $("#svoptshelp"), svHint = $("#svoptshint");
+  if (svHelp && svHint) svHelp.addEventListener("click", () => {
+    const open = svHint.hidden;
+    svHint.hidden = !open;
+    svHelp.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  /* The pair as READ, kept so a layout tick is a rebuild and not a re-read:
+     the Diagram Detail's export runs to several megabytes. */
+  let source = null;
+  const layout = () => ({
+    fleetOrder: byFamily && byFamily.checked ? "family" : "place",
+    arr: ramArr && ramArr.checked ? "ram" : "all",
+  });
   /* The Diagram Summary is optional, and only one thing is read off it: the
      POS column, which says where a diagram stands in its formation. Without
      it a formation of three cannot be placed and the road says so. */
@@ -11793,7 +11892,10 @@ function decodeText(u8) {
   function render() {
     if (!held.op || !held.det) { say(waiting()); return; }
     let res;
-    try { res = SHEETS_SHORTAGE.run(held.op, held.det, held.sum); }
+    try {
+      if (!source) source = SHEETS_SHORTAGE.read(held.op, held.det, held.sum);
+      res = SHEETS_SHORTAGE.build(source, layout());
+    }
     catch (e) { say("That pair could not be read: " + e.message, "err"); return; }
     /* Two layouts of ONE list: the plain run, and the depot's own lettered
        hand. What is on screen is what Copy and Save hand over, so the two
@@ -11832,6 +11934,7 @@ function decodeText(u8) {
         catch (e) { say(f.name + " could not be read as a PDF.", "err"); continue; }
       } else txt = decodeText(u8);
       const kind = SHEETS_SHORTAGE.sniff(txt);
+      source = null;                       // a new report means a fresh read
       if (kind === "op") { held.op = txt; held.names.op = f.name; }
       else if (kind === "det") { held.det = txt; held.names.det = f.name; }
       else if (kind === "sum") { held.sum = txt; held.names.sum = f.name; }
@@ -11887,11 +11990,10 @@ function decodeText(u8) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  if (lettered) lettered.addEventListener("change", () => {
-    if (held.op && held.det) render();
-  });
+  for (const box of [lettered, byFamily, ramArr]) if (box)
+    box.addEventListener("change", () => { if (held.op && held.det) render(); });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
-    held.op = held.det = held.sum = null; text = "";
+    held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
     out.textContent = ""; out.hidden = true; bar.hidden = true;
     revWrap.hidden = true; note.textContent = "";

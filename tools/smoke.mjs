@@ -225,6 +225,24 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#svlettered").uncheck();
   if ((await page.textContent("#svout")) !== csvList)
     throw new Error("unticking should give the plain list back");
+
+  /* The other two layout switches, off the same read. */
+  await page.locator("#svbyfamily").check();
+  await page.locator("#svramarr").check();
+  await page.waitForFunction(() =>
+    !/ - CST \(ARR/.test(document.querySelector("#svout").textContent), null, { timeout: 10000 });
+  const trimmed = (await page.textContent("#svout")).split("\n").filter(Boolean);
+  if (trimmed.some(l => /\(ARR /.test(l) && !/ - RAM | - RE /.test(l)))
+    throw new Error("arrivals should be left only on Ramsgate:\n" + trimmed.join("\n"));
+  const fleet = trimmed.filter(l => /^375/.test(l));
+  if (!/^375\/9 V 375/.test(fleet[0]) || !/^375 V 375\/9/.test(fleet[fleet.length - 1]))
+    throw new Error("one way round then the other:\n" + fleet.join("\n"));
+  console.log("sv layout   :", fleet[0]);
+  await page.locator("#svbyfamily").uncheck();
+  await page.locator("#svramarr").uncheck();
+  await page.waitForTimeout(200);
+  if ((await page.textContent("#svout")) !== csvList)
+    throw new Error("unticking both should give the plain list back");
 }
 
 await browser.close();

@@ -140,6 +140,57 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.2.7 — 19 September 2026 — two more ways to read the same list
+
+**Variations gathered by which way round.** The fleet block is grouped on
+where the unit ends up as standard — how you read it standing at one
+depot, these are the ones coming to me, in the order they turn up. The
+depot's own lists gather it the other way: every 375/9-on-a-375-diagram
+together and every 375-on-a-375/9-diagram together, each in diagram order,
+which is how you read it looking for a unit — the 9s that are out and the
+9s that are missing, as two lists. A tick now switches between them.
+
+**Arrival times on Ramsgate only.** `(ARR …)` is on every line as
+standard. The depot keeps it where it answers something — a working INTO
+Ramsgate, station or depot, where what matters is when the unit gets there
+to be dealt with — and leaves it off the rest so the list reads shorter. A
+tick does that, and nothing else on the line changes.
+
+On the 19/09 pair, all three ticks on:
+
+```
+A)      4.375 V 3.375 (RM308) ENDS 5T73 23+01 SOO - GI
+
+        FOLLOWING 4 V 3: 5T73 23+01 SOO - GI
+
+B)      375/9 V 375 (RM001) ENDS 2R66 20 34 CHX - RAM (ARR 22 45)
+        375/9 V 375 (RM006) ENDS 1U74 22 18 RAM - VIC
+        375/9 V 375 (RM012) ENDS 1U10 19 42 VIC - RAM (ARR 22 06)
+        375/9 V 375 (RM018) ENDS 5R69 22+29 AFK - AFDS
+        …
+        375 V 375/9 (RM903) ENDS 5W78 23+05 AFK - AFDS
+        375 V 375/9 (RM910) ENDS 5H22 23+38 HGS - XSE
+```
+
+**Read once, build as often as you like.** The two reports are parsed by
+`read` and laid out by `build`, and the page holds what `read` gave it —
+so ticking a switch is a rebuild, not a re-read. On the real 19/09 pair
+that is 172 ms against 31 ms, and the Diagram Detail's export is 4.5 MB.
+
+A test strips each option back off and holds the result against the plain
+one: no line is gained or lost by the grouping, and only the arrival goes
+when the arrivals go.
+
+**And one difference from the depot's list, left alone rather than
+guessed at.** Their sheet carries RM035 and RM920 together on the
+`5H04 19+17 HGS - XSE` — one 375/9 on a 375 diagram and one 375 on a
+375/9, on the same working. This tool **cancels** a reciprocal pair like
+that: every car is there and only the badges are crossed, so neither is a
+variation. That rule came with the prototype and was held against the real
+18/09 reports, so it stays until the depot says otherwise. The grouping
+above already has a block for such a pair, unreachable for as long as the
+cancelling holds, and a test pins both so they cannot drift apart quietly.
+
 ## 3.2.6 — 19 September 2026 — the depot's own lettered hand
 
 **The Diagram Summary's export was checked and was already fine.** Asked

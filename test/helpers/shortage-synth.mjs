@@ -46,6 +46,12 @@ export const OPERATING_LINES = [
   "RM903  18/09/26  RAMSGTE  06:36  08:54  CHRX  2W14BA  RM  375/9  375/3  375309  NE  Fleet mismatch.",
   "RM302  18/09/26  RAMSGTE  07:10  09:20  CHRX  2X01BA  RM  375/3  375/7  375714  NE  Fleet mismatch.",
   "RM905  18/09/26  RAMSGTE  07:10  09:20  CHRX  2X01BA  RM  375/9  375/3  375310  NE  Fleet mismatch.",
+  /* A reciprocal pair: RM004 planned a plain 375 and has the 375/9 that
+     RM904 was planned, and they are on the SAME working. One of each way
+     round, swapped with each other, so the pair belongs to neither of the
+     two one-way lists. */
+  "RM004  18/09/26  TONBDG  08:10  09:30  CHRX  2T10BA  RM  375/6  375/9  375919  NE  Fleet mismatch.",
+  "RM904  18/09/26  TONBDG  08:10  09:30  CHRX  2T10BA  RM  375/9  375/8  375819  NE  Fleet mismatch.",
 ];
 
 /* Each diagram's own itinerary: one line per CALL, with the headcode of the
@@ -74,6 +80,11 @@ export const SHORTAGE_DETAIL_LINES = [
     "RAMSGTD  Ramsgate EMU Dep  06:40  5X01BA",
     "RAMSGTE  Ramsgate  07:00  07:10  2X01BA",
     "CHRX  London Charing X  09:20",
+  ]),
+  ...["RM004", "RM904"].flatMap(d => [
+    "Diagram " + d.slice(0,2) + " " + d.slice(2).split("").join(" ") + " On 18/09/26",
+    "TONBDG  Tonbridge  08:10  2T10BA",
+    "CHRX  London Charing X  09:30",
   ]),
 ];
 
@@ -117,6 +128,9 @@ export const SHORTAGE_DETAIL_CSV = [
   ...["RM302", "RM905", "RM906"].flatMap(d => [
     leg(d, "RAMSGTD", "Ramsgate EMU Dep", "", "06:40", "5X01BA", "RAMSGTE", "Ramsgate", "07:00"),
     leg(d, "RAMSGTE", "Ramsgate", "07:00", "07:10", "2X01BA", "CHRX", "London Charing X", "09:20"),
+  ]),
+  ...["RM004", "RM904"].flatMap(d => [
+    leg(d, "TONBDG", "Tonbridge", "", "08:10", "2T10BA", "CHRX", "London Charing X", "09:30"),
   ]),
 ].join("\r\n");
 

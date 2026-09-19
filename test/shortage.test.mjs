@@ -227,3 +227,57 @@ test("past Z the letters carry rather than starting again", () => {
   assert.equal(S2.letterList(many).split("\n\n")[26].split(")")[0], "AA");
   assert.equal(S2.letterList(many).split("\n\n")[27].split(")")[0], "AB");
 });
+
+test("the fleet block can be gathered by which way round instead of by place", () => {
+  /* Two ways of reading one block. By place is how you read it standing at
+     a depot — these are the ones coming to me. By which way round is how
+     you read it looking for a unit — the 9s that are out, then the 9s that
+     are missing, each in diagram order. */
+  const s = S();
+  const args = [txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES), txt(SHORTAGE_SUMMARY_LINES)];
+  const place = s.run(...args);
+  const family = s.run(...args, { fleetOrder: "family" });
+  const fleetOf = r => r.text.split("\n\n").filter(b => /^375/.test(b))
+    .flatMap(b => b.split("\n"));
+  assert.deepEqual(norm(fleetOf(family)), norm([
+    "375/9 V 375 (RM002) ENDS 2R06 05 55 AFK - RAM (ARR 07 08)",
+    "375 V 375/9 (RM901) ENDS 5F85 15+49 DVP - CST (ARR 16+15)",
+    "375 V 375/9 (RM905) ENDS 2X01 07 10 RAM - CHX (ARR 09 20)",
+  ]), "one way round, then the other, each in diagram order");
+  // the same lines either way — only their order and grouping differ
+  assert.deepEqual(norm(fleetOf(family).slice().sort()),
+                   norm(fleetOf(place).slice().sort()),
+                   "no line is gained or lost by the grouping");
+  // and the top cases are untouched by it
+  assert.equal(family.counts.top, place.counts.top);
+});
+
+test("arrival times can be kept for Ramsgate and dropped everywhere else", () => {
+  const s = S();
+  const args = [txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES), txt(SHORTAGE_SUMMARY_LINES)];
+  const all = s.run(...args), ram = s.run(...args, { arr: "ram" });
+  const arrLines = t => t.split("\n").filter(l => /\(ARR /.test(l));
+  assert.ok(arrLines(all.text).length > arrLines(ram.text).length, "some go");
+  /* What is left is every line that ENDS at Ramsgate — station or depot —
+     and nothing else. "RAM - CHX" ends at Charing Cross, so it loses its
+     arrival; "AFK - RAM" keeps it. */
+  for (const l of arrLines(ram.text))
+    assert.match(l, / - RA[MS]?\w* \(ARR | - RE \(ARR /, "kept only into Ramsgate: " + l);
+  assert.match(ram.text, /375\/9 V 375 \(RM002\) ENDS 2R06 05 55 AFK - RAM \(ARR 07 08\)/);
+  assert.match(ram.text, /375 V 375\/9 \(RM901\) ENDS 5F85 15\+49 DVP - CST$/m,
+    "and dropped off the rest: " + ram.text);
+  // every other word of the line is untouched
+  assert.deepEqual(norm(ram.text.split("\n").map(l => l.replace(/ \(ARR [^)]*\)/, ""))),
+                   norm(all.text.split("\n").map(l => l.replace(/ \(ARR [^)]*\)/, ""))),
+                   "only the arrival goes");
+});
+
+test("a reciprocal 375 / 375-9 swap on one working still cancels out", () => {
+  /* RM004 has the 375/9 RM904 was planned and RM904 has RM004's plain 375,
+     on the same working: every car is there and only the badges are
+     crossed, so neither is a variation. Pinned because the grouping above
+     has a branch for a working that carries both ways round, and that
+     branch stays unreachable only for as long as this rule holds. */
+  const res = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES));
+  assert.ok(!/RM004|RM904/.test(res.text), "neither is listed: " + res.text);
+});

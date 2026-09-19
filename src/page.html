@@ -359,9 +359,29 @@
     <div class="opts-row" id="svoptsrow">
       <span class="opts-label">Layout</span>
       <label><input type="checkbox" id="svlettered" autocomplete="off">
-        Lettered, as the depot writes it</label>
-      <span class="note">A letter per shortage, swap or length case; the
-        whole fleet list under the last one</span>
+        Lettered</label>
+      <label><input type="checkbox" id="svbyfamily" autocomplete="off">
+        Variations by which way round</label>
+      <label><input type="checkbox" id="svramarr" autocomplete="off">
+        Arrival times on Ramsgate only</label>
+      <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
+        aria-controls="svoptshint">What each does</button>
+    </div>
+    <div class="opts-hints" id="svoptshint" hidden>
+      <p><b>Lettered</b> — the depot's own hand. Every shortage, swap or
+        length case takes a letter of its own, in the order they happen, and
+        the whole run of fleet variations shares the last one, so one letter
+        names one train and the last names the fleet list.</p>
+      <p><b>Variations by which way round</b> — the fleet block gathered by
+        the mismatch rather than by where the unit ends up: every
+        375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
+        together, each in diagram order. A working carrying one of each —
+        swapped with each other — keeps a block of its own between them.
+        Untick it and the block is grouped by the place the unit ends at, in
+        the order they turn up there.</p>
+      <p><b>Arrival times on Ramsgate only</b> — keeps <code>(ARR …)</code>
+        where the working ends at Ramsgate, station or depot, and drops it
+        everywhere else.</p>
     </div>
 
     <div class="board">
