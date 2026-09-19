@@ -140,6 +140,60 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.6.0 — 19 September 2026 — the defects export, and who goes first
+
+**The defects export is pasted as it comes.** The End of Days, Restrictions
+and Performance Defects out of Equinox or EMS go in a box of their own,
+fifteen tab-separated columns under their heading row, and each row becomes
+a Defects line of the plan. The *Repair Location* names the depot where it
+does (`Ramsgate Train Care Depot`) and carries `AMAT`, `MSE`, `RED`, `CON`
+and `GTR`, all shown on the line; the *Fault Description* is boiled down to
+a couple of words — `NO CAB AIR CON`, `LOUD BANG AND SMOKE`, `DMOS ACM GDU
+FEEDBACK FAILURE` — with the codes and prefixes the system puts in front
+dropped. Where the plan's own Defects section has the same unit and
+priority, the export's row is used and the planner's Action for it kept.
+The export on its own, with no plan pasted, is a plan.
+
+**The notice's first line says what the unit is**, in the depot's words: a
+defect is `CONTAINING MO RESTRICTION - NO CAB AIR CON`, an exam or any
+other work is `REQD RE EOD FOR A EXAM` — not "containing" an exam.
+
+**Who goes first.** The lines are answered nearest first, and at the same
+date a `RED` defect first, then one with a concession (`CON`), then in the
+plan's own order — a concession never jumps a line due sooner. Where two
+lines want the same working home, the one answered first gets it and the
+other is given the next; nothing is offered twice. The plan still comes
+back in its own order.
+
+**A 12-car carries three requests, an 8-car two.** How many units a
+working can take requests for is how many the sheets put on it — the
+Summary's UNITS column — less any the plan wants at that depot itself, and
+each request displaces one unit, so the formation is kept both ways. The
+line names the unit displaced and which request of the three it is.
+3.5.1 wanted the same number of units on both diagrams, which was the
+wrong reading.
+
+**The 375/9 variation, last.** Once the same fleets and sub-fleets are
+exhausted — nothing of the unit's own fleet ends where it is wanted that
+it could take — a 375/9 is offered a plain 375 diagram and a plain 375 a
+375/9 one, and the line says `VARIATION` so. Never a 3-car, a 376 or a
+377. Within a fleet the order is a working with a swap, then one for a
+depot swap, then one whose diagram splits somewhere with no swap point —
+and the variation only after all three, because "always exhaust the same
+fleets" is the rule as given, splitting diagram and all.
+
+**A Saturday's plan against a Saturday's reports.** The tab has its own
+drop zone for the day's Diagram Summary and Detail, any day; they are read
+and nothing is built from them, so a Saturday, which the weekday books
+refuse, reads here. Left empty, the weekday books' own pair is used as
+before. And a line due over the weekend or on Monday, seen from Friday or
+the weekend, is near — held for Monday — though Monday is three days off a
+Friday; before this it was answered as a line for later in the week.
+
+**The tab says what it is for**, and what it is not: an experimental
+reference to help decide berth requests, in a warning box — *do not use
+this to build your Telex*.
+
 ## 3.5.1 — 19 September 2026 — fleets stay on their own diagrams
 
 **A swap keeps each fleet on its own diagrams, both ways.** A 375/9 on a

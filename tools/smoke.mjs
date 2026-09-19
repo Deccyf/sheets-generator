@@ -283,6 +283,39 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   if (!/== NEXT: today, tomorrow/.test(await page.textContent("#brout"))) throw new Error("nearest-first should list");
   await page.locator("#brlist").click();
   if (!(await page.locator("#brout table.brtable").count())) throw new Error("and back to the plan");
+  /* the blurb and the warning box are on the tab */
+  const lead = await page.textContent("#brPanel");
+  if (!/Stuck on finding berth requests for your\s+Telex/.test(lead)) throw new Error("the tab should say what it is for");
+  if (!/Equinox or EMS/.test(lead)) throw new Error("and where the defects come from");
+  if (!/Do not use this to build your Telex/i.test(await page.textContent("#brPanel .brwarn"))) throw new Error("the warning box");
+  /* the defects export pasted on its own is a plan: 375601's defect comes
+     back as a Defects line with the fault's couple of words, and its
+     notice header says CONTAINING */
+  await page.fill("#brplan", "");
+  await page.fill("#brignore", "");
+  await page.fill("#brdefects", [
+    "Date Occurred\tDays O/S\tAsset No\tCoach No\tCatalogue No.\tStock Description\tRepair Location\tDiagram End Location\tArrival Date\tSystem Code\tFault Description\tFacility Failure\tReport\tPriority\tTarget Due Date",
+    "06/07/2026 15:48:00\t28\t375601\t67875\t\t\t+ CON RED\tRAMSGTD\t02/08/2026 19:54:00\tHA\tUMD1234 No Cab Air Con - Requires HVAC\tNo\tWR0000001\t2. Restriction MO\t04/08/2026 00:00:00",
+  ].join("\n"));
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /1 plan lines read/.test(document.querySelector("#brstatus").textContent), null, { timeout: 10000 });
+  const def = await page.textContent("#brout");
+  if (!/NO CAB AIR CON/.test(def)) throw new Error("the fault's couple of words should be on the line: " + def.slice(0, 300));
+  if (!/RED · CON/.test(def)) throw new Error("RED and CON should be on the line: " + def.slice(0, 300));
+  console.log("br defects  :", (await page.textContent("#brstatus")).trim());
+  /* the tab's own drop zone takes a Saturday's pair, which the weekday
+     books refuse */
+  const { geniusPairCsv } = await import("../test/helpers/synth.mjs");
+  const p = geniusPairCsv([{ code: "RM101", units: "375601.", stops: [
+    { code: "RAMSGTD", arr: "", dep: "05:00", hc: "5J70" }, { code: "GRVPKUS", arr: "07:00", dep: "", hc: "" }] }]);
+  await page.setInputFiles("#brfile", [
+    f("satsum.csv", p.summary.replace(/03\/08\/26/g, "08/08/26")),
+    f("satdet.csv", p.detail.replace(/03\/08\/26/g, "08/08/26"))]);
+  await page.waitForFunction(() => /Reading 08\/08\/26/.test(document.querySelector("#brberthtxt").textContent), null, { timeout: 10000 });
+  console.log("br own pair :", (await page.textContent("#brberthtxt")).trim());
+  await page.locator("#brgo").click();
+  await page.waitForFunction(() => /against 08\/08\/26/.test(document.querySelector("#brstatus").textContent), null, { timeout: 10000 });
+  console.log("br saturday :", (await page.textContent("#brstatus")).trim());
 }
 
 await browser.close();

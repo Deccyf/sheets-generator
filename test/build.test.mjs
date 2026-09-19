@@ -36,8 +36,13 @@ test("the built file is self-contained and lean", () => {
      reader, the depot's rules, the standing fleet moves and the plan given
      back as a coloured table - is ~25 KB, and the ceiling is meant to sit
      above the file with room in it rather than be nudged each build. */
-  assert.ok(html.length < 800 * 1024,
-    "under 800 KB (was 1.2 MB); this build is " +
+  /* 860 KB at 3.6.0: the berth-request road grew by the swap search across
+     every diagram's day, the defects export reader and the rulebook that
+     writes out each rule as the depot gave it (~35 KB over 3.4.0). The
+     rulebook is the largest single piece and is prose, not code: it is what
+     lets the planner check a suggestion against the rule that made it. */
+  assert.ok(html.length < 860 * 1024,
+    "under 860 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

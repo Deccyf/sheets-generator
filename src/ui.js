@@ -1424,25 +1424,61 @@ function decodeText(u8) {
   if (!plan || !go) return;
   const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
-  const list = $("#brlist");
+  const list = $("#brlist"), defects = $("#brdefects");
+  const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
+  /* The pair this tab reads: the one dropped here, or failing that the
+     weekday books' own. Dropped here it can be any day, a Saturday
+     included, because nothing is built from it - only read. */
+  let own = null, ownFiles = [];
+  const source = () => own || window.__lastWeekdayBuild;
+  async function takePair(files) {
+    const list = [...files];
+    if (!list.length) return;
+    for (const f of list) {
+      let u8;
+      try { u8 = new Uint8Array(await f.arrayBuffer()); }
+      catch (e) { say("Could not read " + f.name, "err"); continue; }
+      ownFiles.push(/\.pdf$/i.test(f.name) ? u8 : decodeText(u8));
+    }
+    try {
+      own = await GENIUS.read(ownFiles);
+      if (zoneTxt) zoneTxt.textContent = "Reading " + own.dates.join(", ") + " — " +
+        own.summary.filter(r => r.units && r.units.length).length + " diagrams with units";
+      say("Reports for " + own.dates.join(", ") + " loaded — paste the plan and read it.", "go");
+    } catch (e) {
+      // half a pair is fine: it waits for the other half
+      if (/Summary rows found/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Detail loaded — drop the Diagram Summary too"; }
+      else if (/Detail itineraries/.test(e.message)) { if (zoneTxt) zoneTxt.textContent = "Summary loaded — drop the Diagram Detail too"; }
+      else { say("That pair could not be read: " + e.message, "err"); ownFiles = []; }
+    }
+  }
+  if (zone && input) {
+    zone.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => { takePair(input.files); input.value = ""; });
+    for (const ev of ["dragenter", "dragover"])
+      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("over"); });
+    for (const ev of ["dragleave", "drop"])
+      zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("over"); });
+    zone.addEventListener("drop", e => { if (e.dataTransfer && e.dataTransfer.files) takePair(e.dataTransfer.files); });
+  }
   const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
   const idle = () => {
-    const res = window.__lastWeekdayBuild;
-    if (!res) say("Build the weekday books first — this reads the same reports.");
+    const res = source();
+    if (!res) say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.");
     else {
       const filled = (res.summary || []).filter(r => r.units && r.units.length).length;
-      say(filled ? "Weekday books built for " + Object.values(res.labels).join(", ") + " — paste the plan and read it."
+      say(filled ? "Reports for " + Object.values(res.labels).join(", ") + " loaded — paste the plan and read it."
                  : "The weekday books are built, but the Diagram Summary has no units on it: drop the print run after allocation.", filled ? "" : "err");
     }
   };
   idle();
   for (const t of [$("#mode_br")]) if (t) t.addEventListener("click", () => { if (!text) idle(); });
   go.addEventListener("click", () => {
-    const res = window.__lastWeekdayBuild;
-    if (!res) { say("Build the weekday books first — this reads the same reports.", "err"); return; }
-    if (!plan.value.trim()) { say("Paste the maintenance plan first.", "err"); return; }
-    try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "" }); }
+    const res = source();
+    if (!res) { say("Drop the day's Diagram Summary and Detail here, or build the weekday books first.", "err"); return; }
+    if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, first.", "err"); return; }
+    try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "" }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
     showPlan();
     rev.textContent = "";

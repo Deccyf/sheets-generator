@@ -252,12 +252,12 @@ test("a unit at Grove Park for the morning is got home by swapping the afternoon
   assert.equal(r.suggest.action, "GP BERTH 5J70/5R00", JSON.stringify(r.suggest));
   assert.match(r.suggest.notes.join("; "), /AM at GP 08\+30–13\+45; PM take RM102's 5R00 14\+10, ends RE 16\+20; 375702 takes 5F43/);
   assert.deepEqual(norm(r.suggest.notice), [
-    "375701 CONTAINING A EXAM - GP PLEASE NOTE",
+    "375701 REQD RE EOD FOR A EXAM - GP PLEASE NOTE",
     "5J70 05+00 RE - GP T/F 5R00 14+10 GP - RE",
     "2K01 06 50 CST - GP T/F 5F43 13+45 GP - CST",
   ], "the notice, in the depot's form, at the depot");
   assert.equal(out.notices.length, 1);
-  assert.match(B().toText(out), /CHANGEOVERS & BALANCING\n=+\n\n1\) 375701 CONTAINING A EXAM - GP PLEASE NOTE\n   5J70 05\+00 RE - GP T\/F 5R00 14\+10 GP - RE\n   2K01 06 50 CST - GP T\/F 5F43 13\+45 GP - CST/,
+  assert.match(B().toText(out), /CHANGEOVERS & BALANCING\n=+\n\n1\) 375701 REQD RE EOD FOR A EXAM - GP PLEASE NOTE\n   5J70 05\+00 RE - GP T\/F 5R00 14\+10 GP - RE\n   2K01 06 50 CST - GP T\/F 5F43 13\+45 GP - CST/,
     "the notice block under the table, numbered, in the depot's form");
 });
 
@@ -267,7 +267,7 @@ test("a changeover at a London terminal, and the two ways it is refused", async 
   const ok = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
   assert.equal(ok.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(ok));
   assert.deepEqual(norm(ok.notice), [
-    "375703 CONTAINING A EXAM - CHX PLEASE NOTE",
+    "375703 REQD RE EOD FOR A EXAM - CHX PLEASE NOTE",
     "2A03 05 20 AFK - CHX T/F 2R04 09 10 CHX - RAM",
     "2W04 06 00 RAM - CHX T/F 2A04 09 30 CHX - HGS",
   ]);
@@ -297,11 +297,14 @@ test("fleets stay on their own diagrams, and the same number of units go on the 
   assert.equal(f("376017", "465/9"), false, "and nothing couples across fleets");
   const res = await swapDay();
   /* 375703 is a plain 375. RM907 fits the time window exactly as RM104
-     does, and is never offered: a 375/6 does not go on a 375/9 diagram.
-     With RM104 wanted by its own unit and RM106 splitting, nothing is. */
+     does, and is not taken while its own fleet has a way home: with RM104
+     wanted by its own unit, RM102's depot swap is that way, and RM907 is
+     named only as the variation it would be. */
   const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows[0].suggest;
-  assert.ok(!/RM907|375901/.test(s.action + s.notes.join(" ")), "no 375/9 diagram for a plain 375: " + JSON.stringify(s));
+  assert.equal(s.action, "RE BERTH 14+10 (no shared terminal — depot swap)", JSON.stringify(s));
+  assert.ok(!/RM907|375901/.test(s.action), "no 375/9 diagram for a plain 375 while a 375 one ends there: " + JSON.stringify(s));
+  assert.match(s.notes.join("; "), /RM907 11\+12 \(variation\)/, "the variation is named as one");
   /* and the other way: the 375/9 wants Ramsgate, RM104 fits the window,
      but a 375/9 does not go on a plain 375 diagram - only RM907 would, and
      it is its own */
@@ -309,14 +312,184 @@ test("fleets stay on their own diagrams, and the same number of units go on the 
   assert.equal(nine.action, "RE HOLD", "it ends at Ramsgate anyway");
 });
 
-test("a diagram that splits after the swap point is not offered", async () => {
-  // RM106 is RM104 with a detach at Ramsgate after Charing Cross; with
-  // RM104 wanted by its own unit, RM106 is the only other way home and it
-  // must not be taken
+test("the 375/9 variation is offered only once the same fleets are exhausted", async () => {
   const res = await swapDay();
-  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
+  /* 375702, 375704 and 375706 are all wanted at Ramsgate, so RM102, RM104
+     and RM106 are theirs. Nothing of 375703's own fleet is left, so the
+     375/9 diagram is offered - as a variation, said so, with its notice. */
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t",
+                               "375702\tC\tTUE AM 04/08\tRE\t", "375706\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const s = out.rows[0].suggest;
+  /* with RM106 still free the same fleet is exhausted only where it can be
+     swapped: RM106 splits and has no swap point, and is still named ahead
+     of the variation, because the same fleets come first, always */
+  const own = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t", "375702\tC\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
+  assert.equal(own.action, "RE BERTH 11+15 (no shared terminal — depot swap)", JSON.stringify(own));
+  assert.match(own.notes.join("; "), /RM106 splits at RAM/);
+  assert.match(own.notes.join("; "), /or RM907 11\+12 \(variation\)/);
+  assert.equal(s.action, "RE BERTH 11+12 — T/F AT CHX", JSON.stringify(s));
+  assert.match(s.notes.join("; "), /VARIATION — 375\/9 diagram, same fleets exhausted/);
+  assert.equal(s.notice[1], "2A03 05 20 AFK - CHX T/F 2R08 09 12 CHX - RAM");
+  // a 3-car, a 376 and a 377 never vary
+  const f = B().fitsLoosely;
+  assert.equal(f("375901", "375/6"), true);  assert.equal(f("375613", "375/9"), true);
+  assert.equal(f("375301", "375/6"), false); assert.equal(f("376017", "375/6"), false);
+  assert.equal(f("377514", "375/9"), false);
+});
+
+test("a diagram that splits after the swap point comes last of its fleet, and no changeover is made onto it", async () => {
+  /* RM106 is RM104 with a detach at Ramsgate after Charing Cross. With
+     every other way home wanted by its own unit - RM102, RM104 and RM907 -
+     RM106 is all that is left: it is named for a depot swap, never a
+     changeover, and the line says why. */
+  const res = await swapDay();
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t",
+                               "375702\tC\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows[0].suggest;
   assert.equal(s.notice, null, "no changeover onto RM106: " + JSON.stringify(s));
-  assert.match(s.action, /no shared terminal — depot swap/);
+  assert.equal(s.action, "RE BERTH 11+15 (no shared terminal — depot swap)");
   assert.match(s.notes.join("; "), /RM106 splits at RAM/, "and the line says why");
+});
+
+test("two lines wanting the same working: the nearer, then RED, then CON, goes first and the other gets the next", async () => {
+  const res = await swapDay();
+  /* 375703 (RM103) and 375705 (RM105) both want Ramsgate; RM104 is the
+     only changeover, RM102 the depot swap. Plan order has 375703 first, but
+     375705 is due today and 375703 tomorrow, so 375705 is answered first. */
+  const p = B().priorityOf;
+  const lt = (a, b) => { const x = p(a), y = p(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i]; return false; };
+  const L = (o) => ({ tier: 1, ahead: 1, red: false, con: false, line: 5, ...o });
+  assert.ok(lt(L({ ahead: 0, line: 9 }), L({ ahead: 1, con: true, line: 1 })), "a concession does not jump a line due sooner");
+  assert.ok(lt(L({ red: true, line: 9 }), L({ con: true, line: 1 })), "RED before CON at the same date");
+  assert.ok(lt(L({ con: true, line: 9 }), L({ line: 1 })), "CON before the plain line at the same date");
+  assert.ok(lt(L({ line: 1 }), L({ line: 9 })), "then the plan's own order");
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375705\tB\tMON AM 03/08\tRE\t"]), res, {});
+  const [s3, s5] = out.rows.map(r => r.suggest);
+  assert.equal(s5.action, "RE BERTH 11+10 (no shared terminal — depot swap)", "375705, due today, gets RM104: " + JSON.stringify(s5));
+  assert.equal(s3.action, "RE BERTH 14+10 (no shared terminal — depot swap)", "375703 is given the next, RM102, not RM104 twice: " + JSON.stringify(s3));
+  assert.deepEqual(norm(out.tiered.map(r => r.unit)), ["375705", "375703"], "nearest first lists them in that order");
+  assert.deepEqual(norm(out.rows.map(r => r.unit)), ["375703", "375705"], "the plan keeps its own order");
+});
+
+test("a 12-car working carries three requests, an 8-car two, off the units the sheets put on it", async () => {
+  const day = SWAP_DAY.map(d => d.code === "RM102" ? { ...d, units: "375702.375712.375722." } : d);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  /* three plain 375s want Ramsgate, and RM104 is its own unit's: RM102
+     runs as a 12-car, so all three get its 5R00 - each displacing a
+     different unit of the three */
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
+                               "375705\tC\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const s = out.rows.map(r => r.suggest);
+  assert.equal(s[0].action, "GP BERTH 5J70/5R00", JSON.stringify(s[0]));
+  assert.match(s[0].notes.join("; "), /375702 takes 5F43/);
+  assert.match(s[0].notes.join("; "), /3 units on RM102 \(375702\+375712\+375722\) — request 1 of 3/);
+  assert.match(s[1].action, /^RE BERTH 14\+10/, JSON.stringify(s[1]));
+  assert.match(s[1].notes.join("; "), /375712 off it.*request 2 of 3/);
+  assert.match(s[2].action, /^RE BERTH 14\+10/, JSON.stringify(s[2]));
+  assert.match(s[2].notes.join("; "), /375722 off it.*request 3 of 3/);
+  assert.equal(s[3].action, "RE HOLD", "375704 ends at Ramsgate anyway");
+  // with 375712 wanted at Ramsgate itself, RM102 has two slots, not three
+  const two = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
+                               "375705\tC\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t", "375712\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const t = two.rows.map(r => r.suggest);
+  assert.match(t[0].notes.join("; "), /375702 takes 5F43/);
+  assert.match(t[1].notes.join("; "), /375722 off it/, "375712 is not displaced: " + JSON.stringify(t[1]));
+  assert.ok(!/RM102/.test(t[2].action + t[2].notes.join(" ")), "no third slot on RM102: " + JSON.stringify(t[2]));
+  assert.equal(t[4].action, "RE HOLD");
+});
+
+/* ---- the defects export ----
+   Pasted as it comes out of the defects system: fifteen tab-separated
+   columns under a heading row. The Repair Location carries the flags, the
+   Fault Description the couple of words the notice needs. */
+const DEFECTS = [
+  "Date Occurred\tDays O/S\tAsset No\tCoach No\tCatalogue No.\tStock Description\tRepair Location\tDiagram End Location\tArrival Date\tSystem Code\tFault Description\tFacility Failure\tReport\tPriority\tTarget Due Date",
+  "06/07/2026 15:48:00\t28\t375701\t67875\t\t\t+ AMAT\tRAMSGTD\t02/08/2026 19:54:00\tHA\tUMD1234 No Cab Air Con - Requires HVAC\tNo\tWR0000001\t2. Restriction MO\t04/08/2026 00:00:00",
+  "01/08/2026 09:10:00\t2\t375703\t67877\t\t\t+ CON RED\tRAMSGTD\t02/08/2026 22:00:00\tTC\t1 x TCMS code: 800 - ACM - No 3 Phase or Battery Charging - RED\tNo\tWR0000002\t4. EOD Safety Defect\t",
+  "30/07/2026 11:00:00\t4\t375704\t67878\t\t\tRamsgate Train Care Depot\tRAMSGTD\t02/08/2026 20:00:00\tPD\tMDC - MCM Down\tNo\tWR0000003\t5. Performance Defect\t10/08/2026 00:00:00",
+  "31/07/2026 08:00:00\t3\t376017\t61017\t\t\t+ MSE\tSLADEGD\t02/08/2026 21:00:00\tDR\tMDC wiper not working\tNo\tWR0000004\t3. Restriction NM\t05/08/2026 00:00:00",
+  "29/07/2026 08:00:00\t5\t375705\t67879\t\t\txGTR\tHASTPSD\t02/08/2026 21:00:00\tDR\tShunter reports Loud bang and Smoke (MCM Inductor)\tNo\tWR0000005\t5. Performance Defect\t12/08/2026 00:00:00",
+].join("\n");
+
+test("the defects export is read by its headings: the flags, the depot, the kind and a couple of words", () => {
+  const d = B().parseDefects(DEFECTS);
+  assert.equal(d.rows.length, 5);
+  assert.deepEqual(norm(d.rows.map(r => [r.unit, r.category, r.summary])), [
+    ["375701", "MO", "NO CAB AIR CON"],
+    ["375703", "EOD", "NO 3 PHASE OR BATTERY"],
+    ["375704", "PERF", "MCM DOWN"],
+    ["376017", "NM", "WIPER NOT WORKING"],
+    ["375705", "PERF", "LOUD BANG AND SMOKE"],
+  ]);
+  assert.deepEqual(norm(d.rows.map(r => [r.amat, r.mse, r.red, r.con, r.gtr, r.repairDepot])), [
+    [true, false, false, false, false, null],
+    [false, false, true, true, false, null],
+    [false, false, false, false, false, "RE"],
+    [false, true, false, false, false, null],
+    [false, false, false, false, true, null],
+  ], "AMAT, MSE, RED, CON and GTR off the Repair Location, and the depot where it names one");
+  assert.equal(d.rows[0].days, 28);
+  assert.equal(d.rows[0].target, "04/08/2026 00:00:00");
+});
+
+test("the couple of words: codes and prefixes dropped, the first thought kept, abbreviations not cut", () => {
+  const s = B().faultSummary;
+  assert.equal(s("1 x TCMS code: 62 - Cab Air Con. high pressure lockout"), "CAB AIR CON HIGH PRESSURE");
+  assert.equal(s("4 x TCMS code: 5404 - DMOS ACM GDU feedback failure of IGBT 5"), "DMOS ACM GDU FEEDBACK FAILURE");
+  assert.equal(s("GTR - PTOSL CET SENSORS DEFECTIVE (BOTH 50%/80%) - NIL STOCK"), "PTOSL CET SENSORS DEFECTIVE");
+  assert.equal(s("Needs toilet pan solenoid. Toilet LOOU, sticker applied"), "NEEDS TOILET PAN SOLENOID");
+  assert.equal(s("Drivers seat change required"), "DRIVERS SEAT CHANGE");
+  assert.equal(s("MCM Down - Can be done MSE if in top shed at SG."), "MCM DOWN");
+  assert.equal(s("CACU lights flashing, C-C not working.CACU Required"), "CACU LIGHTS FLASHING");
+  assert.equal(s("MDC - Failed to Couple"), "FAILED TO COUPLE");
+  assert.equal(s(""), "");
+});
+
+test("the export's rows become the plan's Defects lines, the planner's own Action kept, and the notice says the fault", async () => {
+  const res = await swapDay();
+  /* the plan's Defects section has 375701 with RE HOLD written against it;
+     the export has the same defect, and knows the fault */
+  const plan = ["Defects", "Unit Nr \tDays\tPriority\tTarget Date\tAction ",
+                "375701\t28\t2. Restriction MO\t04/08/2026 00:00:00\tRE HOLD",
+                "375799\t1\t5. Performance Defect\t20/08/2026 00:00:00\tENDS SG"].join("\n");
+  const out = B().run(plan, res, { defects: DEFECTS });
+  const defects = out.rows.filter(r => r.section === "DEFECTS");
+  assert.equal(defects.length, 6, "five from the export, one the export did not carry");
+  const r1 = defects.find(r => r.unit === "375701");
+  assert.equal(r1.action, "RE HOLD", "the planner's Action is kept");
+  assert.equal(r1.summary, "NO CAB AIR CON");
+  assert.equal(r1.amat, true);
+  assert.equal(r1.suggest.action, "GP BERTH 5J70/5R00", "AMAT with a restriction still needs its request: " + JSON.stringify(r1.suggest));
+  assert.equal(r1.suggest.notice[0], "375701 CONTAINING MO RESTRICTION - NO CAB AIR CON - GP PLEASE NOTE");
+  assert.match(B().toText(out), /375701 CONTAINING MO RESTRICTION - NO CAB AIR CON - GP PLEASE NOTE/);
+  // an end-of-day defect with no target date is due today, and RED and CON are on its line
+  const r3 = defects.find(r => r.unit === "375703");
+  assert.equal(r3.tier, 1);
+  assert.equal(r3.suggest.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(r3.suggest));
+  assert.equal(r3.suggest.notice[0], "375703 CONTAINING EOD DEFECT - NO 3 PHASE OR BATTERY - CHX PLEASE NOTE");
+  assert.match(B().render(out), /375703.*\[EOD · NO 3 PHASE OR BATTERY · RED · CON\]/);
+  // the plan's own line the export did not carry is still there, as it was
+  const r9 = defects.find(r => r.unit === "375799");
+  assert.equal(r9.action, "ENDS SG");
+  // a performance defect for a week on says where it ends
+  assert.match(defects.find(r => r.unit === "375704").suggest.action, /^ENDS /);
+  // the export on its own, with no plan text, is a plan
+  const alone = B().run("", res, { defects: DEFECTS });
+  assert.equal(alone.rows.length, 5);
+  assert.deepEqual(norm(alone.order), ["DEFECTS"]);
+});
+
+test("a Saturday's reports are read for this road though no weekday books are built from them", async () => {
+  const p = geniusPairCsv(SWAP_DAY);
+  const sat = [p.summary.replace(/03\/08\/26/g, "08/08/26"), p.detail.replace(/03\/08\/26/g, "08/08/26")];
+  await assert.rejects(N.GENIUS.build(sat), /weekend/, "the books refuse a Saturday");
+  const rd = await N.GENIUS.read(sat);
+  assert.deepEqual(norm(rd.dates), ["08/08/26"]);
+  assert.equal(rd.summary.filter(r => r.units && r.units.length).length, 7);
+  assert.ok(rd.detail.get("08/08/26").has("RM101"));
+  const out = B().run(planFor(["375701\tA\tSUN AM 09/08\tRE\t", "375704\tB\tMON AM 10/08\tRE\t"]), rd, {});
+  assert.equal(out.date, "08/08/26");
+  assert.equal(out.rows[0].inTraffic, true);
+  assert.equal(out.rows[0].suggest.action, "GP BERTH 5J70/5R00", JSON.stringify(out.rows[0].suggest));
+  assert.equal(out.rows[1].suggest.action, "RE HOLD FOR MON", "Saturday for Monday");
 });

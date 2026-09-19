@@ -140,6 +140,80 @@ function defectCategory(priority) {
   if (/PERFORMANCE/.test(p)) return "PERF";
   return "";
 }
+/* ---------- the defects export ----------
+   The End of Day, Restriction and Performance Defect lists come out of the
+   maintenance system as one shape: Date Occurred, Days O/S, Asset No,
+   Coach No, Catalogue No, Stock Description, Repair Location, Diagram End
+   Location, Arrival Date, System Code, Fault Description, Facility
+   Failure, Report, Priority, Target Due Date. Pasted as they come. The
+   REPAIR LOCATION carries the words that change what a defect needs -
+   "+ AMAT", "+ MSE", "+ CON RED", "xGTR", "Ramsgate Train Care Depot" -
+   and the FAULT DESCRIPTION gives the notice its couple of words. */
+const DEFECT_COLS = ["occurred", "days", "unit", "coach", "catalogue", "stock", "repairAt",
+                     "endLoc", "arrival", "system", "fault", "facility", "report", "priority", "target"];
+function parseDefects(text) {
+  const rows = [], reviews = [];
+  let cols = null, n = 0;
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const f = raw.split("\t").map(x => x.trim());
+    if (!f.some(Boolean)) continue;
+    n++;
+    if (/^Date Occurred/i.test(f[0])) {
+      // the columns by their headings, so a column added or dropped by the
+      // export is survived
+      cols = f.map(h => h.toLowerCase());
+      continue;
+    }
+    const at = name => {
+      if (cols) {
+        const i = cols.findIndex(h => h.indexOf(name) >= 0);
+        return i >= 0 ? (f[i] || "") : "";
+      }
+      return "";
+    };
+    let row;
+    if (cols) {
+      row = { unit: at("asset"), days: parseInt(at("days"), 10), repairAt: at("repair location"),
+              endLoc: at("diagram end"), arrival: at("arrival"), system: at("system"),
+              fault: at("fault"), report: at("report"), priority: at("priority"), target: at("target") };
+    } else if (f.length >= 15 && UNIT_RE.test(f[2])) {
+      row = {}; DEFECT_COLS.forEach((k, i) => { row[k] = f[i] || ""; });
+      row.days = parseInt(row.days, 10);
+    } else continue;
+    if (!UNIT_RE.test(row.unit)) continue;
+    row.line = n;
+    const rl = String(row.repairAt || "").toUpperCase();
+    row.amat = /\bAMAT\b/.test(rl); row.mse = /\bMSE\b/.test(rl); row.red = /\bRED\b/.test(rl);
+    row.con = /\bCON\b/.test(rl); row.gtr = /GTR/.test(rl);
+    row.repairDepot = /RAMSGATE/.test(rl) ? "RE" : /GILLINGHAM/.test(rl) ? "GI" : /SLADE/.test(rl) ? "SG" :
+                      /GROVE/.test(rl) ? "GP" : /ASHFORD/.test(rl) ? "AFK" : /SELHURST/.test(rl) ? "VIC" : null;
+    row.category = defectCategory(row.priority);
+    row.summary = faultSummary(row.fault);
+    rows.push(row);
+  }
+  return { rows, reviews };
+}
+/* A couple of words for the notice, off the fault description: the codes
+   and prefixes the system puts in front are dropped, the sentence is cut
+   at its first dash or stop, and the first five words are kept. Shown on
+   the line so it can be corrected by hand where it reads badly. */
+const FAULT_NOISE = /^(UMD\s*\d+|WR\d+|\d+\s*X|X|TCMS|CODE:?|\d+|MDC|GTR|ACM|SHUNTER|REPORTS|DRIVER|[-–:]+)$/i;
+function faultSummary(desc) {
+  /* a full stop ends a sentence only after a word of four letters or more:
+     "Cab Air Con. high pressure" is one thought, "solenoid. Toilet" two */
+  const parts = String(desc || "").replace(/\([^)]*\)/g, " ")
+    .replace(/(\w{4,})\.\s+/g, "$1 | ").split(/\s[-–]\s|\s\|\s|[;,]\s|\.\s*$/);
+  for (const part of parts) {
+    const words = part.trim().split(/\s+/).filter(Boolean);
+    while (words.length && FAULT_NOISE.test(words[0])) words.shift();
+    while (words.length && /^(RED|NIL|STOCK|CET|REQUIRED)$/i.test(words[words.length - 1]) && words.length > 2) words.pop();
+    if (words.length < 2 && parts.length > 1) continue;
+    if (!words.length) continue;
+    if (/^(REQUIRES|CAN BE DONE|NIL STOCK|RED)$/i.test(words.join(" "))) continue;
+    return words.slice(0, 5).map(w => w.replace(/[.,;:]+$/, "")).join(" ").toUpperCase();
+  }
+  return String(desc || "").trim().split(/\s+/).slice(0, 4).join(" ").toUpperCase();
+}
 const UNIT_RE = /^\d{6}$/;
 function parsePlan(text) {
   const rows = [], reviews = [], order = [];
@@ -423,6 +497,11 @@ function familyOfFleet(f) {
   return m[1];
 }
 const fits = (unit, fleet) => familyOfUnit(unit) === familyOfFleet(fleet);
+/* The one variation the depot allows, and only once the same fleets and
+   sub-fleets are exhausted: a 375/9 on a plain 375 diagram, or a plain 375
+   on a 375/9 one. Never a 3-car, a 376 or a 377. */
+const loosely = f => (f === "375" || f === "375/9") ? "375*" : f;
+const fitsLoosely = (unit, fleet) => loosely(familyOfUnit(unit)) === loosely(familyOfFleet(fleet));
 function splitsAfter(day, idx) {
   // an attach or detach at or after this stop, by the raw rows' clock
   const t = day.stops[idx].dep;
@@ -454,46 +533,78 @@ function swapBetween(mine, theirs) {
   }
   return best;
 }
-function candidatesFor(r, mine, days, wanted) {
+/* The workings that end where the line wants its unit, that it could be
+   swapped onto. How many units a working can take requests for is how many
+   sections it runs as on the sheets - a 12-car has three units on the
+   Summary and can carry three requests, an 8-car two - less any unit on it
+   the plan wants at that depot, which is not to be taken off it. Each
+   request displaces one unit, so the formation is kept both ways. */
+function candidatesFor(r, mine, days, wanted, taken) {
   const targets = r.places.map(depotOf).filter(Boolean);
   const out = [];
   const myFleet = mine.rows[0] && mine.rows[0].fleet;
-  const myCount = mine.rows[0] && mine.rows[0].units ? mine.rows[0].units.length : 1;
   for (const d of days.values()) {
     if (!d.endDepot || targets.indexOf(d.endDepot) < 0) continue;
     if (mine.diags.indexOf(d.diag) >= 0) continue;
     if (!d.units.length) continue;
-    // the same number of units go on the service, and the same fleet both ways
-    if (d.units.length !== myCount) continue;
-    if (!fits(r.unit, d.fleet)) continue;
-    if (myFleet && d.units.some(u => !fits(u, myFleet))) continue;
-    // a unit the plan wants at that same depot is not to be taken off it
-    if (d.units.some(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0)) continue;
+    // the units on it that could come off: not wanted at that depot, and
+    // not already displaced by a line nearer or higher up
+    const free = d.units.filter(u => (wanted.get(u) || []).indexOf(d.endDepot) < 0);
+    const used = taken ? (taken.get(d.diag) || 0) : 0;
+    if (free.length <= used) continue;
+    // the same fleet both ways - or, once the same fleets are exhausted,
+    // the 375/9 variation - and the displaced unit has to fit my diagram
+    const displace = fitOn => free.slice(used).find(u => !myFleet || fitOn(u, myFleet));
+    let strict = true, displaced = fits(r.unit, d.fleet) ? displace(fits) : null;
+    if (!displaced) { strict = false; displaced = fitsLoosely(r.unit, d.fleet) ? displace(fitsLoosely) : null; }
+    if (!displaced) continue;
     const swap = swapBetween(mine, d);
-    out.push({ day: d, swap, name: requestName(d.endDepot, d.final) });
+    /* the order: the unit's own fleet first, always - with a swap, then for
+       a depot swap, then a diagram that splits with no swap point - and
+       only once those are exhausted the variation, in the same order */
+    const rank = (strict ? 0 : 10) + (swap ? 0 : 1) + (!swap && d.splitsAt.length ? 1 : 0);
+    out.push({ day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank,
+               displaced, slot: used + 1, slots: d.units.length });
   }
-  // a swap that can be made first, then the earlier home the better
-  out.sort((p, q) => ((q.swap ? 1 : 0) - (p.swap ? 1 : 0)) || (p.day.endTime - q.day.endTime));
+  out.sort((p, q) => (p.rank - q.rank) || (p.day.endTime - q.day.endTime));
   return out;
+}
+/* Which line goes first when two want the same working: the nearer due
+   date, then a RED defect, then one with a concession (CON), then the plan's
+   own order. A concession does not jump a line that is due sooner. */
+function priorityOf(r) {
+  return [r.tier, r.ahead === null ? 99 : r.ahead, r.red ? 0 : 1, r.con ? 0 : 1, r.line];
+}
+function byPriority(a, b) {
+  const p = priorityOf(a), q = priorityOf(b);
+  for (let i = 0; i < p.length; i++) if (p[i] !== q[i]) return p[i] - q[i];
+  return 0;
 }
 /* The notice, in the depot's own form:
      375609 CONTAINING MO RESTRICTION - CHX PLEASE NOTE
      2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS
      1H76 10 50 HGS - CHX T/F 2R34 12 34 CHX - RAM */
 const leg = (hc, dep, from, to) => (hc || "????") + " " + hhmm(dep, /^5/.test(hc || "")) + " " + stationOf(from) + " - " + stationOf(to);
+/* What the notice says the unit is: a defect is CONTAINING its kind and
+   a couple of words for the fault; anything else is REQD at the depot by
+   end of day for the work - "REQD RE EOD FOR A EXAM". */
 function reasonOf(r) {
-  if (r.isDefect) return r.category === "MO" || r.category === "NM" ? r.category + " RESTRICTION"
-                       : r.category === "EOD" ? "EOD DEFECT" : "PERFORMANCE DEFECT";
-  if (r.section === "EXAMS") return (r.what || "").toUpperCase() + " EXAM";
-  return (r.what || r.section).toUpperCase();
+  if (r.isDefect) {
+    const kind = r.category === "MO" || r.category === "NM" ? r.category + " RESTRICTION"
+               : r.category === "EOD" ? "EOD DEFECT" : "PERFORMANCE DEFECT";
+    return "CONTAINING " + kind + (r.summary ? " - " + r.summary : "");
+  }
+  const depot = (r.places[0] && depotOf(r.places[0])) || r.places[0] || "DEPOT";
+  const work = r.section === "EXAMS" ? (r.what || "").toUpperCase() + " EXAM" : (r.what || r.section).toUpperCase();
+  return "REQD " + depot + " EOD FOR " + work;
 }
 function noticeOf(r, c) {
   const sw = c.swap, x = sw.mine, y = sw.theirs;
   const at = sw.kind === "depot" ? sw.mine.depot : stationOf(sw.at);
-  const lines = [r.unit + " CONTAINING " + reasonOf(r) + " - " + at + " PLEASE NOTE"];
+  const lines = [r.unit + " " + reasonOf(r) + " - " + at + " PLEASE NOTE"];
   lines.push(leg(x.hcIn, x.inDep, x.inFrom, x.code) + " T/F " + leg(y.hcOut, y.dep, y.code, y.outTo));
   lines.push(leg(y.hcIn, y.inDep, y.inFrom, y.code) + " T/F " + leg(x.hcOut, x.dep, x.code, x.outTo) +
-             (sw.splitsMine ? "  (" + (c.day.units[0] || "the other unit") + " takes a working that splits)" : ""));
+             (sw.splitsMine ? "  (" + (c.displaced || "the other unit") + " takes a working that splits)" : ""));
   return lines;
 }
 
@@ -506,6 +617,9 @@ function weekendHold(r) {
   // a line due Saturday, Sunday or Monday, seen from Friday or the weekend,
   // is held for Monday - the depot's own form for it
   if (!r.when.date || !r.today) return false;
+  // this coming weekend: Monday is three days off a Friday, no further
+  const ahead = daysAhead(r.when, r.today);
+  if (ahead === null || ahead < 0 || ahead > 3) return false;
   const due = r.when.date.getUTCDay(), now = r.today.getUTCDay();
   return (due === 6 || due === 0 || due === 1) && (now === 5 || now === 6 || now === 0);
 }
@@ -563,10 +677,12 @@ function suggest(r, ctx) {
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
   if (near && targets.length && ctx && ctx.mine) {
-    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted);
+    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
+      s.taken = c.day.diag;
+      if (c.variation) s.notes.push("VARIATION — " + (c.day.fleet || "?") + " diagram, same fleets exhausted");
       if (sw && sw.kind === "depot") {
         /* the AM berth it is already booked to make, and the PM working out
            of it that ends where it is wanted - the depot's own "GP BERTH
@@ -577,15 +693,17 @@ function suggest(r, ctx) {
         s.notes.push("AM at " + placeOf(sw.at) + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) + "–" + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) +
                      "; PM take " + c.day.diag + "'s " + (sw.theirs.hcOut || "?") + " " + hhmm(sw.theirs.dep, /^5/.test(sw.theirs.hcOut || "")) +
                      ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
-                     (c.day.units.length ? "; " + c.day.units.join("+") + " takes " + (sw.mine.hcOut || "?") : ""));
+                     "; " + c.displaced + " takes " + (sw.mine.hcOut || "?"));
       } else {
         s.action = depot + " BERTH " + c.name + (sw ? " — T/F AT " + stationOf(sw.at) : " (no shared terminal — depot swap)");
         s.notes.push("on " + c.day.diag + ", ends " + c.day.endPlace + " " + hhmm(c.day.endTime, true) +
-                     (c.day.units.length ? ", " + c.day.units.join("+") + " off it" : ""));
+                     ", " + c.displaced + " off it");
       }
+      // a 12-car carries three requests, an 8-car two: which this one is
+      if (c.slots > 1) s.notes.push(c.slots + " units on " + c.day.diag + " (" + c.day.units.join("+") + ") — request " + c.slot + " of " + c.slots);
       if (sw) s.notice = noticeOf(r, c);
       if (c.day.splitsAt.length) s.notes.push(c.day.diag + " splits at " + c.day.splitsAt.join("/"));
-      if (cands.length > 1) s.notes.push("or " + cands.slice(1, 3).map(k => k.day.diag + " " + k.name).join(", "));
+      if (cands.length > 1) s.notes.push("or " + cands.slice(1, 3).map(k => k.day.diag + " " + k.name + (k.variation ? " (variation)" : "")).join(", "));
       return s;
     }
   }
@@ -602,9 +720,41 @@ function suggest(r, ctx) {
 }
 
 /* ---------- one plan, one day ---------- */
+/* The export's rows become the plan's DEFECTS lines. Where the plan also
+   has a Defects section, the export's row for the same unit and priority
+   wins - it knows the fault and the repair location - and the planner's
+   own Action for it is kept. */
+function mergeDefects(plan, defects) {
+  if (!defects || !defects.rows.length) return plan;
+  const planned = plan.rows.filter(r => r.section === "DEFECTS");
+  const keyOf = r => r.unit + "|" + defectCategory(r.what || r.priority) + "|" + (r.when || r.target || "").slice(0, 10);
+  const kept = new Map(planned.map(r => [keyOf(r), r]));
+  const rows = plan.rows.filter(r => r.section !== "DEFECTS");
+  const order = plan.order.slice();
+  if (order.indexOf("DEFECTS") < 0) order.push("DEFECTS");
+  for (const d of defects.rows) {
+    const twin = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
+    const row = {
+      section: "DEFECTS", unit: d.unit, line: 100000 + d.line,
+      days: d.days, what: d.priority, when: d.target, isDefect: true, category: d.category,
+      where: d.repairDepot || defectHome(d.unit),
+      action: twin ? twin.action : "",
+      raw: [d.unit, String(isNaN(d.days) ? "" : d.days), d.priority, d.target, twin ? twin.action : ""],
+      fault: d.fault, summary: d.summary, report: d.report, repairAt: d.repairAt,
+      amat: d.amat, mse: d.mse, red: d.red, con: d.con, gtr: d.gtr,
+      endLoc: d.endLoc, arrival: d.arrival,
+    };
+    row.places = row.where.split(/[\/,]/).map(x => x.trim().toUpperCase()).filter(Boolean);
+    if (twin) kept.delete(keyOf(twin));
+    rows.push(row);
+  }
+  // plan defect lines the export did not carry stay as they were
+  for (const r of kept.values()) rows.push(r);
+  return { rows, reviews: plan.reviews.concat(defects.reviews), order };
+}
 function run(planText, genius, opts) {
   opts = opts || {};
-  const plan = parsePlan(planText);
+  const plan = mergeDefects(parsePlan(planText), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const date = (genius && genius.summary && genius.summary.length)
     ? (opts.date || genius.summary[0].date) : null;
@@ -626,7 +776,11 @@ function run(planText, genius, opts) {
       when.date = today; when.half = "EOD"; when.text = when.text || "EOD";
     }
     const ahead = daysAhead(when, today);
-    return { ...row, when, ahead, today, tier: tierOf(when, ahead), ignored: ignore.has(row.unit) };
+    /* a line due over the weekend or on Monday, seen from Friday or the
+       weekend, is held for Monday - so it is near, though Monday is three
+       days off a Friday */
+    const tier = weekendHold({ when, today }) ? 1 : tierOf(when, ahead);
+    return { ...row, when, ahead, today, tier, ignored: ignore.has(row.unit) };
   });
   /* What the plan wants NOW - today, tomorrow, ASAP, overdue - so a swap
      never takes a unit off the diagram that was getting it home for work
@@ -638,8 +792,12 @@ function run(planText, genius, opts) {
     const ds = r.places.map(depotOf).filter(Boolean);
     if (ds.length) wanted.set(r.unit, (wanted.get(r.unit) || []).concat(ds));
   }
-  const out = [], notices = [];
-  for (const r of dated) {
+  /* The lines are answered nearest first - and at the same date a RED
+     defect first, then one with a concession - so that where two want the
+     same working home, the one that matters more gets it and the other is
+     given the next. The plan comes back in its own order all the same. */
+  const out = [], notices = [], taken = new Map();
+  for (const r of dated.slice().sort(byPriority)) {
     const row = r;
     const day = date ? unitDay(row.unit, genius, date) : null;
     if (day) {
@@ -653,11 +811,13 @@ function run(planText, genius, opts) {
       r.diags = []; r.ends = null; r.calls = []; r.endsAtTarget = false; r.splits = false; r.splitsAt = [];
     }
     r.inTraffic = !!day;
-    r.suggest = suggest(r, { mine: day, days, wanted });
+    r.suggest = suggest(r, { mine: day, days, wanted, taken });
+    if (r.suggest.taken) taken.set(r.suggest.taken, (taken.get(r.suggest.taken) || 0) + 1);
     if (r.suggest.notice && !notices.some(n => n[0] === r.suggest.notice[0])) notices.push(r.suggest.notice);
     out.push(r);
   }
-  const tiered = out.slice().sort((a, b) => (a.tier - b.tier) || (a.line - b.line));
+  out.sort((a, b) => a.line - b.line);
+  const tiered = out.slice().sort(byPriority);
   const inTraffic = new Set(out.filter(r => r.inTraffic).map(r => r.unit)).size;
   return { rows: out, tiered, notices, order: plan.order, reviews, date, today, lines: out.length,
            units: new Set(plan.rows.map(r => r.unit)).size, inTraffic, ignored: ignore.size,
@@ -669,8 +829,12 @@ function factsOf(r) {
   if (r.ignored) return "O/O/S — ignored";
   const flags = [];
   if (r.category) flags.push(r.category);
+  if (r.summary) flags.push(r.summary);
   if (r.amat) flags.push("AMAT");
   if (r.mse) flags.push("MSE");
+  if (r.red) flags.push("RED");
+  if (r.con) flags.push("CON");
+  if (r.gtr) flags.push("GTR");
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
   if (!r.inTraffic) return "not in traffic today" + tail;
   const bits = [];
@@ -807,8 +971,8 @@ function render(res) {
   return lines.join("\n") + (n ? "\n\n" + n : "");
 }
 
-return { run, render, shape, toText, toHtml, noticesText, parsePlan, whenOf, suggest,
-         finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits,
+return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest,
+         finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;

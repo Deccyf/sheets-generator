@@ -1472,10 +1472,20 @@ const GENIUS = (() => {
      pdfText ({pdfText: string} - so a page need not extract it twice), or a
      CSV export (a string); which report each one is comes off its contents,
      and both reports must be present. opts: {orderFix, platformStands}. */
-  async function build(inputs, opts) {
+  /* The two reports read and nothing built: the Summary's rows and the
+     Detail's itineraries, for any date including a weekend one. The
+     berth-request road works from this when its own pair is dropped, so a
+     Saturday's plan can be read against a Saturday's reports without the
+     weekday books, which do not exist for a Saturday. */
+  async function read(inputs) {
+    const { sumRows, byDate } = await ingest(inputs, []);
+    const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
+    return { summary: sumRows, detail: byDate, dates,
+             labels: Object.fromEntries(dates.map(d => [d, d])) };
+  }
+  async function ingest(inputs, notes) {
     let sumRows = [];
     const byDate = new Map();
-    const notes = [];
     const mergeDetail = m1 => {
       for (const [d, m] of m1) {
         if (!byDate.has(d)) byDate.set(d, new Map());
@@ -1496,6 +1506,11 @@ const GENIUS = (() => {
     }
     if (!sumRows.length) throw new Error("No Diagram Summary rows found — drop the Genius Diagram Summary report as well.");
     if (!byDate.size) throw new Error("No Diagram Detail itineraries found — drop the Genius Diagram Detail report as well.");
+    return { sumRows, byDate };
+  }
+  async function build(inputs, opts) {
+    const notes = [];
+    const { sumRows, byDate } = await ingest(inputs, notes);
     const out = assemble(sumRows, byDate, notes.concat(startOfDayOnly(sumRows, byDate) || []), opts);
     /* What was read, handed on as read: the Summary's rows (unit, diagram,
        where it starts and ends) and the Detail's itineraries by date. The
@@ -1913,7 +1928,7 @@ const GENIUS = (() => {
 
   // _stopsOf and _boundaries are the golden tests' hooks into the two
   // shapes shared with the weekend engine; nothing else calls them.
-  return { build, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
+  return { build, read, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
            pdfText,
            /* parseSummaryCsvG is out here for the shortages road, which wants
               the POS column and nothing else the weekday pipeline does with
