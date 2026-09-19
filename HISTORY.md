@@ -140,6 +140,21 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.7.2 — 20 September 2026 — a unit on no working, and a Summary allocated in part
+
+**Where the plan says a unit stands.** A Summary printed before the 375s
+were allocated — the 20/09 print, run at 20:55 on the 19th, had units on
+38 of 167 workings, all of them metro — put every 375 and 377 on the plan
+on no working it knew of, and the road said *not in traffic* and nothing
+else. Two things now. The Review says which diagrams have no units yet,
+by prefix, and that today's Summary printed after allocation is what says
+where each unit ends. And a unit on no working takes its place from the
+plan's own Action column — `STOPPED RE`, `O/H AFK`, `SP @ GP`, `ENDS
+DVP`, `RE HOLD`, `GP BERTH 5N32/5F28` — and is answered from there: `AT
+RE` where that is where it is wanted, and otherwise tomorrow's departures
+out of that place, the line saying *not in traffic — at AFK per the
+plan*. Nothing said, nothing known: `NOT IN TRAFFIC`, as before.
+
 ## 3.7.1 — 20 September 2026 — requests for the week, and the reports taken off again
 
 **A line due this week gets a request too.** Only the near lines — today,

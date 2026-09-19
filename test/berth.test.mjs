@@ -847,3 +847,36 @@ test("a Detail for the next day it exists for is used, and the Review says how m
   assert.ok(out.reviews.some(m => /departures are off the 06\/08\/26 Detail, 3 days on/.test(m)), out.reviews.join(" | "));
   assert.equal(out.rows[0].suggest.action, "GP BERTH 5J50", JSON.stringify(out.rows[0].suggest));
 });
+
+/* ---- a unit on no working: where the plan says it stands ---- */
+test("the plan's own Action says where a unit stands, and a unit on no working is asked for from there", async () => {
+  const pf = B().placeFromAction;
+  assert.equal(pf("STOPPED RE"), "RE"); assert.equal(pf("O/H AFK"), "AFK"); assert.equal(pf("SP @ GP"), "GP");
+  assert.equal(pf("ENDS DVP"), "DVP"); assert.equal(pf("RE HOLD"), "RE"); assert.equal(pf("AFK HOLD FOR MON"), "AFK");
+  assert.equal(pf("RE C/O AND HOLD"), "RE"); assert.equal(pf("GP BERTH 5N32/5F28"), "GP"); assert.equal(pf("O/O/S GP"), "GP");
+  assert.equal(pf(""), null); assert.equal(pf("AMAT — NO REQUEST"), null);
+  const res = await swapDay();
+  /* 375799 is on no working. The plan has it O/H at Grove Park, so it is
+     offered tomorrow's departures out of Grove Park that end at Ramsgate;
+     375798 is STOPPED RE for an exam at RE, so it is there already; and
+     375797, with nothing said, is simply not in traffic. */
+  const out = B().run(planFor(["375799\tA\tTUE AM 04/08\tRE\tO/H GP", "375798\tB\tTUE AM 04/08\tRE\tSTOPPED RE", "375797\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const [a, b, c] = out.rows;
+  assert.equal(a.inTraffic, false); assert.equal(a.standing, "GP"); assert.equal(a.ends.place, "GP");
+  assert.equal(a.suggest.action, "GP BERTH 5J01", JSON.stringify(a.suggest));
+  assert.match(a.suggest.notes.join("; "), /^not in traffic — at GP per the plan \(O\/H GP\)/);
+  assert.match(B().render(out), /375799.*not in traffic today — at GP per the plan/);
+  assert.equal(b.suggest.action, "AT RE", JSON.stringify(b.suggest));
+  assert.equal(c.suggest.action, "NOT IN TRAFFIC");
+  assert.equal(out.inTraffic, 0, "the count is what the reports say");
+});
+
+test("a Summary allocated in part says which diagrams have no units yet", async () => {
+  // the SG rows carry units, the RM rows do not: printed before the 375s were allocated
+  const day = SWAP_DAY.map(d => ({ ...d, units: "" })).concat([{ code: "SG401", units: "465044.", fleet: "465/9",
+    stops: [S("SLADEGD", "", "05:00", "5N01"), S("CANONST", "06:00", "06:10", "2N01"), S("SLADEGD", "07:00", "", "")] }]);
+  const p = geniusPairCsv(day); const rd = await N.GENIUS.read([p.summary, p.detail]);
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
+  assert.equal(out.rows[0].suggest.action, "NOT IN TRAFFIC");
+  assert.ok(out.reviews.some(m => /has units on 1 of 8 workings and none on the RM diagrams — those were not allocated when it was printed/.test(m)), out.reviews.join(" | "));
+});

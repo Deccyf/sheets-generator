@@ -514,7 +514,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.7.1</b> · 19 September 2026</span>
+      <span class="ver">Version <b>3.7.2</b> · 19 September 2026</span>
     </div>
   </header>
 
@@ -1089,6 +1089,20 @@
           <code>FKE</code> Folkestone East. <code>SU</code> is Selhurst, which
           is off this network: a 377 bound there goes over on a fleet move
           from Victoria, so a line for SU is answered by where the unit ends.</p>
+        <p><b>A unit on no working.</b> The Summary has to have been printed
+          <em>after allocation</em> to say where a unit is: printed before,
+          its UNITS column is empty and every unit is <i>not in traffic</i>;
+          printed part way through &mdash; the metro diagrams done, the 375s
+          not &mdash; the Review names the diagrams with no units yet. For a
+          unit on no working the reports know of, the plan&rsquo;s own
+          Action column is read for where it stands &mdash; <code>STOPPED
+          RE</code>, <code>O/H AFK</code>, <code>SP @ GP</code>, <code>ENDS
+          DVP</code>, <code>RE HOLD</code>, <code>GP BERTH 5N32/5F28</code>
+          &mdash; and that is where it is tonight: at the depot it is wanted
+          at it reads <code>AT RE</code>; elsewhere it is offered
+          tomorrow&rsquo;s departures out of that place, the line saying
+          <i>not in traffic &mdash; at AFK per the plan</i>. Nothing said,
+          nothing known: <code>NOT IN TRAFFIC</code>.</p>
         <p><b>Out of service.</b> A unit listed in the box above is broken and
           being dealt with directly, so its lines are marked and left out of
           anything that follows.</p>
@@ -1304,7 +1318,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.7.1
+      works without an internet connection. Version 3.7.2
       &middot; 19 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11148,6 +11162,19 @@ function faultSummary(desc) {
   return String(desc || "").trim().split(/\s+/).slice(0, 4).join(" ").toUpperCase();
 }
 const UNIT_RE = /^\d{6}$/;
+/* Where the plan's own Action column says a unit stands - STOPPED RE, O/H
+   AFK, SP @ GP, ENDS DVP, RE HOLD, AFK HOLD FOR MON, RE C/O AND HOLD, GP
+   BERTH 5N32/5F28 - for a unit the reports have on no working. */
+function placeFromAction(action) {
+  const a = String(action || "").toUpperCase().replace(/\s+/g, " ").trim();
+  if (!a) return null;
+  const known = p => p && (PLACES[p] || DEPOT_OF[p]) ? p : null;
+  let m = /(?:^|\b)(?:STOPPED|O\/H|O\/O\/S|SP ?@|ENDS|AT)\s+([A-Z]{2,6})\b/.exec(a);
+  if (m && known(m[1])) return m[1];
+  m = /^([A-Z]{2,6})\s+(?:HOLD|C\/O|BERTH)\b/.exec(a);
+  if (m && known(m[1])) return m[1];
+  return null;
+}
 function parsePlan(text) {
   const rows = [], reviews = [], order = [];
   let section = null, n = 0;
@@ -11829,7 +11856,11 @@ function suggest(r, ctx) {
   }
   if (r.mse && ctx && ctx.mse && ctx.mse.has(r.unit)) { s.action = "MSE ATTENDING — NO REQUEST"; return s; }
   if (r.mse) s.notes.push("MSE — no request if they are attending");
-  if (!r.inTraffic) { s.action = "NOT IN TRAFFIC"; return s; }
+  if (!r.inTraffic && !r.standing) { s.action = "NOT IN TRAFFIC"; return s; }
+  if (r.standing) {
+    s.notes.push("not in traffic — at " + r.standing + " per the plan (" + (r.action || "").trim() + ")");
+    if (r.endsAtTarget) { s.action = "AT " + r.standing; return s; }
+  }
   /* a restriction is a formation, and today's is checked: multiple only
      on a working of one unit, or no multiple on a working of two, is said */
   const legName = l => (l.hcOut || "?") + " " + hhmm(l.dep, /^5/.test(l.hcOut || ""));
@@ -11974,7 +12005,7 @@ function suggest(r, ctx) {
   const mf = soon && targets.length && ctx && ctx.mine
     ? morningFrom(r, ctx.tomDays || ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted, ctx.taken, !ctx.tomDays || ctx.tomDays === ctx.days) : null;
   if (mf) { s.action = mf.action; if (!near) s.notes.push("due " + dueOf(r)); s.notes = s.notes.concat(mf.notes); s.taken = mf.taken; return s; }
-  s.action = "ENDS " + r.ends.place;
+  s.action = (r.standing ? "AT " : "ENDS ") + r.ends.place;
   if (soon && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
     (ctx && ctx.days && ctx.days.size ? ", and no working it could be put on gets to " + r.places.join("/") : ""));
   if (r.today && endsAt && r.tier <= 2) {
@@ -12030,10 +12061,23 @@ function run(planText, genius, opts) {
   const ignore = new Set(String(opts.ignore || "").match(/\d{6}/g) || []);
   // the units the mobile engineers are going out to: no request for those
   const mse = new Set(String(opts.mse || "").match(/\d{6}/g) || []);
-  const filled = (genius && genius.summary || []).filter(r => r.date === date && r.units && r.units.length).length;
+  const dayRows = (genius && genius.summary || []).filter(r => r.date === date);
+  const filled = dayRows.filter(r => r.units && r.units.length).length;
   if (date && !filled)
     reviews.push("The Diagram Summary has no units on it — it was printed before the day was allocated. " +
                  "Drop the print that was run after allocation (the evening one) and this can say where each unit is.");
+  else if (date && filled < dayRows.length) {
+    /* part allocated: the metro diagrams done and the 375s not, say, so a
+       375 is on no working it knows of - said by diagram prefix, which is
+       what the planner will recognise */
+    const pre = new Map();
+    for (const r of dayRows) { const k = r.diag.slice(0, 2); const e = pre.get(k) || { rows: 0, units: 0 }; e.rows++; if (r.units && r.units.length) e.units++; pre.set(k, e); }
+    const none = [...pre.entries()].filter(([, e]) => !e.units).map(([k]) => k);
+    if (none.length)
+      reviews.push("The Diagram Summary for " + date + " has units on " + filled + " of " + dayRows.length + " workings and none on the " +
+                   none.join(", ") + " diagrams — those were not allocated when it was printed, so a unit of theirs is 'not in traffic' " +
+                   "unless the plan's own Action says where it stands. For where each unit ends tonight, drop TODAY'S Summary printed after allocation.");
+  }
   const days = date ? allDays(genius, date) : new Map();
   /* Tomorrow's Diagram Detail, where it was dropped: then tomorrow's
      departures are its own, not today's taken as a proxy. And without
@@ -12088,7 +12132,18 @@ function run(planText, genius, opts) {
   const out = [], notices = [], taken = new Map();
   for (const r of dated.slice().sort(byPriority)) {
     const row = r;
-    const day = date ? unitDay(row.unit, genius, date) : null;
+    let day = date ? unitDay(row.unit, genius, date) : null;
+    /* On no working the reports know of: where the plan's own Action says
+       it stands is where it is tonight, and tomorrow's departures from
+       there are what can be asked for. */
+    let standing = null;
+    if (!day) {
+      standing = placeFromAction(row.action) ||
+        plan.rows.filter(o => o.unit === row.unit && o !== row).map(o => placeFromAction(o.action)).find(Boolean) || null;
+      if (standing) day = { unit: row.unit, diags: [], rows: [], stops: [], splits: false, splitsAt: [], raw: [],
+                            endCode: (PLACES[standing] || [])[0] || standing, endTime: null, startCode: null, startTime: null };
+    }
+    r.standing = standing;
     if (day) {
       r.diags = day.diags; r.splits = day.splits; r.splitsAt = day.splitsAt;
       r.ends = { code: day.endCode, place: placeOf(day.endCode), time: day.endTime };
@@ -12099,7 +12154,7 @@ function run(planText, genius, opts) {
     } else {
       r.diags = []; r.ends = null; r.calls = []; r.endsAtTarget = false; r.splits = false; r.splitsAt = [];
     }
-    r.inTraffic = !!day;
+    r.inTraffic = !!day && !standing;
     /* how it runs today, working by working: the diagrams coupled with it
        on each, off the Detail - one unit per diagram, so a 12-car is three
        diagrams on one working */
@@ -12179,7 +12234,7 @@ function factsOf(r) {
   if (r.con) flags.push("CON");
   if (r.gtr) flags.push("GTR");
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
-  if (!r.inTraffic) return "not in traffic today" + tail;
+  if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : "") + tail;
   const bits = [];
   bits.push("on " + r.diags.join("+") + (r.splits ? " (splits at " + r.splitsAt.join("/") + ")" : ""));
   bits.push("ENDS " + r.ends.place + " " + hhmm(r.ends.time, true) + (r.afterMidnight ? " (after midnight)" : ""));
@@ -12329,7 +12384,7 @@ function render(res) {
   return lines.join("\n") + (n ? "\n\n" + n : "");
 }
 
-return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest,
+return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
