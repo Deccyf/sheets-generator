@@ -456,10 +456,14 @@
       print has no units on it. Then paste the maintenance plan out of the
       Telex workbook below. For every line of it this says where that unit is
       today, where and when it ends tonight, and whether it calls at the place
-      the plan wants it. Your own Action column is shown beside that and never
-      written over. This is the <em>facts</em> stage: nothing here decides
-      anything yet, and the rules it will decide by are written out at the
-      bottom, to be corrected before any of them fires.</p>
+      the plan wants it &mdash; and off those facts and the depot&rsquo;s own
+      rules it <strong>suggests</strong> an action in the depot&rsquo;s own
+      words. The plan comes back in its own shape, sections, columns, order
+      and colours, with <em>Suggested</em> and <em>Today</em> added on the
+      right; your own Action column is never written over, and a plan pasted
+      with it empty comes back with the suggestions filling it. The rules
+      are written out at the bottom, the ones applied and the ones still to
+      come.</p>
 
     <div class="brgrid">
       <label class="brfield">
@@ -481,13 +485,14 @@
     <div class="board">
       <p class="status" id="brstatus" role="status" aria-live="polite"></p>
       <div class="board-acts" id="brbar" hidden>
-        <button class="btn light" id="brcopy" type="button">Copy the table</button>
+        <button class="btn light" id="brcopy" type="button">Copy the plan back</button>
         <button class="btn light" id="brsave" type="button">Save as text</button>
+        <button class="btn ghost light" id="brlist" type="button">Nearest first</button>
         <span class="note" id="brnote"></span>
       </div>
     </div>
 
-    <pre class="svout brout" id="brout" hidden></pre>
+    <div class="brout" id="brout" hidden></div>
 
     <div class="svreview" id="brreviewwrap" hidden>
       <h3>Review</h3>
@@ -524,36 +529,51 @@
           being dealt with directly, so its lines are marked and left out of
           anything that follows.</p>
 
-        <h4>The rules to come &mdash; as the depot gave them, not yet applied</h4>
-        <p><b>Hold.</b> <code>RE HOLD</code> where the unit ends at Ramsgate
-          and the exam or maintenance is due the next morning; a PM job can
-          let it run the morning first. A defect with a target date needs the
-          unit back at Ramsgate by that date &mdash; arriving after midnight
-          on a diagram that gets there counts. Exams are wanted back by
-          <b>20 00</b> at the earliest where it can be done, and not after
-          <b>22 00</b>.</p>
-        <p><b>Changeovers.</b> Possible at Ramsgate and at the London
-          terminals, so long as nothing is delayed, and the unit can end back
-          at the depot. Where a unit is on a diagram through Ramsgate a
-          changeover there will be offered, in the depot&rsquo;s own notice
-          form (<i>2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS</i>). Never one
-          that loses maintenance or a defect back to the depot, and always
-          with the unit&rsquo;s restrictions in view.</p>
-        <p><b>Fleet moves.</b> The standing set of empty paths between depots
-          (5Y17 10+10 SG&nbsp;&ndash;&nbsp;RE, 5R00 11+12 GP&nbsp;&ndash;&nbsp;RE,
-          5Y39/41 VIC&nbsp;&ndash;&nbsp;SU and the rest): a unit that is at
-          the right place in time for one can be sent on it.</p>
-        <p><b>Swapping exams.</b> When the berth requests run out, exams that
-          arrive at Ramsgate earlier can be swapped around, so long as they do
-          not clash with other maintenance.</p>
+        <h4>The rules applied &mdash; as the depot gave them</h4>
+        <p><b>Hold.</b> A unit that ends tonight at the depot the plan wants
+          it at, with the work due today, tomorrow or <code>ASAP</code>, gets
+          <code>RE HOLD</code> (<code>GI HOLD</code>, <code>SG HOLD</code>
+          &hellip;). A PM job is noted as one it could run the morning
+          before. A line due Saturday, Sunday or Monday seen from Friday or
+          the weekend is held <code>FOR MON</code>, the depot&rsquo;s own
+          form. A defect&rsquo;s target date is met by an arrival after
+          midnight and the note says so. An exam ending at Ramsgate after
+          <b>20 00</b> is noted, and after <b>22 00</b> flagged.</p>
+        <p><b>Changeover, or a berth.</b> A unit that does not end where it is
+          wanted but calls there during the day: at Ramsgate or a London
+          terminal that is <code>RE C/O AND HOLD</code>; at any other depot
+          it is <code>GP BERTH off 5N32</code>, naming the working it is on
+          when it gets there, with the time it is there and how long.</p>
+        <p><b>Fleet moves.</b> Where nothing today reaches the place, and the
+          unit ends at a depot with a standing empty path to it that runs the
+          next day, the path is named &mdash; <i>5Y17 10+10 SG&nbsp;&ndash;&nbsp;RE
+          (SuX)</i>. The set is Engineering Planning&rsquo;s own sheet.</p>
+        <p><b>Otherwise</b> the line says where the unit ends tonight,
+          <code>ENDS DVP</code>, which is what the plan writes for a line not
+          yet near, and for a near one adds that it makes no call at the
+          place today.</p>
+
+        <h4>The rules to come</h4>
+        <p><b>Changeover notices</b> in the depot&rsquo;s own form
+          (<i>2W30 10 28 DVP - CHX T/F 1H34 12 45 CHX - HGS</i>), never one that
+          loses maintenance or a defect back to the depot, always with the
+          unit&rsquo;s restrictions in view. <b>Swapping exams</b> that arrive
+          earlier when the berth requests run out, so long as they do not
+          clash with other maintenance. <b>The swap list</b>: the diagrams
+          that DO end at the place tonight and the units on them, for a unit
+          that cannot get there itself.</p>
         <p><b>Defects, by kind.</b> The priority column is read down to its
           kind and shown on the line: <code>EOD</code> is back at a
           maintenance depot by the end of the day; <code>MO</code> and
           <code>NM</code> are restrictions; <code>PERF</code> a performance
           defect. Which depot is a matter of class, and the table already
           asks for the right one: a <b>376</b> to Slade Green or Gillingham,
-          a <b>375</b> to Ramsgate, a <b>375/3</b> to Ramsgate or Ashford. A
-          377 is Selhurst&rsquo;s and is handed over at Ashford.</p>
+          a <b>375</b> to Ramsgate, a <b>375/3</b> to Ramsgate or Gillingham.
+          A <b>377</b> is Selhurst&rsquo;s and goes there on the fleet move
+          from Victoria, so Victoria is where it has to be.</p>
+        <p><b>Splitting diagrams.</b> A diagram that attaches or detaches
+          during the day is said so on the line &mdash; <i>on SG805 (splits)</i>
+          &mdash; and nothing will be suggested that puts a unit onto one.</p>
         <p><b>AMAT and MSE.</b> <code>AMAT</code> is awaiting materials: no
           berth request, unless the defect is also a restriction, in which
           case it still needs one. <code>MSE</code> is the mobile engineers,
@@ -562,8 +582,6 @@
           to the maintenance depot it can reach. Both words are picked up
           wherever they are written on the line and shown; the question of
           whether MSE are attending is one the panel will ask.</p>
-        <p><b>Splitting diagrams.</b> Nothing will be suggested that puts a
-          unit onto a diagram that splits.</p>
         <p><b>Words.</b> <code>O/H</code> is on hand &mdash; there and usable;
           <code>SP @</code> is spare there, the same thing. <code>O/O/S</code>
           is out of service.</p>

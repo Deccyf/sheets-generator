@@ -261,17 +261,28 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#mode_br").click();
   console.log("br ready    :", (await page.textContent("#brstatus")).trim());
   await page.fill("#brplan", ["Exams", "Unit Nr \tExam\t\tWhere\tAction",
-    "375601\tA\tTUE AM 04/08\tAFK\tAFK HOLD", "375602\tB\tMON PM 03/08\tAFK\tENDS AFK",
+    "375601\tA\tTUE AM 04/08\tAFK\tAFK HOLD", "375602\tB\tMON PM 03/08\tAFK\t",
     "375699\tA\tTUE AM 04/08\tRE\tSTOPPED RE"].join("\n"));
   await page.fill("#brignore", "375699");
   await page.locator("#brgo").click();
   await page.waitForFunction(() => !document.querySelector("#brout").hidden, null, { timeout: 10000 });
-  const table = await page.textContent("#brout");
-  if (!/375601 .*on GT101 · ENDS DVP 23\+50 · calls AFK/.test(table)) throw new Error("375601 should be placed:\n" + table);
-  if (!/375602 .*ends where it is wanted/.test(table)) throw new Error("375602 ends at Ashford:\n" + table);
-  if (!/375699 .*O\/O\/S — ignored/.test(table)) throw new Error("the ignore box should take:\n" + table);
+  /* the plan back in its own shape: a table per section, the exam rows in
+     the workbook's colours, the empty Action filled in bold */
+  const rows = await page.locator("#brout table.brtable tr").count();
+  if (rows < 4) throw new Error("the plan should come back as a table: " + rows + " rows");
+  const first = await page.locator("#brout tr.ex-a td").allTextContents();
+  if (!/on GT101 · ENDS DVP 23\+50 · calls AFK/.test(first[6])) throw new Error("375601 should be placed: " + first.join(" | "));
+  if (!/AFK BERTH off 2A01/.test(first[5])) throw new Error("375601's suggestion: " + first[5]);
+  if (first[4] !== "AFK HOLD") throw new Error("the planner's action is kept as pasted: " + first[4]);
+  const green = await page.locator("#brout tr.ex-b td").allTextContents();
+  if (!/ends where it is wanted/.test(green[6])) throw new Error("375602 ends at Ashford: " + green.join(" | "));
+  if (!/O\/O\/S — ignored/.test(await page.textContent("#brout"))) throw new Error("the ignore box should take");
   console.log("br built    :", (await page.textContent("#brstatus")).trim());
   console.log("br note     :", (await page.textContent("#brnote")).trim());
+  await page.locator("#brlist").click();
+  if (!/== NEXT: today, tomorrow/.test(await page.textContent("#brout"))) throw new Error("nearest-first should list");
+  await page.locator("#brlist").click();
+  if (!(await page.locator("#brout table.brtable").count())) throw new Error("and back to the plan");
 }
 
 await browser.close();

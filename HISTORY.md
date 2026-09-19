@@ -140,6 +140,67 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.4.0 — 19 September 2026 — berth requests: the plan back in its own hand, with suggestions
+
+**The plan comes back as the plan.** The same sections in the same order,
+the same columns, every row where it was, the exam rows in the
+workbook's colours — A black, B green, C red, the M and T exams purple and
+blue, XS50 blue — with two columns added on the right: **Suggested** and
+**Today**. Copy puts it on the clipboard twice, as tab-separated text that
+pastes back into the workbook column for column, and as the coloured
+table. A button turns the same result into the nearest-first list and
+back.
+
+**It suggests now, in the depot's own words.** A plan pasted with the
+Action column empty comes back with every empty cell filled, in bold; a
+plan with the planner's actions in it keeps them untouched and puts the
+suggestion beside them. The rules are the depot's, as given, and are
+written out in the panel with the ones still to come kept apart:
+
+- **Hold** — ends tonight where the plan wants it, with the work due
+  today, tomorrow or ASAP: `RE HOLD`, `GI HOLD`, `SG HOLD` … A PM job is
+  noted as one it could run the morning before. Seen from Friday or the
+  weekend, a line due Saturday to Monday is held `FOR MON`, the depot's
+  form. An arrival after midnight meets a target date and the note says
+  so. An exam back at Ramsgate after 20 00 is noted and after 22 00
+  flagged.
+- **Changeover, or a berth** — calls where it is wanted but does not end
+  there: at Ramsgate or a London terminal, `RE C/O AND HOLD`; at any other
+  depot, `GP BERTH off 5N32`, naming the working it is on when it gets
+  there, the time, and how long it stands.
+- **Fleet moves** — nothing today reaches the place, but the unit ends at
+  a depot with a standing empty path to it that runs the next day: the
+  path is named, `5Y17 10+10 SG - RE (SuX)`. The set is Engineering
+  Planning's own sheet, twenty-four paths, carried in the module.
+- **Otherwise** `ENDS DVP`, which is what the plan writes for a line not
+  yet near, and for a near one that it makes no call at the place today.
+- **AMAT** needs no request unless the defect is a restriction; **MSE** is
+  noted for the question of whether they are attending; an **EOD** defect
+  with no date is due today, because that is what end of day means.
+
+**Splitting diagrams are a fact on the line** — `on RM904 (splits at
+AFK)` — and named on any suggestion that would take a unit off or onto a
+working. Measured before it was written: 131 of the 296 diagrams on the
+18/09 Detail attach or detach somewhere, and where they do it is the
+stations — Ashford 79 times, Faversham 41, Victoria 36, Ramsgate 33,
+Dover 11 — which is portion working, not depot shunting. So it is common,
+and it is said with the places, because "splits" alone is nothing a
+planner can check. The Detail readers keep the attach and detach word
+beside the shunt flag to make it readable.
+
+**Two corrections from the depot.** A 375/3's defect goes to Ramsgate or
+Gillingham, not Ashford. A 377 bound for Selhurst has to be at Victoria
+for the fleet move over, so Victoria is where its line asks for it.
+
+**And two things measured rather than guessed.** A Victoria shuttle calls
+at Victoria fourteen times, so the line shows the first three calls and
+how many more. The whole week-of-19/09 plan, run against the 18/09 reports
+with its Action column emptied, fills all 115 lines; where the planner's
+own hand was there to compare it agrees where the day matches — `SG HOLD`
+against a unit ending in the Slade Green up sidings for an ASAP XS50, `VIC
+HOLD FOR MON` for the 377 stopped for Selhurst, `RE HOLD FOR MON` for the
+three Ramsgate A-exams due Saturday morning.
+
 ## 3.3.0 — 19 September 2026 — berth requests, the facts first
 
 **A fourth tab, marked experimental.** The planner pastes the maintenance

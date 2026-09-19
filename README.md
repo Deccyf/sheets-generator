@@ -66,7 +66,7 @@ them, in a fixed order, into the two HTML files.
 | `src/engine.js` — `SheetsEngine` | The weekend pipeline: diagram parsing, generation, reissue merge, the updated-prints splice, the report. |
 | `src/genius.js` — `GENIUS` | The weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/shortage.js` — `SHEETS_SHORTAGE` | The shortages and variations list: the GENIUS Operating Report read, its legs stitched into workings so a variation can be traced through every diagram that shares one, and the controller’s written list out. Not a berthing sheet, and it keeps its own place-code table on purpose - it names roads where the books name stations. |
-| `src/berth.js` — `SHEETS_BERTH` | Berth requests, the facts stage: the maintenance plan pasted from the Telex workbook, read line by line against the weekday reports the books were built from — where each unit is today, where it ends tonight, whether it calls where the plan wants it. The depot's rules for what to do are in its rulebook, not yet applied. |
+| `src/berth.js` — `SHEETS_BERTH` | Berth requests: the maintenance plan pasted from the Telex workbook, read line by line against the weekday reports the books were built from — where each unit is today, where it ends tonight, whether it calls where the plan wants it, whether its diagram splits — and the depot's rules applied to that for a suggested action beside the planner's own. Carries the standing fleet moves. |
 | `src/ui.js` | The page: the mode switch, the four panels (one panel controller, one message table `MSG`), the cards, the sprites, the Rules and Unit order tabs, this computer's memory. |
 | `src/fleet/*` | The analyser: `prints.js` (the prints parsed for the fleet's sake), `fleet.js` (the analysis), `report.js` (the seven questions, rendered once for the screen and once for the workbook), `xlsx.js` (a small plain-grid writer), `ui.js`, `page.html`, `fleet.css`. |
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code: zip/unzip for docx and xlsx, inflate for PDF streams. |
@@ -187,11 +187,12 @@ repeated here. The shape of it:
   per date over every fleet). Long platform stands are an option.
 - **Berth requests (experimental).** A fourth tab reads the maintenance
   plan pasted from the Telex workbook against the weekday reports just
-  built from, and says for every line where that unit is today, where and
-  when it ends tonight, and whether it calls where the plan wants it —
-  nearest dates first. It is the facts stage: the depot's rules for what
-  to *do* are written into its rulebook and not yet applied
-  (`src/berth.js`, 3.3.0).
+  built from, and gives the plan back in its own shape with two columns
+  added: what the reports say about each unit today (diagram, where it
+  ends, calls at the place wanted, whether the diagram splits) and a
+  suggested action in the depot's own words, off the depot's own rules —
+  hold, changeover, berth, fleet move, or where it ends. The planner's
+  Action column is never written over (`src/berth.js`, 3.3.0–3.4.0).
 - **Timing.** A berthing book times an entry off the last departure from
   the section — the moment the unit leaves the area; the Metro and 395
   documents (`firstDepAll`) off the first move. The stint walk stops at the

@@ -212,8 +212,9 @@ const GENIUS = (() => {
         if (k === "arr") arr = v; else dep = v;
       }
       // the shunt marker survives the column split as a token of its own
+      const ev = t.find(v => /^(ATTTT|ATTACH|DETACH|DETTT)$/i.test(v)) || null;
       cur.push({ code: t[0], name, arr, dep, hc: hc ? hc.slice(0, 4) : null,
-                 act: t.indexOf("#") > 0 ? "#" : null });
+                 act: t.indexOf("#") > 0 ? "#" : null, ev: ev ? ev.toUpperCase() : null });
     }
     return byDate;
   }
@@ -1840,7 +1841,11 @@ const GENIUS = (() => {
          column is per WORKING: the delta between a stint's two ends.
          The PDF report has no such column and leaves it all undefined,
          which the sheets print as blank. */
+      /* ev: the activity word itself - ATTTT, DETTT, ATTACH, DETACH - kept
+         beside the '#' flag for the berth-request road, which needs to know
+         a diagram splits before it suggests a unit for it. */
       st.out.push({ code: f[0], name: f[1], arr, dep,
+                    ev: /^(ATTTT|ATTACH|DETACH|DETTT)$/i.test(f[4] || "") ? f[4].toUpperCase() : null,
                     hc: f[5] ? f[5].slice(0, 4) : null,
                     act: f[4] === "#" ? "#" : null, ml: st.ml });
       const ml = parseFloat(f[6]);

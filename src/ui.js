@@ -1424,7 +1424,8 @@ function decodeText(u8) {
   if (!plan || !go) return;
   const out = $("#brout"), bar = $("#brbar"), note = $("#brnote"), hint = $("#brhint");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
-  let text = "";
+  const list = $("#brlist");
+  let text = "", result = null, view = "plan";
   const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
   const idle = () => {
     const res = window.__lastWeekdayBuild;
@@ -1441,22 +1442,52 @@ function decodeText(u8) {
     const res = window.__lastWeekdayBuild;
     if (!res) { say("Build the weekday books first — this reads the same reports.", "err"); return; }
     if (!plan.value.trim()) { say("Paste the maintenance plan first.", "err"); return; }
-    let r;
-    try { r = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "" }); }
+    try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "" }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
-    text = SHEETS_BERTH.render(r);
-    out.textContent = text; out.hidden = false; bar.hidden = false;
+    showPlan();
     rev.textContent = "";
-    for (const m of r.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
-    revWrap.hidden = r.reviews.length === 0;
-    note.textContent = r.units + " units on the plan, " + r.inTraffic + " in traffic on " + r.date +
-      (r.ignored ? ", " + r.ignored + " out of service" : "");
-    say(r.lines + " plan lines read against " + r.date + ". Nearest first.", "go");
+    for (const m of result.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
+    revWrap.hidden = result.reviews.length === 0;
+    note.textContent = result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
+      (result.ignored ? ", " + result.ignored + " out of service" : "") +
+      (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
+    say(result.lines + " plan lines read against " + result.date + ".", "go");
   });
+  /* The plan in its own shape, or the day's lines nearest first. */
+  function showPlan() {
+    text = SHEETS_BERTH.toText(result);
+    out.innerHTML = SHEETS_BERTH.toHtml(result, false);
+    out.className = "brout"; out.hidden = false; bar.hidden = false;
+    if (list) list.textContent = "Nearest first";
+    view = "plan";
+  }
+  function showList() {
+    text = SHEETS_BERTH.render(result);
+    out.textContent = text;
+    out.className = "brout brout-pre"; out.hidden = false;
+    if (list) list.textContent = "As the plan";
+    view = "list";
+  }
+  if (list) list.addEventListener("click", () => { if (!result) return; (view === "plan" ? showList : showPlan)(); });
+  /* Copied twice: as tab-separated text, which pastes back into the workbook
+     column for column, and as the coloured table, for anything that takes
+     HTML. */
   if ($("#brcopy")) $("#brcopy").addEventListener("click", async () => {
     if (!text) return;
-    try { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
-    catch (e) { say("This browser would not let the page copy. Select the table and copy it by hand.", "err"); }
+    const html = view === "plan" ? SHEETS_BERTH.toHtml(result, true)
+      : '<pre style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' + text.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])) + "</pre>";
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/html": new Blob([html], { type: "text/html" }),
+        })]);
+        say("Copied — pastes back into the workbook as columns.", "go");
+      } else { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+    } catch (e) {
+      try { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+      catch (e2) { say("This browser would not let the page copy. Select the table and copy it by hand.", "err"); }
+    }
   });
   if ($("#brsave")) $("#brsave").addEventListener("click", () => {
     if (!text) return;

@@ -32,8 +32,12 @@ test("the built file is self-contained and lean", () => {
      traces a variation through every diagram sharing a working. It brought
      no library with it - it had its own copy of the PDF extractor and its
      own fflate, and both were dropped for the ones already here. */
-  assert.ok(html.length < 760 * 1024,
-    "under 760 KB (was 1.2 MB); this build is " +
+  /* 800 KB at 3.4.0: the berth-request road - a fourth tab, its plan
+     reader, the depot's rules, the standing fleet moves and the plan given
+     back as a coloured table - is ~25 KB, and the ceiling is meant to sit
+     above the file with room in it rather than be nudged each build. */
+  assert.ok(html.length < 800 * 1024,
+    "under 800 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

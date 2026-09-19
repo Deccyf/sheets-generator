@@ -44,8 +44,11 @@ const dropAct = v => {
   // the value comes out of the sandbox, so instanceof cannot be used here
   if (Object.prototype.toString.call(v) === "[object Map]")
     return new Map([...v].map(([k, x]) => [k, dropAct(x)]));
+  /* act, and since 3.4.0 ev - the attach/detach word kept beside it for
+     the berth-request road. Neither was on the frozen build's rows, and
+     neither changes a book. */
   const o = {};
-  for (const k of Object.keys(v)) if (k !== "act") o[k] = dropAct(v[k]);
+  for (const k of Object.keys(v)) if (k !== "act" && k !== "ev") o[k] = dropAct(v[k]);
   return o;
 };
 

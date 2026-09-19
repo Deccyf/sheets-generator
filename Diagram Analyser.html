@@ -458,10 +458,23 @@
   .brfield textarea{width:100%; box-sizing:border-box; font-family:var(--mono); font-size:12px;
     line-height:1.45; padding:8px 10px; border:1px solid var(--apron-dk); border-radius:4px;
     background:var(--paper); color:inherit; resize:vertical; white-space:pre; overflow:auto}
-  /* a fixed-column table: never wrapped, scrolled sideways if it must be */
-  .brout{font-size:12px; line-height:1.5; white-space:pre; overflow-x:auto}
   .mode .tag{font-size:10px; letter-spacing:.12em; text-transform:uppercase; opacity:.7; margin-left:6px}
   .svrules-body h4{margin:14px 0 6px; font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase}
+  /* the plan given back in its own shape: the workbook's sections and
+     colours, two columns added on the right */
+  .brout{background:var(--paper); border:1px solid var(--apron-dk); border-radius:4px;
+    padding:12px 16px; margin-top:16px; overflow-x:auto; font-family:Calibri,Arial,sans-serif;
+    font-size:13px; line-height:1.4}
+  .brout-pre{font-family:var(--mono); font-size:12px; line-height:1.5; white-space:pre}
+  .brtable{border-collapse:collapse; margin:0 0 18px; white-space:nowrap}
+  .brtable caption{text-align:left; font-weight:700; padding:0 0 4px; font-size:13.5px}
+  .brtable th{text-align:left; font-weight:700; padding:2px 10px 3px 0; border-bottom:1px solid var(--apron-dk)}
+  .brtable td{padding:2px 10px 2px 0; vertical-align:top}
+  .brtable td:nth-child(6){font-style:italic; color:#3C464D}
+  .brtable td.filled{font-style:normal; font-weight:700; color:inherit}
+  .brtable td:nth-child(7){color:#5A646B; font-family:var(--mono); font-size:11px}
+  .brtable tr.ex-a{color:#000} .brtable tr.ex-b{color:#00B050} .brtable tr.ex-c{color:#FF0000}
+  .brtable tr.ex-m{color:#7030A0} .brtable tr.ex-t{color:#0070C0} .brtable tr.ex-x{color:#0070C0}
   @media (max-width:720px){ .brgrid{grid-template-columns:1fr} }
 
 /* The analyser's own furniture. The shared stylesheet gives the page its
