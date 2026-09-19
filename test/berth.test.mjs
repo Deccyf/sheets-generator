@@ -253,7 +253,8 @@ test("a unit at Grove Park for the morning is got home by swapping the afternoon
     "2K01 06 50 CST - GP T/F 5F43 13+45 GP - CST",
   ], "the notice, in the depot's form, at the depot");
   assert.equal(out.notices.length, 1);
-  assert.match(B().toText(out), /CHANGEOVERS & BALANCING\n=+\n\n1\) 375701 CONTAINING A EXAM - GP PLEASE NOTE\n   5J70 07\+40 CHX - GP T\/F 5R00 14\+10 GP - RAM/);
+  assert.match(B().toText(out), /CHANGEOVERS & BALANCING\n=+\n\n1\) 375701 CONTAINING A EXAM - GP PLEASE NOTE\n   5J70 05\+00 RE - GP T\/F 5R00 14\+10 GP - RE\n   2K01 06 50 CST - GP T\/F 5F43 13\+45 GP - CST/,
+    "the notice block under the table, numbered, in the depot's form");
 });
 
 test("a changeover at a London terminal, and the two ways it is refused", async () => {
