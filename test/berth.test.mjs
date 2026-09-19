@@ -278,7 +278,8 @@ test("a changeover at a London terminal, and the two ways it is refused", async 
   // 375705 gets to Charing Cross after RM104's working has gone: taking it
   // would delay it, so no changeover - the working is still named
   const late = B().run(planFor(["375705\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
-  assert.match(late.action, /^RE BERTH 11\+10 \(no shared terminal — depot swap\)$/, JSON.stringify(late));
+  assert.equal(late.action, "ENDS HGS", JSON.stringify(late));
+  assert.match(late.notes.join("; "), /no working it could be put on gets to RE/);
   assert.equal(late.notice, null);
   // and the unit displaced must not be one the plan wants at Ramsgate NOW
   const both = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375704\tB\tTUE AM 04/08\tRE\t"]), res, {});
@@ -363,10 +364,6 @@ test("a diagram that detaches after the swap point is offered with its changeove
 });
 
 test("two lines wanting the same working: the nearer, then RED, then CON, goes first and the other gets the next", async () => {
-  const res = await swapDay();
-  /* 375703 (RM103) and 375705 (RM105) both want Ramsgate; RM104 is the
-     only changeover, RM102 the depot swap. Plan order has 375703 first, but
-     375705 is due today and 375703 tomorrow, so 375705 is answered first. */
   const p = B().priorityOf;
   const lt = (a, b) => { const x = p(a), y = p(b); for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i]; return false; };
   const L = (o) => ({ tier: 1, ahead: 1, red: false, con: false, line: 5, ...o });
@@ -374,45 +371,52 @@ test("two lines wanting the same working: the nearer, then RED, then CON, goes f
   assert.ok(lt(L({ red: true, line: 9 }), L({ con: true, line: 1 })), "RED before CON at the same date");
   assert.ok(lt(L({ con: true, line: 9 }), L({ line: 1 })), "CON before the plain line at the same date");
   assert.ok(lt(L({ line: 1 }), L({ line: 9 })), "then the plan's own order");
-  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375705\tB\tMON AM 03/08\tRE\t"]), res, {});
-  const [s3, s5] = out.rows.map(r => r.suggest);
-  assert.equal(s5.action, "RE BERTH 11+10 (no shared terminal — depot swap)", "375705, due today, gets RM104: " + JSON.stringify(s5));
+  /* 375703 (RM103) and 375715 (RM115) are both at Charing Cross in
+     RM104's window. Plan order has 375703 first, but 375715 is due today
+     and 375703 tomorrow, so 375715 is answered first and gets RM104;
+     375703 is given the next, RM106. */
+  const day = SWAP_DAY.concat([{ code: "RM115", units: "375715.", stops: [S("ASHFDNS", "", "05:05", "5A15"), S("ASHFKY", "05:15", "05:25", "2A15"),
+      S("CHRX", "07:05", "09:35", "2A16"), S("HASTING", "11:05", "11:15", "5H15"), S("HASTPSD", "11:25", "", "")] }]);
+  const q = geniusPairCsv(day); const res = await N.GENIUS.build([q.summary, q.detail]);
+  const out = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375715\tB\tMON AM 03/08\tRE\t"]), res, {});
+  const [s3, s15] = out.rows.map(r => r.suggest);
+  assert.equal(s15.action, "RE BERTH 11+10 — T/F AT CHX", "375715, due today, gets RM104: " + JSON.stringify(s15));
   assert.equal(s3.action, "RE BERTH 11+15 — T/F AT CHX", "375703 is given the next, RM106, not RM104 twice: " + JSON.stringify(s3));
-  assert.deepEqual(norm(out.tiered.map(r => r.unit)), ["375705", "375703"], "nearest first lists them in that order");
-  assert.deepEqual(norm(out.rows.map(r => r.unit)), ["375703", "375705"], "the plan keeps its own order");
+  assert.deepEqual(norm(out.tiered.map(r => r.unit)), ["375715", "375703"], "nearest first lists them in that order");
+  assert.deepEqual(norm(out.rows.map(r => r.unit)), ["375703", "375715"], "the plan keeps its own order");
 });
 
 test("a 12-car is three diagrams on one working: it carries three requests, an 8-car two", async () => {
   /* RM102, RM108 and RM118 run 5R00 out of Grove Park coupled, one unit
-     each: three requests go on it, one per diagram, and a fourth is
-     refused. RM109 is a fourth unit that wants Ramsgate. */
+     each. Four units are on hand at Grove Park for the day - RM101, RM121,
+     RM131, RM141 - and want Ramsgate: three get 5R00, one per diagram, and
+     the fourth is given tomorrow's 5J01 out of Grove Park instead. */
   const twin = (code, unit, pos) => ({ code, units: unit + ".", pos, stops: [S("GRVPCSD", "", "06:00", "5J01"), S("CANONST", "06:40", "06:50", "2K01"),
       S("GRVPCSD", "09:00", "14:10", "5R00"), S("RAMSGTE", "16:00", "16:10", "5R00"), S("RAMSGTD", "16:20", "", "")] });
+  const atGP = (code, unit, arr, dep) => ({ code, units: unit + ".", stops: [S("RAMSGTD", "", "05:00", "5J70"), S("CHRX", "07:30", "07:40", "5J70"),
+      S("GRVPCSD", arr, dep, "5F43"), S("CANONST", "14:20", "14:30", "2P43"), S("GRVPKUS", "22:00", "", "")] });
   const day = SWAP_DAY.concat([twin("RM108", "375708", 2), twin("RM118", "375718", 3),
-    { code: "RM109", units: "375709.", stops: [S("ASHFDNS", "", "07:30", "5A09"), S("ASHFKY", "07:40", "07:50", "2A09"),
-        S("CHRX", "09:50", "09:55", "2A10"), S("HASTING", "12:00", "12:10", "5H09"), S("HASTPSD", "12:20", "", "")] }]);
+    atGP("RM121", "375721", "08:50", "13:50"), atGP("RM131", "375731", "09:10", "13:55"), atGP("RM141", "375741", "09:30", "14:00")]);
   const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
-  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
-                               "375705\tC\tTUE AM 04/08\tRE\t", "375709\tA\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t",
-                               "375706\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375721\tB\tTUE AM 04/08\tRE\t",
+                               "375731\tC\tTUE AM 04/08\tRE\t", "375741\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const s = out.rows.map(r => r.suggest);
   assert.equal(s[0].action, "GP BERTH 5R00", JSON.stringify(s[0]));
   assert.match(s[0].notes.join("; "), /375702 off it \(takes 5F43\)/);
   assert.match(s[0].notes.join("; "), /5R00 runs as 3 units \(RM102\+RM108\+RM118\) — request 1 of 3/);
-  assert.match(s[1].action, /^RE BERTH 14\+10/, JSON.stringify(s[1]));
+  assert.equal(s[1].action, "GP BERTH 5R00", JSON.stringify(s[1]));
   assert.match(s[1].notes.join("; "), /375708 off it.*request 2 of 3/);
   assert.match(s[2].notes.join("; "), /375718 off it.*request 3 of 3/);
-  assert.ok(!/5R00|RM102|RM108|RM118/.test(s[3].action + s[3].notes.join(" ")), "no fourth request on a 12-car: " + JSON.stringify(s[3]));
-  assert.equal(s[4].action, "RE HOLD", "375704 ends at Ramsgate anyway");
+  assert.ok(!/5R00/.test(s[3].action + s[3].notes.join(" ")), "no fourth request on a 12-car: " + JSON.stringify(s[3]));
+  assert.equal(s[3].action, "GP BERTH 5J01", "tomorrow's departure instead: " + JSON.stringify(s[3]));
   // with 375708 wanted at Ramsgate itself, RM108 is not displaced and the train has two slots
-  const two = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375703\tB\tTUE AM 04/08\tRE\t",
-                               "375705\tC\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t", "375708\tA\tTUE AM 04/08\tRE\t",
-                               "375706\tA\tTUE AM 04/08\tRE\t"]), res, {});
+  const two = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375721\tB\tTUE AM 04/08\tRE\t",
+                               "375731\tC\tTUE AM 04/08\tRE\t", "375708\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const t = two.rows.map(r => r.suggest);
-  assert.match(t[0].notes.join("; "), /375702 off it \(takes 5F43\)/);
+  assert.match(t[0].notes.join("; "), /375702 off it/);
   assert.match(t[1].notes.join("; "), /375718 off it/, "375708 is not displaced: " + JSON.stringify(t[1]));
   assert.ok(!/5R00/.test(t[2].action + t[2].notes.join(" ")), "no third slot: " + JSON.stringify(t[2]));
-  assert.equal(t[4].action, "RE HOLD");
+  assert.equal(t[3].action, "RE HOLD");
 });
 
 test("a formation is kept together where it can be, and a request that splits one says so", async () => {
@@ -554,20 +558,21 @@ test("a restriction is a formation: MO wants a train of two diagrams or more, NM
      today, and the only train of two that goes home is 5R00 */
   const mo = B().run(D("375703", "2. Restriction MO"), res, {}).rows[0].suggest;
   assert.match(mo.notes.join("; "), /MO — multiple only, but runs as one unit on 5A03 05\+00 today: check/, JSON.stringify(mo));
-  assert.match(mo.action, /^RE BERTH 14\+10/, JSON.stringify(mo));
+  assert.equal(mo.action, "ENDS HGS", JSON.stringify(mo));
   assert.ok(!/RM104/.test(mo.notes.join(" ")), "a working of one unit is not offered to a multiple-only unit: " + JSON.stringify(mo));
-  // no multiple is fine on it, and RM104 - one unit, never attaches - is offered; RM106 attaches, 5R00 is a train of two
+  // no multiple is on one end: RM104 is still first for 375703, and RM103 runs alone all day so nothing to check
   const nm = B().run(D("375703", "3. Restriction NM"), res, {}).rows[0].suggest;
-  assert.ok(!/NM —/.test(nm.notes.join("; ")), JSON.stringify(nm));
+  assert.ok(!/NM —/.test(nm.notes.join("; ")), "RM103 runs alone all day: " + JSON.stringify(nm));
   assert.equal(nm.action, "RE BERTH 11+10 — T/F AT CHX");
-  assert.ok(!/RM106|5R00/.test(nm.notes.join(" ")), "a working that attaches, or a train of two, is not offered to a no-multiple unit: " + JSON.stringify(nm));
-  // 375702 on RM102 runs coupled with RM108, and a no-multiple unit is told so
+  // 375702 on RM102 runs coupled with RM108, and a no-multiple unit is told to check the end
   const two = B().run(D("375702", "3. Restriction NM"), res, {}).rows[0].suggest;
   assert.equal(two.action, "RE HOLD");
-  assert.match(two.notes.join("; "), /NM — no multiple, but runs in multiple on 5J01 06\+00 today: check/, JSON.stringify(two));
-  // and at Grove Park: the multiple-only unit takes 5R00, the no-multiple one is given RM104 for a depot swap
+  assert.match(two.notes.join("; "), /NM — no multiple on one end: check which end couples on 5J01 06\+00 today/, JSON.stringify(two));
+  // and at Grove Park: the multiple-only unit takes 5R00, and so does the no-multiple one, with the end to check
   assert.equal(B().run(D("375701", "2. Restriction MO"), res, {}).rows[0].suggest.action, "GP BERTH 5R00");
-  assert.match(B().run(D("375701", "3. Restriction NM"), res, {}).rows[0].suggest.action, /^RE BERTH 11\+10/);
+  const nmgp = B().run(D("375701", "3. Restriction NM"), res, {}).rows[0].suggest;
+  assert.equal(nmgp.action, "GP BERTH 5R00", JSON.stringify(nmgp));
+  assert.match(nmgp.notes.join("; "), /NM — check which end couples on 5R00/);
 });
 
 test("when the requests run out for an exam, the exams are swapped around with one that ends there tonight", async () => {
@@ -691,4 +696,52 @@ test("a depot request lists the PM departures out of it, for the depot to choose
   assert.match(s.notes.join("; "), /out on 5F87: RM912, ends RE 19\+54, 375827 off it/);
   assert.match(s.notes.join("; "), /the depot to choose/);
   assert.equal(s.notice, null);
+});
+
+test("keep trains together: a request that splits the train comes only after every one that does not", async () => {
+  /* RM113 runs coupled with RM103 up to Charing Cross and ends there, so
+     375703 arrives at Charing Cross as a pair. The changeover onto RM104
+     splits the pair; the depot swap onto RM102 does not. */
+  const day = SWAP_DAY.map(d => d.code !== "RM103" ? d : { ...d, stops: [S("ASHFDNS", "", "05:00", "5A03"), S("ASHFKY", "05:10", "05:20", "2A03"),
+      S("CHRX", "07:00", "09:30", "2A04"), S("GRVPCSD", "10:00", "14:00", "5G03"), S("HASTING", "15:30", "15:40", "5H03"), S("HASTPSD", "15:50", "", "")] })
+    .concat([{ code: "RM113", units: "375713.", pos: 2, stops: [S("ASHFDNS", "", "05:00", "5A03"), S("ASHFKY", "05:10", "05:20", "2A03"), S("CHRX", "07:00", "", "")] }]);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  const plan = planFor(["375703\tA\tTUE AM 04/08\tRE\t"]);
+  const loose = B().run(plan, res, {}).rows[0].suggest;
+  assert.equal(loose.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(loose));
+  assert.match(loose.notes.join("; "), /splits the 2-unit formation it arrives in — 375713 left/);
+  const kept = B().run(plan, res, { keep: true }).rows[0].suggest;
+  assert.equal(kept.action, "GP BERTH 5R00", "the Grove Park swap after the pair has split: " + JSON.stringify(kept));
+  assert.ok(!/splits the/.test(kept.notes.join("; ")), JSON.stringify(kept));
+  // with nothing else, the splitting request is still made
+  const only = B().run(planFor(["375703\tA\tTUE AM 04/08\tRE\t", "375702\tA\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"]), res, { keep: true }).rows[0].suggest;
+  assert.match(only.action, /T\/F AT CHX$/, JSON.stringify(only));
+  assert.match(only.notes.join("; "), /splits the 2-unit formation/);
+});
+
+test("nobody at Folkestone East or Hastings, and Faversham can be asked but never split", async () => {
+  const day = SWAP_DAY.concat([
+    // 375740 ends alone at Folkestone East; tomorrow's 5F41 out of there goes to Ramsgate, but there is nobody to ask
+    { code: "RM140", units: "375740.", stops: [S("ASHFDNS", "", "05:00", "5A40"), S("FLKSETR", "06:00", "", "")] },
+    { code: "RM141", units: "375741.", stops: [S("FLKSETR", "", "05:20", "5F41"), S("RAMSGTE", "06:20", "06:25", "5F41"), S("RAMSGTD", "06:40", "", "")] },
+    // 375730+375731 end at Faversham as a pair; tomorrow's 05 30 out of there is two diagrams to Ramsgate
+    { code: "RM130", units: "375730.", pos: 1, stops: [S("ASHFDNS", "", "05:30", "5A30"), S("FAVRSHM", "06:30", "", "")] },
+    { code: "RM131", units: "375731.", pos: 2, stops: [S("ASHFDNS", "", "05:30", "5A30"), S("FAVRSHM", "06:30", "", "")] },
+    { code: "RM132", units: "375732.", pos: 1, stops: [S("FAVRSHM", "", "05:30", "5F32"), S("RAMSGTE", "06:10", "06:15", "5F32"), S("RAMSGTD", "06:30", "", "")] },
+    { code: "RM133", units: "375733.", pos: 2, stops: [S("FAVRSHM", "", "05:30", "5F32"), S("RAMSGTE", "06:10", "06:15", "5F32"), S("RAMSGTD", "06:30", "", "")] },
+  ]);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  const block = ["375704\tA\tTUE AM 04/08\tRE\t", "375702\tA\tTUE AM 04/08\tRE\t", "375706\tA\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"];
+  const fke = B().run(planFor(["375740\tA\tTUE AM 04/08\tRE\t"].concat(block)), res, {}).rows[0].suggest;
+  assert.equal(fke.action, "ENDS FKE", "no request at Folkestone East: " + JSON.stringify(fke));
+  // one of the pair wanted: a request at Faversham would split the pair, so none is made
+  const one = B().run(planFor(["375730\tA\tTUE AM 04/08\tRE\t"].concat(block)), res, {}).rows[0].suggest;
+  assert.equal(one.action, "ENDS FAV", "Faversham cannot split the pair: " + JSON.stringify(one));
+  // both wanted: the pair goes together on the 05 30, which is a request Faversham can take
+  const both = B().run(planFor(["375730\tA\tTUE AM 04/08\tRE\t", "375731\tB\tTUE AM 04/08\tRE\t"].concat(block)), res, {});
+  const [a, b] = both.rows.map(r => r.suggest);
+  assert.equal(a.action, "FAV BERTH 05+30", JSON.stringify(a));
+  assert.equal(b.action, "FAV BERTH 05+30", JSON.stringify(b));
+  assert.match(a.notes.join("; "), /with its formation 375731/);
+  assert.match(b.notes.join("; "), /with its formation 375730/);
 });

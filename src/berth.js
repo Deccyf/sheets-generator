@@ -60,6 +60,11 @@ const PLACES = {
 const DEPOTS = new Set(["RE", "GI", "SG", "GP", "AFK", "XSE", "FKE", "VIC", "SU"]);
 /* Where a changeover can be made: Ramsgate, and the London terminals. */
 const CHANGEOVER_AT = new Set(["RAMSGTE", "CHRX", "CANONST", "VICTRIE", "LNDNBDG"]);
+/* Where there is nobody to do anything: no request is made at Folkestone
+   East or Hastings. Where a train can be requested but not split down:
+   Faversham, and those two. */
+const NO_REQUEST_AT = new Set(["FKE", "HGS"]);
+const NO_SPLIT_AT = new Set(["FKE", "HGS", "FAV"]);
 /* A Genius code -> the plan's word for it, for saying where a unit ends. */
 const CODE_TO_PLACE = (() => {
   const m = new Map();
@@ -668,9 +673,15 @@ function matesOn(mine, swap, days) {
    read here, and the weekday ones repeat. Named the way that place names
    workings, with the portion where the train splits before the depot:
    "AFK BERTH RP 05 27". */
-function morningFrom(r, days) {
+function morningFrom(r, days, mates, wanted) {
   const from = r.ends && r.ends.place, codes = PLACES[from] || [];
   if (!codes.length || !days || !days.size) return null;
+  if (NO_REQUEST_AT.has(depotOf(from) || from)) return null;   // nobody there to ask
+  // the train it arrived in is split unless every unit of it is wanted at the same depot
+  const targetsAll = r.places.map(depotOf).filter(Boolean);
+  const splits = (mates || []).length > 0 &&
+    !(mates || []).every(u => targetsAll.some(t => ((wanted && wanted.get(u)) || []).indexOf(t) >= 0));
+  if (splits && NO_SPLIT_AT.has(depotOf(from) || from)) return null;
   const targets = r.places.map(depotOf).filter(Boolean);
   const cands = [];
   for (const d of days.values()) {
@@ -680,11 +691,9 @@ function morningFrom(r, days) {
     const depot = targets.find(t => reaches(d, t));
     if (!depot) continue;
     if (!fits(r.unit, d.fleet) && !fitsLoosely(r.unit, d.fleet)) continue;
-    if (r.category === "NM" && d.splitsAt.length) continue;
     const key = workingKey(s0.code, s0.hcOut, s0.dep);
     const sharing = (days.workings && days.workings.get(key)) || [d.diag];
     if (r.category === "MO" && sharing.length < 2) continue;
-    if (r.category === "NM" && sharing.length > 1) continue;
     const ends = d.endDepot === depot;
     const at = ends ? null : d.stops.slice(1).find(s => DEPOT_CODES.has(s.code) && depotOf(placeOf(s.code)) === depot && s.arr != null);
     cands.push({ day: d, depot, ends, at, dep: s0.dep, hc: s0.hcOut, sharing,
@@ -710,7 +719,7 @@ function morningFrom(r, days) {
    Summary and can carry three requests, an 8-car two - less any unit on it
    the plan wants at that depot, which is not to be taken off it. Each
    request displaces one unit, so the formation is kept both ways. */
-function candidatesFor(r, mine, days, wanted, taken) {
+function candidatesFor(r, mine, days, wanted, taken, keep) {
   const targets = r.places.map(depotOf).filter(Boolean);
   const out = [];
   const myFleet = mine.rows[0] && mine.rows[0].fleet;
@@ -743,9 +752,9 @@ function candidatesFor(r, mine, days, wanted, taken) {
     const usedW = taken ? (taken.get("W:" + wkey) || 0) : 0;
     if (usedW >= cap) continue;
     // a restriction is a formation: multiple only needs a train of two
-    // diagrams or more, no multiple a train of one that never attaches
+    // diagrams or more. No multiple is no multiple on ONE END, which is
+    // a check on which end couples, not a bar on coupling - said below.
     if (r.category === "MO" && sharing.length < 2) continue;
-    if (r.category === "NM" && (sharing.length > 1 || d.splitsAt.length)) continue;
     /* the portion, where the train splits before the depot and only this
        diagram's goes there: "RP 5F87" */
     const portion = portionOf(d, sharing, days, d.endDepot);
@@ -756,7 +765,11 @@ function candidatesFor(r, mine, days, wanted, taken) {
        with it, so a 12-car that arrives as one train is not split three
        ways for three requests. */
     const mates = matesOn(mine, swap, days);
-    const together = !!(taken && (taken.get("U:" + wkey) || []).some(u => mates.indexOf(u) >= 0));
+    /* together: a mate is already on this working, or every mate is
+       wanted at this same depot now and the train has room for them all,
+       so they will follow */
+    const together = !!(taken && (taken.get("U:" + wkey) || []).some(u => mates.indexOf(u) >= 0)) ||
+      (mates.length > 0 && cap >= mates.length + 1 && mates.every(u => (wanted.get(u) || []).indexOf(d.endDepot) >= 0));
     /* No swap, but the working starts tomorrow where my unit ends
        tonight: the request goes to that place and names the working out
        of it, with the portion - "AFK BERTH RP 05 27" - taken as today's
@@ -765,6 +778,10 @@ function candidatesFor(r, mine, days, wanted, taken) {
        with no place to make it. */
     const s0 = d.stops[0];
     const morning = !swap && r.ends && (PLACES[r.ends.place] || []).indexOf(s0.code) >= 0 && s0.dep != null && !!s0.hcOut;
+    /* a request is made where the unit is: a swap at a place both are, or
+       a departure from where it ends. A working with no place to make the
+       swap is no request, however well it ends. */
+    if (!swap && !morning) continue;
     const cand = { day: d, swap, name: requestName(d.endDepot, d.final), variation: !strict, rank: 0, together, mates, portion,
                    displaced, work: wkey, workName: w.hc || hhmm(w.dep, true), sharing, slot: usedW + 1, slots: cap };
     if (morning) {
@@ -778,8 +795,19 @@ function candidatesFor(r, mine, days, wanted, taken) {
       cand.slots = Math.min(maxUnits(r.unit), cand.sharing.length); cand.slot = (taken ? (taken.get("W:" + k0) || 0) : 0) + 1;
       if (cand.slot > cand.slots) continue;
     }
+    /* Splitting the train it arrived in. Never where there is nobody to
+       do it - Folkestone East, Hastings - nor at Faversham, where a train
+       can be requested but not split; and with "keep trains together" on,
+       only where nothing else gets it home. */
+    const splitsTrain = mates.length > 0 && !together;
+    const where = swap ? (swap.kind === "depot" ? swap.mine.depot : placeOf(swap.at)) : morning ? r.ends.place : null;
+    if (swap && swap.kind === "depot" && NO_REQUEST_AT.has(swap.mine.depot)) continue;
+    if (morning && NO_REQUEST_AT.has(depotOf(r.ends.place) || r.ends.place)) continue;
+    if (splitsTrain && where && NO_SPLIT_AT.has(depotOf(where) || where)) continue;
+    cand.splitsTrain = splitsTrain; cand.where = where;
     cand.rank = (strict ? 0 : 10) + (swap ? (swap.splitsTheirs ? 0.25 : 0) : morning ? 0.5 : 1) +
-                (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0);
+                (!swap && !morning && d.splitsAt.length ? 1 : 0) - (together ? 0.5 : 0) +
+                (splitsTrain && keep ? 5 : 0);
     out.push(cand);
   }
   out.sort((p, q) => (p.rank - q.rank) || (p.day.endTime - q.day.endTime));
@@ -856,7 +884,7 @@ function suggest(r, ctx) {
   if (r.category === "MO" && r.alone && r.alone.length)
     s.notes.push("MO — multiple only, but runs as one unit on " + legName(r.alone[0]) + " today: check");
   if (r.category === "NM" && r.coupled && r.coupled.length)
-    s.notes.push("NM — no multiple, but runs in multiple on " + legName(r.coupled[0]) + " today: check");
+    s.notes.push("NM — no multiple on one end: check which end couples on " + legName(r.coupled[0]) + " today");
   const endsAt = depotOf(r.ends.place);
   const near = r.tier === 1;
   const mon = weekendHold(r);
@@ -901,7 +929,7 @@ function suggest(r, ctx) {
      the unit is wanted - a swap onto it at a terminal where it can be
      made, or failing that the working itself, for a depot swap. */
   if (near && targets.length && ctx && ctx.mine) {
-    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken);
+    const cands = candidatesFor(r, ctx.mine, ctx.days, ctx.wanted, ctx.taken, ctx.keep);
     const c = cands[0];
     if (c) {
       const depot = c.day.endDepot, sw = c.swap;
@@ -956,6 +984,8 @@ function suggest(r, ctx) {
       }
       // a 12-car carries three requests, an 8-car two: which this one is
       if (c.slots > 1) s.notes.push(c.workName + " runs as " + c.slots + " units (" + c.sharing.join("+") + ") — request " + c.slot + " of " + c.slots);
+      // no multiple on one end: the working couples, so which end is the check
+      if (r.category === "NM" && c.sharing.length > 1) s.notes.push("NM — check which end couples on " + c.workName);
       /* the notice is for a changeover at a terminal. At a depot there is
          none to make: the unit goes there empty in the AM and sits to the
          PM, so it ends there in the AM and the request is all that is
@@ -970,11 +1000,11 @@ function suggest(r, ctx) {
   /* Nothing today reaches the depot. Where it ends is a place with a
      berth: tomorrow's working out of there that does - "AFK BERTH RP
      05 27", the portion named where the train splits before the depot. */
-  const mf = near && targets.length && ctx ? morningFrom(r, ctx.days) : null;
+  const mf = near && targets.length && ctx && ctx.mine ? morningFrom(r, ctx.days, matesOn(ctx.mine, null, ctx.days), ctx.wanted) : null;
   if (mf) { s.action = mf.action; s.notes = s.notes.concat(mf.notes); return s; }
   s.action = "ENDS " + r.ends.place;
   if (near && targets.length) s.notes.push("no call at " + r.places.join("/") + " today" +
-    (ctx && ctx.days && ctx.days.size ? ", and nothing of its class ends at " + r.places.join("/") + " that it could take" : ""));
+    (ctx && ctx.days && ctx.days.size ? ", and no working it could be put on gets to " + r.places.join("/") : ""));
   if (r.today && endsAt && r.tier <= 2) {
     const dow = (r.today.getUTCDay() + 1) % 7;    // tomorrow, when it is where it ends
     for (const m of movesFrom(endsAt, targets, dow))
@@ -1086,7 +1116,7 @@ function run(planText, genius, opts) {
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
     r.formation = legs.reduce((m, l) => Math.max(m, l.n), day ? 1 : 0);
-    r.suggest = suggest(r, { mine: day, days, wanted, taken, mse });
+    r.suggest = suggest(r, { mine: day, days, wanted, taken, mse, keep: !!opts.keep });
     if (r.suggest.taken) {
       const t = r.suggest.taken;
       taken.set(t.diag, (taken.get(t.diag) || 0) + 1);            // a unit displaced off that diagram
@@ -1308,7 +1338,7 @@ function render(res) {
 }
 
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest,
-         finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects,
+         finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, FLEET_MOVES, movesFrom };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;

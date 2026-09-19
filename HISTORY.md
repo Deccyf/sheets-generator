@@ -201,6 +201,14 @@ Detail has it and the line says to check tomorrow's runs the same. It
 comes after a swap today and before a depot swap with no place to make
 it.
 
+**A request is made where the unit is.** 3.5.0 named a working "for a
+depot swap" even where the two were never at the same place, and the
+line said *no shared terminal*. Nobody can action that: the depot has
+the unit it has. A request is now a swap at a place both are — a
+terminal changeover or a depot's AM/PM berth — or a departure from where
+the unit ends tonight, and a working with no place to make the swap is
+not named, however well it ends.
+
 **The depot request names the departures only.** The depot has the
 arrival on its own allocation summary, so `GP BERTH 5J93/5F87` — in on
 the first, out on the second, which is how 3.5.0 read the plan's own
@@ -229,6 +237,22 @@ unit covers. A working offered to an MO unit runs as two units or more;
 one offered to an NM unit runs as one and never attaches. Today's own
 diagram is checked the same way and the line says *check* where it does
 not fit. Which routes a unit may not take is still on no report.
+
+**NM is no multiple on one end.** Not a bar on coupling, as 3.6.1 first
+read it, but a coupler fault at one cab: the unit can run coupled, not on
+that end, and which end couples is on no report. So an NM unit is offered
+workings that couple and the line says *check which end couples* wherever
+one does, today's own included. MO stays multiple only, and POS 1 stays
+the leading portion, both confirmed by the depot.
+
+**Keep trains together, and the places that cannot split.** A toggle on
+the tab: ticked, at every outstation and depot alike, a request that
+splits the train a unit arrived in comes only after every one that does
+not. A formation whose units are all wanted at the same depot, on a train
+with room for them, is not a split at all — they go together. And with or
+without the toggle: no request is made at Folkestone East or Hastings,
+there being nobody there; at Faversham a train can be requested but never
+split down.
 
 **MSE attending.** A box beside the defects: the units listed get
 `MSE ATTENDING — NO REQUEST`, and the units the export flags MSE are named

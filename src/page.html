@@ -515,6 +515,8 @@
     </div>
     <div class="opts-row">
       <button class="btn" id="brgo" type="button">Read the plan</button>
+      <label><input type="checkbox" id="brkeep" autocomplete="off">
+        Keep trains together &mdash; split a formation only where nothing else gets it home</label>
       <span class="note" id="brhint"></span>
     </div>
 
@@ -624,8 +626,10 @@
           the swap point is still a way home &mdash; the request names the
           portion &mdash; but ranks after one that does not, and an attach
           after it is nothing to a swap. The unit displaced must not be one
-          the plan wants at that same depot. Where nothing is at the same
-          place, the working is still named for a depot swap.</p>
+          the plan wants at that same depot. A request is made where the
+          unit is: a swap at a place both are, or a departure from where it
+          ends tonight. A working with no place to make the swap is not
+          named, however well it ends.</p>
         <p><b>The variation.</b> Only once the same fleets and sub-fleets are
           exhausted &mdash; nothing of the unit&rsquo;s own fleet ends where
           it is wanted that it could take &mdash; is a <b>375/9 on a plain
@@ -658,7 +662,14 @@
           take one unit off the train it arrived in, the line says so
           &mdash; <i>splits the 3-unit formation it arrives in &mdash;
           375702+375712 left</i> &mdash; so the depot is asked to split a
-          train only where there is need.</p>
+          train only where there is need. With <b>Keep trains together</b>
+          ticked, at every outstation and depot alike, a request that
+          splits the train comes only after every one that does not,
+          whatever else it costs. And at <b>Folkestone East and
+          Hastings</b> no request is made at all, there being nobody
+          there; at <b>Faversham</b> a train can be requested but never
+          split down, so a request that would split one there is not
+          offered, toggle or no toggle.</p>
         <p><b>The portion.</b> Where the working named runs as a coupled
           train that splits before the depot and only this diagram&rsquo;s
           portion goes there, the request says which: the diagram in the
@@ -732,17 +743,20 @@
           unit that other maintenance wants somewhere else now, and each
           unit is swapped once. The swaps are written out under the table as
           <code>EXAM SWAPS</code>, and both lines say so.</p>
-        <p><b>A restriction is a formation.</b> <code>MO</code> is read as
+        <p><b>A restriction is a formation.</b> <code>MO</code> is
           <em>multiple only</em> &mdash; the unit has to run coupled to
           another, a defective cab inside the formation, a lost traction
           module or a locked-out toilet covered by the other unit &mdash;
-          and <code>NM</code> as <em>no multiple</em>, a coupler fault, so it
-          runs as one unit and never attaches. A working offered to an MO
-          unit runs as two units or more; one offered to an NM unit runs as
-          one and never attaches or detaches. Today&rsquo;s own diagram is
-          checked the same way and the line says <i>check</i> where it does
-          not fit. Which routes a unit may not take is on no report read
-          here, so that is still the planner&rsquo;s.</p>
+          so a working offered to an MO unit runs as two units or more, and
+          today&rsquo;s own diagram is checked the same way, the line saying
+          <i>check</i> where it runs as one. <code>NM</code> is <em>no
+          multiple on one end</em>, a coupler fault at one cab: it can run
+          coupled, but not on that end, and which end couples is not on any
+          report read here. So an NM unit is offered workings that couple,
+          and wherever one does &mdash; today&rsquo;s own or the one
+          offered &mdash; the line says <i>check which end couples</i>.
+          Which routes a unit may not take is on no report either, so that
+          is still the planner&rsquo;s.</p>
         <p><b>MSE attending.</b> A unit listed in the box above is one the
           mobile engineers are going out to, so its lines get
           <code>MSE ATTENDING &mdash; NO REQUEST</code>. The units the export
