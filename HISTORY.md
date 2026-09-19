@@ -158,11 +158,15 @@ with the allocation in place of the evening Summary), and one for any
 other day places nothing and is named in the review, not dropped
 silently.
 
-**The tab's introduction was a column down the left** with the rest of
-the width empty and a paragraph that had grown into a wall. It is two
-columns now, the blurb and the warning on the left and how it works on
-the right with the turns as a short list, one column on a narrow screen;
-and the two ticks under the button stand together.
+**The tab's introduction was a column of text down the left** with the
+rest of the width empty and a paragraph that had grown into a wall,
+unlike the other three tabs. It is laid out as they are now: a short
+paragraph saying what the tab is for, the drop zone, and under it the
+warning as a bar the full width of the page — the weekday tab's *before
+you export* bar, in red. How it works, with the turns as a short list,
+folds away under *How it works* the way the Shortages tab's *what this
+list is working from* does; and the two ticks under the button stand
+together.
 
 ## 3.8.0 — 20 September 2026 — a day still to run, and the weekend prints
 

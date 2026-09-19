@@ -490,13 +490,12 @@
   .brfiles .chip.all{border-style:dashed}
   /* the berth tab's introduction: the blurb and the warning on the left,
      how it works on the right, one column on a narrow screen */
-  .brintro{display:grid; grid-template-columns:1fr; gap:14px 32px; margin-top:14px; align-items:start}
-  @media (min-width:1000px){ .brintro{grid-template-columns:minmax(0,5fr) minmax(0,6fr)} }
-  .brintro .whatfor{margin:0; max-width:none; color:#3C464D; font-size:14px}
-  .brintro .brwarn{margin:14px 0 0; max-width:none}
-  .brhow{font-size:14px; color:#3C464D; line-height:1.5}
-  .brhow p{margin:0 0 8px}
-  .brhow ul{margin:0 0 8px; padding-left:18px}
+  /* the warning under the drop zone: the weekday tab's "before you export"
+     bar, in red, because this one is a warning and not a setting */
+  .mustdo.brwarn{background:#FBEFEE; border-left-color:var(--danger)}
+  .mustdo.brwarn b{color:var(--danger)}
+  details.brhow{margin-top:10px}
+  .brhow ul{margin:8px 0; padding-left:18px}
   .brhow li{margin:4px 0}
   .bropts{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
   .brticks{display:flex; flex-direction:column; gap:6px}
@@ -968,29 +967,44 @@
 
   <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
     <h2 class="vh">Berth requests from the maintenance plan</h2>
-    <div class="brintro">
-      <div>
-        <p class="whatfor"><strong>Stuck on finding berth requests for your
-          Telex?</strong> Copy and paste your maintenance tab out of the
-          workbook and this will suggest berth requests for the depots. For
-          the defects, copy and paste the End of Days, Restrictions and
-          Performance Defects out of <strong>Equinox or EMS</strong> into the
-          defects box, as they come, and the requests for those are worded
-          off the fault.</p>
-        <p class="checknote brwarn"><b>Do not use this to build your Telex</b>This
-          is an experimental tool. It is a reference only, to help you make a
-          decision on berth requests, so please double-check all of its work
-          against the reports before anything goes on the Telex.</p>
-      </div>
-      <div class="brhow">
-        <p><b>How it works.</b> Drop the Diagram Summary printed
-          <strong>after allocation</strong> &mdash; PDF or CSV, it is the
-          UNITS column that is read, and the morning print has it empty
-          &mdash; with the Diagram Detail for today, tomorrow or both, or
-          leave the drop zone alone and the weekday books&rsquo; own pair is
-          used. Paste the plan, read it, and every line says where that unit
-          is, where it ends tonight, and the request in the depot&rsquo;s own
-          words.</p>
+    <p class="whatfor"><strong>Stuck on finding berth requests for your
+      Telex?</strong> Paste the maintenance tab out of the workbook below and
+      this suggests a berth request for every unit that needs one, in the
+      depot&rsquo;s own words. For the defects, paste the End of Days,
+      Restrictions and Performance Defects out of <strong>Equinox or
+      EMS</strong> into the defects box, as they come.</p>
+
+    <button class="berth berth-small" id="brberth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
+          <span>PDF or CSV &middot; any day, a Saturday included &middot; the
+            weekend diagram prints (.docx) stand in for a Detail &middot; the
+            <b>Allocation Summary</b> says where every unit starts and ends,
+            with or without a Diagram Summary &middot; or leave it and the
+            weekday books&rsquo; own pair is used</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
+    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
+
+    <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
+      an experimental tool. It is a reference only, to help you make a
+      decision on berth requests, so please double-check all of its work
+      against the reports before anything goes on the Telex.</p>
+
+    <details class="svrules brhow" id="brhow">
+      <summary>How it works: the reports to drop, and the two turns</summary>
+      <div class="svrules-body">
+        <p>Drop the Diagram Summary printed <strong>after allocation</strong>
+          &mdash; PDF or CSV, it is the UNITS column that is read, and the
+          morning print has it empty &mdash; with the Diagram Detail for
+          today, tomorrow or both, or leave the drop zone alone and the
+          weekday books&rsquo; own pair is used. Paste the plan, read it, and
+          every line says where that unit is, where it ends tonight, and the
+          request in the depot&rsquo;s own words.</p>
         <ul>
           <li><b>Day turn</b> &mdash; today&rsquo;s Summary and
             <em>tomorrow&rsquo;s</em> Detail: where each unit ends tonight
@@ -1008,7 +1022,8 @@
           <li><b>Allocation Summary</b> &mdash; a row per unit, where it
             starts and where it ends: drop it with the Detail and it places
             every unit, or with a Diagram Summary and it fills in the units
-            that Summary has no row for.</li>
+            that Summary has no row for. Today&rsquo;s allocation with
+            tomorrow&rsquo;s Summary and Detail is the day turn.</li>
         </ul>
         <p>The plan comes back in its own shape, sections, columns, order and
           colours, with <em>Suggested</em> and <em>Today</em> added on the
@@ -1016,23 +1031,7 @@
           with it empty comes back with the suggestions filling it. The rules
           are written out at the bottom.</p>
       </div>
-    </div>
-
-    <button class="berth berth-small" id="brberth" type="button">
-      <span class="berth-inner">
-        <span class="buffer" aria-hidden="true"></span>
-        <span class="berth-txt">
-          <strong id="brberthtxt">Drop the Diagram Summary printed after allocation, and the Detail for today, tomorrow or both</strong>
-          <span>PDF or CSV &middot; any day, a Saturday included &middot; the
-            weekend diagram prints (.docx) stand in for a Detail &middot; the
-            <b>Allocation Summary</b> says where every unit starts and ends,
-            with or without a Diagram Summary &middot; or leave it and the
-            weekday books&rsquo; own pair is used</span>
-        </span>
-      </span>
-    </button>
-    <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
-    <div class="brfiles" id="brfiles" hidden aria-label="Reports dropped on this tab"></div>
+    </details>
 
     <div class="brgrid">
       <label class="brfield">

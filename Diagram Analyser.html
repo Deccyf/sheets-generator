@@ -490,13 +490,12 @@
   .brfiles .chip.all{border-style:dashed}
   /* the berth tab's introduction: the blurb and the warning on the left,
      how it works on the right, one column on a narrow screen */
-  .brintro{display:grid; grid-template-columns:1fr; gap:14px 32px; margin-top:14px; align-items:start}
-  @media (min-width:1000px){ .brintro{grid-template-columns:minmax(0,5fr) minmax(0,6fr)} }
-  .brintro .whatfor{margin:0; max-width:none; color:#3C464D; font-size:14px}
-  .brintro .brwarn{margin:14px 0 0; max-width:none}
-  .brhow{font-size:14px; color:#3C464D; line-height:1.5}
-  .brhow p{margin:0 0 8px}
-  .brhow ul{margin:0 0 8px; padding-left:18px}
+  /* the warning under the drop zone: the weekday tab's "before you export"
+     bar, in red, because this one is a warning and not a setting */
+  .mustdo.brwarn{background:#FBEFEE; border-left-color:var(--danger)}
+  .mustdo.brwarn b{color:var(--danger)}
+  details.brhow{margin-top:10px}
+  .brhow ul{margin:8px 0; padding-left:18px}
   .brhow li{margin:4px 0}
   .bropts{display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px}
   .brticks{display:flex; flex-direction:column; gap:6px}
