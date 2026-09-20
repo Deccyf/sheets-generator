@@ -1903,7 +1903,8 @@ function whyOf(r) {
   const parts = [];
   const had = String(r.action || "").trim();
   if (had && had !== s.action) parts.push("plan had: " + had);
-  for (const n of s.notes) parts.push(n);
+  // where the unit stands is said once, by the facts, not again by the note
+  for (const n of s.notes) if (r.inTraffic || !/^not in traffic — at /.test(n)) parts.push(n);
   const f = factsOf(r);
   if (f) parts.push(f);
   return parts.join(" · ");
