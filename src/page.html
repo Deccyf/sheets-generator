@@ -119,9 +119,10 @@
           and laid out ready to paste.</li>
         <!-- experimental -->
         <li><b>Berth requests</b> (experimental) — not a book either: the
-          maintenance plan pasted from the workbook, given back with a
-          suggested berth request beside each line, to check rather than to
-          copy.</li>
+          maintenance plan pasted from the Mainline workbook or the Metro
+          Telex, given back in the same shape with a suggested berth request
+          in each Action column, to check rather than to copy; copied back
+          over the workbook's tab, or saved as Excel.</li>
         <!-- /experimental -->
       </ul>
       <p>The full rulebook — every rule a book followed — is on the Rules tab
@@ -601,6 +602,12 @@
         goes out <span class="note">(ticked for you when the reports are for today or a day to come)</span></label>
     </div>
     <div class="bracts">
+      <label class="brkind">Workbook
+        <select id="brkind" autocomplete="off">
+          <option value="auto">read from the paste</option>
+          <option value="mainline">Mainline plan</option>
+          <option value="metro">Metro Telex</option>
+        </select></label>
       <button class="btn" id="brgo" type="button">Read the plan</button>
       <button class="btn ghost" id="brclear" type="button">Start over</button>
     </div>
@@ -609,6 +616,7 @@
       <p class="status" id="brstatus" role="status"></p>
       <div class="board-acts" id="brbar" hidden>
         <button class="btn light" id="brcopy" type="button">Copy the plan back</button>
+        <button class="btn light" id="brxlsx" type="button">Save as Excel</button>
         <button class="btn light" id="brsave" type="button">Save as text</button>
         <button class="btn ghost light" id="brlist" type="button">Show nearest first</button>
         <span class="note" id="brnote"></span>
@@ -726,6 +734,26 @@
           unit the plan places by a request of its own &mdash; <code>GP
           BERTH FP 5S07</code> &mdash; is put on the road that working
           leaves from.</p>
+        <p><b>Two workbooks, one shape back.</b> The Mainline plan and the
+          Metro Telex both paste here, and which it is is read from the
+          paste &mdash; the Metro Telex heads its exam lists by depot and
+          has a <i>Location</i> column, where the unit stands tonight
+          &mdash; or set with the <b>Workbook</b> choice. What is pasted is
+          kept as it came: the titles, the heading rows, the blank rows
+          between groups, five columns. <b>Copy the plan back</b> puts that
+          shape on the clipboard with the request in the Action column, so
+          it pastes over the Maintenance Plan tab from A1; <b>Save as
+          Excel</b> writes the same sheet, with a Why sheet beside it; the
+          table on the page keeps the Why column. A Metro request is
+          written the Telex&rsquo;s way &mdash; <code>GPU - BERTH 05+03
+          (5F08)</code>, the road left off where the line&rsquo;s own
+          Location says it, <code>HOLD FOR EXAM</code> for a hold, the
+          London end, country end or middle for a portion &mdash; off the
+          Metro sheet&rsquo;s own lines. A Metro line&rsquo;s depot is its
+          section&rsquo;s (Slade Green, Gillingham) or its Where column; a
+          Networker or a 707 with neither is Slade Green&rsquo;s or
+          Gillingham&rsquo;s. The Location column places a unit no report
+          has, on the road it names.</p>
         <p><b>Slow down, and the XS50s.</b> A line whose job says <i>SLOW
           DOWN</i> is asked for whatever the date, and its list is the
           diagrams with the fewest miles first, off the Detail&rsquo;s own

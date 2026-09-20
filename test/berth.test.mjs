@@ -1311,3 +1311,74 @@ test("a slow-down job is asked for whatever the date, the fewest miles first; an
   assert.equal(x.action, "GP BERTH 5N01", JSON.stringify(x));
   assert.match(x.notes.join("; "), /XS50 — Slade Green or Gillingham does it/);
 });
+
+/* ---- the plan as pasted, and the plan back in the same shape ---- */
+test("the plan goes back in the workbook's own shape: titles, heading rows, blank rows, five columns", async () => {
+  const res = await weekday();
+  const text = ["Exams", "Unit Nr \tExam\t\tWhere\tAction", "375601\tA\tTUE AM 04/08\tAFK\t", "375602\tB\tMON PM 03/08\tAFK\t", "",
+                "375604\tC\tSAT AM 08/08\tRE\t", "", "Scheduled Maint", "Unit Nr \tWhere\tWhen\tFor\tAction", "375603\tRE\tAFTER 1250 MILES\tOIL CHANGE\t"].join("\n");
+  const out = B().run(text, res, {});
+  assert.equal(out.kind, "mainline");
+  assert.deepEqual(norm(out.groups.map(g => g.title)), ["Exams", "Scheduled Maint"]);
+  assert.equal(out.rows[2].gapBefore, true, "the blank row before 375604 is kept");
+  const back = B().toText(out, { workbook: true }).split("\n");
+  assert.equal(back[0], "Exams");
+  assert.equal(back[1], "Unit Nr\tExam\tWhen\tWhere\tAction", "the heading row, its blank cell filled");
+  assert.equal(back[2].split("\t").length, 5, "five columns, no Why: " + back[2]);
+  assert.match(back[2], /^375601\tA\tTUE AM 04\/08\tAFK\tAFK BERTH off 2A01$/);
+  assert.equal(back[4], "", "the blank row between the groups");
+  assert.match(back[5], /^375604\t/);
+  assert.equal(back[6], ""); assert.equal(back[7], "Scheduled Maint");
+  assert.ok(!/CHANGEOVERS|Why/.test(back.join("\n")), "no notices, no Why");
+  // the reading copy still carries the Why
+  assert.equal(B().toText(out).split("\n")[1].split("\t").length, 6);
+  const html = B().toHtml(out, true, { workbook: true });
+  assert.ok(!/<th[^>]*>Why<\/th>/.test(html) && /<tr[^>]*>(<td[^>]*>[^<]*<\/td>){5}<\/tr>/.test(html), "five cells a row");
+});
+
+test("the plan as a workbook: a Maintenance Plan sheet in the tab's shape and a Why sheet beside it", async () => {
+  const res = await weekday();
+  const out = B().run(BLANK, res, { ignore: "375698" });
+  const bytes = B().toXlsx(out, f => N.fflate.zipSync(f, { level: 0 }));
+  const files = N.fflate.unzipSync(bytes);
+  const dec = new TextDecoder();
+  const wb = dec.decode(files["xl/workbook.xml"]);
+  assert.match(wb, /<sheet name="Maintenance Plan" sheetId="1"/);
+  assert.match(wb, /<sheet name="Why" sheetId="2"/);
+  const s1 = dec.decode(files["xl/worksheets/sheet1.xml"]);
+  assert.match(s1, /<c r="A1" [^>]*t="inlineStr"><is><t[^>]*>Exams<\/t>/);
+  assert.match(s1, /<c r="E3" [^>]*t="inlineStr"><is><t[^>]*>AFK BERTH off 2A01<\/t>/);
+  assert.ok(!/<c r="F/.test(s1), "five columns on the plan sheet");
+  assert.match(dec.decode(files["xl/worksheets/sheet2.xml"]), /<c r="F3" /, "the Why is the sixth column of its own sheet");
+});
+
+test("the Metro Telex is read by its headings: the depot from the title, the unit's location from its column, its own request form", async () => {
+  const text = ["Stock Maintenance Controllers Daily Control Sheet", "", "Slade Green", "Unit Nr.\tExam\tSlot\tLocation\tAction",
+                "465049 (+1977)\tXC00\tSUN AM 20/09\tSG\tHOLD FOR EXAM", "465154\tXA05\tMON PM 21/09\tPLU\t", "",
+                "Traction Units - Please update when MO's are added", "Unit Nr.\tPriority\tWhen\tEnd Location\tAction",
+                "465181\tTRACTION DEFECT\tTBA\tCST\t", "", "XS75 OR XS30", "Unit Nr.\tMileage\tWhere\tAction", "465024\t174\tGPD PM\t"].join("\n");
+  const plan = B().parsePlan(text);
+  assert.equal(plan.kind, "metro");
+  assert.deepEqual(norm(plan.groups.map(g => g.section)), ["EXAMS", "DEFECTS", "DEFECTS"]);
+  const [a, b, c, d] = plan.rows;
+  assert.equal(a.unit, "465049"); assert.equal(a.raw[0], "465049 (+1977)", "the unit cell is kept as written");
+  assert.equal(a.where, "SG", "the depot is the section's"); assert.equal(a.at, "SG");
+  assert.equal(b.at, "PLU"); assert.equal(B().metroAt("PLU"), "PLMSTCS"); assert.equal(B().metroAt("VIC PM"), "VICTRIE"); assert.equal(B().metroAt("VICS PM"), "VICTGCS"); assert.equal(B().metroAt("DFD DOWNS"), "DARTFDS");
+  assert.equal(c.where, "SG/GI", "a traction defect is Slade Green's or Gillingham's"); assert.equal(c.at, "CST"); assert.equal(c.isDefect, true);
+  assert.equal(d.section, "DEFECTS"); assert.equal(d.what, "174");
+  // the same plan read as the Mainline one when told to
+  assert.equal(B().parsePlan(text, "mainline").kind, "mainline");
+  // the Metro form of a request
+  const form = B().metroForm;
+  const r = { at: "GPU", section: "EXAMS" };
+  assert.equal(form({ action: "GP BERTH 5F08/RP 5F04", list: [{ name: "5F08", hc: "5F08", dep: 5 * 60 + 3, road: "GRVPKUS" }, { name: "RP 5F04", hc: "5F04", dep: 4 * 60 + 50, road: "GRVPKUS" }] }, r),
+               "BERTH 05+03 (5F08)/C/END 04+50 (5F04)", "off its own road, no prefix; a portion is the country end");
+  assert.equal(form({ action: "GP BERTH 5F08", list: [{ name: "5F08", hc: "5F08", dep: 5 * 60 + 3, road: "GRVPKUS" }] }, { at: "", section: "REQUESTS" }),
+               "GPU - BERTH 05+03 (5F08)", "the road named where the line has no Location");
+  assert.equal(form({ action: "VIC BERTH 3M08", list: [{ name: "3M08", hc: "3M08", dep: 5 * 60 + 37, road: "VICTRIE" }] }, { at: "VIC PM", section: "EXAMS" }), "BERTH 05+37 (3M08)", "an empty move, and Victoria's sidings are the line's own VIC");
+  assert.equal(form({ action: "SG HOLD" }, { at: "SG", section: "EXAMS" }), "HOLD FOR EXAM");
+  assert.equal(form({ action: "SG HOLD" }, { at: "SG", section: "REQUESTS" }), "SG - HOLD");
+  assert.equal(form({ action: "STOPPED SG" }, r), "STOPPED SG");
+  assert.equal(form({ action: "TON BERTH 06+00 THEN AFK BERTH 15+00", list: [{ name: "06+00", hc: "5T01", dep: 360, road: "TONBDMS" }], then: { via: "AFK", entries: [{ name: "15+00", hc: "5W02", dep: 900, road: "ASHFDNS" }] } }, { at: "", section: "EXAMS" }),
+               "TON DM - BERTH 06+00 (5T01) THEN AFK - BERTH 15+00 (5W02)", "a THEN leg in the same form, off the Down Main sidings");
+});

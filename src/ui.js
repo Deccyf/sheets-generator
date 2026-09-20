@@ -304,6 +304,8 @@ for (const id of OPT_IDS) {
 function rememberOpts(extra) {
   const o = {};
   for (const id of OPT_IDS) { const el = document.getElementById(id); if (el) o[id] = !!el.checked; }
+  const kind = document.getElementById("brkind");
+  if (kind) o.brkind = kind.value;
   o.mode = (extra && extra.mode) || currentMode();
   saveJson(OPTS_LS_KEY, o);
 }
@@ -1444,7 +1446,12 @@ function decodeText(u8) {
   const out = $("#brout"), bar = $("#brbar"), note = $("#brnote");
   const statusEl = $("#brstatus"), revWrap = $("#brreviewwrap"), rev = $("#brreview");
   const list = $("#brlist"), defects = $("#brdefects"), mse = $("#brmse"), mseHint = $("#brmsehint"), keep = $("#brkeep"),
-        dayToRun = $("#brdaytorun"), clear = $("#brclear");
+        dayToRun = $("#brdaytorun"), clear = $("#brclear"), kind = $("#brkind"), xlsx = $("#brxlsx");
+  // which workbook the plan is from is remembered with the other options
+  if (kind) {
+    if (savedOpts.brkind && [...kind.options].some(o => o.value === savedOpts.brkind)) kind.value = savedOpts.brkind;
+    kind.addEventListener("change", () => rememberOpts());
+  }
   const zone = $("#brberth"), zoneTxt = $("#brberthtxt"), input = $("#brfile");
   let text = "", result = null, view = "plan";
   /* The pair this tab reads: the one dropped here, or failing that the
@@ -1639,7 +1646,8 @@ function decodeText(u8) {
     if (!res) { say(ownFiles.length ? "Those reports could not be read — take them off with their chips and drop them again." : NO_REPORTS, "err"); return; }
     if (!plan.value.trim() && !(defects && defects.value.trim())) { say("Paste the maintenance plan, or the defects export, into its box first.", "err"); return; }
     try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "",
-                                                         keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked) }); }
+                                                         keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked),
+                                                         kind: kind ? kind.value : "auto" }); }
     catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
     if (mseHint) mseHint.textContent = result.mseUnits.length
       ? "MSE on: " + result.mseUnits.join(" ") + " — list those they are attending here and read the plan again."
@@ -1648,7 +1656,7 @@ function decodeText(u8) {
     rev.textContent = "";
     for (const m of result.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
     revWrap.hidden = result.reviews.length === 0;
-    note.textContent = result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
+    note.textContent = (result.kind === "metro" ? "Metro Telex: " : "Mainline plan: ") + result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
       (result.ignored ? ", " + result.ignored + " out of service" : "") +
       (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
     say(result.lines + " plan lines read against " + result.date + " — look them over below, then copy the plan back or save it.", "go");
@@ -1670,25 +1678,36 @@ function decodeText(u8) {
     view = "list";
   }
   if (list) list.addEventListener("click", () => { if (!result) return; (view === "plan" ? showList : showPlan)(); });
-  /* Copied twice: as tab-separated text, which pastes back into the workbook
-     column for column, and as the coloured table, for anything that takes
-     HTML. */
+  /* Copied twice: as tab-separated text in the workbook's own shape - the
+     titles, the heading rows, the blank rows, five columns - which pastes
+     over the Maintenance Plan tab from A1; and as the coloured table, for
+     anything that takes HTML. The Why column stays on the page. */
   if ($("#brcopy")) $("#brcopy").addEventListener("click", async () => {
     if (!text) return;
-    const html = view === "plan" ? SHEETS_BERTH.toHtml(result, true)
+    const plain = view === "plan" ? SHEETS_BERTH.toText(result, { workbook: true }) : text;
+    const html = view === "plan" ? SHEETS_BERTH.toHtml(result, true, { workbook: true })
       : '<pre style="font-family:Calibri,Arial,sans-serif;font-size:11pt">' + text.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])) + "</pre>";
     try {
       if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({
-          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/plain": new Blob([plain], { type: "text/plain" }),
           "text/html": new Blob([html], { type: "text/html" }),
         })]);
-        say("Copied — pastes back into the workbook as columns.", "go");
-      } else { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+        say(view === "plan" ? "Copied in the workbook's shape — click A1 on the Maintenance Plan tab and paste." : "Copied.", "go");
+      } else { await navigator.clipboard.writeText(plain); say("Copied.", "go"); }
     } catch (e) {
-      try { await navigator.clipboard.writeText(text); say("Copied.", "go"); }
+      try { await navigator.clipboard.writeText(plain); say("Copied.", "go"); }
       catch (e2) { say("This browser would not let the page copy. Select the table and copy it by hand.", "err"); }
     }
+  });
+  // the same plan as a workbook: a Maintenance Plan sheet in the tab's shape, and the Why beside it
+  if (xlsx) xlsx.addEventListener("click", () => {
+    if (!result) return;
+    try {
+      const name = (result.kind === "metro" ? "METRO_TELEX_" : "MAINTENANCE_PLAN_") + String(result.date || "").replace(/\//g, "-") + ".xlsx";
+      download(name, SHEETS_BERTH.toXlsx(result, zipFn), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      say("Saved " + name + " — the Maintenance Plan sheet pastes over the workbook's tab, the Why sheet is for reading.", "go");
+    } catch (e) { say("The plan could not be written as a workbook: " + e.message, "err"); }
   });
   if ($("#brsave")) $("#brsave").addEventListener("click", () => {
     if (!text) return;

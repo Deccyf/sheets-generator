@@ -140,6 +140,36 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.14.0 — 20 September 2026 — the plan back in the workbook's shape, the Metro Telex, and Excel
+
+**The workbook's own shape.** The plan is read as it was pasted — the
+section titles, the heading rows, the blank rows between groups — and
+goes back the same way, five columns with the request in the Action
+column, so *Copy the plan back* pastes over the Maintenance Plan tab
+from A1. The Why column stays on the page and in the text file.
+
+**Save as Excel.** The same plan as a workbook, written by the sheets'
+own writer: a *Maintenance Plan* sheet in the tab's shape and column
+widths, every cell text so a unit number and a time paste as typed, and
+a *Why* sheet beside it.
+
+**The Metro Telex.** The Metro Stock Telex pastes here too, and is read
+by its own headings — *Unit Nr.*, *Exam*, *Slot*, *Location*, *Action* —
+the depot from the section it is under (Slade Green, Gillingham) or its
+Where column, a Networker or a 707 with neither being Slade Green's or
+Gillingham's, and the Location column placing a unit no report has, on
+the road it names (PLU, GPU, GPS, GPD, SGU, VICS, ORPS, DFD DOWNS, BGM).
+Which workbook it is is read from the paste, or set with the *Workbook*
+choice. Its requests are written the Telex's way, off the Metro sheet's
+own lines: *BERTH 05+37 (3M08)*, *GPU - BERTH 05+03 (5F08)* where the
+road is not the line's own Location, *HOLD FOR EXAM*, the London end,
+country end or middle for a portion, *SG PM* for where a unit ends; one
+working a line, two at most. The rules behind the Metro requests are
+the Mainline ones for now, and read against the Sunday Telex they land
+on the same working where the Telex names one off the unit's own road
+and differ where the Telex names a working for its own reasons — the
+next calibration.
+
 ## 3.13.0 — 20 September 2026 — four days, slow down, and the XS50s
 
 **Four days.** A request is made for anything due within four days, not

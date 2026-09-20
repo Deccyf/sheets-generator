@@ -56,8 +56,23 @@ const PLACES = {
   SU:   ["VICTRIE", "VICTGCS"],
   // the metro fleet's outstations
   ORP:  ["ORPNDSG", "ORPNGTN"],
-  DFD:  ["DARTFUS", "DARTFD"],
+  DFD:  ["DARTFUS", "DARTFDS", "DARTFD"],
+  PLU:  ["PLMSTCS"],
+  BGM:  ["BELNGMS"],
 };
+/* ---------- the Metro Telex's own words for where a unit stands ----------
+   Its Location column says where the unit is tonight - "VIC PM", "GPU",
+   "DFD DOWNS" - by the sidings, and its requests are written the same
+   way: "GPU - BERTH 05+03 (5F08)". The words are read to the Genius codes
+   for placing a unit on no report, and written back off the road a
+   departure leaves from. */
+const METRO_AT = { PLU: "PLMSTCS", GPU: "GRVPKUS", GPS: "GRVPCSD", GPD: "GRVPKDS", GP: "GRVPCSD", SGU: "SLADGUS", SGUPS: "SLADGUS",
+  SG: "SLADEGD", VICS: "VICTGCS", VIC: "VICTRIE", ORP: "ORPNGTN", ORPS: "ORPNDSG", DFD: "DARTFD", "DFD DOWNS": "DARTFDS",
+  "DFD UPS": "DARTFUS", TON: "TONBDG", "TON PLT": "TONBDG", "TON JUB": "TONBPMY", "TON DM": "TONBDMS", CST: "CANONST", CHX: "CHRX", BGM: "BELNGMS",
+  FAV: "FAVRSHM", GI: "GLNGDEP", "GI UPS": "GLNGMUS", RE: "RAMSGTD", AFK: "ASHFDNS" };
+const METRO_WORD = (() => { const m = {}; for (const [w, c] of Object.entries(METRO_AT)) if (!m[c]) m[c] = w; return m; })();
+const metroWord = at => String(at || "").toUpperCase().replace(/\s+(AM|PM)$/, "").replace(/\s+/g, " ").trim();
+const metroAt = at => METRO_AT[metroWord(at)] || null;
 /* The roads of a place, by the name the depot uses for each. A unit goes
    out from the road it landed on - the Up Sidings at Slade Green have
    their own diagrams, Ashford's East Berthing and Up Sidings theirs - so a
@@ -72,7 +87,8 @@ const ROAD_NAMES = {
   TONBDMS: "Down Main sidings", TONBPMY: "Jubilee Sidings", TONBDG: "platform", HASTPSD: "Park Sidings", HASTING: "station",
   FAVRUPS: "Up Sidings", FAVRBRD: "Back Road", FAVRSHM: "station", VICTGCS: "Grosvenor Sidings", VICTRIE: "station",
   GLNGDEP: "Depot", GLNGHMK: "platform", GLNGMUS: "Up Sidings", FLKSETR: "Turnback Road", FLKSTNE: "station",
-  DARTFUS: "Up Sidings", DARTFD: "station", ORPNDSG: "Down Sidings", ORPNGTN: "station",
+  DARTFUS: "Up Sidings", DARTFDS: "Down Sidings", DARTFD: "station", ORPNDSG: "Down Sidings", ORPNGTN: "station",
+  PLMSTCS: "Sidings", BELNGMS: "Sidings",
 };
 const roadName = code => ROAD_NAMES[code] || code;
 // the roads a unit cannot be shunted off for a departure, and the depots that are one road
@@ -316,38 +332,90 @@ function placeFromAction(action) {
   if (m && known(m[1])) return m[1];
   return null;
 }
-function parsePlan(text) {
-  const rows = [], reviews = [], order = [];
-  let section = null, n = 0;
-  for (const raw of String(text || "").split(/\r?\n/)) {
-    const f = raw.split("\t").map(x => x.trim());
-    if (!f.some(Boolean)) continue;
+/* ---------- reading the plan as pasted ----------
+   Two workbooks paste here - the Mainline plan and the Metro Telex - and
+   each is read by its own headings: "Unit Nr", "Exam", "When", "Where",
+   "Action" on the one; "Unit Nr.", "Exam", "Slot", "Location", "Action" on
+   the other, where Location is where the unit stands tonight and the
+   depot is the section's own - Slade Green, Gillingham. A title is the
+   line above a heading row. What is pasted is kept as it came - the
+   titles, the heading rows, the blank rows between groups - so the plan
+   goes back into the workbook in the same shape. */
+const HEADER_RE = /^unit\s*nr/i;
+const UNIT_CELL_RE = /^(\d{6})\b/;
+function rolesOf(header) {
+  const roles = {};
+  header.forEach((h, i) => {
+    const t = h.toLowerCase();
+    if (!t) return;
+    if (roles.unit === undefined && /^unit/.test(t)) roles.unit = i;
+    else if (/action/.test(t)) roles.action = i;
+    else if (/^days$/.test(t)) roles.days = i;
+    else if (/slot|when|target date|^date/.test(t)) roles.when = i;
+    else if (/end location|^location/.test(t)) roles.at = i;
+    else if (/^where/.test(t)) roles.where = i;
+    else if (/exam|priority|^for|defect|mileage/.test(t)) roles.what = i;
+  });
+  return roles;
+}
+const CANON_ROLES = {
+  EXAMS:   { unit: 0, what: 1, when: 2, where: 3, action: 4 },
+  DEFECTS: { unit: 0, days: 1, what: 2, when: 3, action: 4 },
+  OTHER:   { unit: 0, where: 1, when: 2, what: 3, action: 4 },
+};
+// the Metro Telex's exam lists are headed by the depot
+const METRO_DEPOT_TITLE = { "SLADE GREEN": "SG", "GILLINGHAM": "GI" };
+function sectionOfTitle(title, header) {
+  const m = SECTION_RE.exec(title);
+  if (m) return m[1].replace(/\s*\/\s*/, "/").toUpperCase();
+  const t = title.toUpperCase(), h = header.join(" ").toLowerCase();
+  if (/SCHEDULED MAINT/.test(t)) return "SCHEDULED MAINT";
+  if (METRO_DEPOT_TITLE[t] || /EXAM/.test(t) || /exam|slot/.test(h)) return "EXAMS";
+  if (/DEFECT|TRACTION|XS75|XS30/.test(t) || /priority|defect/.test(h)) return "DEFECTS";
+  return "REQUESTS";
+}
+function parsePlan(text, kindWanted) {
+  const rows = [], reviews = [], order = [], groups = [];
+  const lines = String(text || "").split(/\r?\n/).map(l => l.split("\t").map(x => x.trim()));
+  let group = null, pendingTitle = null, n = 0, blanks = 0, metroHeads = 0, metroUnits = 0;
+  const open = (title, header) => {
+    const section = sectionOfTitle(title, header);
+    const canon = CANON_ROLES[section === "EXAMS" ? "EXAMS" : section === "DEFECTS" ? "DEFECTS" : "OTHER"];
+    const roles = rolesOf(header), used = new Set(Object.values(roles));
+    for (const k of Object.keys(canon)) if (roles[k] === undefined && !used.has(canon[k]) && !header.length) roles[k] = canon[k];
+    // a heading row with a blank cell: the canonical name fills it
+    if (header.length) for (const k of Object.keys(canon)) if (roles[k] === undefined && !used.has(canon[k]) && !(header[canon[k]] || "")) roles[k] = canon[k];
+    group = { id: groups.length, title, header, section, roles, rows: 0, depot: METRO_DEPOT_TITLE[title.toUpperCase()] || null };
+    groups.push(group);
+    if (order.indexOf(section) < 0) order.push(section);
+    if (/slot|location/.test(header.join(" ").toLowerCase())) metroHeads++;
+  };
+  for (const f of lines) {
+    if (!f.some(Boolean)) { blanks++; continue; }
     n++;
-    const title = SECTION_RE.exec(f[0]);
-    if (title) {
-      // the section word alone: "Exams — wk 39" is still the Exams
-      section = title[1].replace(/\s*\/\s*/, "/").toUpperCase();
-      if (order.indexOf(section) < 0) order.push(section);
-      continue;
-    }
-    if (/^Unit\s*Nr/i.test(f[0])) continue;
-    if (!UNIT_RE.test(f[0])) continue;
-    if (!section) {
+    const unitCell = UNIT_CELL_RE.exec(f[0]);
+    if (HEADER_RE.test(f[0])) { open(pendingTitle || "", f); pendingTitle = null; blanks = 0; continue; }
+    if (!unitCell) { pendingTitle = f[0]; blanks = 0; continue; }
+    if (pendingTitle && SECTION_RE.test(pendingTitle)) { open(pendingTitle, []); pendingTitle = null; }
+    if (!group) {
       reviews.push("Line " + n + " (" + f[0] + ") is above any section title, so which list it belongs to is not known — it is read as a request.");
-      section = "REQUESTS"; if (order.indexOf(section) < 0) order.push(section);
+      open("Requests", []);
     }
-    const row = { section, unit: f[0], line: n, raw: f.slice(0, 5) };
+    const g = group, R = g.roles, at = k => R[k] !== undefined ? (f[R[k]] || "") : "";
+    const row = { section: g.section, group: g.id, unit: unitCell[1], line: n, raw: f.slice(0, 5), gapBefore: blanks > 0 && g.rows > 0 };
     while (row.raw.length < 5) row.raw.push("");
-    if (section === "EXAMS") {
-      row.what = f[1] || ""; row.when = f[2] || ""; row.where = f[3] || ""; row.action = f[4] || "";
-    } else if (section === "DEFECTS") {
-      row.days = parseInt(f[1], 10); row.what = f[2] || ""; row.when = f[3] || "";
-      row.where = defectHome(row.unit); row.action = f[4] || ""; row.isDefect = true;
-      row.category = defectCategory(row.what);
-    } else {
-      row.where = f[1] || ""; row.when = f[2] || ""; row.what = f[3] || ""; row.action = f[4] || "";
-    }
+    g.rows++; blanks = 0;
+    row.what = at("what"); row.when = at("when"); row.action = at("action");
+    row.at = at("at");                                    // where it stands tonight, the Metro Telex's word
+    row.where = at("where") || g.depot || "";
+    if (g.section === "DEFECTS") {
+      row.days = parseInt(at("days"), 10); row.isDefect = true; row.category = defectCategory(row.what);
+      if (!row.where) row.where = defectHome(row.unit);
+    } else if (!row.where) row.where = defectHome(row.unit);
     row.places = row.where.split(/[\/,]/).map(x => x.trim().toUpperCase()).filter(Boolean);
+    // "465049 (+1977)", "707012 (+4266) SPEED UP", "465019 or 154 or 177": the unit is the first, the rest is kept as written
+    if (/\bor\b/i.test(f[0])) reviews.push("Line " + n + " (" + f[0] + ") names several units: the first is read.");
+    if (/^(465|466|707)/.test(row.unit)) metroUnits++;
     /* Two words anywhere on the line change what a defect needs. AMAT is
        awaiting materials - no berth request, unless it is also restricted;
        MSE is the mobile engineers, who may go out to it instead. */
@@ -356,7 +424,9 @@ function parsePlan(text) {
     row.mse = /\bMSE\b/.test(all);
     rows.push(row);
   }
-  return { rows, reviews, order };
+  const kind = kindWanted && kindWanted !== "auto" ? kindWanted : (metroHeads > 0 || (rows.length && metroUnits > rows.length / 2) ? "metro" : "mainline");
+  for (const r of rows) r.kind = kind;
+  return { rows, reviews, order, groups, kind };
 }
 
 /* ---------- when a line is due ----------
@@ -374,6 +444,8 @@ function whenOf(text, today) {
   const out = { text: t, date: null, half: null, miles: null, asap: false, time: null };
   if (!t) return out;
   if (/^ASAP$/.test(t)) { out.asap = true; return out; }
+  // an Excel date that pasted as its serial number: days since 30/12/1899
+  if (/^4\d{4}$/.test(t)) { out.date = new Date(Date.UTC(1899, 11, 30) + parseInt(t, 10) * 86400000); return out; }
   const mi = /AFTER\s+(\d[\d,]*)\s+MILES/.exec(t);
   if (mi) { out.miles = parseInt(mi[1].replace(/,/g, ""), 10); return out; }
   const full = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(t);
@@ -675,7 +747,7 @@ function requestName(depot, fin) {
 const SECTION_OF = { GP: "GROVE PARK", GPD: "GROVE PARK", XSE: "WEST MARINA", AFK: "ASHFORD", RE: "RAMSGATE", RAM: "RAMSGATE",
   TON: "TONBRIDGE", GI: "GILLINGHAM", GLM: "GILLINGHAM", SG: "SLADE GREEN", SGUPS: "SLADE GREEN", VIC: "VICTORIA", SU: "VICTORIA",
   DVP: "DOVER PRIORY", FAV: "FAVERSHAM", FKE: "FOLKESTONE EAST", HGS: "HASTINGS", CHX: "CHARING CROSS", CST: "CANNON STREET",
-  ORP: "ORPINGTON", DFD: "DARTFORD" };
+  ORP: "ORPINGTON", DFD: "DARTFORD", PLU: "PLUMSTEAD" };
 /* the books for a date: dropped on the tab and built there (genius.lines),
    or the weekday books themselves (secsByDay, keyed by weekday letter) */
 function bookLines(genius, date) {
@@ -1067,7 +1139,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
     const startsHere = !!(s0 && codes.indexOf(s0.code) >= 0);
     if (startsHere && s0.dep != null && s0.hcOut) outs.push({ idx: 0, code: s0.code, dep: s0.dep, hc: s0.hcOut });
     // a diagram that starts here is named by its start: its PM leg off a stand back here is the same working
-    if (!atHome && !startsHere && (HEADCODE_DEPOTS.has(from) || opts.nested))
+    if (!atHome && !startsHere && !opts.metro && (HEADCODE_DEPOTS.has(from) || opts.nested))
       for (const st of depotStands(d.stops)) if (codes.indexOf(st.code) >= 0 && st.hcOut) outs.push({ idx: st.idx, code: st.code, dep: st.dep, hc: st.hcOut });
     for (const o of outs) {
       const rest = o.idx ? { ...d, stops: d.stops.slice(o.idx) } : d;
@@ -1202,7 +1274,8 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
              : (a, b) => (rankOf(a) - rankOf(b)) || (a.dep - b.dep);
   const ranked = pick0.slice().sort((a, b) => ownFirst(a, b) || best(a, b));
   // and a slow-down job takes the four with the fewest miles, the way the plan lists them
-  const cap = Math.min(ranked.length > (opts.demand || 1) ? 3 : 6, opts.lowMiles ? 4 : 6);
+  // ...and the Metro Telex names one working a line, two at most
+  const cap = Math.min(ranked.length > (opts.demand || 1) ? 3 : 6, opts.lowMiles ? 4 : 6, opts.metro ? 2 : 6);
   // in the order the sheet prints them, which is the order the plan lists them in
   const printed = e => { const m = /^(\d\d)[ +](\d\d)$/.exec(e.name); return m ? +m[1] * 60 + +m[2] : e.dep; };
   const byPrint = (a, b) => (printed(a) - printed(b)) || (a.dep - b.dep);
@@ -1238,7 +1311,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
      departure listed tracks the unit back through the one depot, that is
      the next leg, written as the plan writes it: "TON BERTH 06+00 THEN
      AFK BERTH 15+00/5R51". */
-  let then = "";
+  let then = "", thenLeg = null;
   if (!opts.nested) {
     const hubs = [...new Set(listed.flatMap(e => top(e).filter(x => x.how === "hub").map(x => x.via)))];
     for (const H of hubs) {
@@ -1248,8 +1321,10 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
       const parts = legs.concat(moves.map(m => "fleet move " + m.hc + " " + m.time + " (" + m.days + ")"));
       notes.push("then " + H + " has " + (parts.length ? parts.join(", ") : "nothing on the Detail") + " to " + targets.join("/") + " when it is due");
       const next = legs.concat(moves.map(moveName));
-      if (!atHome && hubs.length === 1 && H !== from && next.length && listed.every(e => top(e)[0].how === "hub" && top(e)[0].via === H))
+      if (!atHome && hubs.length === 1 && H !== from && next.length && listed.every(e => top(e)[0].how === "hub" && top(e)[0].via === H)) {
         then = " THEN " + H + " BERTH " + [...new Set(next)].join("/");
+        thenLeg = { via: H, entries: (on2 && on2.entries || []).concat(moves.map(m => ({ name: moveName(m), hc: moveName(m), dep: minOf(m.time), road: (PLACES[H] || [])[0] }))) };
+      }
     }
   }
   if (more.length) notes.push("also: " + more.map(nameOf).join(", "));
@@ -1266,7 +1341,8 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
     const back = fitMO(all).filter(e => !peak.some(p => p.wid === e.wid)).sort((a, b) => a.dep - b.dep);
     if (back.length) notes.push("peak diagrams, out for the day; back here the same day: " + back.slice(0, 4).map(e => e.name).join(", "));
   }
-  return { action: from + " BERTH " + names.join("/") + then, notes, taken: { diag: first.d.diag, work: lead.wid, kind }, mates,
+  const entries = listed.map(e => ({ name: nameOf(e), hc: e.hc, dep: e.dep, road: e.road }));
+  return { action: from + " BERTH " + names.join("/") + then, notes, taken: { diag: first.d.diag, work: lead.wid, kind }, mates, entries, thenLeg,
            sharing: lead.sharing, workName: lead.hc, reach: first.via, how: first.how, portioned: !!portionOf_(lead) };
 }
 function matesAtStart(mine, days) {
@@ -1427,7 +1503,7 @@ function suggestCore(r, ctx) {
   const t = r.places[0] || "";
   const targets = targetsOf(r);
   if (r.ignored) { s.action = "O/O/S"; return s; }
-  if (r.amat && !/^(MO|NM)$/.test(r.category || "")) {
+  if (r.amat && r.kind !== "metro" && !/^(MO|NM)$/.test(r.category || "")) {
     s.action = "AMAT — NO REQUEST"; return s;
   }
   if (r.mse && ctx && ctx.mse && ctx.mse.has(r.unit)) { s.action = "MSE ATTENDING — NO REQUEST"; return s; }
@@ -1448,7 +1524,7 @@ function suggestCore(r, ctx) {
      once, on the line that came first; its other lines carry the same
      request rather than take a second train the unit cannot be on. */
   if (ctx && ctx.already) {
-    s.action = ctx.already;
+    s.action = ctx.already.action; s.list = ctx.already.list; s.then = ctx.already.then; s.reach = ctx.already.reach;
     if (r.tier <= 2 && targets.length && r.inTraffic && ctx.days && ctx.days.size && !r.endsAtTarget) s.notes.push("no call at " + r.places.join("/") + " today");
     s.notes.push("the same request as its other line");
     return s;
@@ -1495,7 +1571,7 @@ function suggestCore(r, ctx) {
     /* the road it landed on, where the reports say; a unit placed by the
        plan's own word is anywhere in the depot. ASAP, a mileage trigger
        or a defect is wanted in the day. */
-    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1, mo: !!r.mo, lowMiles: !!r.slowDown,
+    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1, mo: !!r.mo, lowMiles: !!r.slowDown, metro: r.kind === "metro",
                    contain: !!(r.mo && r.section === "DEFECTS" && ((r.days || 0) >= 1 || (r.ahead != null && r.ahead >= 1))),
                    dayFirst: !!(r.when.asap || r.when.miles != null || r.isDefect), ...(reachBy >= 0 ? { reachBy } : {}) };
     if (ctx.dayToRun && r.starts && r.starts.place && r.starts.place !== "?") {
@@ -1508,7 +1584,7 @@ function suggestCore(r, ctx) {
     s.action = lst.action;
     if (!near) s.notes.push("due " + dueOf(r));
     s.notes = s.notes.concat(lst.notes);
-    s.taken = lst.taken; s.matesOn = lst.mates; s.reach = lst.reach;
+    s.taken = lst.taken; s.matesOn = lst.mates; s.reach = lst.reach; s.list = lst.entries; s.then = lst.thenLeg;
     // a train of two diagrams or more, unless the request is for one portion of it
     if (lst.sharing.length > 1 && !lst.portioned) s.notes.push(lst.workName + " runs as " + lst.sharing.length + " units (" + lst.sharing.join("+") + ")");
     if (r.category === "NM" && lst.sharing.length > 1) s.notes.push("NM — check which end couples on " + lst.workName);
@@ -1602,6 +1678,7 @@ function suggestCore(r, ctx) {
           .sort((a, b) => ((inWin(b.k) ? 1 : 0) - (inWin(a.k) ? 1 : 0)) || (a.k.swap.theirs.dep - b.k.swap.theirs.dep));
         listed.splice(0, listed.length, ...order.map(o => o.k)); outs.splice(0, outs.length, ...order.map(o => o.name));
         s.action = at + " BERTH " + outs.join("/");
+        s.list = listed.map((k, n) => ({ name: outs[n], hc: k.swap.theirs.hcOut, dep: k.swap.theirs.dep, road: k.swap.theirs.code }));
         s.notes.push("in on " + (sw.mine.hcIn || "?") + " " + hhmm(sw.mine.arr, /^5/.test(sw.mine.hcIn || "")) +
                      (sw.mine.dep != null ? ", booked out " + hhmm(sw.mine.dep, /^5/.test(sw.mine.hcOut || "")) + " on " + (sw.mine.hcOut || "?") : ", stays"));
         listed.forEach((k, n) => s.notes.push("out on " + outs[n] + ": " + k.day.diag + ", ends " + k.day.endPlace + " " + hhmm(k.day.endTime, true) +
@@ -1681,6 +1758,48 @@ function roadFromAction(action, place, pool) {
   }
   return roads.size === 1 ? [...roads][0] : null;
 }
+/* ---------- the Metro Telex's form ----------
+   "BERTH 05+37 (3M08)": the time the sheet prints and the headcode, off
+   the road the departure leaves from - "GPU - BERTH 05+03 (5F08)" - the
+   road left off where the line's own Location column already says it. A
+   hold at the depot for an exam is "HOLD FOR EXAM". A portion is the
+   London end, the country end or the middle. */
+function metroForm(s, r) {
+  const a = s.action || "";
+  if (!a) return a;
+  // the road the line's own Location names - VIC and VICS are both Victoria's sidings
+  const ownCode = r.at ? metroAt(r.at) : null;
+  const wordOf = (place, entries) => {
+    const road = entries && entries.length && entries[0].road;
+    return (road && METRO_WORD[road]) || METRO_WORD[(PLACES[place] || [])[0]] || place;
+  };
+  const sameRoad = (place, entries) => {
+    const road = entries && entries.length && entries[0].road;
+    return !!ownCode && (road ? road === ownCode : (PLACES[place] || []).indexOf(ownCode) >= 0);
+  };
+  const item = (name, e) => {
+    const p = /^([FMR]P) (.*)$/.exec(name), nm = p ? p[2] : name;
+    const time = /^\d\d[ +:]\d\d/.test(nm) ? nm : (e && e.dep != null ? hhmm(e.dep, /^[35]/.test(e.hc || "")) : nm);
+    return (p ? { FP: "L/END ", RP: "C/END ", MP: "MIDDLE " }[p[1]] : "") + time + (e && e.hc ? " (" + e.hc + ")" : "");
+  };
+  const leg = (place, names, entries) => {
+    const w = wordOf(place, entries);
+    const items = names.split("/").map((nm, i) => item(nm, entries && entries[i]));
+    return (sameRoad(place, entries) ? "" : w + " - ") + "BERTH " + items.join("/");
+  };
+  let m = /^([A-Z]+) BERTH (.+?)(?: THEN ([A-Z]+) BERTH (.+))?$/.exec(a);
+  if (m && !/ off | — /.test(a)) {
+    let out = leg(m[1], m[2], s.list);
+    if (m[3]) out += " THEN " + leg(m[3], m[4], s.then && s.then.entries);
+    return out;
+  }
+  m = /^([A-Z]+) HOLD( FOR MON)?$/.exec(a);
+  if (m) return r.section === "EXAMS" ? "HOLD FOR EXAM" + (m[2] ? " (MON)" : "") : wordOf(m[1]) + " - HOLD" + (m[2] || "");
+  // where it ends is written as the Telex writes its Location column: "SG PM"
+  m = /^ENDS ([A-Z]+)( AM)?$/.exec(a);
+  if (m) return ((r.ends && r.ends.code && METRO_WORD[r.ends.code]) || wordOf(m[1])) + (m[2] ? " AM" : " PM");
+  return a;
+}
 /* ---------- one plan, one day ---------- */
 /* The export's rows become the plan's DEFECTS lines. Where the plan also
    has a Defects section, the export's row for the same unit and priority
@@ -1698,11 +1817,15 @@ function mergeDefects(plan, defects) {
   const rows = plan.rows.filter(r => r.section !== "DEFECTS");
   const order = plan.order.slice();
   if (order.indexOf("DEFECTS") < 0) order.push("DEFECTS");
+  // the export's rows go under the plan's own Defects title, or one of their own
+  const groups = (plan.groups || []).slice();
+  let dg = groups.find(g => g.section === "DEFECTS");
+  if (!dg) { dg = { id: groups.length, title: "Defects", header: [], section: "DEFECTS", roles: CANON_ROLES.DEFECTS, rows: 0 }; groups.push(dg); }
   for (const d of defects.rows) {
     const twins = kept.get(d.unit + "|" + d.category + "|" + (d.target || "").slice(0, 10));
     const twin = twins && twins.length ? twins.shift() : null;
     const row = {
-      section: "DEFECTS", unit: d.unit, line: 100000 + d.line,
+      section: "DEFECTS", group: dg.id, kind: plan.kind, unit: d.unit, line: 100000 + d.line,
       days: d.days, what: d.priority, when: d.target, isDefect: true, category: d.category,
       where: d.repairDepot || defectHome(d.unit),
       action: twin ? twin.action : "",
@@ -1716,11 +1839,11 @@ function mergeDefects(plan, defects) {
   }
   // plan defect lines the export did not carry stay as they were
   for (const rs of kept.values()) for (const r of rs) rows.push(r);
-  return { rows, reviews: plan.reviews.concat(defects.reviews), order };
+  return { rows, reviews: plan.reviews.concat(defects.reviews), order, groups, kind: plan.kind };
 }
 function run(planText, genius, opts) {
   opts = opts || {};
-  const plan = mergeDefects(parsePlan(planText), opts.defects ? parseDefects(opts.defects) : null);
+  const plan = mergeDefects(parsePlan(planText, opts.kind), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
   const sumDates = [...new Set((genius && genius.summary || []).map(r => r.date))].filter(Boolean);
@@ -1851,14 +1974,16 @@ function run(planText, genius, opts) {
     let standing = null;
     if (!day) {
       standing = placeFromAction(row.action) ||
-        plan.rows.filter(o => o.unit === row.unit && o !== row).map(o => placeFromAction(o.action)).find(Boolean) || null;
+        plan.rows.filter(o => o.unit === row.unit && o !== row).map(o => placeFromAction(o.action)).find(Boolean) ||
+        (metroAt(row.at) ? placeOf(metroAt(row.at)) : null) || null;
       if (standing) day = { unit: row.unit, diags: [], rows: [], stops: [], splits: false, splitsAt: [], raw: [],
                             endCode: (PLACES[standing] || [])[0] || standing, endTime: null, startCode: null, startTime: null };
     }
     r.standing = standing;
     // the road, where the plan's own request names a working out of the place
     r.standingRoad = standing ? (roadFromAction(row.action, standing, tomDays) ||
-      plan.rows.filter(o => o.unit === row.unit && o !== row).map(o => roadFromAction(o.action, standing, tomDays)).find(Boolean) || null) : null;
+      plan.rows.filter(o => o.unit === row.unit && o !== row).map(o => roadFromAction(o.action, standing, tomDays)).find(Boolean) ||
+      metroAt(row.at) || null) : null;
     if (day) {
       r.diags = day.diags; r.splits = day.splits; r.splitsAt = day.splitsAt;
       r.ends = { code: day.endCode, place: placeOf(day.endCode), time: day.endTime };
@@ -1897,7 +2022,7 @@ function run(planText, genius, opts) {
     const k = roadKey(r);
     r.suggest = suggest(r, { mine: day, days, tomDays, tomDow, wanted, taken, mse, keep: !!opts.keep, dayToRun: !!opts.dayToRun,
                              already: requested.get(row.unit) || null, demand: k ? onRoad.get(k).size : 1 });
-    if (/BERTH|C\/O|HOLD/.test(r.suggest.action) && !requested.has(row.unit)) requested.set(row.unit, r.suggest.action);
+    if (/BERTH|C\/O|HOLD/.test(r.suggest.action) && !requested.has(row.unit)) requested.set(row.unit, r.suggest);
     if (r.suggest.taken) {
       const t = r.suggest.taken;
       if (!t.kind) {                                                   // a swap today: one unit off that working, once
@@ -1962,9 +2087,11 @@ function run(planText, genius, opts) {
     r.suggest.notes.unshift(o.unit + "'s " + (o.what || "") + " exam " + sw.otherDue + " brought forward — it ends " + depot + " " + sw.ends + " tonight");
     o.suggest.notes.push("exam brought forward for " + r.unit + " — see EXAM SWAPS");
   }
+  // the Metro Telex writes its requests its own way: "GPU - BERTH 05+03 (5F08)", "HOLD FOR EXAM"
+  if (plan.kind === "metro") for (const r of out) r.suggest.action = metroForm(r.suggest, r);
   const tiered = out.slice().sort(byPriority);
   const inTraffic = new Set(out.filter(r => r.inTraffic).map(r => r.unit)).size;
-  return { rows: out, tiered, notices, swaps, order: plan.order, reviews, date, today, lines: out.length,
+  return { rows: out, tiered, notices, swaps, order: plan.order, groups: plan.groups, kind: plan.kind, reviews, date, today, lines: out.length,
            units: new Set(plan.rows.map(r => r.unit)).size, inTraffic, ignored: ignore.size,
            mseUnits: [...new Set(out.filter(r => r.mse).map(r => r.unit))], mseAttending: mse.size,
            suggested: out.filter(r => !r.action && r.suggest.action).length };
@@ -2050,18 +2177,22 @@ const EXAM_CLASS = what => {
 };
 function shape(res) {
   const sections = [];
-  for (const sec of res.order) {
-    const rows = res.rows.filter(r => r.section === sec);
+  const groups = res.groups && res.groups.length ? res.groups : res.order.map((sec, i) => ({ id: "s" + i, title: SECTION_TITLE[sec] || sec, header: [], section: sec }));
+  for (const g of groups) {
+    const rows = res.rows.filter(r => (r.group !== undefined && res.groups && res.groups.length) ? r.group === g.id : r.section === g.section);
     if (!rows.length) continue;
+    // the heading row as pasted, a blank cell taking the canonical name
+    const canon = SECTION_COLS[g.section] || SECTION_COLS.REQUESTS;
+    const headers = canon.map((h, i) => (g.header && g.header[i]) || h).concat(["Why"]);
     sections.push({
-      key: sec, title: SECTION_TITLE[sec] || sec,
-      headers: (SECTION_COLS[sec] || SECTION_COLS.REQUESTS).concat(["Why"]),
+      key: g.section, title: g.title || SECTION_TITLE[g.section] || g.section, headers,
       rows: rows.map(r => {
         const action = (r.suggest && r.suggest.action) || r.raw[ACTION_COL] || "";
         return {
           cells: r.raw.slice(0, ACTION_COL).concat([action, whyOf(r)]),
-          cls: sec === "EXAMS" ? EXAM_CLASS(r.what) : (r.ignored ? "ex-x" : "ex-a"),
+          cls: g.section === "EXAMS" ? EXAM_CLASS(r.what) : (r.ignored ? "ex-x" : "ex-a"),
           filled: !!(r.suggest && r.suggest.action) && action !== String(r.action || "").trim(),
+          gapBefore: !!r.gapBefore,
           r,
         };
       }),
@@ -2094,28 +2225,37 @@ function noticesText(res) {
   }
   return out.join("\n");
 }
-function toText(res) {
+/* The plan back as text: in the workbook's own shape - the titles, the
+   heading rows, the blank rows between groups, five columns, the request
+   in the Action column - so it pastes over the Maintenance Plan tab; or,
+   with the Why column, for reading. */
+function toText(res, opts) {
+  opts = opts || {};
+  const cols = opts.workbook ? ACTION_COL + 1 : ACTION_COL + 2;
   const out = [];
   for (const s of shape(res)) {
     if (out.length) out.push("");
     out.push(s.title);
-    out.push(s.headers.join("\t"));
-    for (const row of s.rows) out.push(row.cells.join("\t"));
+    out.push(s.headers.slice(0, cols).join("\t"));
+    for (const row of s.rows) { if (row.gapBefore) out.push(""); out.push(row.cells.slice(0, cols).join("\t")); }
   }
-  const n = noticesText(res);
+  const n = opts.workbook ? "" : noticesText(res);
   return out.join("\n") + (n ? "\n\n" + n : "");
 }
 const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function toHtml(res, inline) {
+function toHtml(res, inline, opts) {
+  opts = opts || {};
+  const cols = opts.workbook ? ACTION_COL + 1 : ACTION_COL + 2;
   const colour = { "ex-a": "#000000", "ex-b": "#00B050", "ex-c": "#FF0000", "ex-m": "#7030A0", "ex-t": "#0070C0", "ex-x": "#0070C0" };
   const style = c => inline ? ' style="color:' + colour[c] + ';font-family:Calibri,Arial,sans-serif;font-size:11pt"' : ' class="' + c + '"';
   const out = [];
   for (const s of shape(res)) {
     out.push('<table class="brtable"' + (inline ? ' style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt"' : "") + ">");
     out.push('<caption' + (inline ? ' style="text-align:left;font-weight:700"' : "") + ">" + esc(s.title) + "</caption>");
-    out.push("<thead><tr>" + s.headers.map(h => "<th" + (inline ? ' style="text-align:left;padding:2px 8px;border-bottom:1px solid #999"' : "") + ">" + esc(h) + "</th>").join("") + "</tr></thead><tbody>");
+    out.push("<thead><tr>" + s.headers.slice(0, cols).map(h => "<th" + (inline ? ' style="text-align:left;padding:2px 8px;border-bottom:1px solid #999"' : "") + ">" + esc(h) + "</th>").join("") + "</tr></thead><tbody>");
     for (const row of s.rows) {
-      const tds = row.cells.map((c, i) => {
+      if (row.gapBefore) out.push("<tr" + (inline ? "" : ' class="gap"') + ">" + "<td" + (inline ? ' style="padding:2px 8px"' : "") + ">&nbsp;</td>".repeat(1) + "</tr>");
+      const tds = row.cells.slice(0, cols).map((c, i) => {
         const filled = i === ACTION_COL && row.filled;
         return "<td" + (inline ? ' style="padding:2px 8px;white-space:nowrap' + (filled ? ";font-weight:700" : "") + '"' : (filled ? ' class="filled"' : "")) + ">" + esc(c) + "</td>";
       });
@@ -2123,14 +2263,33 @@ function toHtml(res, inline) {
     }
     out.push("</tbody></table>");
   }
-  if ((res.notices && res.notices.length) || (res.swaps && res.swaps.length)) {
-    const pre = inline ? ' style="font-family:Calibri,Arial,sans-serif;font-size:11pt;font-weight:700;white-space:pre-wrap"' : ' class="brnotices"';
-    out.push("<pre" + pre + ">" + esc(noticesText(res)) + "</pre>");
+  if (!opts.workbook && ((res.notices && res.notices.length) || (res.swaps && res.swaps.length))) {
+    out.push('<pre class="brnotices"' + (inline ? ' style="font-family:Calibri,Arial,sans-serif;font-size:11pt"' : "") + ">" + esc(noticesText(res)) + "</pre>");
   }
   return out.join("\n");
 }
-/* The nearest-first fixed-column text, for whoever wants the day's lines
-   in the order they need doing rather than the order the workbook holds. */
+/* The plan as a workbook: a Maintenance Plan sheet in the tab's own shape
+   and widths, and a Why sheet beside it with the reasons. Every cell is
+   text, so a unit number and a time paste as typed. */
+function toXlsx(res, zipFn) {
+  const widths = res.kind === "metro" ? [32.57, 33.71, 56.71, 58.86, 60.14] : [17.14, 8.57, 40.86, 30, 63.43];
+  const cell = (r, c, v) => ({ r, c, v, look: 0, sides: [null, null, null, null], text: true });
+  const sheet = (name, cols) => {
+    const cells = []; let r = 0;
+    for (const s of shape(res)) {
+      if (r) r++;
+      r++; cells.push(cell(r, 1, s.title));
+      r++; s.headers.slice(0, cols).forEach((h, i) => cells.push(cell(r, i + 1, h)));
+      for (const row of s.rows) {
+        if (row.gapBefore) r++;
+        r++; row.cells.slice(0, cols).forEach((v, i) => { if (v) cells.push(cell(r, i + 1, v)); });
+      }
+    }
+    return { name, layout: { cells, merges: [], rowHeights: new Map(), maxRow: r,
+             opts: { widths: cols > widths.length ? widths.concat([90]) : widths, noPageSetup: true } } };
+  };
+  return SHEETS_XLSX.writeWorkbook([sheet("Maintenance Plan", ACTION_COL + 1), sheet("Why", ACTION_COL + 2)], zipFn);
+}
 function render(res) {
   const W = { unit: 7, sec: 10, needs: 9, due: 26, action: 22, sugg: 34 };
   const pad = (s, n) => String(s == null ? "" : s).padEnd(n).slice(0, n);
@@ -2156,7 +2315,7 @@ function render(res) {
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
          detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
-         PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom };
+         PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom, toXlsx, metroAt, metroForm };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_BERTH = SHEETS_BERTH;
