@@ -131,27 +131,39 @@
 
       <h2>If a build looks wrong</h2>
       <dl>
-        <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
-        <dd>One of the two reports is missing or the wrong kind. Both must be
-          for the same date, and both from Genius or both from Integrale.</dd>
-        <dt>A location comes up under its own heading</dt>
-        <dd>A unit berthed somewhere the section list does not know. It gets
-          its own section, in alphabetical order, and a note on the Review tab
-          — check it, and say if it should live under an existing section.</dd>
-        <dt>A train is missing</dt>
-        <dd>Read the Review tab first: empty moves to a berth are left off on
-          purpose and each one is named there. If it is not listed, report the
-          diagram number so the rule can be traced.</dd>
-        <dt>"That file is damaged or isn't a Word document"</dt>
-        <dd>Open the prints in Word and save them again as .docx, then drop
-          the new file.</dd>
-        <dt>"That isn't the diagram prints"</dt>
-        <dd>Pasted or plain-text prints whose columns were lost — the tabs
-          flattened to spaces. Copy the document out of Word again and paste
-          it as it comes, without tidying it. A .csv of the prints is fine.</dd>
-        <dt>A weekend card says "No … diagrams in this weekend's prints"</dt>
-        <dd>No diagrams for that fleet exist in the prints — nothing to build,
-          nothing wrong.</dd>
+        <div>
+          <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
+          <dd>One of the two reports is missing or the wrong kind. Both must be
+            for the same date, and both from Genius or both from Integrale.</dd>
+        </div>
+        <div>
+          <dt>A location comes up under its own heading</dt>
+          <dd>A unit berthed somewhere the section list does not know. It gets
+            its own section, in alphabetical order, and a note on the Review tab
+            — check it, and say if it should live under an existing section.</dd>
+        </div>
+        <div>
+          <dt>A train is missing</dt>
+          <dd>Read the Review tab first: empty moves to a berth are left off on
+            purpose and each one is named there. If it is not listed, report the
+            diagram number so the rule can be traced.</dd>
+        </div>
+        <div>
+          <dt>"That file is damaged or isn't a Word document"</dt>
+          <dd>Open the prints in Word and save them again as .docx, then drop
+            the new file.</dd>
+        </div>
+        <div>
+          <dt>"That isn't the diagram prints"</dt>
+          <dd>Pasted or plain-text prints whose columns were lost — the tabs
+            flattened to spaces. Copy the document out of Word again and paste
+            it as it comes, without tidying it. A .csv of the prints is fine.</dd>
+        </div>
+        <div>
+          <dt>A weekend card says "No … diagrams in this weekend's prints"</dt>
+          <dd>No diagrams for that fleet exist in the prints — nothing to build,
+            nothing wrong.</dd>
+        </div>
       </dl>
     </div>
   </details>
@@ -503,10 +515,11 @@
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
-          <strong>Drop the Diagram Summary and Detail here</strong>
-          <span>.pdf or .csv &middot; the Summary printed after allocation, the
-            Detail for today, tomorrow or both &middot; the Allocation Summary
-            and the weekend prints (.docx) are read too &middot; any day &middot;
+          <strong>Drop the Allocation Summary, Diagram Summary and Diagram Detail here</strong>
+          <span>.pdf or .csv &middot; the Allocation Summary says where each
+            unit is tonight &middot; the Diagram Summary and Detail for tomorrow
+            build the sheets the requests are named from &middot; today's, or
+            both days, and the weekend prints (.docx) are read too &middot;
             or click to choose</span>
         </span>
       </span>
@@ -640,15 +653,43 @@
           what the plan itself writes (<code>ENDS DVP</code>). That is the
           planner&rsquo;s own horizon: on a Tuesday the Friday lines read
           <code>ENDS</code>, on a Thursday the Monday ones do.</p>
-        <p><b>Home, or nearer.</b> Due within two days, a unit is brought
-          home &mdash; in two legs where one working will not do. Due in
-          three, it is moved as near as it can be got to the depot it is
-          wanted at &mdash; Ashford for Ramsgate, Grove Park for Victoria
-          &mdash; and the last leg is left for the day before: <i>XSE BERTH
-          06+13 TO GP</i>. A unit is wanted at Selhurst on the day or the day
-          before, not sooner, so the move over from Victoria is asked for
-          only when the line is due today or tomorrow; further out, the
-          request gets it to Victoria and the move is a note.</p>
+        <p><b>The departures out of where it is.</b> A request is the
+          plan&rsquo;s own: every morning departure out of the place the
+          unit stands at tonight that gets it to the depot, named as the
+          sheet prints it, the depot to choose &mdash; <code>XSE BERTH
+          06+13/06+23</code>, <code>AFK BERTH 05 05/05 42/06 26/07 05/07
+          10/08 28</code>. A departure counts when its diagram ends at the
+          depot wanted or stands there during the day; calls in the morning
+          at the depot&rsquo;s own station or terminal, where the unit can
+          be taken off &mdash; Ramsgate, Gillingham, Ashford, Victoria for a
+          377 bound for Selhurst; or ends or stands two hours or more at a
+          depot nearer the one wanted, from where it is sent on when due
+          &mdash; Grove Park for Ramsgate &mdash; and then the line says what
+          that depot has on: <i>then AFK has 15+00, fleet move 5R51 22+31
+          to RE when it is due</i>. Every unit at a place is offered the
+          same list, as the plan writes it against each of them, and a
+          departure already on another unit&rsquo;s list is said to be:
+          <i>06+13 is on 375617&rsquo;s list too</i>. Multiple only needs two
+          diagrams or more of the train to get there together. A unit is
+          wanted at Selhurst on the day or the day before, not sooner, so
+          the move over from Victoria is asked for only when the line is
+          due today or tomorrow &mdash; <code>AFK BERTH 06+00 - VIC BERTH
+          5Y41</code> &mdash; and only a departure at Victoria before the
+          last move over counts; further out, the request gets it to
+          Victoria and the move is a note.</p>
+        <p><b>A unit at its own depot.</b> Due today or tomorrow morning:
+          held. Due tomorrow afternoon or evening, or <code>ASAP</code>: the
+          departures that bring it back by then &mdash; 20 00 for a Ramsgate
+          exam, the end of the day otherwise, any hour of the night for
+          <code>ASAP</code> &mdash; with the portion where only one part of
+          the train comes back, <code>RE BERTH RP 05 25</code>. Due later
+          than tomorrow: it goes out on a <b>peak diagram</b> &mdash; one
+          that stands two hours or more at a depot away from home in the
+          middle of the day, out for both peaks &mdash; and is brought back
+          the night before it is due: <code>RE BERTH 06 02/06 20/06+20/07
+          02</code>. The line names the departures back the same day too, in
+          case that is wanted instead. A unit the plan has <code>STOPPED</code>
+          keeps the plan&rsquo;s own word.</p>
         <p><b>Named as the sheets print them.</b> The depots and outstations
           work from the berthing books, so a request names a working the way
           the book prints it: the books are built from each day&rsquo;s
@@ -675,25 +716,29 @@
           Action column is read for where it stands &mdash; <code>STOPPED
           RE</code>, <code>O/H AFK</code>, <code>SP @ GP</code>, <code>ENDS
           DVP</code>, <code>RE HOLD</code>, <code>GP BERTH 5N32/5F28</code>
-          &mdash; and that is where it is tonight: at the depot it is wanted
-          at it reads <code>AT RE</code>; elsewhere it is offered
-          tomorrow&rsquo;s departures out of that place, the line saying
-          <i>not in traffic &mdash; at AFK per the plan</i>. Nothing said,
-          nothing known: <code>NOT IN TRAFFIC</code>.</p>
+          &mdash; and that is where it is tonight: <code>STOPPED</code> or
+          <code>O/O/S</code>, it keeps the plan&rsquo;s word and is offered
+          no train; anywhere else it is offered the departures out of that
+          place, the line saying <i>not in traffic &mdash; at AFK per the
+          plan</i>, and where nothing gets it home the plan&rsquo;s word
+          stands (<code>O/H FKE</code>). Nothing said, nothing known:
+          <code>NOT IN TRAFFIC</code>.</p>
         <p><b>Out of service.</b> A unit listed in the box above is broken and
           being dealt with directly, so its lines are marked and left out of
           anything that follows.</p>
 
         <h4>The rules applied &mdash; as the depot gave them</h4>
         <p><b>Hold.</b> A unit that ends tonight at the depot the plan wants
-          it at, with the work due today, tomorrow or <code>ASAP</code>, gets
+          it at, with the work due today or tomorrow morning, gets
           <code>RE HOLD</code> (<code>GI HOLD</code>, <code>SG HOLD</code>
-          &hellip;). A PM job is noted as one it could run the morning
-          before. A line due Saturday, Sunday or Monday seen from Friday or
-          the weekend is held <code>FOR MON</code>, the depot&rsquo;s own
-          form. A defect&rsquo;s target date is met by an arrival after
-          midnight and the note says so. An exam ending at Ramsgate after
-          <b>20 00</b> is noted, and after <b>22 00</b> flagged.</p>
+          &hellip;); due tomorrow afternoon, <code>ASAP</code> or later it
+          works first, as above. A line due Saturday, Sunday or Monday seen
+          from Friday or Saturday is held <code>FOR MON</code>, the
+          depot&rsquo;s own form; on the Sunday night Monday is tomorrow and
+          the hold is a plain one. A defect&rsquo;s target date is met by an
+          arrival after midnight and the note says so. An exam ending at
+          Ramsgate after <b>20 00</b> is noted, and after <b>22 00</b>
+          flagged.</p>
         <p><b>Changeover, or a berth.</b> A unit that does not end where it is
           wanted but calls there during the day: at Ramsgate or a London
           terminal that is <code>RE C/O AND HOLD</code>; at any other depot
@@ -739,28 +784,32 @@
           unit is: a swap at a place both are, or a departure from where it
           ends tonight. A working with no place to make the swap is not
           named, however well it ends.</p>
-        <p><b>The variation.</b> Only once the same fleets and sub-fleets are
-          exhausted &mdash; nothing of the unit&rsquo;s own fleet ends where
-          it is wanted that it could take &mdash; is a <b>375/9 on a plain
-          375 diagram, or a plain 375 on a 375/9 one</b>, offered, and the
-          line says <code>VARIATION</code> so. Never a 3-car, a 376 or a 377.
-          Within a fleet the order is: a working with a swap that can be
-          made, then one named for a depot swap, then one whose diagram
-          splits somewhere with no swap point &mdash; the line says
-          <i>splits at</i> &mdash; and the variation only after all three.</p>
+        <p><b>The variation.</b> For a swap today, only once the same fleets
+          and sub-fleets are exhausted &mdash; nothing of the unit&rsquo;s
+          own fleet ends where it is wanted that it could take &mdash; is a
+          <b>375/9 on a plain 375 diagram, or a plain 375 on a 375/9
+          one</b>, offered, and the line says <code>VARIATION</code> so.
+          Never a 3-car, a 376 or a 377. Within a fleet the order is: a
+          working with a swap that can be made, then one named for a depot
+          swap, then one whose diagram splits somewhere with no swap point
+          &mdash; the line says <i>splits at</i> &mdash; and the variation
+          only after all three. In a list of departures a 375/9 and a plain
+          375 count as one fleet, the way the plan lists them together.</p>
         <p><b>Who goes first.</b> Where two lines want the same working
           home, it goes to the one due sooner; at the same date to a
           <code>RED</code> defect, then to one with a concession
           (<code>CON</code>), then to the plan&rsquo;s own order &mdash; a
-          concession never jumps a line that is due sooner. The other line
-          is given the next working, not the same one twice.</p>
+          concession never jumps a line that is due sooner. For a swap
+          today the other line is given the next working, not the same one
+          twice; a list of departures claims nothing, and says whose list a
+          departure is on already.</p>
         <p><b>How many requests a working carries.</b> One unit per diagram,
           and a working is one train whichever diagrams run it coupled: a
           <b>12-car is three diagrams</b> on one working and carries three
           requests, an <b>8-car two</b>, a 4-car one &mdash; never more than
           a 12-car of that unit&rsquo;s kind, three 375s or 377s, two 376s
           &mdash; less any diagram whose unit the plan wants at that depot
-          itself, which is not to be taken off. Each request displaces the
+          itself, which is not to be taken off. Each swap displaces the
           unit on one diagram, so the formation is kept both ways, and the
           line says <i>5F87 runs as 3 units (RM912+RM913+RM914) &mdash;
           request 2 of 3</i>. Check it against the sheets.</p>
@@ -787,20 +836,25 @@
           between <code>MP</code> &mdash; <code>GP BERTH RP 5F87</code>.
           Position is the order the formation left its berth in, so a train
           that has turned since is the planner&rsquo;s check.</p>
-        <p><b>Tomorrow&rsquo;s working from where it ends.</b> A unit that
-          ends tonight at a place with a berth &mdash; Ashford, Grove Park,
-          West Marina &mdash; and is wanted at a depot nothing today
-          reaches is given the working out of that place tomorrow that
-          does, named the way that place names workings and with the
-          portion, every one that fits for the place to choose from:
-          <code>AFK BERTH RP 05 27/06 12</code>. Tomorrow&rsquo;s diagrams
-          are on no report read here, so it is taken as today&rsquo;s Detail
-          has it &mdash; the weekday ones repeat &mdash; and the line says
-          to check tomorrow&rsquo;s runs the same. Drop <b>tomorrow&rsquo;s
-          Diagram Detail</b> as well, or instead, and tomorrow&rsquo;s
-          departures are its own &mdash; the day turn&rsquo;s way of working,
-          today&rsquo;s Summary after allocation and tomorrow&rsquo;s Detail
-          &mdash; and no check is asked for. It comes after a swap today.</p>
+        <p><b>Tomorrow&rsquo;s departures from where it ends.</b> A unit
+          that ends tonight at a place with a berth &mdash; Ashford, Grove
+          Park, West Marina &mdash; and is wanted at a depot nothing today
+          reaches is given the morning departures out of that place
+          tomorrow that get there, named the way that place names workings
+          and with the portion, for the place to choose from: <code>AFK
+          BERTH RP 05 27/06 12</code>. Its own diagram counts, where it
+          starts there again, and is said to be its own. Where the morning
+          has nothing, the rest of the day is offered; at Grove Park,
+          Gillingham and Victoria the PM workings off a stand there are the
+          depot&rsquo;s own, and are offered too. Without tomorrow&rsquo;s
+          Detail it is taken as today&rsquo;s has it &mdash; the weekday
+          ones repeat &mdash; and the line says to check tomorrow&rsquo;s
+          runs the same. Drop <b>tomorrow&rsquo;s Diagram Summary and
+          Detail</b> as well, or instead, and tomorrow&rsquo;s departures
+          are its own, named as tomorrow&rsquo;s sheets print them &mdash;
+          the night&rsquo;s way of working, tonight&rsquo;s Allocation
+          Summary with tomorrow&rsquo;s pair &mdash; and no check is asked
+          for. It comes after a swap today.</p>
         <p><b>The Summary alone, and the two turns.</b> The Summary has a
           row per working segment with its unit, so on its own it says where
           every unit ends tonight and what it is on; nothing can be swapped
@@ -843,16 +897,16 @@
           word on it, and the line says which day placed it. An Allocation
           Summary printed before its day was allocated, with a handful of
           units on it, is named as that and does not count as the day.</p>
-        <p><b>Two legs.</b> Where nothing out of the place a unit is at
-          gets to the depot, a working out of there that gets to another
-          depot is asked for, and the second leg is what that depot has
-          once the unit is there: the working that stands there and goes
-          on to the depot wanted (its PM departures), the standing fleet
-          move out of it, or failing those the next morning&rsquo;s
-          departure with the same Detail standing in. <i>TON BERTH 06+02
-          &mdash; GP BERTH 5U02/5F85/5F87</i>, the way the plan writes
-          <i>GP BERTH 5F42 - VIC BERTH 5Y50</i>. The first leg is claimed
-          like any request.</p>
+        <p><b>A depot that can send it on.</b> Where nothing out of the
+          place a unit is at gets to the depot, a working out of there that
+          ends at, or stands two hours or more at, a depot nearer the one
+          wanted is the request &mdash; <code>TON BERTH 06+00</code> &mdash;
+          and the line says what that depot has once the unit is there: the
+          workings that stand there and go on to the depot wanted, and the
+          standing fleet move out of it: <i>then AFK has 15+00, fleet move
+          5R51 22+31 (M-F) to RE when it is due</i>. The plan writes the
+          one leg and asks for the next the night before, so that is what
+          the request says.</p>
         <p><b>The fleet moves.</b> A unit at a depot with nothing on the
           Detail out of it is given the standing fleet move that runs that
           day &mdash; <i>SG BERTH 5L17/5L19/5L92</i>, <i>AFK BERTH
@@ -862,22 +916,22 @@
           <i>AFK BERTH 06+17 - VIC BERTH 5Y41</i>, <i>VIC HOLD FOR
           5Y41</i>.</p>
         <p><b>One request per unit.</b> A unit on several lines is asked
-          for once, on the line that comes first; its other lines say
-          <i>asked for on its other line</i> and name the request, and
-          take no train of their own. A unit into a depot between 03+00
-          and midday that sits there is <i>ENDS GP AM</i>, as the plan
-          writes it.</p>
+          for once, on the line that comes first; its other lines carry
+          the same request &mdash; a hold, a list, a swap &mdash; and say
+          <i>the same request as its other line</i>, the way the plan
+          writes one Action against every line of a unit, and take no
+          train of their own. A unit into a depot between 03+00 and midday
+          that sits there is <i>ENDS GP AM</i>, as the plan writes it.</p>
         <p><b>Why not.</b> A line that gets no request says why, in words
           that can be checked: <i>no call at RE today</i> where it ran and
           never called there; <i>no request at HGS &mdash; none are made
           there</i>, with the train out of Hastings that would have done
-          named all the same; <i>Monday&rsquo;s 5H91 06+01 (RM059+RM060+RM920)
-          already asked for by 375617, 375616 &mdash; nothing else out of
-          XSE gets to RE</i> where the one train out of that place is spoken
-          for by the lines that came first; or <i>nothing out of TON on
-          Monday&rsquo;s Detail gets to RE</i>. A unit on several lines is
-          asked for once, on the line that comes first, and its other lines
-          say <i>asked for on its other line</i> and name the request. A
+          named all the same; <i>MO &mdash; Monday&rsquo;s 05 30, 05 27 out
+          of AFK would run it on alone to RE</i> where the train splits and
+          only one diagram of it gets there; or <i>nothing out of TON on
+          Monday&rsquo;s Detail gets to RE, or to a depot that could send it
+          on</i>. A unit on several lines is asked for once, on the line
+          that comes first, and its other lines carry the same request. A
           unit in the Up Sidings at Slade Green, or on the platform at
           Ramsgate, is that depot&rsquo;s to put on any of its departures,
           so the request is <i>SG BERTH</i> or <i>RE BERTH</i> and every

@@ -753,6 +753,8 @@ function switchMode(m) {
     if (MODES[k].tab) { MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false"); MODES[k].tab.tabIndex = on ? 0 : -1; }
     if (MODES[k].panel) MODES[k].panel.hidden = !on;
   }
+  // the page knows which tab is open: the footer's note about the books is for the book tabs
+  document.documentElement.setAttribute("data-mode", m);
   rememberOpts({ mode: m });
 }
 for (const k of Object.keys(MODES))
@@ -1554,9 +1556,13 @@ function decodeText(u8) {
          units are where their first workings start and can be asked for
          from there before they go out - ticked for the planner to untick */
       if (dayToRun && !tickedByHand) {
+        /* a day still to run: every report loaded is for a day AFTER today.
+           Today's own allocation dropped with tomorrow's reports is a day
+           that has run, whatever tomorrow's Summary says. */
         const now = new Date(); const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
         const at = d => { const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d); return m ? Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]) : 0; };
-        dayToRun.checked = own.dates.some(d => at(d) >= t0);
+        const loaded = own.dates.concat(own.alloc ? [...own.alloc.keys()] : []);
+        dayToRun.checked = loaded.length > 0 && loaded.every(d => at(d) > t0);
       }
       const units = own.summary.filter(r => r.units && r.units.length).length;
       const allocTxt = own.alloc ? " · Allocation " + [...own.alloc.keys()].join(", ") + " (" + [...own.alloc.values()].reduce((n, m) => n + m.size, 0) + " units)" : "";

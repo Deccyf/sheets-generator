@@ -128,10 +128,11 @@ test("the depot's rules give each line an action in the depot's own words", asyn
   assert.equal(sug("375602", "EXAMS").action, "AFK HOLD");
   // 375604 is five days out: where it ends, and that is all
   assert.equal(sug("375604", "EXAMS").action, "ENDS DVP");
-  // the defect due tomorrow: no call at Ramsgate today, and it says so
+  // the defect due tomorrow: no call at Ramsgate today, and it says so - and
+  // the unit is asked for once, so the line carries its exam's request
   const d = sug("375601", "DEFECTS");
-  assert.equal(d.action, "ENDS DVP");
-  assert.match(d.notes.join("; "), /no call at RE today/);
+  assert.equal(d.action, "AFK BERTH off 2A01", JSON.stringify(d));
+  assert.match(d.notes.join("; "), /no call at RE today; the same request as its other line/);
   // not in traffic, out of service
   assert.equal(sug("375699", "EXAMS").action, "NOT IN TRAFFIC");
   assert.equal(sug("375698", "EXAMS").action, "O/O/S");
@@ -412,15 +413,20 @@ test("a 12-car is three diagrams on one working: it carries three requests, an 8
   assert.equal(s[1].action, "GP BERTH 5R00", JSON.stringify(s[1]));
   assert.match(s[1].notes.join("; "), /375708 off it.*request 2 of 3/);
   assert.match(s[2].notes.join("; "), /375718 off it.*request 3 of 3/);
-  assert.ok(!/5R00/.test(s[3].action + s[3].notes.join(" ")), "no fourth request on a 12-car: " + JSON.stringify(s[3]));
-  assert.equal(s[3].action, "GP BERTH 5J01", "tomorrow's departure instead: " + JSON.stringify(s[3]));
+  /* the fourth is offered tomorrow's departures out of Grove Park - the
+     same working again, since a list claims nothing - and told the three
+     already on it */
+  assert.equal(s[3].action, "GP BERTH 5J01/5R00", "tomorrow's departures: " + JSON.stringify(s[3]));
+  assert.match(s[3].notes.join("; "), /5R00 is on 375701, 375721, 375731's list too/);
   // with 375708 wanted at Ramsgate itself, RM108 is not displaced and the train has two slots
   const two = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375721\tB\tTUE AM 04/08\tRE\t",
                                "375731\tC\tTUE AM 04/08\tRE\t", "375708\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const t = two.rows.map(r => r.suggest);
   assert.match(t[0].notes.join("; "), /375702 off it/);
   assert.match(t[1].notes.join("; "), /375718 off it/, "375708 is not displaced: " + JSON.stringify(t[1]));
-  assert.ok(!/5R00/.test(t[2].action + t[2].notes.join(" ")), "no third slot: " + JSON.stringify(t[2]));
+  assert.equal(t[2].action, "GP BERTH 5J01/5R00", "no third swap today; tomorrow's departures instead: " + JSON.stringify(t[2]));
+  assert.match(t[2].notes.join("; "), /5R00 is on 375701, 375721's list too/);
+  assert.ok(!/RM108 ends/.test(t[2].notes.join("; ")), "375708's diagram, wanted at Ramsgate itself, is not offered: " + JSON.stringify(t[2]));
   assert.equal(t[3].action, "RE HOLD");
 });
 
@@ -516,8 +522,8 @@ test("the export's rows become the plan's Defects lines, the planner's own Actio
   // the plan's own line the export did not carry is still there, as it was
   const r9 = defects.find(r => r.unit === "375799");
   assert.equal(r9.action, "ENDS SG");
-  // a performance defect for a week on says where it ends
-  assert.match(defects.find(r => r.unit === "375704").suggest.action, /^ENDS /);
+  // a defect is asked for whenever it is due: a week on, at its own depot, it is the departures that bring it back
+  assert.match(defects.find(r => r.unit === "375704").suggest.action, /^RE BERTH /);
   // the export on its own, with no plan text, is a plan
   const alone = B().run("", res, { defects: DEFECTS });
   assert.equal(alone.rows.length, 5);
@@ -642,7 +648,7 @@ test("a unit that ends where it is not wanted is given tomorrow's working out of
                         "375706\tA\tTUE AM 04/08\tRE\t", "375901\tA\tTUE AM 04/08\tRE\t"]);
   const s = B().run(plan, res, {}).rows[0].suggest;
   assert.equal(s.action, "AFK BERTH RP 05 27", JSON.stringify(s));
-  assert.match(s.notes.join("; "), /tomorrow's 2R21 05 27 from AFK, RP \(RM121\+RM122\) — today's RM121 ends RE 06\+45, 375721 off it; check tomorrow's diagram runs the same/);
+  assert.match(s.notes.join("; "), /tomorrow's 2R21 05 27 \(RM121\+RM122\): RM121 ends RE 06\+45, RM122 calls RE 06\+30, where it can be taken off; check tomorrow's diagram runs the same/);
   // with RM104 free today, the changeover at Charing Cross comes first
   const today = B().run(planFor(["375720\tA\tTUE AM 04/08\tRE\t"]), res, {}).rows[0].suggest;
   assert.equal(today.action, "RE BERTH 11+10 — T/F AT CHX", JSON.stringify(today));
@@ -671,7 +677,11 @@ test("a unit that changes at Grove Park: each unit's day is its own segments, an
   assert.equal(b.ends.place, "RE"); assert.equal(b.ends.time, 19 * 60 + 54);
   assert.deepEqual(norm(b.diags), ["RM914", "RM912"], "375827 is on both diagrams, morning and evening");
   assert.equal(c.ends.place, "TON");
-  assert.equal(b.suggest.action, "ENDS RE", "375827 ends at Ramsgate on 5F87, and is not wanted there until Wednesday");
+  /* 375827 ends at Ramsgate on 5F87 and is not wanted there until
+     Wednesday: out again tomorrow on a peak diagram - its own, which
+     stands at Grove Park through the day - the way the plan lists them */
+  assert.equal(b.suggest.action, "RE BERTH 06+13", JSON.stringify(b.suggest));
+  assert.match(b.suggest.notes.join("; "), /\(its own diagram\)/);
   // 375609, on hand at Grove Park from the morning, goes out on 5F87 in 375827's place
   assert.equal(a.suggest.action, "GP BERTH 5F87", JSON.stringify(a.suggest));
   assert.match(a.suggest.notes.join("; "), /in on 5J93 09\+54, stays; out on 5F87: RM912, ends RE 19\+54, 375827 off it \(stays at GP\)/);
@@ -751,11 +761,12 @@ test("nobody at Folkestone East or Hastings, and Faversham can be asked but neve
   assert.match(b.notes.join("; "), /with its formation 375730/);
 });
 
-test("tomorrow's working out of a place is given once: the next unit there is not handed the same train", async () => {
+test("every unit at a place is offered the same departures, and told whose list a departure is on already", async () => {
   /* 375750 and 375760 both end at West Marina tonight, alone, wanted at
      Ramsgate; tomorrow's 5H91 out of there is one diagram that stands at
-     Ramsgate during the day. One of them gets it, the other is told where
-     it ends. */
+     Ramsgate during the day. Both are given it - the plan writes the one
+     list against each unit and the depot chooses - and the second is
+     told the first has it too. */
   const day = SWAP_DAY.concat([
     { code: "RM150", units: "375750.", stops: [S("ASHFDNS", "", "05:00", "5A50"), S("STLNWMS", "06:30", "", "")] },
     { code: "RM160", units: "375760.", stops: [S("ASHFDNS", "", "05:10", "5A60"), S("STLNWMS", "06:40", "", "")] },
@@ -766,8 +777,10 @@ test("tomorrow's working out of a place is given once: the next unit there is no
   const out = B().run(planFor(["375750\tA\tTUE AM 04/08\tRE\t", "375760\tB\tTUE AM 04/08\tRE\t"].concat(block)), res, {});
   const [a, b] = out.rows.map(r => r.suggest);
   assert.equal(a.action, "XSE BERTH 06+01", JSON.stringify(a));
-  assert.match(a.notes.join("; "), /today's RM159 stands RE 07\+50/);
-  assert.match(b.action, /^ENDS XSE/, "the one train is not given twice: " + JSON.stringify(b));
+  assert.match(a.notes.join("; "), /tomorrow's 5H91 06\+01: RM159 stands RE 07\+50/);
+  assert.equal(b.action, "XSE BERTH 06+01", JSON.stringify(b));
+  assert.match(b.notes.join("; "), /06\+01 is on 375750's list too/);
+  assert.ok(!/list too/.test(a.notes.join("; ")), "the first is told nothing");
 });
 
 /* ---- the two turns: a Summary with tomorrow's Detail, and a Summary alone ---- */
@@ -791,8 +804,8 @@ test("day turn: today's Summary with tomorrow's Diagram Detail gives tomorrow's 
   const blocked = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t", "375702\tA\tTUE AM 04/08\tRE\t", "375704\tA\tTUE AM 04/08\tRE\t"]), rd, {});
   const t = blocked.rows[0].suggest;
   // tomorrow's RM102 is not allocated yet, so 375702's want today does not protect it
-  assert.equal(t.action, "GP BERTH 5J50/5J01", JSON.stringify(t));
-  assert.match(t.notes.join("; "), /tomorrow's 5J50 05\+40 from GP — tomorrow's RM150 ends RE 07\+35, not yet allocated/);
+  assert.equal(t.action, "GP BERTH 5J50/5J01/5R00", JSON.stringify(t));
+  assert.match(t.notes.join("; "), /tomorrow's 5J50 05\+40: RM150 ends RE 07\+35; tomorrow's 5J01 06\+00: RM102 ends RE 16\+20/);
   assert.ok(!/check tomorrow's diagram/.test(t.notes.join("; ")), "no proxy note when tomorrow's Detail is there: " + JSON.stringify(t));
 });
 
@@ -836,8 +849,12 @@ test("a line due this week gets a request too, after the near lines, and no hold
   assert.equal(s15.action, "RE BERTH 11+10 — T/F AT CHX", "due today, first: " + JSON.stringify(s15));
   assert.equal(s3.action, "RE BERTH 11+15 — T/F AT CHX", "this week, next: " + JSON.stringify(s3));
   assert.match(s3.notes.join("; "), /^due THU 06\/08 AM \(\+3d\)/);
-  assert.equal(s4.action, "ENDS RE AM", "it ends there in the morning, the way the plan writes it: " + JSON.stringify(s4));
-  assert.match(s4.notes.join("; "), /due THU 06\/08 AM \(\+3d\) — where it ends tonight, not yet a hold/);
+  /* at its own depot and not due tomorrow: the peak diagram that stands at
+     Grove Park through the day, not the one back the same day */
+  assert.equal(s4.action, "RE BERTH 05+00", "a peak diagram out of its own depot: " + JSON.stringify(s4));
+  assert.match(s4.notes.join("; "), /^due THU 06\/08 AM \(\+3d\)/);
+  assert.match(s4.notes.join("; "), /tomorrow's 5J70 05\+00: RM101 stands GP 08\+30 — GP to send it on/);
+  assert.match(s4.notes.join("; "), /back here the same day: 06 00, 06 02, 06 05/);
   // a week and more out is still where it ends, and nothing more
   const far = B().run(planFor(["375703\tA\tMON AM 17/08\tRE\t"]), res, {}).rows[0].suggest;
   assert.match(far.action, /^ENDS HGS/, JSON.stringify(far));
@@ -870,10 +887,11 @@ test("the plan's own Action says where a unit stands, and a unit on no working i
   const out = B().run(planFor(["375799\tA\tTUE AM 04/08\tRE\tO/H GP", "375798\tB\tTUE AM 04/08\tRE\tSTOPPED RE", "375797\tA\tTUE AM 04/08\tRE\t"]), res, {});
   const [a, b, c] = out.rows;
   assert.equal(a.inTraffic, false); assert.equal(a.standing, "GP"); assert.equal(a.ends.place, "GP");
-  assert.equal(a.suggest.action, "GP BERTH 5J01", JSON.stringify(a.suggest));
+  assert.equal(a.suggest.action, "GP BERTH 5J01/5R00", JSON.stringify(a.suggest));
   assert.match(a.suggest.notes.join("; "), /^not in traffic — at GP per the plan \(O\/H GP\)/);
   assert.match(B().render(out), /375799.*not in traffic today — at GP per the plan/);
-  assert.equal(b.suggest.action, "AT RE", JSON.stringify(b.suggest));
+  // a stopped unit keeps the plan's own word for it
+  assert.equal(b.suggest.action, "STOPPED RE", JSON.stringify(b.suggest));
   assert.equal(c.suggest.action, "NOT IN TRAFFIC");
   assert.equal(out.inTraffic, 0, "the count is what the reports say");
 });
@@ -901,7 +919,7 @@ test("a day still to run: a unit is where its first working starts, and is asked
   const run = B().run(plan, res, { dayToRun: true });
   const s = run.rows[0].suggest;
   assert.equal(s.action, "AFK BERTH 05 27", JSON.stringify(s));
-  assert.match(s.notes.join("; "), /before it goes out: today's 2R21 05 27 from AFK — today's RM121 ends RE 06\+45, 375721 off it/);
+  assert.match(s.notes.join("; "), /today's 2R21 05 27: RM121 ends RE 06\+45/);
   assert.ok(!/check tomorrow/.test(s.notes.join("; ")));
   assert.ok(run.reviews.some(m => /Read as a day still to run/.test(m)), run.reviews.join(" | "));
   const gone = B().run(plan, res, {}).rows[0].suggest;
@@ -1009,7 +1027,7 @@ test("today's Allocation Summary with tomorrow's Summary and Detail: today is th
   assert.match(r.suggest.action, /^GP BERTH 5(J01|R00)/, JSON.stringify(r.suggest));
 });
 
-test("a line with no request says why: the train out of there is spoken for, nobody at that place, or nothing gets there", async () => {
+test("a line with no request says why: nobody at that place, or nothing out of it gets there", async () => {
   const day = SWAP_DAY.concat([
     // a diagram out of Hastings sidings to Ramsgate, for a unit that ends at Hastings
     { code: "RM108", units: "375708.", stops: [S("HASTPSD", "", "06:00", "5H08"), S("RAMSGTE", "07:50", "08:00", "5H08"), S("RAMSGTD", "08:10", "", "")] },
@@ -1025,24 +1043,27 @@ test("a line with no request says why: the train out of there is spoken for, nob
   const out = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t", "375706\tB\tMON PM 03/08\tRE\t", "375703\tA\tMON AM 03/08\tRE\t", "375705\tA\tMON AM 03/08\tRE\t",
                                "375706\t\tEOD MON 03/08\tRE\t"]), rd, {});
   const [a, b, c, d, e] = out.rows.map(r => r.suggest);
-  // the one train out of Grove Park to Ramsgate goes to the nearer line; the other is left the fleet move, and told why
-  assert.equal(a.action, "GP BERTH 5J01", JSON.stringify(a));
-  assert.equal(b.action, "GP BERTH 5R00", JSON.stringify(b));
-  assert.match(b.notes.join("; "), /tomorrow's 5J01 06\+00 \(RM102\) already asked for by 375701 — nothing else out of GP gets to RE; tomorrow's fleet move 5R00 11\+12 GP - RE \(M-F\)/);
+  /* the one diagram out of Grove Park to Ramsgate - its morning start and
+     its afternoon working - is listed against both units at Grove Park,
+     and the second is told the first has it too */
+  assert.equal(a.action, "GP BERTH 5J01/5R00", JSON.stringify(a));
+  assert.equal(b.action, "GP BERTH 5J01/5R00", JSON.stringify(b));
+  assert.match(b.notes.join("; "), /5J01 is on 375701's list too; 5R00 is on 375701's list too/);
   // nobody at Hastings: no request, and the train that would have done is still named
   assert.equal(c.action, "ENDS HGS", JSON.stringify(c));
-  assert.match(c.notes.join("; "), /no request at HGS — none are made there; tomorrow's 5H08 06\+00 \(RM108\) out of it gets to RE all the same/);
+  assert.match(c.notes.join("; "), /no request at HGS — none are made there; tomorrow's 5H08 06\+00 out of it gets to RE all the same/);
   // nothing out of Tonbridge gets there
   assert.equal(d.action, "ENDS TON", JSON.stringify(d));
   assert.match(d.notes.join("; "), /nothing out of TON on tomorrow's Detail gets to RE/);
-  // 375706's second line points at its first, and takes no train of its own
-  assert.equal(e.action, "ENDS GP", JSON.stringify(e));
-  assert.match(e.notes.join("; "), /asked for on its other line — GP BERTH 5R00/);
-  assert.ok(!/asked for on its other line/.test(b.notes.join("; ")), "the first line is not pointed at itself");
+  // 375706's second line carries its first line's request, and takes no train of its own
+  assert.equal(e.action, "GP BERTH 5J01/5R00", JSON.stringify(e));
+  assert.match(e.notes.join("; "), /the same request as its other line/);
+  assert.ok(!/the same request as its other line/.test(b.notes.join("; ")), "the first line is not pointed at itself");
   // and with a request on one line, the other says so
   const two = B().run(planFor(["375701\tA\tMON AM 03/08\tRE\t", "375701\t\tEOD MON 03/08\tRE\t"]), rd, {});
-  assert.equal(two.rows[0].suggest.action, "GP BERTH 5J01");
-  assert.match(two.rows[1].suggest.notes.join("; "), /asked for on its other line — GP BERTH 5J01/, JSON.stringify(two.rows[1].suggest));
+  assert.equal(two.rows[0].suggest.action, "GP BERTH 5J01/5R00");
+  assert.equal(two.rows[1].suggest.action, "GP BERTH 5J01/5R00", JSON.stringify(two.rows[1].suggest));
+  assert.match(two.rows[1].suggest.notes.join("; "), /the same request as its other line/);
 });
 
 test("a day nothing is loaded for is named, and a unit the later day does place is placed by it", async () => {
@@ -1060,15 +1081,15 @@ test("a day nothing is loaded for is named, and a unit the later day does place 
   assert.ok(out.reviews.some(m => /Nothing is loaded for 02\/08\/26 \(the 02\/08\/26 Allocation Summary places 1 units, so it was printed before that day was allocated\): every other unit is taken to stand where 01\/08\/26 leaves it until the 03\/08\/26 departures/.test(m)), out.reviews.join(" | "));
   const [a, b] = out.rows;
   assert.equal(a.placedOn, null); assert.equal(a.ends.place, "GP");
-  assert.equal(a.suggest.action, "GP BERTH 5J01", JSON.stringify(a.suggest));
-  assert.match(a.suggest.notes.join("; "), /Monday's 5J01 06\+00 from GP — Monday's RM102 ends RE/, "the day is named, two days on");
+  assert.equal(a.suggest.action, "GP BERTH 5J01/5R00", JSON.stringify(a.suggest));
+  assert.match(a.suggest.notes.join("; "), /Monday's 5J01 06\+00: RM102 ends RE 16\+20/, "the day is named, two days on");
   // 375706 is on Sunday's allocation and ends at Ramsgate on it: held there
   assert.equal(b.placedOn, "02/08/26"); assert.equal(b.ends.place, "RE");
   assert.equal(b.suggest.action, "RE HOLD FOR MON", JSON.stringify(b.suggest));
   assert.match(B().render(out), /375706.*placed by the 02\/08\/26 Allocation Summary/);
 });
 
-test("two legs: a working to a depot that can send it on, the way the plan writes it - TON BERTH 06+00 - AFK BERTH 15+00", async () => {
+test("a working to a depot that can send it on is the request, and what that depot has on is noted - TON BERTH 06+00", async () => {
   const day = SWAP_DAY.concat([
     // out of Tonbridge sidings to Ashford in the morning, ending there
     { code: "RM201", units: "375741.", stops: [S("TONBDMS", "", "06:00", "5T01"), S("ASHFDNS", "07:00", "", "")] },
@@ -1080,11 +1101,11 @@ test("two legs: a working to a depot that can send it on, the way the plan write
   rd.alloc = B().parseAllocation(allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "TONBDMS"));
   const out = B().run(planFor(["375705\tA\tMON PM 03/08\tRE\t"]), rd, {});
   const s = out.rows[0].suggest;
-  // the first leg is asked for now; the second is what Ashford has once it is there: its afternoon departure, or the fleet move
-  assert.equal(s.action, "TON BERTH 06+00 - AFK BERTH 15+00/5R51", JSON.stringify(s));
-  assert.match(s.notes.join("; "), /nothing out of TON on tomorrow's Detail gets to RE/);
-  assert.match(s.notes.join("; "), /two legs: tomorrow's 5T01 06\+00 from TON — tomorrow's RM201 ends AFK 07\+00; then AFK has 15\+00 \(RM202, ends RE 16\+10\), fleet move 5R51 22\+31 AFK - RE \(M-F\) — the depot to choose/);
-  assert.equal(s.taken.diag, "RM201", "the first leg is claimed like any request");
+  // the leg to Ashford is the request, the way the plan writes one; what Ashford has once it is there is the note
+  assert.equal(s.action, "TON BERTH 06+00", JSON.stringify(s));
+  assert.match(s.notes.join("; "), /tomorrow's 5T01 06\+00: RM201 ends AFK 07\+00, nearer RE — AFK to send it on; then AFK has 15\+00, fleet move 5R51 22\+31 \(M-F\) to RE when it is due/);
+  assert.equal(s.taken.diag, "RM201", "the leg is claimed like any request");
+  assert.equal(s.reach, "AFK");
 });
 
 test("a line for Selhurst is answered at Victoria, with the move over - AFK BERTH 06+00 - VIC BERTH 5Y41, VIC HOLD FOR 5Y41", async () => {
@@ -1101,8 +1122,8 @@ test("a line for Selhurst is answered at Victoria, with the move over - AFK BERT
   const [a, b] = out.rows.map(r => r.suggest);
   assert.equal(a.action, "AFK BERTH 06+00 - VIC BERTH 5Y41", JSON.stringify(a));
   assert.match(a.notes.join("; "), /over to Selhurst on 5Y39\/5Y41 11\+02 or 5Y40\/5Y41 20\+18 \(SuX\)/);
-  // a Monday exam seen from the Sunday: the weekend hold keeps its Monday, and names the move
-  assert.equal(b.action, "VIC HOLD FOR MON - 5Y41", "it ends at Victoria and is held for the move: " + JSON.stringify(b));
+  // a Monday exam seen from the Sunday night: a plain hold, since Monday is tomorrow, naming the move
+  assert.equal(b.action, "VIC HOLD FOR 5Y41", "it ends at Victoria and is held for the move: " + JSON.stringify(b));
 });
 
 test("the standing fleet move is the request where the Detail has nothing - SG BERTH 5L17/5L19/5L92", async () => {
@@ -1110,7 +1131,7 @@ test("the standing fleet move is the request where the Detail has nothing - SG B
   const out = B().run(planFor(["376040\tA\tTUE AM 04/08\tGI\tO/H SG"]), res, {});
   const s = out.rows[0].suggest;
   assert.equal(s.action, "SG BERTH 5L17/5L19/5L92", JSON.stringify(s));
-  assert.match(s.notes.join("; "), /nothing out of SG on today's Detail gets to GI; tomorrow's fleet move 5L17 10\+10 SG - GI \(M-F\)/);
+  assert.match(s.notes.join("; "), /nothing out of SG on today's Detail gets to GI, or to a depot that could send it on; tomorrow's fleet move 5L17 10\+10 SG - GI \(M-F\)/);
   assert.match(s.notes.join("; "), /the depot to choose/);
 });
 

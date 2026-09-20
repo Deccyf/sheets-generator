@@ -407,6 +407,8 @@
   }
   .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
     text-transform:uppercase; color:var(--danger); font-weight:700; display:block; margin-bottom:4px}
+  /* the note is about the books: the shortage and berth-request tabs have their own */
+  :root[data-mode="sv"] .checknote, :root[data-mode="br"] .checknote{display:none}
   .smallprint{margin:16px 0 0; font-size:12.5px; color:var(--chalk); max-width:70ch}
   footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px}
 
@@ -420,6 +422,12 @@
     .books{grid-template-columns:repeat(2, minmax(0,1fr))}
     .steps{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px 28px}
     .steps > li{padding-bottom:0}
+    /* the fold's prose and its list of what can look wrong use the width too */
+    .howto-body p{max-width:80ch}
+    .howto-body dl{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 32px}
+    .howto-body dl > div{margin:0}
+    .howto-body dt{margin-top:4px}
+    .howto-body dd{max-width:none}
   }
 
   /* ---------- the shortage and variations list ----------
@@ -535,7 +543,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.10.0</b> · 20 September 2026</span>
+      <span class="ver">Version <b>3.11.0</b> · 20 September 2026</span>
     </div>
   </header>
 
@@ -631,27 +639,39 @@
 
       <h2>If a build looks wrong</h2>
       <dl>
-        <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
-        <dd>One of the two reports is missing or the wrong kind. Both must be
-          for the same date, and both from Genius or both from Integrale.</dd>
-        <dt>A location comes up under its own heading</dt>
-        <dd>A unit berthed somewhere the section list does not know. It gets
-          its own section, in alphabetical order, and a note on the Review tab
-          — check it, and say if it should live under an existing section.</dd>
-        <dt>A train is missing</dt>
-        <dd>Read the Review tab first: empty moves to a berth are left off on
-          purpose and each one is named there. If it is not listed, report the
-          diagram number so the rule can be traced.</dd>
-        <dt>"That file is damaged or isn't a Word document"</dt>
-        <dd>Open the prints in Word and save them again as .docx, then drop
-          the new file.</dd>
-        <dt>"That isn't the diagram prints"</dt>
-        <dd>Pasted or plain-text prints whose columns were lost — the tabs
-          flattened to spaces. Copy the document out of Word again and paste
-          it as it comes, without tidying it. A .csv of the prints is fine.</dd>
-        <dt>A weekend card says "No … diagrams in this weekend's prints"</dt>
-        <dd>No diagrams for that fleet exist in the prints — nothing to build,
-          nothing wrong.</dd>
+        <div>
+          <dt>"No Diagram Summary rows found" / "No Diagram Detail itineraries found"</dt>
+          <dd>One of the two reports is missing or the wrong kind. Both must be
+            for the same date, and both from Genius or both from Integrale.</dd>
+        </div>
+        <div>
+          <dt>A location comes up under its own heading</dt>
+          <dd>A unit berthed somewhere the section list does not know. It gets
+            its own section, in alphabetical order, and a note on the Review tab
+            — check it, and say if it should live under an existing section.</dd>
+        </div>
+        <div>
+          <dt>A train is missing</dt>
+          <dd>Read the Review tab first: empty moves to a berth are left off on
+            purpose and each one is named there. If it is not listed, report the
+            diagram number so the rule can be traced.</dd>
+        </div>
+        <div>
+          <dt>"That file is damaged or isn't a Word document"</dt>
+          <dd>Open the prints in Word and save them again as .docx, then drop
+            the new file.</dd>
+        </div>
+        <div>
+          <dt>"That isn't the diagram prints"</dt>
+          <dd>Pasted or plain-text prints whose columns were lost — the tabs
+            flattened to spaces. Copy the document out of Word again and paste
+            it as it comes, without tidying it. A .csv of the prints is fine.</dd>
+        </div>
+        <div>
+          <dt>A weekend card says "No … diagrams in this weekend's prints"</dt>
+          <dd>No diagrams for that fleet exist in the prints — nothing to build,
+            nothing wrong.</dd>
+        </div>
       </dl>
     </div>
   </details>
@@ -991,7 +1011,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.10.0
+      works without an internet connection. Version 3.11.0
       &middot; 20 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11490,6 +11510,8 @@ function switchMode(m) {
     if (MODES[k].tab) { MODES[k].tab.setAttribute("aria-selected", on ? "true" : "false"); MODES[k].tab.tabIndex = on ? 0 : -1; }
     if (MODES[k].panel) MODES[k].panel.hidden = !on;
   }
+  // the page knows which tab is open: the footer's note about the books is for the book tabs
+  document.documentElement.setAttribute("data-mode", m);
   rememberOpts({ mode: m });
 }
 for (const k of Object.keys(MODES))
@@ -12291,9 +12313,13 @@ function decodeText(u8) {
          units are where their first workings start and can be asked for
          from there before they go out - ticked for the planner to untick */
       if (dayToRun && !tickedByHand) {
+        /* a day still to run: every report loaded is for a day AFTER today.
+           Today's own allocation dropped with tomorrow's reports is a day
+           that has run, whatever tomorrow's Summary says. */
         const now = new Date(); const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
         const at = d => { const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(d); return m ? Date.UTC(2000 + +m[3], +m[2] - 1, +m[1]) : 0; };
-        dayToRun.checked = own.dates.some(d => at(d) >= t0);
+        const loaded = own.dates.concat(own.alloc ? [...own.alloc.keys()] : []);
+        dayToRun.checked = loaded.length > 0 && loaded.every(d => at(d) > t0);
       }
       const units = own.summary.filter(r => r.units && r.units.length).length;
       const allocTxt = own.alloc ? " · Allocation " + [...own.alloc.keys()].join(", ") + " (" + [...own.alloc.values()].reduce((n, m) => n + m.size, 0) + " units)" : "";

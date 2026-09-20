@@ -399,6 +399,8 @@
   }
   .checknote b{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em;
     text-transform:uppercase; color:var(--danger); font-weight:700; display:block; margin-bottom:4px}
+  /* the note is about the books: the shortage and berth-request tabs have their own */
+  :root[data-mode="sv"] .checknote, :root[data-mode="br"] .checknote{display:none}
   .smallprint{margin:16px 0 0; font-size:12.5px; color:var(--chalk); max-width:70ch}
   footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px}
 
@@ -412,6 +414,12 @@
     .books{grid-template-columns:repeat(2, minmax(0,1fr))}
     .steps{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:18px 28px}
     .steps > li{padding-bottom:0}
+    /* the fold's prose and its list of what can look wrong use the width too */
+    .howto-body p{max-width:80ch}
+    .howto-body dl{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 32px}
+    .howto-body dl > div{margin:0}
+    .howto-body dt{margin-top:4px}
+    .howto-body dd{max-width:none}
   }
 
   /* ---------- the shortage and variations list ----------

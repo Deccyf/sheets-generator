@@ -140,6 +140,55 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.11.0 — 20 September 2026 — the requests as the Telex writes them
+
+**Lists of departures, not a single working.** The planner's own Telex
+writes, against a unit at West Marina wanted at Ramsgate, *XSE BERTH
+06+13/06+23* — every morning departure out of the place that gets the
+unit to the depot, the depot to choose — and the same list against every
+unit standing there. Read against the Sunday night's Telex and the three
+reports it was written from, the road now writes the same: the morning
+departures out of where the unit is whose diagram ends at the depot
+wanted or stands there, calls in the morning at its station or terminal
+where the unit can be taken off, or ends or stands two hours or more at
+a depot nearer — Grove Park for Ramsgate — from where it is sent on, the
+line then saying what that depot has on. The six Ashford departures the
+Telex lists for every 377 bound for Selhurst are the six the road lists,
+and the four Ramsgate departures it lists for a unit at home for
+Wednesday are the road's four, because a unit at its own depot not due
+tomorrow goes out on a **peak diagram** — one that stands at Grove Park
+or Victoria through the middle of the day — and is brought back the night
+before; due tomorrow afternoon it is offered the departures back by then,
+*RE BERTH RP 05 25*. Nothing is claimed: every unit at a place gets the
+list, and a departure already on another unit's list is said to be. A
+375/9 and a plain 375 count as one fleet in a list, as the Telex has them.
+Multiple only needs two diagrams or more of the train to get there
+together, which is what cuts the Ashford list down to the three the Telex
+gives a restricted unit. The two-leg request is gone — the Telex writes
+the one leg and asks for the next the night before — and *TON BERTH
+06+00* carries *then AFK has 15+00, fleet move 5R51 22+31* as its note.
+
+**The plan's own words kept.** A unit the plan has *STOPPED RE* or
+*O/H FKE* keeps that, as the Telex does, and every line of a unit
+carries the one request its first line got — a hold, a list or a swap —
+the way the Telex writes one Action against all of them. On the Sunday
+night a Monday hold is a plain *RE HOLD*, the *FOR MON* form being
+Friday's and Saturday's.
+
+**Two things the reports hid.** The Slade Green station and the Victoria
+sidings were counted as a stand at the depot — the first because the
+station shares the depot's codes, the second because Selhurst's list of
+codes overwrote Victoria's — so a diagram out to the platform read as
+back at the depot two minutes after it left. A stand at home within two
+hours of leaving is now the shunt out to the platform, not a return.
+
+**On the page.** The berth tab's drop zone names the Allocation Summary,
+which is the report that says where each unit is tonight. The
+*Always double-check* note in the footer is about the books, so it is
+shown on the two book tabs only. And the *If a build looks wrong* list in
+the how-to fold sets its entries in two columns on a wide screen instead
+of leaving the right half of the panel empty.
+
 ## 3.10.0 — 20 September 2026 — named as the sheets print them, three days, and the Action column
 
 **The depots work from the sheets.** A request now names a working the
