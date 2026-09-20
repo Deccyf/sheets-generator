@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.16.1</b> · 20 September 2026</span>
+      <span class="ver">Version <b>3.17.0</b> · 20 September 2026</span>
     </div>
   </header>
 
@@ -1646,7 +1646,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.16.1
+      works without an internet connection. Version 3.17.0
       &middot; 20 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -12796,7 +12796,11 @@ function suggestCore(r, ctx) {
   }
   if (r.mse && ctx && ctx.mse && ctx.mse.has(r.unit)) { s.action = "MSE ATTENDING — NO REQUEST"; return s; }
   if (r.mse) s.notes.push("MSE — no request if they are attending");
-  if (!r.inTraffic && !r.standing) { s.action = "NOT IN TRAFFIC"; return s; }
+  /* A unit no report places gets no request and the Action is left EMPTY,
+     the way the planner leaves it - so the stock controller can write
+     their own over it rather than rub out a word the tool put there. Why
+     it was left is in the reason beside it. */
+  if (!r.inTraffic && !r.standing) { s.action = ""; return s; }
   /* the plan's own words for a unit that stands somewhere - STOPPED RE,
      O/H FKE, SP @ GP - are what the Telex reads, so they are kept where
      nothing better is suggested; a unit that is STOPPED or out of service
@@ -13402,7 +13406,7 @@ function factsOf(r) {
   if (r.con) flags.push("CON");
   if (r.gtr) flags.push("GTR");
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
-  if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : "") + tail;
+  if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : " — no request, the Action is left blank for you") + tail;
   const bits = [];
   if (r.viaAlloc) bits.push("placed by the " + (r.placedOn ? r.placedOn + " " : "") + "Allocation Summary");
   else if (r.placedOn) bits.push("placed by the " + r.placedOn + " Summary");
@@ -15926,6 +15930,44 @@ function allocate(sheet, diagrams, ti, landed, sumAlloc) {
   return { rows: out, unfilled };
 }
 
+/* ---------- telling two units apart where their entries would match ----------
+   Two units that finish in the same place at the same minute read as one
+   line twice over, so the sheet marks which end each is: at Ramsgate the
+   two ways out, MIN for Minster and MAR for Margate; anywhere else the
+   end the unit faces, C for the country end and L for the London end.
+   That is the whole of the rule on the Sunday sheet - of the eight pairs
+   that shared a working, only the two whose entries would have been
+   identical carried a suffix, and both of the other pairs that ended
+   together carried one too. Which of a pair is which is taken from the
+   Summary's formation position where the two run as one train; where they
+   only arrive together the reports do not say, and the Why says so. */
+const RAM_ENDS = ["MAR", "MIN"], OTHER_ENDS = ["C", "L"];
+function endSuffixes(rows, days) {
+  const groups = new Map();
+  for (const r of rows) {
+    if (!r.diag || r.diag.unknown) continue;
+    const k = r.suggest.endLoc + "|" + r.suggest.arr;
+    groups.set(k, (groups.get(k) || []).concat([r]));
+  }
+  for (const [, list] of groups) {
+    if (list.length !== 2) continue;                 // three abreast is not a thing the sheet writes
+    const labels = /^Ram/i.test(list[0].suggest.endLoc) ? RAM_ENDS : OTHER_ENDS;
+    // the two run as one train: the Summary's position says which end each is
+    const posOf = r => { const d = days && days.get(r.diag.diag); return d && d.pos ? d.pos : null; };
+    const sameWorking = list[0].diag.hc && list[0].diag.hc === list[1].diag.hc && list[0].diag.dep === list[1].diag.dep;
+    const ps = list.map(posOf);
+    const ordered = sameWorking && ps[0] != null && ps[1] != null && ps[0] !== ps[1]
+      ? list.slice().sort((a, b) => posOf(a) - posOf(b))
+      : list.slice().sort((a, b) => cmp(a.diag.diag, b.diag.diag));
+    ordered.forEach((r, i) => {
+      r.suggest.arr += " " + labels[i];
+      r.why.push(sameWorking
+        ? "arrives with " + ordered[1 - i].unit + " on " + r.diag.hc + ", the " + (labels === RAM_ENDS ? (labels[i] === "MAR" ? "Margate" : "Minster") + " end" : labels[i] === "C" ? "country end" : "London end") + " by its position in the formation"
+        : "arrives the same minute as " + ordered[1 - i].unit + " — which of the two is " + labels[0] + " and which " + labels[1] + " is not in the reports, so check it");
+    });
+  }
+}
+
 /* ---------- the run ---------- */
 function run(planText, genius, opts, B) {
   const sheet = parse(planText);
@@ -15994,6 +16036,7 @@ function run(planText, genius, opts, B) {
     if (r.row.restr) r.why.push("restriction: " + r.row.restr.replace(/\s+/g, " ").trim());
     r.status = r.state === "stopped" ? (r.row.status || "Stopped") : r.state === "held" ? (r.row.status || "Available") : r.state === "spare" ? "Spare" : r.state === "stabled" ? "Stabled" : (r.row.status || "Available");
   }
+  endSuffixes(rows, days);
   const counts = {
     required: diagrams.length,
     offered: rows.filter(r => r.diag && !r.diag.unknown).length,

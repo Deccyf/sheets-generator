@@ -140,6 +140,36 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.17.0 — 20 September 2026 — a blank Action to write over, and the ends named
+
+**A unit no report places now gets a blank Action**, where it used to get
+the words *NOT IN TRAFFIC*. That is what the planner does: a line that
+needs no berth request is left empty, so the stock controller can write
+their own over it rather than rub out a word the tool put there. The
+reason is still beside it, and now says the Action was left blank on
+purpose. It costs one filled Action on the Sunday plan and nothing else.
+
+**The 395 sheet tells two units apart at the end of the day.** Two units
+that finish in the same place at the same minute read as the same line
+twice over, so the sheet marks which end each is: at Ramsgate the two ways
+out, *MIN* for Minster and *MAR* for Margate, and anywhere else *C* for the
+country end and *L* for the London end. A suffix is written only where the
+two entries would otherwise be identical, which is exactly where the
+Sunday sheet writes one — three pairs of the twenty-four, and none of the
+five other pairs that share a working but finish apart. Which of a pair is
+which comes from the Summary's formation position where the two run as one
+train; where they only arrive together the reports do not say, and the
+reason says to check it. Five of the six labels came out as the planner
+wrote them, and the sixth is downstream of a question still open about
+which arrival the sheet records.
+
+**What is still the planner's, and why.** The Metro side keeps aiming a
+request at Slade Green or Gillingham: that much is confirmed. What it
+cannot see is the restrictions Metro plan around, which is most of the
+remaining difference. *HOLD LOW MILES* needs a mileage summary report,
+which no report here carries. Which of a depot's diagrams a 395 gets is
+parked at the depot's request.
+
 ## 3.16.1 — 20 September 2026 — the Why stops pushing the rows apart
 
 **The plan preview had uneven spacing.** 3.15.0 gave each row the height

@@ -239,6 +239,44 @@ function allocate(sheet, diagrams, ti, landed, sumAlloc) {
   return { rows: out, unfilled };
 }
 
+/* ---------- telling two units apart where their entries would match ----------
+   Two units that finish in the same place at the same minute read as one
+   line twice over, so the sheet marks which end each is: at Ramsgate the
+   two ways out, MIN for Minster and MAR for Margate; anywhere else the
+   end the unit faces, C for the country end and L for the London end.
+   That is the whole of the rule on the Sunday sheet - of the eight pairs
+   that shared a working, only the two whose entries would have been
+   identical carried a suffix, and both of the other pairs that ended
+   together carried one too. Which of a pair is which is taken from the
+   Summary's formation position where the two run as one train; where they
+   only arrive together the reports do not say, and the Why says so. */
+const RAM_ENDS = ["MAR", "MIN"], OTHER_ENDS = ["C", "L"];
+function endSuffixes(rows, days) {
+  const groups = new Map();
+  for (const r of rows) {
+    if (!r.diag || r.diag.unknown) continue;
+    const k = r.suggest.endLoc + "|" + r.suggest.arr;
+    groups.set(k, (groups.get(k) || []).concat([r]));
+  }
+  for (const [, list] of groups) {
+    if (list.length !== 2) continue;                 // three abreast is not a thing the sheet writes
+    const labels = /^Ram/i.test(list[0].suggest.endLoc) ? RAM_ENDS : OTHER_ENDS;
+    // the two run as one train: the Summary's position says which end each is
+    const posOf = r => { const d = days && days.get(r.diag.diag); return d && d.pos ? d.pos : null; };
+    const sameWorking = list[0].diag.hc && list[0].diag.hc === list[1].diag.hc && list[0].diag.dep === list[1].diag.dep;
+    const ps = list.map(posOf);
+    const ordered = sameWorking && ps[0] != null && ps[1] != null && ps[0] !== ps[1]
+      ? list.slice().sort((a, b) => posOf(a) - posOf(b))
+      : list.slice().sort((a, b) => cmp(a.diag.diag, b.diag.diag));
+    ordered.forEach((r, i) => {
+      r.suggest.arr += " " + labels[i];
+      r.why.push(sameWorking
+        ? "arrives with " + ordered[1 - i].unit + " on " + r.diag.hc + ", the " + (labels === RAM_ENDS ? (labels[i] === "MAR" ? "Margate" : "Minster") + " end" : labels[i] === "C" ? "country end" : "London end") + " by its position in the formation"
+        : "arrives the same minute as " + ordered[1 - i].unit + " — which of the two is " + labels[0] + " and which " + labels[1] + " is not in the reports, so check it");
+    });
+  }
+}
+
 /* ---------- the run ---------- */
 function run(planText, genius, opts, B) {
   const sheet = parse(planText);
@@ -307,6 +345,7 @@ function run(planText, genius, opts, B) {
     if (r.row.restr) r.why.push("restriction: " + r.row.restr.replace(/\s+/g, " ").trim());
     r.status = r.state === "stopped" ? (r.row.status || "Stopped") : r.state === "held" ? (r.row.status || "Available") : r.state === "spare" ? "Spare" : r.state === "stabled" ? "Stabled" : (r.row.status || "Available");
   }
+  endSuffixes(rows, days);
   const counts = {
     required: diagrams.length,
     offered: rows.filter(r => r.diag && !r.diag.unknown).length,

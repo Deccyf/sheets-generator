@@ -118,7 +118,8 @@ test("the depot's rules give each line an action in the depot's own words", asyn
   const res = await weekday();
   const out = B().run(BLANK, res, { ignore: "375698" });
   const sug = (unit, section) => out.rows.find(r => r.unit === unit && r.section === section).suggest;
-  assert.equal(out.suggested, 8, "every empty Action filled");
+  assert.equal(out.suggested, 7,
+    "every empty Action filled - and the unit no report places is not one of them: its Action is left blank");
   /* 375601 does not end at Ashford but calls there - at a depot, so a
      berth off the working it is on when it gets there, not a changeover */
   const a = sug("375601", "EXAMS");
@@ -134,7 +135,8 @@ test("the depot's rules give each line an action in the depot's own words", asyn
   assert.equal(d.action, "AFK BERTH off 2A01", JSON.stringify(d));
   assert.match(d.notes.join("; "), /no call at RE today; the same request as its other line/);
   // not in traffic, out of service
-  assert.equal(sug("375699", "EXAMS").action, "NOT IN TRAFFIC");
+  assert.equal(sug("375699", "EXAMS").action, "",
+    "a unit no report places gets no request and the Action is left for the controller");
   assert.equal(sug("375698", "EXAMS").action, "O/O/S");
   // the planner's own action is never touched
   const kept = B().run(PLAN, res, {});
@@ -183,7 +185,9 @@ test("the plan comes back in its own shape, the suggestion in the Action column 
   assert.deepEqual(norm(shape[2].headers), ["Unit Nr", "Days", "Priority", "Target Date", "Action", "Why"]);
   assert.deepEqual(norm(shape[0].rows.map(r => r.cls)), ["ex-a", "ex-b", "ex-c", "ex-a", "ex-x"],
     "A black, B green, C red, XS50 blue - the workbook's colours");
-  assert.ok(shape[0].rows.every(r => r.filled), "an empty Action is filled");
+  /* every empty Action is filled but 375699's, which no report places:
+     that one is left blank for the controller to write their own */
+  assert.deepEqual(norm(shape[0].rows.map(r => !!r.filled)), [true, true, true, false, true]);
   const text = B().toText(out);
   // 375601 is multiple only on its defect line, so its exam line carries the check too
   assert.match(text, /^Exams\nUnit Nr\tExam\tWhen\tWhere\tAction\tWhy\n375601\tA\tTUE AM 04\/08\tAFK\tAFK BERTH off 2A01\tMO — multiple only, but runs as one unit on 2A02 09 00 today: check · at AFK 05\+35, leaves on 2A01 · on GT101 · ENDS DVP 23\+50 · calls AFK 05\+35 off 2A01, AFK 10 30 off 5A03, AFK 10\+40 \(stands 3\.3 h\) off 5A05 \+1 more$/m,
@@ -551,7 +555,7 @@ test("MSE attending: a unit listed in the box gets no request, and the export's 
   const off = B().run("", res, { defects: DEFECTS });
   assert.deepEqual(norm(off.mseUnits), ["376017"]);
   const r0 = off.rows.find(r => r.unit === "376017");
-  assert.equal(r0.suggest.action, "NOT IN TRAFFIC");
+  assert.equal(r0.suggest.action, "");
   assert.match(r0.suggest.notes.join("; "), /MSE — no request if they are attending/);
   const on = B().run("", res, { defects: DEFECTS, mse: "376017" });
   assert.equal(on.rows.find(r => r.unit === "376017").suggest.action, "MSE ATTENDING — NO REQUEST");
@@ -892,7 +896,7 @@ test("the plan's own Action says where a unit stands, and a unit on no working i
   assert.match(B().render(out), /375799.*not in traffic today — at GP per the plan/);
   // a stopped unit keeps the plan's own word for it
   assert.equal(b.suggest.action, "STOPPED RE", JSON.stringify(b.suggest));
-  assert.equal(c.suggest.action, "NOT IN TRAFFIC");
+  assert.equal(c.suggest.action, "");
   assert.equal(out.inTraffic, 0, "the count is what the reports say");
 });
 
@@ -902,7 +906,7 @@ test("a Summary allocated in part says which diagrams have no units yet", async 
     stops: [S("SLADEGD", "", "05:00", "5N01"), S("CANONST", "06:00", "06:10", "2N01"), S("SLADEGD", "07:00", "", "")] }]);
   const p = geniusPairCsv(day); const rd = await N.GENIUS.read([p.summary, p.detail]);
   const out = B().run(planFor(["375701\tA\tTUE AM 04/08\tRE\t"]), rd, {});
-  assert.equal(out.rows[0].suggest.action, "NOT IN TRAFFIC");
+  assert.equal(out.rows[0].suggest.action, "");
   assert.ok(out.reviews.some(m => /has units on 1 of 8 workings and none on the RM diagrams — those were not allocated when it was printed/.test(m)), out.reviews.join(" | "));
 });
 
@@ -998,7 +1002,7 @@ test("with no Diagram Summary the Allocation Summary places every unit, and the 
   assert.equal(b.ends.place, "RE"); assert.deepEqual(norm(b.diags), ["RM105", "RM104"]);
   assert.equal(b.suggest.action, "RE HOLD", JSON.stringify(b.suggest));
   assert.match(b.suggest.notes.join("; "), /after midnight/);
-  assert.equal(c.suggest.action, "NOT IN TRAFFIC", "375703 is on no allocation");
+  assert.equal(c.suggest.action, "", "375703 is on no allocation");
 });
 
 test("with a Diagram Summary the Allocation Summary fills in the units it has no row for", async () => {

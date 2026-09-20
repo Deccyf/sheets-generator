@@ -1517,7 +1517,11 @@ function suggestCore(r, ctx) {
   }
   if (r.mse && ctx && ctx.mse && ctx.mse.has(r.unit)) { s.action = "MSE ATTENDING — NO REQUEST"; return s; }
   if (r.mse) s.notes.push("MSE — no request if they are attending");
-  if (!r.inTraffic && !r.standing) { s.action = "NOT IN TRAFFIC"; return s; }
+  /* A unit no report places gets no request and the Action is left EMPTY,
+     the way the planner leaves it - so the stock controller can write
+     their own over it rather than rub out a word the tool put there. Why
+     it was left is in the reason beside it. */
+  if (!r.inTraffic && !r.standing) { s.action = ""; return s; }
   /* the plan's own words for a unit that stands somewhere - STOPPED RE,
      O/H FKE, SP @ GP - are what the Telex reads, so they are kept where
      nothing better is suggested; a unit that is STOPPED or out of service
@@ -2123,7 +2127,7 @@ function factsOf(r) {
   if (r.con) flags.push("CON");
   if (r.gtr) flags.push("GTR");
   const tail = flags.length ? "  [" + flags.join(" · ") + "]" : "";
-  if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : "") + tail;
+  if (!r.inTraffic) return "not in traffic today" + (r.standing ? " — at " + r.standing + " per the plan" : " — no request, the Action is left blank for you") + tail;
   const bits = [];
   if (r.viaAlloc) bits.push("placed by the " + (r.placedOn ? r.placedOn + " " : "") + "Allocation Summary");
   else if (r.placedOn) bits.push("placed by the " + r.placedOn + " Summary");
