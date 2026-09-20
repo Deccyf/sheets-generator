@@ -1209,14 +1209,24 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
   const shared = listed.filter(e => e.by.length);
   if (shared.length) notes.push(shared.map(e => nameOf(e) + " is on " + e.by.join(", ") + "'s list too").join("; "));
   /* what the nearer depot has on to the one wanted, once the unit is there:
-     its own departures, and the fleet move on the day */
-  if (!opts.nested)
-    for (const H of [...new Set(listed.flatMap(e => top(e).filter(x => x.how === "hub").map(x => x.via)))]) {
+     its own PM departures, and the fleet move on the day. Where every
+     departure listed tracks the unit back through the one depot, that is
+     the next leg, written as the plan writes it: "TON BERTH 06+00 THEN
+     AFK BERTH 15+00/5R51". */
+  let then = "";
+  if (!opts.nested) {
+    const hubs = [...new Set(listed.flatMap(e => top(e).filter(x => x.how === "hub").map(x => x.via)))];
+    for (const H of hubs) {
       const on2 = H === from ? null : departuresFrom(r, pool, H, targets, null, { proxy: opts.proxy, today: opts.today, nested: true });
-      const parts = on2 && on2.action ? [on2.action.replace(/^\S+ BERTH /, "")] : [];
-      for (const m of (H === from ? ownMoves : opts.dow != null ? movesFrom(H, targets, opts.dow) : [])) parts.push("fleet move " + m.hc + " " + m.time + " (" + m.days + ")");
+      const legs = on2 && on2.action ? on2.action.replace(/^\S+ BERTH /, "").split("/") : [];
+      const moves = H === from ? ownMoves : opts.dow != null ? movesFrom(H, targets, opts.dow) : [];
+      const parts = legs.concat(moves.map(m => "fleet move " + m.hc + " " + m.time + " (" + m.days + ")"));
       notes.push("then " + H + " has " + (parts.length ? parts.join(", ") : "nothing on the Detail") + " to " + targets.join("/") + " when it is due");
+      const next = legs.concat(moves.map(moveName));
+      if (!atHome && hubs.length === 1 && H !== from && next.length && listed.every(e => top(e)[0].how === "hub" && top(e)[0].via === H))
+        then = " THEN " + H + " BERTH " + [...new Set(next)].join("/");
     }
+  }
   if (more.length) notes.push("also: " + more.map(nameOf).join(", "));
   const shunted = listed.filter(e => road && e.road !== road);
   if (road && !onRoad.length) notes.push("nothing off the " + roadName(road) + " gets there — these leave the " +
@@ -1231,7 +1241,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
     const back = fitMO(all).filter(e => !peak.some(p => p.wid === e.wid)).sort((a, b) => a.dep - b.dep);
     if (back.length) notes.push("peak diagrams, out for the day; back here the same day: " + back.slice(0, 4).map(e => e.name).join(", "));
   }
-  return { action: from + " BERTH " + names.join("/"), notes, taken: { diag: first.d.diag, work: lead.wid, kind }, mates,
+  return { action: from + " BERTH " + names.join("/") + then, notes, taken: { diag: first.d.diag, work: lead.wid, kind }, mates,
            sharing: lead.sharing, workName: lead.hc, reach: first.via, how: first.how, portioned: !!portionOf_(lead) };
 }
 function matesAtStart(mine, days) {

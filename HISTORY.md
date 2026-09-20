@@ -140,6 +140,23 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.12.2 — 20 September 2026 — THEN the next leg
+
+Where a request takes a unit to a nearer depot on its way home, the next
+leg is written after it, the way the plan writes one: *TON BERTH 06+00
+THEN AFK BERTH 15+00/5R51* — the PM workings out of that depot that get
+to the one wanted, and the standing fleet move. Only where every
+departure listed tracks the unit back through the one depot; a list that
+mixes a direct working with a nearer depot keeps the next leg in the Why
+column, as before.
+
+**Multiple only on every line.** A unit with a multiple-only restriction
+on one line carried, on its other lines, a request worked out without
+it — a diagram on its own, or a portion that runs on alone. Multiple
+only on any line is now multiple only on all of them, in the lists and
+in the swaps. That is what makes 375625's three lines read *RE BERTH
+06 02/06+20/07 02*, as the Telex has them.
+
 ## 3.12.1 — 20 September 2026 — the roads as the depots work them
 
 The planner's answers on the roads. Ramsgate is one road: the staff shunt

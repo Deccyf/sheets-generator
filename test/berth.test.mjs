@@ -1089,7 +1089,7 @@ test("a day nothing is loaded for is named, and a unit the later day does place 
   assert.match(B().render(out), /375706.*placed by the 02\/08\/26 Allocation Summary/);
 });
 
-test("a working to a depot that can send it on is the request, and what that depot has on is noted - TON BERTH 06+00", async () => {
+test("a working to a depot that can send it on, then what that depot has on - TON BERTH 06+00 THEN AFK BERTH 15+00/5R51", async () => {
   const day = SWAP_DAY.concat([
     // out of Tonbridge sidings to Ashford in the morning, ending there
     { code: "RM201", units: "375741.", stops: [S("TONBDMS", "", "06:00", "5T01"), S("ASHFDNS", "07:00", "", "")] },
@@ -1101,8 +1101,8 @@ test("a working to a depot that can send it on is the request, and what that dep
   rd.alloc = B().parseAllocation(allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "TONBDMS"));
   const out = B().run(planFor(["375705\tA\tMON PM 03/08\tRE\t"]), rd, {});
   const s = out.rows[0].suggest;
-  // the leg to Ashford is the request, the way the plan writes one; what Ashford has once it is there is the note
-  assert.equal(s.action, "TON BERTH 06+00", JSON.stringify(s));
+  // the leg to Ashford, then what Ashford has on once it is there - its PM departure or the fleet move - the way the plan writes it
+  assert.equal(s.action, "TON BERTH 06+00 THEN AFK BERTH 15+00/5R51", JSON.stringify(s));
   assert.match(s.notes.join("; "), /tomorrow's 5T01 06\+00: RM201 ends AFK 07\+00, nearer RE — AFK to send it on; then AFK has 15\+00, fleet move 5R51 22\+31 \(M-F\) to RE when it is due/);
   assert.equal(s.taken.diag, "RM201", "the leg is claimed like any request");
   assert.equal(s.reach, "AFK");
