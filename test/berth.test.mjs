@@ -1250,3 +1250,41 @@ test("multiple only on any line of a unit keeps every line's request coupled: no
   const free = B().run(planFor(["375705\tA\tMON AM 03/08\tRE\t"]), rd, {}).rows[0].suggest;
   assert.match(free.action, /5J90/, JSON.stringify(free));
 });
+
+test("multiple only with days to run is contained: a multiple diagram off its road, even one back to where it is", async () => {
+  /* 375705 stands in the Ashford Down Sidings with an MO defect and two
+     days to run. Out of the Down Sidings: 5A20, one diagram on its own;
+     2A10, two diagrams coupled all day and back to Ashford at night; and
+     5A08, two diagrams to Ramsgate that come in at 21+16 and 01+41. The
+     contained working is offered, the split one is not. */
+  const day = SWAP_DAY.concat([
+    { code: "RM220", units: "375720.", stops: [S("ASHFDNS", "", "05:00", "5A20"), S("VICTRIE", "06:20", "06:40", "2A21"), S("ASHFDNS", "08:10", "", "")] },
+    { code: "RM004", units: "375704.", pos: 1, stops: [S("ASHFDNS", "", "05:55", "2A10"), S("VICTRIE", "07:20", "07:40", "2A11"), S("ASHFDNS", "22:00", "", "")] },
+    { code: "RM905", units: "375905.", pos: 2, stops: [S("ASHFDNS", "", "05:55", "2A10"), S("VICTRIE", "07:20", "07:40", "2A11"), S("ASHFDNS", "22:00", "", "")] },
+    { code: "RM002", units: "375702.", pos: 1, stops: [S("ASHFDNS", "", "05:27", "5A08"), S("RAMSGTE", "06:30", "06:40", "2R08"), S("RAMSGTD", "01:41", "", "")] },
+    { code: "RM904", units: "375904.", pos: 2, stops: [S("ASHFDNS", "", "05:27", "5A08"), S("RAMSGTE", "06:30", "06:40", "2R08"), S("RAMSGTD", "21:16", "", "")] },
+  ]);
+  const p = geniusPairCsv(day); const rd = await N.GENIUS.read([p.summary, p.detail]);
+  rd.alloc = B().parseAllocation(allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "ASHFDNS"));
+  const plan = ["Defects", "Unit Nr \tDays\tPriority\tTarget Date\tAction ", "375705\t2\t2. Restriction MO\t05/08/2026 00:00:00\t"].join("\n");
+  const s = B().run(plan, rd, {}).rows[0].suggest;
+  assert.equal(s.action, "AFK BERTH 05 55", "contained on 2A10: " + JSON.stringify(s));
+  assert.match(s.notes.join("; "), /RM004 contained — in multiple to AFK 22\+00/);
+  assert.ok(!/05 27|05 00/.test(s.action + s.notes.join(" ")), "not the split train, not the single unit: " + JSON.stringify(s));
+  // due today, it is not contained: nothing off Ashford keeps it coupled to Ramsgate
+  const due = ["Defects", "Unit Nr \tDays\tPriority\tTarget Date\tAction ", "375705\t0\t2. Restriction MO\t02/08/2026 00:00:00\t"].join("\n");
+  const t = B().run(due, rd, {}).rows[0].suggest;
+  assert.ok(!/05 55/.test(t.action), "not contained when due: " + JSON.stringify(t));
+});
+
+test("a unit the plan places by its own request is put on the road that working leaves from", async () => {
+  // "GP BERTH 5J90": 5J90 leaves the Up Sidings, so the unit is an Up Sidings unit and 5J90 leads its list
+  const day = SWAP_DAY.concat([
+    { code: "RM190", units: "375790.", stops: [S("GRVPKUS", "", "05:50", "5J90"), S("RAMSGTE", "07:30", "07:35", "5J90"), S("RAMSGTD", "07:45", "", "")] },
+  ]);
+  const p = geniusPairCsv(day); const res = await N.GENIUS.build([p.summary, p.detail]);
+  const out = B().run(planFor(["375799\tA\tTUE AM 04/08\tRE\tGP BERTH 5J90"]), res, {});
+  assert.equal(out.rows[0].standingRoad, "GRVPKUS");
+  assert.equal(out.rows[0].suggest.action, "GP BERTH 5J90/5J01", JSON.stringify(out.rows[0].suggest));
+  assert.match(out.rows[0].suggest.notes.join("; "), /off the Up Sidings first; 5J01 leaves the Carriage Shed — a shunt across/);
+});

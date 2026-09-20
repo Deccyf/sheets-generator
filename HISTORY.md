@@ -140,6 +140,23 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.12.3 — 20 September 2026 — contained
+
+**Contained.** A unit with a multiple-only restriction and days to run
+does not have to get home: the planner contains it, on a multiple
+diagram off its road, even one that ends back where it started — *05 55
+VIC* out of Ashford, which comes back to Ashford at night. The road now
+offers those after the departures that do get the unit home or nearer,
+saying *contained — in multiple to AFK 22+00*. And multiple only means
+the diagrams get there together, the same place at the same time: 5A08's
+two portions come into Ramsgate at 21+16 and 01+41, so it is not offered
+to a restricted unit, which the Telex bears out.
+
+**Two 05 55s.** Where the sheet prints two departures at the same time
+out of a place, the request tells them apart by where they go, off the
+book's own destination column — *05 55 VIC*, *05 55 RAM* — whether or
+not both are on the list.
+
 ## 3.12.2 — 20 September 2026 — THEN the next leg
 
 Where a request takes a unit to a nearer depot on its way home, the next
