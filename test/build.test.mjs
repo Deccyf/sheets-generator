@@ -58,8 +58,13 @@ test("the built file is self-contained and lean", () => {
      style record per cell, for the preview, the clipboard and the Excel
      file alike (~15 KB over 3.14.0, most of it the two skins). No library:
      the workbook writer already here takes a raw stylesheet. */
-  assert.ok(html.length < 1000 * 1024,
-    "under 1000 KB (was 1.2 MB); this build is " +
+  /* 1100 KB at 3.16.0: the High Speed disposition statement is a third
+     control document, and it brings its own dress the same way (~60 KB of
+     style records, the largest of the three because that tab is a hundred
+     records deep) plus the road that reads it. The copy without the
+     berth-request road carries none of it. */
+  assert.ok(html.length < 1100 * 1024,
+    "under 1100 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

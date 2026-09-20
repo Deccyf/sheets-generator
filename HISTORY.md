@@ -140,6 +140,48 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.16.0 — 20 September 2026 — the High Speed disposition sheet
+
+**A third telex, and a different job.** The 375s and the Networkers have a
+maintenance plan with a berth request per line. The 395s do not: their
+telex is the *Class 395 Disposition Statement*, a row per unit with where
+it is, what it is fit for and what the depot wants of it on each of the
+next five days — and four columns on the right that are the planner's
+own. Paste that tab here and those four come back filled: the diagram the
+unit goes out on, when it leaves, where it ends and when it gets in.
+
+**Read against the day's own AZ diagrams**, off the Diagram Detail: where
+each starts and ends, its miles, whether it goes over the Ebbsfleet high
+level or along the North Kent, and where it stands back at its depot
+through the day. A unit goes out from the depot its *DEPT LOCATION*
+names; a restriction in its comment or its day cell keeps it off what it
+cannot take; *Early PM*, *Between Peaks* and *PM* ask for a diagram that
+is back at the depot then; *Low Mileage* takes the fewest miles; *Stopped*
+and *Hold* keep it in, and *Stable if possible* keeps it in while another
+unit can do the work. A diagram the reports have already allocated is
+taken as it stands, and never given to a second unit.
+
+**How the Allocation Summary is read** matters more here than anywhere
+else. A unit's line on it is the tail of last night's diagram when it
+finishes in the small hours — that says where the unit *lands* — and the
+day's own work when it finishes in the evening, in which case its
+finishing diagram is what the unit does today. On the Sunday sheet that
+told the five allocated units from the fourteen not yet allocated, and
+named the same diagram the planner had written for every one of the five.
+
+**The sheet comes back in its own dress**, the same way the other two do:
+the workbook's style record per cell, its merged header block, its column
+widths and row heights, the blue heading band, the yellow restriction
+cells, and the UNIT STATUS colours painted by the tab's own rules. The
+boxes at the head — trains required, offered, spare, stopped, stabled —
+are counted from the day, and on 20/09 all five matched the planner's own.
+
+**What is not calibrated yet** is which of a depot's diagrams a unit gets
+when nothing above decides it. Read against the Sunday sheet, every one
+of the twenty-four units came out at the right depot and ten got the
+planner's own diagram; the other fourteen are swaps within a depot, which
+is the planner's judgement and the next thing to ask about.
+
 ## 3.15.0 — 20 September 2026 — the plan in the workbook's own dress
 
 **Cell for cell.** 3.14.0 gave the plan back in the tab's shape, but

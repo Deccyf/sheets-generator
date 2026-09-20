@@ -607,6 +607,7 @@
           <option value="auto">read from the paste</option>
           <option value="mainline">Mainline plan</option>
           <option value="metro">Metro Telex</option>
+          <option value="hs">High Speed disposition</option>
         </select></label>
       <button class="btn" id="brgo" type="button">Read the plan</button>
       <button class="btn ghost" id="brclear" type="button">Start over</button>
@@ -734,9 +735,32 @@
           unit the plan places by a request of its own &mdash; <code>GP
           BERTH FP 5S07</code> &mdash; is put on the road that working
           leaves from.</p>
-        <p><b>Two workbooks, one shape back.</b> The Mainline plan and the
-          Metro Telex both paste here, and which it is is read from the
-          paste &mdash; the Metro Telex heads its exam lists by depot and
+        <p><b>The High Speed sheet is a different job.</b> The 395s have no
+          maintenance plan with a request per line; their telex is the
+          <i>Class 395 Disposition Statement</i>, one row per unit, and the
+          planner&rsquo;s part is the four columns on the right: the
+          diagram it goes out on, when it leaves, where it ends and when it
+          gets in. Paste that tab here and those four are filled. A unit
+          goes out from the depot its <i>DEPT LOCATION</i> names, on one of
+          that depot&rsquo;s own diagrams off the day&rsquo;s Detail; a
+          restriction in its comment or its day cell keeps it off what it
+          cannot take &mdash; <i>not over Ebbsfleet high level</i> off any
+          diagram with an Ebbsfleet&ndash;Gravesend leg, <i>avoids North
+          Kent</i> off the North Kent; <i>Early PM</i>, <i>Between
+          Peaks</i> and <i>PM</i> ask for a diagram that is back at the
+          depot then; <i>Low Mileage</i> takes the fewest miles;
+          <i>Stopped</i> and <i>Hold</i> keep it in, and <i>Stable if
+          possible</i> keeps it in while another unit can do the work. A
+          diagram the reports have already allocated is taken as it stands
+          and never given twice, and the boxes at the head of the sheet
+          &mdash; trains required, offered, spare, stopped and stabled
+          &mdash; are counted from the day itself. Which diagram of a
+          depot&rsquo;s own a unit gets, where nothing above decides it, is
+          the order they leave in &mdash; not yet the depot&rsquo;s rule,
+          and the next thing to calibrate.</p>
+        <p><b>Three workbooks, one shape back.</b> The Mainline plan, the
+          Metro Telex and the High Speed disposition all paste here, and
+          which it is is read from the paste &mdash; the Metro Telex heads its exam lists by depot and
           has a <i>Location</i> column, where the unit stands tonight
           &mdash; or set with the <b>Workbook</b> choice. What is pasted is
           kept as it came: the titles, the heading rows, the blank rows

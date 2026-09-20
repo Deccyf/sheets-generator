@@ -1852,6 +1852,11 @@ function mergeDefects(plan, defects) {
 }
 function run(planText, genius, opts) {
   opts = opts || {};
+  /* the High Speed disposition statement is its own road: one row per
+     unit with the diagram to fill in, read by SHEETS_BERTH_HS */
+  const HS = typeof SHEETS_BERTH_HS !== "undefined" ? SHEETS_BERTH_HS : null;
+  if (HS && (opts.kind === "hs" || ((opts.kind || "auto") === "auto" && HS.isDisposition(planText))))
+    return HS.run(planText, genius, opts, { allDays, runDate, allocFor, parseShort, shortOf, hhmm });
   const plan = mergeDefects(parsePlan(planText, opts.kind), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
@@ -2340,6 +2345,7 @@ function planRows(res) {
    Plan tab from A1; or, with the Why column, for reading. */
 function toText(res, opts) {
   opts = opts || {};
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toText(res, opts);
   const out = [];
   for (const r of planRows(res).rows) {
     const cells = r.type === "blank" ? [] : r.cells.slice();
@@ -2369,6 +2375,7 @@ function whyCell(why) {
    from the plan's is bold; the clipboard and the workbook get neither. */
 function toHtml(res, inline, opts) {
   opts = opts || {};
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toHtml(res, inline, opts);
   const P = planRows(res), px = w => Math.round(w * 7) + 5, pt = h => Math.round(h * 4 / 3);
   const why = !opts.workbook, WHY_PX = 480;
   // fixed layout only holds the workbook's column widths when the table has a width of its own;
@@ -2401,6 +2408,7 @@ function toHtml(res, inline, opts) {
    record per cell, the widths and row heights, the banner merged across;
    and a Why sheet beside it with the reasons. */
 function toXlsx(res, zipFn) {
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toXlsx(res, zipFn, SHEETS_XLSX);
   const P = planRows(res), S = P.skin;
   const sheet = (name, withWhy) => {
     const cells = [], merges = [], rowHeights = new Map();
@@ -2419,6 +2427,7 @@ function toXlsx(res, zipFn) {
   return SHEETS_XLSX.writeWorkbook([sheet("Maintenance Plan", false), sheet("Why", true)], zipFn);
 }
 function render(res) {
+  if (res.kind === "hs") return SHEETS_BERTH_HS.render(res);
   const W = { unit: 7, sec: 10, needs: 9, due: 26, action: 22, sugg: 34 };
   const pad = (s, n) => String(s == null ? "" : s).padEnd(n).slice(0, n);
   const head = pad("UNIT", W.unit) + " " + pad("LIST", W.sec) + " " + pad("NEEDS", W.needs) + " " +

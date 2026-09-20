@@ -543,7 +543,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.15.0</b> · 20 September 2026</span>
+      <span class="ver">Version <b>3.16.0</b> · 20 September 2026</span>
     </div>
   </header>
 
@@ -1121,6 +1121,7 @@
           <option value="auto">read from the paste</option>
           <option value="mainline">Mainline plan</option>
           <option value="metro">Metro Telex</option>
+          <option value="hs">High Speed disposition</option>
         </select></label>
       <button class="btn" id="brgo" type="button">Read the plan</button>
       <button class="btn ghost" id="brclear" type="button">Start over</button>
@@ -1248,9 +1249,32 @@
           unit the plan places by a request of its own &mdash; <code>GP
           BERTH FP 5S07</code> &mdash; is put on the road that working
           leaves from.</p>
-        <p><b>Two workbooks, one shape back.</b> The Mainline plan and the
-          Metro Telex both paste here, and which it is is read from the
-          paste &mdash; the Metro Telex heads its exam lists by depot and
+        <p><b>The High Speed sheet is a different job.</b> The 395s have no
+          maintenance plan with a request per line; their telex is the
+          <i>Class 395 Disposition Statement</i>, one row per unit, and the
+          planner&rsquo;s part is the four columns on the right: the
+          diagram it goes out on, when it leaves, where it ends and when it
+          gets in. Paste that tab here and those four are filled. A unit
+          goes out from the depot its <i>DEPT LOCATION</i> names, on one of
+          that depot&rsquo;s own diagrams off the day&rsquo;s Detail; a
+          restriction in its comment or its day cell keeps it off what it
+          cannot take &mdash; <i>not over Ebbsfleet high level</i> off any
+          diagram with an Ebbsfleet&ndash;Gravesend leg, <i>avoids North
+          Kent</i> off the North Kent; <i>Early PM</i>, <i>Between
+          Peaks</i> and <i>PM</i> ask for a diagram that is back at the
+          depot then; <i>Low Mileage</i> takes the fewest miles;
+          <i>Stopped</i> and <i>Hold</i> keep it in, and <i>Stable if
+          possible</i> keeps it in while another unit can do the work. A
+          diagram the reports have already allocated is taken as it stands
+          and never given twice, and the boxes at the head of the sheet
+          &mdash; trains required, offered, spare, stopped and stabled
+          &mdash; are counted from the day itself. Which diagram of a
+          depot&rsquo;s own a unit gets, where nothing above decides it, is
+          the order they leave in &mdash; not yet the depot&rsquo;s rule,
+          and the next thing to calibrate.</p>
+        <p><b>Three workbooks, one shape back.</b> The Mainline plan, the
+          Metro Telex and the High Speed disposition all paste here, and
+          which it is is read from the paste &mdash; the Metro Telex heads its exam lists by depot and
           has a <i>Location</i> column, where the unit stands tonight
           &mdash; or set with the <b>Workbook</b> choice. What is pasted is
           kept as it came: the titles, the heading rows, the blank rows
@@ -1615,7 +1639,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.15.0
+      works without an internet connection. Version 3.16.0
       &middot; 20 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -13100,6 +13124,11 @@ function mergeDefects(plan, defects) {
 }
 function run(planText, genius, opts) {
   opts = opts || {};
+  /* the High Speed disposition statement is its own road: one row per
+     unit with the diagram to fill in, read by SHEETS_BERTH_HS */
+  const HS = typeof SHEETS_BERTH_HS !== "undefined" ? SHEETS_BERTH_HS : null;
+  if (HS && (opts.kind === "hs" || ((opts.kind || "auto") === "auto" && HS.isDisposition(planText))))
+    return HS.run(planText, genius, opts, { allDays, runDate, allocFor, parseShort, shortOf, hhmm });
   const plan = mergeDefects(parsePlan(planText, opts.kind), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
@@ -13588,6 +13617,7 @@ function planRows(res) {
    Plan tab from A1; or, with the Why column, for reading. */
 function toText(res, opts) {
   opts = opts || {};
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toText(res, opts);
   const out = [];
   for (const r of planRows(res).rows) {
     const cells = r.type === "blank" ? [] : r.cells.slice();
@@ -13617,6 +13647,7 @@ function whyCell(why) {
    from the plan's is bold; the clipboard and the workbook get neither. */
 function toHtml(res, inline, opts) {
   opts = opts || {};
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toHtml(res, inline, opts);
   const P = planRows(res), px = w => Math.round(w * 7) + 5, pt = h => Math.round(h * 4 / 3);
   const why = !opts.workbook, WHY_PX = 480;
   // fixed layout only holds the workbook's column widths when the table has a width of its own;
@@ -13649,6 +13680,7 @@ function toHtml(res, inline, opts) {
    record per cell, the widths and row heights, the banner merged across;
    and a Why sheet beside it with the reasons. */
 function toXlsx(res, zipFn) {
+  if (res.kind === "hs") return SHEETS_BERTH_HS.toXlsx(res, zipFn, SHEETS_XLSX);
   const P = planRows(res), S = P.skin;
   const sheet = (name, withWhy) => {
     const cells = [], merges = [], rowHeights = new Map();
@@ -13667,6 +13699,7 @@ function toXlsx(res, zipFn) {
   return SHEETS_XLSX.writeWorkbook([sheet("Maintenance Plan", false), sheet("Why", true)], zipFn);
 }
 function render(res) {
+  if (res.kind === "hs") return SHEETS_BERTH_HS.render(res);
   const W = { unit: 7, sec: 10, needs: 9, due: 26, action: 22, sugg: 34 };
   const pad = (s, n) => String(s == null ? "" : s).padEnd(n).slice(0, n);
   const head = pad("UNIT", W.unit) + " " + pad("LIST", W.sec) + " " + pad("NEEDS", W.needs) + " " +
@@ -13695,6 +13728,2423 @@ return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefect
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_BERTH = SHEETS_BERTH;
+</script>
+<script>
+/* SHEETS_HS_DISP_SKIN - the Class 395 Disposition Statement's own dress,
+   lifted from the operator's workbook by tools/make-hs-disp-skin.py and
+   renumbered into a minimal styleSheet. Layout and house text only: no
+   unit numbers, diagrams, dates or counts come with it. */
+"use strict";
+const SHEETS_HS_DISP_SKIN = {
+ "stylesXml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><numFmts count=\"3\"><numFmt numFmtId=\"164\" formatCode=\"[$-F800]dddd\\,\\ mmmm\\ dd\\,\\ yyyy\"/><numFmt numFmtId=\"166\" formatCode=\"h:mm;@\"/><numFmt numFmtId=\"165\" formatCode=\"dd/mm/yyyy;@\"/></numFmts><fonts count=\"26\"><font><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"24\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"24\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"16\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"16\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><sz val=\"16\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"14\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"16\"/><color rgb=\"FF00B050\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"14\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"16\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/></font><font><sz val=\"16\"/><name val=\"Calibri\"/></font><font><sz val=\"16\"/><color rgb=\"FF0070C0\"/><name val=\"Calibri\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"14\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"14\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"14\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"14\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><sz val=\"16\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><scheme val=\"minor\"/></font><font><sz val=\"16\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"16\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"12\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"16\"/><color rgb=\"FFC00000\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"24\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"18\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"14\"/><color rgb=\"FF404040\"/><name val=\"Calibri\"/><family val=\"2\"/></font><font><b/><sz val=\"18\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"14\"/><name val=\"Calibri\"/></font></fonts><fills count=\"8\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFDEEBF7\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFDDEBF7\"/><bgColor rgb=\"FF000000\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF92D050\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\"/><bgColor rgb=\"FF000000\"/></patternFill></fill></fills><borders count=\"42\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"dotted\"><color rgb=\"FF000000\"/></left><right/><top style=\"dotted\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"dotted\"><color rgb=\"FF000000\"/></left><right/><top/><bottom/><diagonal/></border><border><left style=\"dotted\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"dotted\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"dotted\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"dotted\"><color rgb=\"FF000000\"/></right><top style=\"dotted\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom/><diagonal/></border><border><left/><right style=\"dotted\"><color rgb=\"FF000000\"/></right><top/><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"dotted\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"dotted\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"dotted\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"dotted\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"dotted\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"dotted\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top/><bottom style=\"dotted\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"dotted\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"dotted\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"104\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"16\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"20\" fontId=\"4\" fillId=\"0\" borderId=\"2\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"3\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"3\" borderId=\"4\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"3\" borderId=\"5\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"0\" borderId=\"6\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"0\" borderId=\"7\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"8\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"9\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"4\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"10\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"4\" borderId=\"8\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"5\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"11\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"5\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"3\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"12\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"14\" fillId=\"6\" borderId=\"12\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"2\" borderId=\"14\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"15\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"16\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"16\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"2\" borderId=\"14\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"9\" fillId=\"2\" borderId=\"16\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"16\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"2\" borderId=\"15\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"17\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"17\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"17\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"18\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"2\" borderId=\"3\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"16\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"19\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"20\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"21\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"22\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"23\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"20\" fillId=\"7\" borderId=\"24\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"20\" fillId=\"7\" borderId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"20\" fillId=\"7\" borderId=\"28\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"20\" fillId=\"7\" borderId=\"29\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"30\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"31\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"24\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"32\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"28\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"29\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"164\" fontId=\"21\" fillId=\"3\" borderId=\"33\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"22\" fillId=\"3\" borderId=\"34\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"22\" fillId=\"3\" borderId=\"9\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"22\" fillId=\"3\" borderId=\"35\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"28\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"36\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"22\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"37\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"38\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"24\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"32\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"28\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"29\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"166\" fontId=\"6\" fillId=\"0\" borderId=\"33\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"22\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"37\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"38\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"39\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"23\" fillId=\"0\" borderId=\"40\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"22\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"37\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"38\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"24\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"32\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"26\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"39\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"165\" fontId=\"6\" fillId=\"0\" borderId=\"40\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"24\" fillId=\"3\" borderId=\"9\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"41\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"25\" fillId=\"0\" borderId=\"19\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"4\"><dxf><font><color rgb=\"FF000000\"/></font><fill><patternFill><bgColor rgb=\"FFFFFFFF\"/></patternFill></fill></dxf><dxf><font><color rgb=\"FF000000\"/></font><fill><patternFill><bgColor rgb=\"FFFFFFFF\"/></patternFill></fill></dxf><dxf><font><color rgb=\"FFFF0000\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFFFFFFF\"/></patternFill></fill></dxf><dxf><font><color rgb=\"FF00B050\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFFFFFFF\"/></patternFill></fill></dxf></dxfs></styleSheet>",
+ "xfCss": [
+  "font-size:11pt",
+  "font-weight:700;font-size:24pt",
+  "font-size:24pt",
+  "font-size:24pt;white-space:pre-wrap",
+  "font-size:24pt;text-align:center",
+  "font-size:24pt",
+  "font-size:16pt;background:#FFFFFF;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-size:16pt;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;color:#00B050;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;color:#00B050;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DDEBF7;border-left:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;background:#DEEBF7;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;background:#FFFFFF;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;color:#0070C0;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#FF0000;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#FF0000;background:#FFFF00;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#FF0000;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:14pt;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:14pt;color:#FFFFFF;background:#92D050;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#FFFFFF;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;background:#FFFFFF;border-left:1px solid #000000;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;border-left:1px solid #000000;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:11pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000",
+  "font-size:16pt;color:#FF0000;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:11pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000",
+  "font-size:16pt;color:#FF0000;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;background:#FFFFFF;border-left:1px solid #000000;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-size:16pt;background:#FFFFFF;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:16pt;background:#FFFFFF;border-left:1px solid #000000;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:16pt;color:#0070C0;border-left:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:11pt;border-left:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000",
+  "font-size:16pt;color:#FF0000;border-left:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:11pt;border-left:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000",
+  "font-size:16pt;background:#FFFFFF;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-size:16pt;background:#FFFFFF;border-left:2px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:16pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:1px dotted #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:1px dotted #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-left:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-right:1px dotted #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-left:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-right:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-left:2px solid #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-right:1px dotted #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:16pt;color:#C00000;background:#FFFFFF;border-left:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:16pt;color:#C00000;background:#FFFFFF;text-align:center",
+  "font-weight:700;font-size:16pt;color:#C00000;background:#FFFFFF;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:16pt;color:#C00000;background:#FFFFFF;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-left:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-right:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:24pt;background:#DEEBF7;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:18pt;background:#DEEBF7;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:18pt;background:#DEEBF7;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:18pt;background:#DEEBF7;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:12pt;border-right:1px dotted #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-left:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-right:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-left:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-right:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-left:2px solid #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;color:#404040;border-right:2px solid #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:2px solid #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-right:2px solid #000000;border-bottom:1px dotted #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:18pt;background:#DEEBF7;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:1px dotted #000000;border-bottom:2px solid #000000;text-align:center;white-space:pre-wrap",
+  "font-weight:700;font-size:14pt;border-left:1px dotted #000000;border-top:1px dotted #000000;text-align:center;white-space:pre-wrap"
+ ],
+ "statusCss": {
+  "Stabled": "color:#000000",
+  "Spare": "color:#000000",
+  "Stopped": "color:#FF0000;background:#FFFFFF",
+  "Available": "color:#00B050;background:#FFFFFF"
+ },
+ "statusOrder": [
+  "Stabled",
+  "Spare",
+  "Stopped",
+  "Available"
+ ],
+ "widths": [
+  3.0,
+  14.0,
+  14.0,
+  17.42578125,
+  16.28515625,
+  17.5703125,
+  24.5703125,
+  28.140625,
+  28.140625,
+  28.140625,
+  28.140625,
+  28.140625,
+  22.28515625,
+  22.28515625,
+  22.28515625,
+  22.28515625
+ ],
+ "head": [
+  [
+   2,
+   "B",
+   69,
+   ""
+  ],
+  [
+   2,
+   "C",
+   70,
+   ""
+  ],
+  [
+   2,
+   "D",
+   70,
+   ""
+  ],
+  [
+   2,
+   "E",
+   70,
+   ""
+  ],
+  [
+   2,
+   "F",
+   71,
+   ""
+  ],
+  [
+   2,
+   "G",
+   101,
+   "CLASS 395 DISPOSITION STATEMENT AM"
+  ],
+  [
+   2,
+   "H",
+   70,
+   ""
+  ],
+  [
+   2,
+   "I",
+   70,
+   ""
+  ],
+  [
+   2,
+   "J",
+   70,
+   ""
+  ],
+  [
+   2,
+   "K",
+   70,
+   ""
+  ],
+  [
+   2,
+   "L",
+   71,
+   ""
+  ],
+  [
+   2,
+   "M",
+   61,
+   ""
+  ],
+  [
+   2,
+   "N",
+   61,
+   ""
+  ],
+  [
+   2,
+   "O",
+   61,
+   ""
+  ],
+  [
+   2,
+   "P",
+   62,
+   ""
+  ],
+  [
+   3,
+   "B",
+   57,
+   ""
+  ],
+  [
+   3,
+   "C",
+   58,
+   ""
+  ],
+  [
+   3,
+   "D",
+   58,
+   ""
+  ],
+  [
+   3,
+   "E",
+   58,
+   ""
+  ],
+  [
+   3,
+   "F",
+   58,
+   ""
+  ],
+  [
+   3,
+   "G",
+   86,
+   "Date Sent"
+  ],
+  [
+   3,
+   "H",
+   87,
+   ""
+  ],
+  [
+   3,
+   "I",
+   88,
+   ""
+  ],
+  [
+   3,
+   "J",
+   53,
+   "SERVICE TRAINS REQUIRED AM / PM"
+  ],
+  [
+   3,
+   "K",
+   54,
+   ""
+  ],
+  [
+   3,
+   "L",
+   48,
+   ""
+  ],
+  [
+   3,
+   "M",
+   63,
+   ""
+  ],
+  [
+   3,
+   "N",
+   64,
+   ""
+  ],
+  [
+   3,
+   "O",
+   64,
+   ""
+  ],
+  [
+   3,
+   "P",
+   65,
+   ""
+  ],
+  [
+   4,
+   "B",
+   57,
+   ""
+  ],
+  [
+   4,
+   "C",
+   58,
+   ""
+  ],
+  [
+   4,
+   "D",
+   58,
+   ""
+  ],
+  [
+   4,
+   "E",
+   58,
+   ""
+  ],
+  [
+   4,
+   "F",
+   58,
+   ""
+  ],
+  [
+   4,
+   "G",
+   86,
+   ""
+  ],
+  [
+   4,
+   "H",
+   87,
+   ""
+  ],
+  [
+   4,
+   "I",
+   88,
+   ""
+  ],
+  [
+   4,
+   "J",
+   53,
+   ""
+  ],
+  [
+   4,
+   "K",
+   54,
+   ""
+  ],
+  [
+   4,
+   "L",
+   49,
+   ""
+  ],
+  [
+   4,
+   "M",
+   63,
+   ""
+  ],
+  [
+   4,
+   "N",
+   64,
+   ""
+  ],
+  [
+   4,
+   "O",
+   64,
+   ""
+  ],
+  [
+   4,
+   "P",
+   65,
+   ""
+  ],
+  [
+   5,
+   "B",
+   57,
+   ""
+  ],
+  [
+   5,
+   "C",
+   58,
+   ""
+  ],
+  [
+   5,
+   "D",
+   58,
+   ""
+  ],
+  [
+   5,
+   "E",
+   58,
+   ""
+  ],
+  [
+   5,
+   "F",
+   58,
+   ""
+  ],
+  [
+   5,
+   "G",
+   89,
+   ""
+  ],
+  [
+   5,
+   "H",
+   90,
+   ""
+  ],
+  [
+   5,
+   "I",
+   91,
+   ""
+  ],
+  [
+   5,
+   "J",
+   55,
+   ""
+  ],
+  [
+   5,
+   "K",
+   56,
+   ""
+  ],
+  [
+   5,
+   "L",
+   50,
+   ""
+  ],
+  [
+   5,
+   "M",
+   63,
+   ""
+  ],
+  [
+   5,
+   "N",
+   64,
+   ""
+  ],
+  [
+   5,
+   "O",
+   64,
+   ""
+  ],
+  [
+   5,
+   "P",
+   65,
+   ""
+  ],
+  [
+   6,
+   "B",
+   57,
+   ""
+  ],
+  [
+   6,
+   "C",
+   58,
+   ""
+  ],
+  [
+   6,
+   "D",
+   58,
+   ""
+  ],
+  [
+   6,
+   "E",
+   58,
+   ""
+  ],
+  [
+   6,
+   "F",
+   58,
+   ""
+  ],
+  [
+   6,
+   "G",
+   92,
+   ""
+  ],
+  [
+   6,
+   "H",
+   93,
+   ""
+  ],
+  [
+   6,
+   "I",
+   94,
+   ""
+  ],
+  [
+   6,
+   "J",
+   51,
+   "SERVICE TRAINS OFFERED AM / PM"
+  ],
+  [
+   6,
+   "K",
+   52,
+   ""
+  ],
+  [
+   6,
+   "L",
+   103,
+   ""
+  ],
+  [
+   6,
+   "M",
+   63,
+   ""
+  ],
+  [
+   6,
+   "N",
+   64,
+   ""
+  ],
+  [
+   6,
+   "O",
+   64,
+   ""
+  ],
+  [
+   6,
+   "P",
+   65,
+   ""
+  ],
+  [
+   7,
+   "B",
+   57,
+   ""
+  ],
+  [
+   7,
+   "C",
+   58,
+   ""
+  ],
+  [
+   7,
+   "D",
+   58,
+   ""
+  ],
+  [
+   7,
+   "E",
+   58,
+   ""
+  ],
+  [
+   7,
+   "F",
+   58,
+   ""
+  ],
+  [
+   7,
+   "G",
+   95,
+   ""
+  ],
+  [
+   7,
+   "H",
+   96,
+   ""
+  ],
+  [
+   7,
+   "I",
+   97,
+   ""
+  ],
+  [
+   7,
+   "J",
+   53,
+   ""
+  ],
+  [
+   7,
+   "K",
+   54,
+   ""
+  ],
+  [
+   7,
+   "L",
+   49,
+   ""
+  ],
+  [
+   7,
+   "M",
+   63,
+   ""
+  ],
+  [
+   7,
+   "N",
+   64,
+   ""
+  ],
+  [
+   7,
+   "O",
+   64,
+   ""
+  ],
+  [
+   7,
+   "P",
+   65,
+   ""
+  ],
+  [
+   8,
+   "B",
+   57,
+   ""
+  ],
+  [
+   8,
+   "C",
+   58,
+   ""
+  ],
+  [
+   8,
+   "D",
+   58,
+   ""
+  ],
+  [
+   8,
+   "E",
+   58,
+   ""
+  ],
+  [
+   8,
+   "F",
+   58,
+   ""
+  ],
+  [
+   8,
+   "G",
+   95,
+   ""
+  ],
+  [
+   8,
+   "H",
+   96,
+   ""
+  ],
+  [
+   8,
+   "I",
+   97,
+   ""
+  ],
+  [
+   8,
+   "J",
+   53,
+   ""
+  ],
+  [
+   8,
+   "K",
+   54,
+   ""
+  ],
+  [
+   8,
+   "L",
+   49,
+   ""
+  ],
+  [
+   8,
+   "M",
+   63,
+   ""
+  ],
+  [
+   8,
+   "N",
+   64,
+   ""
+  ],
+  [
+   8,
+   "O",
+   64,
+   ""
+  ],
+  [
+   8,
+   "P",
+   65,
+   ""
+  ],
+  [
+   9,
+   "B",
+   57,
+   ""
+  ],
+  [
+   9,
+   "C",
+   58,
+   ""
+  ],
+  [
+   9,
+   "D",
+   58,
+   ""
+  ],
+  [
+   9,
+   "E",
+   58,
+   ""
+  ],
+  [
+   9,
+   "F",
+   58,
+   ""
+  ],
+  [
+   9,
+   "G",
+   95,
+   ""
+  ],
+  [
+   9,
+   "H",
+   96,
+   ""
+  ],
+  [
+   9,
+   "I",
+   97,
+   ""
+  ],
+  [
+   9,
+   "J",
+   55,
+   ""
+  ],
+  [
+   9,
+   "K",
+   56,
+   ""
+  ],
+  [
+   9,
+   "L",
+   50,
+   ""
+  ],
+  [
+   9,
+   "M",
+   63,
+   ""
+  ],
+  [
+   9,
+   "N",
+   64,
+   ""
+  ],
+  [
+   9,
+   "O",
+   64,
+   ""
+  ],
+  [
+   9,
+   "P",
+   65,
+   ""
+  ],
+  [
+   10,
+   "B",
+   57,
+   ""
+  ],
+  [
+   10,
+   "C",
+   58,
+   ""
+  ],
+  [
+   10,
+   "D",
+   58,
+   ""
+  ],
+  [
+   10,
+   "E",
+   58,
+   ""
+  ],
+  [
+   10,
+   "F",
+   58,
+   ""
+  ],
+  [
+   10,
+   "G",
+   98,
+   ""
+  ],
+  [
+   10,
+   "H",
+   99,
+   ""
+  ],
+  [
+   10,
+   "I",
+   100,
+   ""
+  ],
+  [
+   10,
+   "J",
+   51,
+   "SERVICE SPARE TRAINS"
+  ],
+  [
+   10,
+   "K",
+   52,
+   ""
+  ],
+  [
+   10,
+   "L",
+   48,
+   ""
+  ],
+  [
+   10,
+   "M",
+   63,
+   ""
+  ],
+  [
+   10,
+   "N",
+   64,
+   ""
+  ],
+  [
+   10,
+   "O",
+   64,
+   ""
+  ],
+  [
+   10,
+   "P",
+   65,
+   ""
+  ],
+  [
+   11,
+   "B",
+   57,
+   ""
+  ],
+  [
+   11,
+   "C",
+   58,
+   ""
+  ],
+  [
+   11,
+   "D",
+   58,
+   ""
+  ],
+  [
+   11,
+   "E",
+   58,
+   ""
+  ],
+  [
+   11,
+   "F",
+   58,
+   ""
+  ],
+  [
+   11,
+   "G",
+   83,
+   "Time Sent"
+  ],
+  [
+   11,
+   "H",
+   84,
+   ""
+  ],
+  [
+   11,
+   "I",
+   85,
+   ""
+  ],
+  [
+   11,
+   "J",
+   53,
+   ""
+  ],
+  [
+   11,
+   "K",
+   54,
+   ""
+  ],
+  [
+   11,
+   "L",
+   49,
+   ""
+  ],
+  [
+   11,
+   "M",
+   63,
+   ""
+  ],
+  [
+   11,
+   "N",
+   64,
+   ""
+  ],
+  [
+   11,
+   "O",
+   64,
+   ""
+  ],
+  [
+   11,
+   "P",
+   65,
+   ""
+  ],
+  [
+   12,
+   "B",
+   57,
+   ""
+  ],
+  [
+   12,
+   "C",
+   58,
+   ""
+  ],
+  [
+   12,
+   "D",
+   58,
+   ""
+  ],
+  [
+   12,
+   "E",
+   58,
+   ""
+  ],
+  [
+   12,
+   "F",
+   58,
+   ""
+  ],
+  [
+   12,
+   "G",
+   86,
+   ""
+  ],
+  [
+   12,
+   "H",
+   87,
+   ""
+  ],
+  [
+   12,
+   "I",
+   88,
+   ""
+  ],
+  [
+   12,
+   "J",
+   55,
+   ""
+  ],
+  [
+   12,
+   "K",
+   56,
+   ""
+  ],
+  [
+   12,
+   "L",
+   50,
+   ""
+  ],
+  [
+   12,
+   "M",
+   63,
+   ""
+  ],
+  [
+   12,
+   "N",
+   64,
+   ""
+  ],
+  [
+   12,
+   "O",
+   64,
+   ""
+  ],
+  [
+   12,
+   "P",
+   65,
+   ""
+  ],
+  [
+   13,
+   "B",
+   57,
+   ""
+  ],
+  [
+   13,
+   "C",
+   58,
+   ""
+  ],
+  [
+   13,
+   "D",
+   58,
+   ""
+  ],
+  [
+   13,
+   "E",
+   58,
+   ""
+  ],
+  [
+   13,
+   "F",
+   58,
+   ""
+  ],
+  [
+   13,
+   "G",
+   86,
+   ""
+  ],
+  [
+   13,
+   "H",
+   87,
+   ""
+  ],
+  [
+   13,
+   "I",
+   88,
+   ""
+  ],
+  [
+   13,
+   "J",
+   51,
+   "TOTAL STOPPED"
+  ],
+  [
+   13,
+   "K",
+   52,
+   ""
+  ],
+  [
+   13,
+   "L",
+   48,
+   ""
+  ],
+  [
+   13,
+   "M",
+   63,
+   ""
+  ],
+  [
+   13,
+   "N",
+   64,
+   ""
+  ],
+  [
+   13,
+   "O",
+   64,
+   ""
+  ],
+  [
+   13,
+   "P",
+   65,
+   ""
+  ],
+  [
+   14,
+   "B",
+   57,
+   ""
+  ],
+  [
+   14,
+   "C",
+   58,
+   ""
+  ],
+  [
+   14,
+   "D",
+   58,
+   ""
+  ],
+  [
+   14,
+   "E",
+   58,
+   ""
+  ],
+  [
+   14,
+   "F",
+   58,
+   ""
+  ],
+  [
+   14,
+   "G",
+   89,
+   ""
+  ],
+  [
+   14,
+   "H",
+   90,
+   ""
+  ],
+  [
+   14,
+   "I",
+   91,
+   ""
+  ],
+  [
+   14,
+   "J",
+   53,
+   ""
+  ],
+  [
+   14,
+   "K",
+   54,
+   ""
+  ],
+  [
+   14,
+   "L",
+   49,
+   ""
+  ],
+  [
+   14,
+   "M",
+   63,
+   ""
+  ],
+  [
+   14,
+   "N",
+   64,
+   ""
+  ],
+  [
+   14,
+   "O",
+   64,
+   ""
+  ],
+  [
+   14,
+   "P",
+   65,
+   ""
+  ],
+  [
+   15,
+   "B",
+   57,
+   ""
+  ],
+  [
+   15,
+   "C",
+   58,
+   ""
+  ],
+  [
+   15,
+   "D",
+   58,
+   ""
+  ],
+  [
+   15,
+   "E",
+   58,
+   ""
+  ],
+  [
+   15,
+   "F",
+   58,
+   ""
+  ],
+  [
+   15,
+   "G",
+   74,
+   ""
+  ],
+  [
+   15,
+   "H",
+   75,
+   ""
+  ],
+  [
+   15,
+   "I",
+   76,
+   ""
+  ],
+  [
+   15,
+   "J",
+   55,
+   ""
+  ],
+  [
+   15,
+   "K",
+   56,
+   ""
+  ],
+  [
+   15,
+   "L",
+   50,
+   ""
+  ],
+  [
+   15,
+   "M",
+   63,
+   ""
+  ],
+  [
+   15,
+   "N",
+   64,
+   ""
+  ],
+  [
+   15,
+   "O",
+   64,
+   ""
+  ],
+  [
+   15,
+   "P",
+   65,
+   ""
+  ],
+  [
+   16,
+   "B",
+   57,
+   ""
+  ],
+  [
+   16,
+   "C",
+   58,
+   ""
+  ],
+  [
+   16,
+   "D",
+   58,
+   ""
+  ],
+  [
+   16,
+   "E",
+   58,
+   ""
+  ],
+  [
+   16,
+   "F",
+   58,
+   ""
+  ],
+  [
+   16,
+   "G",
+   77,
+   ""
+  ],
+  [
+   16,
+   "H",
+   78,
+   ""
+  ],
+  [
+   16,
+   "I",
+   79,
+   ""
+  ],
+  [
+   16,
+   "J",
+   51,
+   "TOTAL STABLED"
+  ],
+  [
+   16,
+   "K",
+   52,
+   ""
+  ],
+  [
+   16,
+   "L",
+   48,
+   ""
+  ],
+  [
+   16,
+   "M",
+   63,
+   ""
+  ],
+  [
+   16,
+   "N",
+   64,
+   ""
+  ],
+  [
+   16,
+   "O",
+   64,
+   ""
+  ],
+  [
+   16,
+   "P",
+   65,
+   ""
+  ],
+  [
+   17,
+   "B",
+   57,
+   ""
+  ],
+  [
+   17,
+   "C",
+   58,
+   ""
+  ],
+  [
+   17,
+   "D",
+   58,
+   ""
+  ],
+  [
+   17,
+   "E",
+   58,
+   ""
+  ],
+  [
+   17,
+   "F",
+   58,
+   ""
+  ],
+  [
+   17,
+   "G",
+   77,
+   ""
+  ],
+  [
+   17,
+   "H",
+   78,
+   ""
+  ],
+  [
+   17,
+   "I",
+   79,
+   ""
+  ],
+  [
+   17,
+   "J",
+   53,
+   ""
+  ],
+  [
+   17,
+   "K",
+   54,
+   ""
+  ],
+  [
+   17,
+   "L",
+   49,
+   ""
+  ],
+  [
+   17,
+   "M",
+   63,
+   ""
+  ],
+  [
+   17,
+   "N",
+   64,
+   ""
+  ],
+  [
+   17,
+   "O",
+   64,
+   ""
+  ],
+  [
+   17,
+   "P",
+   65,
+   ""
+  ],
+  [
+   18,
+   "B",
+   59,
+   ""
+  ],
+  [
+   18,
+   "C",
+   60,
+   ""
+  ],
+  [
+   18,
+   "D",
+   60,
+   ""
+  ],
+  [
+   18,
+   "E",
+   60,
+   ""
+  ],
+  [
+   18,
+   "F",
+   60,
+   ""
+  ],
+  [
+   18,
+   "G",
+   80,
+   ""
+  ],
+  [
+   18,
+   "H",
+   81,
+   ""
+  ],
+  [
+   18,
+   "I",
+   82,
+   ""
+  ],
+  [
+   18,
+   "J",
+   72,
+   ""
+  ],
+  [
+   18,
+   "K",
+   73,
+   ""
+  ],
+  [
+   18,
+   "L",
+   102,
+   ""
+  ],
+  [
+   18,
+   "M",
+   66,
+   ""
+  ],
+  [
+   18,
+   "N",
+   67,
+   ""
+  ],
+  [
+   18,
+   "O",
+   67,
+   ""
+  ],
+  [
+   18,
+   "P",
+   68,
+   ""
+  ],
+  [
+   19,
+   "B",
+   1,
+   ""
+  ],
+  [
+   19,
+   "C",
+   1,
+   ""
+  ],
+  [
+   19,
+   "D",
+   1,
+   ""
+  ],
+  [
+   19,
+   "E",
+   1,
+   ""
+  ],
+  [
+   19,
+   "F",
+   1,
+   ""
+  ],
+  [
+   19,
+   "G",
+   1,
+   ""
+  ],
+  [
+   19,
+   "H",
+   2,
+   ""
+  ],
+  [
+   19,
+   "I",
+   1,
+   ""
+  ],
+  [
+   19,
+   "J",
+   2,
+   ""
+  ],
+  [
+   19,
+   "K",
+   4,
+   ""
+  ],
+  [
+   19,
+   "L",
+   2,
+   ""
+  ],
+  [
+   19,
+   "M",
+   2,
+   ""
+  ],
+  [
+   19,
+   "N",
+   5,
+   ""
+  ],
+  [
+   19,
+   "O",
+   3,
+   ""
+  ],
+  [
+   19,
+   "P",
+   3,
+   ""
+  ]
+ ],
+ "headHts": {
+  "1": "9.75",
+  "2": "27.75",
+  "3": "6.75",
+  "4": "8.25",
+  "5": "11.25",
+  "6": "6.75",
+  "7": "6.75",
+  "8": "6.75",
+  "9": "1.5",
+  "10": "3.75",
+  "11": "6.75",
+  "12": "10.5",
+  "13": "6.75",
+  "14": "9.75",
+  "15": "3.75",
+  "16": "6.75",
+  "17": "9.75",
+  "18": "6.75",
+  "19": "11.25",
+  "20": "75"
+ },
+ "headMerges": [
+  "L10:L12",
+  "L6:L9",
+  "L3:L5",
+  "J6:K9",
+  "J3:K5",
+  "B3:F18",
+  "M2:P18",
+  "B2:F2",
+  "J10:K12",
+  "J16:K18",
+  "G15:I18",
+  "G11:I14",
+  "G6:I10",
+  "G3:I5",
+  "G2:L2",
+  "L16:L18",
+  "L13:L15",
+  "J13:K15"
+ ],
+ "header": [
+  [
+   "B",
+   10,
+   "UNIT\n#  \nCCTV Mod"
+  ],
+  [
+   "C",
+   11,
+   "FTR DAYS\n@12:30"
+  ],
+  [
+   "D",
+   14,
+   "DEPT\nLOCATION"
+  ],
+  [
+   "E",
+   18,
+   "MC"
+  ],
+  [
+   "F",
+   15,
+   "UNIT STATUS"
+  ],
+  [
+   "G",
+   16,
+   "RESTRICTION /\nCOMMENT"
+  ],
+  [
+   "H",
+   19,
+   ""
+  ],
+  [
+   "I",
+   19,
+   ""
+  ],
+  [
+   "J",
+   19,
+   ""
+  ],
+  [
+   "K",
+   19,
+   ""
+  ],
+  [
+   "L",
+   19,
+   ""
+  ],
+  [
+   "M",
+   16,
+   "DIAGRAM"
+  ],
+  [
+   "N",
+   20,
+   "DEP TIME"
+  ],
+  [
+   "O",
+   20,
+   "END\nLOCATION"
+  ],
+  [
+   "P",
+   21,
+   "ARRIVAL\nTIME"
+  ]
+ ],
+ "body": {
+  "B": 6,
+  "C": 46,
+  "D": 30,
+  "E": 27,
+  "F": 12,
+  "G": 25,
+  "H": 32,
+  "I": 32,
+  "J": 32,
+  "K": 33,
+  "L": 41,
+  "M": 44,
+  "N": 17,
+  "O": 9,
+  "P": 36
+ },
+ "last": {
+  "B": 8,
+  "C": 47,
+  "D": 31,
+  "E": 29,
+  "F": 13,
+  "G": 26,
+  "H": 34,
+  "I": 35,
+  "J": 35,
+  "K": 34,
+  "L": 43,
+  "M": 45,
+  "N": 37,
+  "O": 38,
+  "P": 39
+ },
+ "variants": {
+  "restriction": 25,
+  "noRestriction": 24,
+  "lowMileage": 28,
+  "dayBlue": 23,
+  "dayRed": 33,
+  "dayBlank": 32,
+  "dayLBlue": 40,
+  "dayLRed": 42,
+  "dayLBlank": 40,
+  "unitHash": 22
+ },
+ "lastVariants": {
+  "dayRed": 35,
+  "dayBlank": 34,
+  "dayLBlank": 43
+ },
+ "bodyHt": "105.75",
+ "closeHt": "36"
+};
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS_DISP_SKIN;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_DISP_SKIN = SHEETS_HS_DISP_SKIN;
+</script>
+<script>
+/* SHEETS_BERTH_HS — the High Speed side of the berth-request road: the
+   Class 395 Disposition Statement.
+
+   The 395s have no maintenance plan with a berth request per line. Their
+   telex is the disposition statement: one row per unit with where it is,
+   what it is fit for, what the depot wants of it on each of the next five
+   days, and - the planner's part - the diagram it goes out on, when it
+   leaves, where it ends and when it gets in. This road reads the sheet as
+   it is pasted from the workbook, takes the day's AZ diagrams off the
+   Diagram Detail and the units' whereabouts off the Allocation Summary,
+   and fills the four planning columns: a unit goes out from the depot it
+   is at, on a diagram it is fit for, with the depot's own wishes for the
+   day - a hold, an early finish, low mileage, stable if possible - read
+   off its cell. The sheet comes back cell for cell in the workbook's own
+   dress (SHEETS_HS_DISP_SKIN), with a Why beside every unit on the page.
+
+   The rules here are a first reading of one day's sheet against its
+   reports, and are written to be corrected: each is one clause of fit()
+   below, and the Why names which clause placed a unit. */
+"use strict";
+const SHEETS_BERTH_HS = (() => {
+const SKIN = typeof SHEETS_HS_DISP_SKIN !== "undefined" ? SHEETS_HS_DISP_SKIN : null;
+const COLS = "ABCDEFGHIJKLMNOP";          // A is the sheet's spacer column; the table runs B to P
+const DAY3 = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];   // as the sheet spells them
+/* The sheet's own words for the places the reports code. */
+const WORDS = [[/^ASHF/, "Ashford"], [/^RAM/, "Ramsgate"], [/^FAVR/, "Faversham"], [/^MARGATE/, "Margate"],
+               [/^STPANCI/, "St Pancras"], [/^DOVERP/, "Dover"], [/^EBSFLTI/, "Ebbsfleet"], [/^STFORDI/, "Stratford"],
+               [/^CNTBW/, "Canterbury"], [/^GLNGHMK/, "Gillingham"], [/^STROOD/, "Strood"], [/^GRVSEND/, "Gravesend"],
+               [/^MINSTER/, "Minster"], [/^WENGTNX/, "Westenhanger"], [/^SNDWICH/, "Sandwich"], [/^DEAL/, "Deal"], [/^FLKS/, "Folkestone"]];
+const word = code => { for (const [re, w] of WORDS) if (re.test(code || "")) return w; return code || ""; };
+/* a depot as the sheet's DEPT LOCATION column writes it, from its word */
+const depotWord = s => { const t = String(s || "").trim().toUpperCase(); return /^ASH/.test(t) ? "Ashford" : /^RAM/.test(t) ? "Ramsgate" : /^FAV/.test(t) ? "Faversham" : /^MAR/.test(t) ? "Margate" : String(s || "").trim(); };
+const isEbb = c => /^EBSFLTI/.test(c || ""), isGrv = c => /^GRVSEND/.test(c || "");
+/* the North Kent line, for a unit that must avoid it */
+const NORTH_KENT = new Set(["GRVSEND", "STROOD", "RCHT", "CHTM", "GLNGHMK", "RNHM", "STNGBRN", "FAVRSHM", "HGHM", "SOLE", "NFLT", "GNHT", "SWLY", "DFD"]);
+/* The windows the sheet's own words point at, in minutes from midnight.
+   Named, not written into the clauses: a bare hour in the code reads like
+   a second AM/PM cutoff, and the build refuses one of those. */
+const EARLY_PM_FROM = 11 * 60, EARLY_PM_TO = 960;        // "Early PM" - back at the depot between the peaks' ends
+const PEAKS_FROM = 9 * 60 + 30, PEAKS_TO = 15 * 60;      // "Between Peaks"
+const EVENING_FROM = 18 * 60;                            // "PM" - a finish later than this is what it wants
+const NIGHT_END = 6 * 60;                                // the small hours a night's diagram lands in
+const t4 = (m, plus) => m == null ? "" : String(Math.floor(m / 60) % 24).padStart(2, "0") + (plus ? "+" : " ") + String(m % 60).padStart(2, "0");
+const ecs = hc => /^[35]/.test(hc || "");
+const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+/* ---------- the paste ----------
+   Excel copies a multi-line cell quoted, with the line breaks inside the
+   quotes, so the sheet is read as quoted tab-separated records. */
+function records(text) {
+  const out = []; let row = [], cell = "", q = false;
+  const s = String(text || "").replace(/\r\n?/g, "\n");
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (q) { if (ch === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"' && cell === "") q = true;
+    else if (ch === "\t") { row.push(cell); cell = ""; }
+    else if (ch === "\n") { row.push(cell); out.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell !== "" || row.length) { row.push(cell); out.push(row); }
+  return out.map(r => r.map(c => c.replace(/[ \t]+\n/g, "\n").trim()));
+}
+const headingOf = recs => recs.findIndex(r => r.some(c => /^UNIT\b/i.test(c)) && r.some(c => /^DIAGRAM\b/i.test(c)) && r.some(c => /DEP\s*TIME/i.test(c)));
+/* whether a paste is the disposition statement rather than a maintenance plan */
+function isDisposition(text) { return headingOf(records(text)) >= 0; }
+
+function parse(text) {
+  const recs = records(text), reviews = [];
+  const hi = headingOf(recs);
+  if (hi < 0) throw new Error("no heading row with UNIT, DIAGRAM and DEP TIME — paste the Disposition Sheet tab from its top-left corner");
+  const H = recs[hi], find = re => H.findIndex(c => re.test(c));
+  const ci = { unit: find(/^UNIT\b/i), ftr: find(/FTR/i), depot: find(/DEPT|^LOCATION/i), mc: find(/^MC\b/i), status: find(/STATUS/i),
+               restr: find(/RESTRICTION|COMMENT/i), diag: find(/^DIAGRAM\b/i), dep: find(/DEP\s*TIME/i), end: find(/END\s*LOCATION/i), arr: find(/ARRIVAL/i) };
+  const dayCols = [];
+  H.forEach((c, i) => { const m = /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)[a-z]*\.?\s+(\d\d)\/(\d\d)/i.exec(c); if (m) dayCols.push({ i, label: c, dd: m[2], mm: m[3] }); });
+  if (!dayCols.length) reviews.push("The heading row has no day columns (\"Sun 20/09\" and so on), so what the depot wants of each unit today cannot be read.");
+  let state = "", version = "", title = "";
+  for (const r of recs.slice(0, hi)) for (const c of r) {
+    if (/^(Actual|Provisional)$/i.test(c)) state = c;
+    else if (/^Version\s*\d+/i.test(c)) version = c;
+    else if (/DISPOSITION STATEMENT/i.test(c)) title = c;
+  }
+  const units = [];
+  for (let i = hi + 1; i < recs.length; i++) {
+    const r = recs[i], m = /(\d{6})/.exec(r[ci.unit] || "");
+    if (!m) continue;
+    const at = k => ci[k] >= 0 ? (r[ci[k]] || "") : "";
+    units.push({ unit: m[1], hash: /#/.test(r[ci.unit]), ftr: at("ftr"), depot: at("depot"), mc: at("mc"), status: at("status"), restr: at("restr"),
+                 days: dayCols.map(d => r[d.i] || ""), diag: at("diag"), dep: at("dep"), endLoc: at("end"), arr: at("arr"), line: i + 1 });
+  }
+  if (!units.length) reviews.push("No unit rows under the heading — the sheet lists a unit number in its UNIT column.");
+  return { units, dayCols, state, version, title, reviews };
+}
+
+/* ---------- the day's diagrams ----------
+   Off the Detail's stops: where each AZ diagram starts and when, on what,
+   where it ends and when, its miles, whether it goes over the high level
+   (a leg between Ebbsfleet and Gravesend, as the allocations sheet reads
+   it) or along the North Kent, and where it stands an hour or more. */
+function diagramsFor(days) {
+  const out = [];
+  if (!days) return out;
+  for (const d of days.values()) {
+    if (!/^AZ6/.test(d.diag) && !/^395/.test(d.fleet || "")) continue;
+    const st = d.stops || [];
+    if (st.length < 2) continue;
+    const first = st[0], last = st[st.length - 1];
+    const dep = first.dep, arr = last.arr != null ? last.arr : last.dep;
+    const miles = last.ml != null ? Math.round(last.ml) : null;
+    if (dep == null || (miles !== null && miles < 5)) continue;   // a diagram with no work on it
+    const hl = st.some((s, i) => i > 0 && ((isEbb(s.code) && isGrv(st[i - 1].code)) || (isGrv(s.code) && isEbb(st[i - 1].code))));
+    const nk = st.some(s => NORTH_KENT.has(s.code));
+    const stands = st.slice(1, -1).filter(s => s.arr != null && s.dep != null && s.dep - s.arr >= 60)
+      .map(s => ({ code: s.code, word: word(s.code), arr: s.arr, dep: s.dep }));
+    /* the units the DIAGRAM SUMMARY puts on it. The ones the pool fills in
+       from the Allocation Summary are not those: a Summary printed before
+       the day was allocated leaves every row empty and the allocation then
+       stands in with last night's tail, which named the wrong diagram for
+       fourteen of the Sunday's nineteen units until this told them apart. */
+    const fromSummary = (d.rows || []).some(r => !r.viaAlloc && r.units && r.units.length);
+    out.push({ diag: d.diag, from: first.code, home: word(first.code), dep, hc: first.hcOut || "", to: last.code, endWord: word(last.code), arr,
+               hcIn: last.hcIn || "", miles, hl, nk, stands, fromSummary, units: fromSummary ? (d.units || []).slice() : [] });
+  }
+  return out.sort((a, b) => a.dep - b.dep || cmp(a.diag, b.diag));
+}
+
+/* ---------- what the depot wants of a unit today ---------- */
+function needsOf(u, ti) {
+  const today = u.days[ti] || "", all = (u.restr + "\n" + today).toUpperCase();
+  const flat = today.replace(/\s+/g, " ").trim();
+  return {
+    stopped: /STOPPED/i.test(u.status), spare: /SPARE/i.test(u.status),
+    hold: /\bHOLD\b/i.test(today) || /\bSTOPPED\b/i.test(today),
+    stable: /STABLE/i.test(today) || /STABLED/i.test(u.status),
+    low: /LOW MILEAGE/i.test(u.mc) || /LOW MILEAGE/i.test(today),
+    noHL: /HIGH LEVEL/.test(all), noNK: /NORTH KENT/.test(all),
+    earlyAM: /EARLY AM/i.test(today), earlyPM: /EARLY PM/i.test(today), pm: /\bPM\b/i.test(today) && !/EARLY PM/i.test(today),
+    peaks: /BETWEEN PEAKS/i.test(today), text: flat,
+  };
+}
+/* when a diagram is back at a place between two times: its end there, or a
+   stand there of an hour or more */
+function backAt(d, home, from, to) {
+  if (d.endWord === home && d.arr >= from && d.arr <= to) return { at: d.arr, ends: true };
+  const s = d.stands.find(x => x.word === home && x.arr >= from && x.arr <= to);
+  return s ? { at: s.arr, until: s.dep } : null;
+}
+/* How well a diagram fits a unit today: null where it cannot take it, or a
+   score (lower is better) and the clauses that made it. */
+function fit(u, n, d) {
+  if (d.home !== u.depotWord) return null;
+  if (n.noHL && d.hl) return null;
+  if (n.noNK && d.nk) return null;
+  let score = 0; const why = [];
+  if (n.low && d.miles != null) { score += d.miles; why.push(d.miles + " miles"); }
+  if (n.earlyPM) { const b = backAt(d, u.depotWord, EARLY_PM_FROM, EARLY_PM_TO); if (b) { score -= 1000; why.push("back at " + u.depotWord + " " + t4(b.at, true) + (b.until ? " (stands to " + t4(b.until, true) + ")" : "")); } else score += 500; }
+  if (n.pm) { if (d.endWord === u.depotWord) { score -= 500 - Math.max(0, d.arr - EVENING_FROM) / 4; why.push("ends " + u.depotWord + " " + t4(d.arr, ecs(d.hcIn))); } else score += 300; }
+  if (n.peaks) { const b = backAt(d, u.depotWord, PEAKS_FROM, PEAKS_TO); if (b && b.until) { score -= 1000; why.push("stands " + u.depotWord + " " + t4(b.at, true) + "-" + t4(b.until, true)); } else score += 500; }
+  if (n.earlyAM) { score -= d.dep / 4; why.push("leaves " + t4(d.dep, ecs(d.hc)) + ", after the early work"); }
+  if (n.noHL) why.push("not over the high level");
+  if (n.noNK) why.push("avoids the North Kent");
+  return { score, why };
+}
+
+/* ---------- the allocation ---------- */
+function allocate(sheet, diagrams, ti, landed, sumAlloc) {
+  const free = new Map(diagrams.map(d => [d.diag, d]));
+  const byDiag = new Map(diagrams.map(d => [d.diag, d]));
+  const out = [];
+  for (const u of sheet.units) {
+    const n = needsOf(u, ti);
+    const r = { unit: u.unit, row: u, needs: n, depotWord: depotWord(u.depot), diag: null, why: [], state: "" };
+    u.depotWord = r.depotWord;
+    const land = landed && landed.get(u.unit);
+    if (land && !r.depotWord) { r.depotWord = u.depotWord = land.word; r.why.push("at " + land.word + " off " + land.diag + " " + t4(land.at, true) + " by the Allocation Summary"); }
+    else if (land && land.word !== r.depotWord) r.why.push("the Allocation Summary lands it at " + land.word + " off " + land.diag + " " + t4(land.at, true) + ", not " + r.depotWord + " — the sheet's word is kept");
+    out.push(r);
+  }
+  /* A diagram already given to another unit is not given again - two units
+     on one diagram was the first thing the Sunday sheet showed up, and the
+     offered count then counts a diagram twice and a unit not at all. */
+  const held = new Map();
+  const fix = (r, diag, how) => {
+    if (held.has(diag)) { r.why.push(diag + " is already " + held.get(diag) + "'s, so it is left to the rules"); return false; }
+    const d = byDiag.get(diag);
+    r.diag = d || { diag, unknown: true };
+    r.fixed = how;
+    held.set(diag, r.unit);
+    if (d) free.delete(diag);
+    return true;
+  };
+  // what the sheet already has, then what the reports already allocate
+  for (const r of out) {
+    const m = /\b(AZ\d{3})\b/i.exec(r.row.diag || "");
+    if (m && fix(r, m[1].toUpperCase(), "sheet"))
+      r.why.push("the sheet has it on " + m[1].toUpperCase() + (byDiag.has(m[1].toUpperCase()) ? "" : ", which is not on the Detail"));
+  }
+  for (const r of out) if (!r.diag && sumAlloc && sumAlloc.has(r.unit)) {
+    const dg = sumAlloc.get(r.unit);
+    if (fix(r, dg, "reports")) r.why.push("the reports have it on " + dg + " today");
+  }
+  for (const r of out) {
+    const n = r.needs;
+    if (r.diag) continue;
+    if (n.stopped) { r.state = "stopped"; r.why.push("stopped" + (n.text ? ": " + n.text : "")); }
+    else if (n.hold) { r.state = "held"; r.why.push("held today: " + n.text); }
+  }
+  const wants = r => !r.diag && !r.state && (r.needs.noHL || r.needs.noNK || r.needs.low || r.needs.earlyPM || r.needs.pm || r.needs.peaks || r.needs.earlyAM);
+  const pick = r => {
+    let best = null;
+    for (const d of free.values()) {
+      const f = fit(r, r.needs, d);
+      if (!f) continue;
+      if (!best || f.score < best.f.score || (f.score === best.f.score && d.dep < best.d.dep)) best = { d, f };
+    }
+    return best;
+  };
+  const take = (r, best, how) => { r.diag = best.d; free.delete(best.d.diag); r.how = how; if (best.f.why.length) r.why.push(best.f.why.join(", ")); };
+  // 1. the units the depot has a wish for, or a restriction on, take the diagram that fits them best
+  for (const r of out.filter(wants).sort((a, b) => (b.needs.noHL + b.needs.noNK) - (a.needs.noHL + a.needs.noNK) || cmp(a.unit, b.unit))) {
+    const best = pick(r);
+    if (best) take(r, best, "wish");
+    else r.why.push("nothing left at " + r.depotWord + " fits" + (r.needs.noHL ? " not over the high level" : "") + (r.needs.noNK ? " avoiding the North Kent" : ""));
+  }
+  // 2. the rest, in unit order, on the diagrams left at their depot in the order they leave; a "stable if possible" unit last
+  const plain = out.filter(r => !r.diag && !r.state && !r.needs.stable && !r.needs.spare);
+  for (const r of plain.sort((a, b) => cmp(a.unit, b.unit))) {
+    const best = pick(r);
+    if (best) take(r, best, "next");
+  }
+  for (const r of out.filter(r => !r.diag && !r.state && (r.needs.stable || r.needs.spare))) {
+    const best = pick(r);
+    if (best) { take(r, best, "needed"); r.why.push((r.needs.stable ? "stable if possible, but " : "spare on the sheet, but ") + r.depotWord + " has a diagram nobody else can take"); }
+    else { r.state = r.needs.stable ? "stabled" : "spare"; r.why.push(r.needs.stable ? "stabled, as asked" : "spare"); }
+  }
+  for (const r of out) if (!r.diag && !r.state) { r.state = "spare"; r.why.push("spare — nothing left at " + (r.depotWord || "its depot") + " for it"); }
+  const unfilled = [...free.values()];
+  return { rows: out, unfilled };
+}
+
+/* ---------- the run ---------- */
+function run(planText, genius, opts, B) {
+  const sheet = parse(planText);
+  const reviews = sheet.reviews.slice();
+  const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
+  const sumDates = [...new Set((genius && genius.summary || []).map(r => r.date))].filter(Boolean);
+  const date = opts.date || B.runDate(sumDates, allocDates);
+  const today = date ? B.parseShort(date) : null;
+  if (!date) reviews.push("No reports are loaded, so the day's diagrams are not known — drop the day's Diagram Summary and Detail, and its Allocation Summary.");
+  const days = date ? B.allDays(genius, date) : null;
+  const diagrams = diagramsFor(days);
+  if (date && !diagrams.length) reviews.push("No AZ diagrams on the " + date + " Diagram Detail — the 395s are on their own control, so drop the High Speed Detail for the day.");
+  // which of the sheet's day columns is today
+  let ti = 0;
+  if (today) {
+    const dd = String(today.getUTCDate()).padStart(2, "0"), mm = String(today.getUTCMonth() + 1).padStart(2, "0");
+    const k = sheet.dayCols.findIndex(c => c.dd === dd && c.mm === mm);
+    if (k >= 0) ti = k;
+    else if (sheet.dayCols.length) reviews.push("The sheet's day columns start " + sheet.dayCols[0].label + " and the reports are for " + date + " — the first column is read as today.");
+  }
+  // where each unit lands at the start of the day, off the Allocation Summary: the night's diagram ending in the small hours
+  /* A unit's line on the Allocation Summary is read for what it is. Printed
+     before the day was allocated, it carries only the tail of last night's
+     diagram - a start just after midnight and a finish in the small hours -
+     and that says where the unit LANDS, not what it does today. Printed
+     after, the same line runs to an evening finish, and then its finishing
+     diagram is the unit's work for the day. On the Sunday sheet that told
+     the five allocated units from the fourteen not yet allocated, and named
+     the same diagram the planner had written for every one of them. */
+  const landed = new Map(), sumAlloc = new Map();
+  const runsToday = dg => diagrams.some(d => d.diag === dg);
+  const alloc = B.allocFor(genius, date);
+  if (alloc) for (const rec of alloc.values()) {
+    if (!/^395/.test(rec.unit)) continue;
+    /* the raw finish, not the clock face: a record finishing 00+19 the NEXT
+       morning carries +1440 and is a full day's work, while one finishing
+       01+34 the same morning is last night's tail */
+    const night = rec.end != null && rec.end <= NIGHT_END;
+    if (night && rec.endLoc) landed.set(rec.unit, { word: word(rec.endLoc), diag: rec.endDiag, at: rec.end });
+    if (!night) {
+      const dg = runsToday(rec.endDiag) ? rec.endDiag : runsToday(rec.startDiag) ? rec.startDiag : null;
+      if (dg) sumAlloc.set(rec.unit, dg);
+    }
+  }
+  // …and a Diagram Summary printed after allocation names the units on each working outright
+  for (const d of diagrams) for (const u of d.units) if (/^395/.test(u) && !sumAlloc.has(u)) sumAlloc.set(u, d.diag);
+  const a = allocate(sheet, diagrams, ti, landed, sumAlloc);
+  const rows = a.rows;
+  for (const r of rows) {
+    const d = r.diag;
+    r.suggest = !d || d.unknown ? { diag: d ? d.diag : "", hc: "", dep: "", endLoc: "", arr: "" }
+      : { diag: d.diag, hc: d.hc, dep: t4(d.dep, ecs(d.hc)), endLoc: d.endWord, arr: t4(d.arr, ecs(d.hcIn)) };
+    if (d && !d.unknown) {
+      r.why.unshift(d.diag + " " + d.hc + " " + t4(d.dep, ecs(d.hc)) + " " + d.home + " → " + d.endWord + " " + t4(d.arr, ecs(d.hcIn)) + (d.miles != null ? ", " + d.miles + " miles" : "") +
+        (d.stands.length ? " · stands " + d.stands.map(s => s.word + " " + t4(s.arr, true) + "-" + t4(s.dep, true)).join(", ") : ""));
+      if (d.hl) r.why.push("over the high level");
+      // what the sheet wrote against a diagram it already had, where it differs from the Detail
+      if (r.fixed === "sheet") {
+        const had = [r.row.dep, r.row.endLoc, r.row.arr].map(x => x.replace(/\s+/g, " ").trim());
+        const mine = [r.suggest.dep, r.suggest.endLoc, r.suggest.arr];
+        const diff = had.map((h, i) => h && h.toUpperCase().indexOf(mine[i].toUpperCase()) < 0 ? h + " (Detail: " + mine[i] + ")" : null).filter(Boolean);
+        if (diff.length) r.why.push("the sheet has " + diff.join(", "));
+      }
+    }
+    if (r.needs.text && !r.state) r.why.push("today: " + r.needs.text);
+    if (r.row.restr) r.why.push("restriction: " + r.row.restr.replace(/\s+/g, " ").trim());
+    r.status = r.state === "stopped" ? (r.row.status || "Stopped") : r.state === "held" ? (r.row.status || "Available") : r.state === "spare" ? "Spare" : r.state === "stabled" ? "Stabled" : (r.row.status || "Available");
+  }
+  const counts = {
+    required: diagrams.length,
+    offered: rows.filter(r => r.diag && !r.diag.unknown).length,
+    spare: rows.filter(r => r.state === "spare").length,
+    stopped: rows.filter(r => r.state === "stopped").length,
+    stabled: rows.filter(r => r.state === "stabled" || r.state === "held").length,
+  };
+  if (a.unfilled.length) reviews.push("No unit for " + a.unfilled.map(d => d.diag + " " + d.hc + " " + t4(d.dep, ecs(d.hc)) + " from " + d.home).join(", ") + " — " +
+    (rows.some(r => r.state === "stabled") ? "a stabled unit could take one. " : "") + "the sheet's offered count is short by " + a.unfilled.length + ".");
+  if (landed.size === 0 && date) reviews.push("The Allocation Summary for " + date + " lands no 395 in the small hours, so each unit is taken to be where the sheet's DEPT LOCATION says.");
+  const dayLabels = sheet.dayCols.length ? sheet.dayCols.map(c => c.label) : (today ? [0, 1, 2, 3, 4].map(k => { const d = new Date(today.getTime() + k * 86400000); return DAY3[d.getUTCDay()] + " " + String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0"); }) : ["", "", "", "", ""]);
+  return { kind: "hs", rows, reviews, date, today, dayLabels, ti, counts, diagrams, sheet, lines: rows.length, units: rows.length,
+           inTraffic: counts.offered, suggested: rows.filter(r => r.diag && !r.fixed).length, ignored: 0, mseUnits: [], notices: [], swaps: [], groups: [], order: [] };
+}
+
+/* ---------- the sheet back, cell for cell ---------- */
+const serial = d => d ? Math.round((d.getTime() - Date.UTC(1899, 11, 30)) / 86400000) : null;
+const longDate = d => d ? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d.getUTCDay()] + ", " +
+  ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][d.getUTCMonth()] + " " +
+  String(d.getUTCDate()).padStart(2, "0") + ", " + d.getUTCFullYear() : "";
+const shortDate = d => d ? String(d.getUTCDate()).padStart(2, "0") + "/" + String(d.getUTCMonth() + 1).padStart(2, "0") + "/" + d.getUTCFullYear() : "";
+/* every row of the sheet: its cells by column letter, each with its value
+   and the skin's style record; a unit row carries its Why */
+function rows(res) {
+  if (!SKIN) throw new Error("the High Speed sheet's dress is not in this build");
+  const out = [];
+  const S = SKIN, xfOf = (r, c) => { const h = S.head.find(x => x[0] === r && x[1] === c); return h ? h[2] : 0; };
+  const V = S.variants, L = S.lastVariants;
+  const heads = new Map();
+  for (const [r, c, xf, v] of S.head) { if (!heads.has(r)) heads.set(r, new Map()); heads.get(r).set(c, { v, xf }); }
+  const vars = {
+    "2:B": { v: res.sheet.state || "Provisional" }, "3:B": { v: res.sheet.version || "" },
+    "2:M": { v: longDate(res.today), num: serial(res.today) }, "6:G": { v: shortDate(res.today), num: serial(res.today) },
+    "3:L": { v: String(res.counts.required), num: res.counts.required }, "6:L": { v: String(res.counts.offered), num: res.counts.offered },
+    "10:L": { v: String(res.counts.spare), num: res.counts.spare }, "13:L": { v: String(res.counts.stopped), num: res.counts.stopped },
+    "16:L": { v: String(res.counts.stabled), num: res.counts.stabled },
+  };
+  for (let r = 1; r <= 19; r++) {
+    const cells = new Map();
+    const h = heads.get(r);
+    if (h) for (const [c, x] of h) { const vv = vars[r + ":" + c]; cells.set(c, vv ? { v: vv.v, xf: x.xf, num: vv.num } : { v: x.v, xf: x.xf }); }
+    out.push({ r, type: "head", cells, ht: +(S.headHts[r] || 15) });
+  }
+  const hdr = new Map();
+  let di = 0;
+  for (const [c, xf, v] of S.header) hdr.set(c, { v: "HIJKL".indexOf(c) >= 0 ? (res.dayLabels[di++] || "") : v, xf });
+  out.push({ r: 20, type: "header", cells: hdr, ht: +(S.headHts[20] || 75) });
+  let r = 21;
+  const isLast = i => i === res.rows.length - 1;
+  res.rows.forEach((u, i) => {
+    const last = isLast(i), B = last ? S.last : S.body, cells = new Map();
+    const row = u.row, s = u.suggest;
+    const dayXf = (k, text) => {
+      const red = /\bHOLD\b|STOPPED|DAMAGE|OVERHAUL|\bEXAM\b/i.test(text), lastCol = k === 4;
+      if (last) return lastCol ? L.dayLBlank : (red ? L.dayRed : text ? V.dayBlue : L.dayBlank);
+      return lastCol ? (text ? (red ? V.dayLRed : V.dayLBlue) : V.dayLBlank) : (text ? (red ? V.dayRed : V.dayBlue) : V.dayBlank);
+    };
+    cells.set("B", { v: (row.hash ? "#\n" : "") + u.unit, xf: last ? B.B : (row.hash ? V.unitHash : B.B) });
+    cells.set("C", { v: row.ftr, xf: B.C });
+    cells.set("D", { v: row.depot || u.depotWord || "", xf: B.D });
+    cells.set("E", { v: row.mc, xf: /LOW MILEAGE/i.test(row.mc) && !last ? V.lowMileage : B.E });
+    cells.set("F", { v: u.status, xf: B.F, status: u.status });
+    cells.set("G", { v: row.restr, xf: last ? B.G : (row.restr ? V.restriction : V.noRestriction) });
+    "HIJKL".split("").forEach((c, k) => cells.set(c, { v: row.days[k] || "", xf: dayXf(k, row.days[k] || "") }));
+    cells.set("M", { v: s.diag ? s.diag + (s.hc ? "\n" + s.hc : "") : "", xf: B.M });
+    cells.set("N", { v: s.dep, xf: B.N });
+    cells.set("O", { v: s.endLoc, xf: B.O });
+    cells.set("P", { v: s.arr, xf: B.P });
+    out.push({ r, type: "unit", cells, ht: +S.bodyHt, why: u.why.join(" · "), unit: u, filled: !!(u.diag && !u.fixed) });
+    r++;
+  });
+  out.push({ r, type: "close", cells: new Map(), ht: +S.closeHt });
+  return { rows: out, merges: S.headMerges.slice(), skin: S, lastUnitRow: r - 1 };
+}
+const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+/* tab-separated, sixteen columns from A, a cell with a line break quoted the way Excel copies it */
+function toText(res, opts) {
+  opts = opts || {};
+  const R = rows(res), lines = [];
+  const q = v => /[\t\n"]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  for (const row of R.rows) {
+    const cells = COLS.split("").map(c => { const x = row.cells.get(c); return x ? q(x.v) : ""; });
+    if (!opts.workbook && row.type === "unit") cells.push(q(row.why));
+    if (!opts.workbook && row.type === "header") cells.push("Why");
+    while (cells.length && !cells[cells.length - 1]) cells.pop();
+    lines.push(cells.join("\t"));
+  }
+  return lines.join("\n");
+}
+/* the sheet as the workbook draws it: every cell with its own record, the
+   header block's merges as spans, the status colours as the tab's rules
+   paint them; on the page the Why sits beside each unit */
+function toHtml(res, inline, opts) {
+  opts = opts || {};
+  const R = rows(res), S = R.skin, why = !opts.workbook, px = w => Math.round(w * 7) + 5, pt = h => Math.round(h * 4 / 3);
+  const span = new Map(), covered = new Set();
+  for (const m of R.merges) {
+    const [a, b] = m.split(":"), ca = a.match(/[A-Z]+/)[0], ra = +a.match(/\d+/)[0], cb = b.match(/[A-Z]+/)[0], rb = +b.match(/\d+/)[0];
+    span.set(a, { cs: COLS.indexOf(cb) - COLS.indexOf(ca) + 1, rs: rb - ra + 1 });
+    for (let r = ra; r <= rb; r++) for (let c = COLS.indexOf(ca); c <= COLS.indexOf(cb); c++) if (!(r === ra && c === COLS.indexOf(ca))) covered.add(COLS[c] + r);
+  }
+  const base = "font-family:Calibri,Carlito,Arial,sans-serif;font-size:11pt;vertical-align:middle;padding:0 3px;overflow:hidden";
+  const css = xf => base + ";" + (S.xfCss[xf] || "");
+  const width = S.widths.reduce((a, w) => a + px(w), 0) + (why ? 420 : 0);
+  const out = ['<table class="brtable brplan brhs" style="border-collapse:collapse;table-layout:fixed;width:' + width + 'px;background:#fff' + (why ? ";zoom:0.7" : "") + '">',
+    "<colgroup>" + S.widths.map(w => '<col style="width:' + px(w) + 'px">').join("") + (why ? '<col style="width:420px">' : "") + "</colgroup><tbody>"];
+  for (const row of R.rows) {
+    const tds = [];
+    for (const c of COLS) {
+      if (covered.has(c + row.r)) continue;
+      const x = row.cells.get(c), sp = span.get(c + row.r);
+      const st = x ? css(x.xf) + (x.status && S.statusCss[x.status] ? ";" + S.statusCss[x.status] : "") + (why && c === "M" && row.filled ? ";font-weight:700" : "") : base;
+      tds.push("<td" + (sp ? ' colspan="' + sp.cs + '" rowspan="' + sp.rs + '"' : "") + ' style="' + st + '">' + (x ? esc(x.v).replace(/\n/g, "<br>") : "") + "</td>");
+    }
+    if (why) tds.push('<td style="font-family:Arial,sans-serif;font-size:13pt;color:#3C464D;font-style:italic;padding:0 6px;white-space:normal;vertical-align:middle">' + (row.type === "header" ? "Why" : row.type === "unit" ? esc(row.why) : "") + "</td>");
+    out.push('<tr style="height:' + pt(row.ht) + 'px">' + tds.join("") + "</tr>");
+  }
+  out.push("</tbody></table>");
+  return out.join("\n");
+}
+/* the workbook: the sheet's records, widths, heights and merges, the
+   UNIT STATUS column coloured by the tab's own rules, and a Why sheet */
+function toXlsx(res, zipFn, X) {
+  const R = rows(res), S = R.skin;
+  const sheet = (name, withWhy) => {
+    const cells = [], rowHeights = new Map();
+    for (const row of R.rows) {
+      rowHeights.set(row.r, row.ht);
+      for (const c of COLS) {
+        const x = row.cells.get(c);
+        if (!x) continue;
+        const cell = { r: row.r, c: COLS.indexOf(c) + 1, v: x.num != null ? String(x.num) : x.v, xf: x.xf, sides: [null, null, null, null] };
+        if (x.num != null) cell.num = true;
+        if (x.v || row.type !== "unit") cells.push(cell);
+      }
+      if (withWhy && row.type === "unit" && row.why) cells.push({ r: row.r, c: COLS.length + 1, v: row.why, xf: 0, sides: [null, null, null, null] });
+      if (withWhy && row.type === "header") cells.push({ r: row.r, c: COLS.length + 1, v: "Why", xf: 0, sides: [null, null, null, null] });
+    }
+    const last = R.lastUnitRow;
+    const condFmt = last >= 21 ? ['<conditionalFormatting sqref="F21:F' + last + '">' + S.statusOrder.map((t, i) =>
+      '<cfRule type="containsText" dxfId="' + i + '" priority="' + (i + 1) + '" operator="containsText" text="' + t + '"><formula>NOT(ISERROR(SEARCH("' + t + '",F21)))</formula></cfRule>').join("") + "</conditionalFormatting>"] : [];
+    return { name, layout: { cells, merges: R.merges, rowHeights, maxRow: R.rows[R.rows.length - 1].r,
+             opts: { stylesXml: S.stylesXml, widths: withWhy ? S.widths.concat([90]) : S.widths, noPageSetup: true, defaultRowHeight: 15, condFmt, lastCol: withWhy ? "Q" : "P" } } };
+  };
+  return X.writeWorkbook([sheet("Disposition Sheet", false), sheet("Why", true)], zipFn);
+}
+/* the day's diagrams, depot by depot, in the order they leave */
+function render(res) {
+  const lines = ["== THE " + (res.date || "") + " DIAGRAMS, AS THEY LEAVE =="];
+  const by = new Map();
+  for (const d of res.diagrams) { if (!by.has(d.home)) by.set(d.home, []); by.get(d.home).push(d); }
+  const on = new Map(res.rows.filter(r => r.diag && !r.diag.unknown).map(r => [r.diag.diag, r.unit]));
+  for (const [home, list] of by) {
+    lines.push("", home.toUpperCase());
+    for (const d of list) lines.push("  " + d.diag.padEnd(6) + " " + (d.hc || "").padEnd(5) + " " + t4(d.dep, ecs(d.hc)) + "  " + (on.get(d.diag) || "— no unit").padEnd(10) + " → " + d.endWord + " " + t4(d.arr, ecs(d.hcIn)) + (d.miles != null ? "  " + d.miles + " ml" : "") + (d.hl ? "  HL" : ""));
+  }
+  const rest = res.rows.filter(r => !r.diag);
+  if (rest.length) { lines.push("", "NOT OUT"); for (const r of rest) lines.push("  " + r.unit + "  " + (r.depotWord || "") + "  " + r.status + (r.why.length ? " — " + r.why[0] : "")); }
+  return lines.join("\n");
+}
+return { run, parse, records, isDisposition, diagramsFor, needsOf, fit, allocate, rows, toText, toHtml, toXlsx, render, word, depotWord };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH_HS;
+if (typeof globalThis !== "undefined") globalThis.SHEETS_BERTH_HS = SHEETS_BERTH_HS;
 </script>
 <script>
 /* SHEETS_SPRITES — the unit drawings the two tools letter their pages with.
@@ -15468,7 +17918,7 @@ function decodeText(u8) {
     rev.textContent = "";
     for (const m of result.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
     revWrap.hidden = result.reviews.length === 0;
-    note.textContent = (result.kind === "metro" ? "Metro Telex: " : "Mainline plan: ") + result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
+    note.textContent = (result.kind === "metro" ? "Metro Telex: " : result.kind === "hs" ? "High Speed disposition: " : "Mainline plan: ") + result.units + " units on the " + (result.kind === "hs" ? "sheet" : "plan") + ", " + result.inTraffic + (result.kind === "hs" ? " out on a diagram on " : " in traffic on ") + result.date +
       (result.ignored ? ", " + result.ignored + " out of service" : "") +
       (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
     say(result.lines + " plan lines read against " + result.date + " — look them over below, then copy the plan back or save it.", "go");
@@ -15516,9 +17966,9 @@ function decodeText(u8) {
   if (xlsx) xlsx.addEventListener("click", () => {
     if (!result) return;
     try {
-      const name = (result.kind === "metro" ? "METRO_TELEX_" : "MAINTENANCE_PLAN_") + String(result.date || "").replace(/\//g, "-") + ".xlsx";
+      const name = (result.kind === "metro" ? "METRO_TELEX_" : result.kind === "hs" ? "395_DISPOSITION_" : "MAINTENANCE_PLAN_") + String(result.date || "").replace(/\//g, "-") + ".xlsx";
       download(name, SHEETS_BERTH.toXlsx(result, zipFn), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      say("Saved " + name + " — the Maintenance Plan sheet pastes over the workbook's tab, the Why sheet is for reading.", "go");
+      say("Saved " + name + " — the " + (result.kind === "hs" ? "Disposition Sheet" : "Maintenance Plan") + " sheet pastes over the workbook's tab, the Why sheet is for reading.", "go");
     } catch (e) { say("The plan could not be written as a workbook: " + e.message, "err"); }
   });
   if ($("#brsave")) $("#brsave").addEventListener("click", () => {

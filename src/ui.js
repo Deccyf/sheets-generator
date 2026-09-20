@@ -1656,7 +1656,7 @@ function decodeText(u8) {
     rev.textContent = "";
     for (const m of result.reviews) { const li = document.createElement("li"); li.textContent = m; rev.appendChild(li); }
     revWrap.hidden = result.reviews.length === 0;
-    note.textContent = (result.kind === "metro" ? "Metro Telex: " : "Mainline plan: ") + result.units + " units on the plan, " + result.inTraffic + " in traffic on " + result.date +
+    note.textContent = (result.kind === "metro" ? "Metro Telex: " : result.kind === "hs" ? "High Speed disposition: " : "Mainline plan: ") + result.units + " units on the " + (result.kind === "hs" ? "sheet" : "plan") + ", " + result.inTraffic + (result.kind === "hs" ? " out on a diagram on " : " in traffic on ") + result.date +
       (result.ignored ? ", " + result.ignored + " out of service" : "") +
       (result.suggested ? " · " + result.suggested + " empty Action" + (result.suggested === 1 ? "" : "s") + " filled" : "");
     say(result.lines + " plan lines read against " + result.date + " — look them over below, then copy the plan back or save it.", "go");
@@ -1704,9 +1704,9 @@ function decodeText(u8) {
   if (xlsx) xlsx.addEventListener("click", () => {
     if (!result) return;
     try {
-      const name = (result.kind === "metro" ? "METRO_TELEX_" : "MAINTENANCE_PLAN_") + String(result.date || "").replace(/\//g, "-") + ".xlsx";
+      const name = (result.kind === "metro" ? "METRO_TELEX_" : result.kind === "hs" ? "395_DISPOSITION_" : "MAINTENANCE_PLAN_") + String(result.date || "").replace(/\//g, "-") + ".xlsx";
       download(name, SHEETS_BERTH.toXlsx(result, zipFn), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      say("Saved " + name + " — the Maintenance Plan sheet pastes over the workbook's tab, the Why sheet is for reading.", "go");
+      say("Saved " + name + " — the " + (result.kind === "hs" ? "Disposition Sheet" : "Maintenance Plan") + " sheet pastes over the workbook's tab, the Why sheet is for reading.", "go");
     } catch (e) { say("The plan could not be written as a workbook: " + e.message, "err"); }
   });
   if ($("#brsave")) $("#brsave").addEventListener("click", () => {

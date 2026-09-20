@@ -67,6 +67,9 @@ const modules = [
   // after genius.js: it reads the same reports and borrows its PDF extractor
   "src/shortage.js",
   "src/berth.js",
+  // the High Speed side of the berth road: its sheet's dress, then the road; berth.js calls it at run time
+  "src/hs-disp-skin.js",
+  "src/berth-hs.js",
   "src/sprites.js",
   "src/ui.js",
 ];
@@ -103,7 +106,7 @@ function withoutExperimental(template) {
 const liteName = "Sheets Generator (no berth requests).html";
 const liteHtml = fill(withoutExperimental(read("./src/page.html")), {
   CSS: css,
-  SCRIPTS: scriptBlocks(modules.filter(m => m !== "src/berth.js")),
+  SCRIPTS: scriptBlocks(modules.filter(m => !/^src\/(berth|berth-hs|hs-disp-skin)\.js$/.test(m))),
   VERSION: version,
   RELEASED: released,
 });
