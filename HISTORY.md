@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.16.1 — 20 September 2026 — the Why stops pushing the rows apart
+
+**The plan preview had uneven spacing.** 3.15.0 gave each row the height
+its workbook gives it, but the Why column beside it was free to wrap, and
+a two-line reason made its row twice as tall as its neighbours. The plan
+came back with the ruling all different distances apart — the one thing
+the dress was meant to fix. A closed Why is now held to one line, folded
+at its first clause with the rest a click away and trimmed by the sheet's
+own rule if it is still over, so every row is the height the tab gives it.
+Opening one lets that row, and only that row, grow. The High Speed sheet
+is left alone: its rows are tall enough to hold a wrapped reason already.
+
 ## 3.16.0 — 20 September 2026 — the High Speed disposition sheet
 
 **A third telex, and a different job.** The 375s and the Networkers have a

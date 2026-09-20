@@ -2357,16 +2357,22 @@ function toText(res, opts) {
   return out.join("\n") + (n ? "\n\n" + n : "");
 }
 const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-/* A Why on the page: short ones as they are; a long one folded to its first
-   clause or two with the rest a click away, so the rows stay the workbook's
-   height and the table reads as the tab does. */
-const WHY_FOLD = 150;
+/* A Why on the page, held to ONE line so the row keeps the height the
+   workbook gives it. A Why that wrapped to two lines made its row twice as
+   tall as its neighbours, and the plan came back with the ruling all
+   different widths apart - nothing like the tab it previews. So a long one
+   is folded at its first clause, with the rest a click away, and the
+   sheet's own rule trims whatever is still over the line. The fold is
+   measured in characters against the column's width at this font: about
+   six pixels a character, less the padding and the room "… more" takes. */
+const WHY_PX = 560;
+const WHY_FOLD = Math.floor((WHY_PX - 12) / 6) - 8;
 function whyCell(why) {
   const s = String(why || "");
-  if (s.length <= WHY_FOLD) return esc(s);
+  if (s.length <= WHY_FOLD) return '<span class="brwhytxt">' + esc(s) + "</span>";
   let cut = s.lastIndexOf(" · ", WHY_FOLD);
-  if (cut < 40) cut = s.lastIndexOf(" ", WHY_FOLD);
-  if (cut < 40) cut = WHY_FOLD;
+  if (cut < 30) cut = s.lastIndexOf(" ", WHY_FOLD);
+  if (cut < 30) cut = WHY_FOLD;
   return '<details class="brwhy"><summary>' + esc(s.slice(0, cut)) + ' <span class="more">… more</span></summary>' + esc(s.slice(cut).trim()) + "</details>";
 }
 /* The plan as the workbook draws it, on the page and on the clipboard: the
@@ -2377,7 +2383,7 @@ function toHtml(res, inline, opts) {
   opts = opts || {};
   if (res.kind === "hs") return SHEETS_BERTH_HS.toHtml(res, inline, opts);
   const P = planRows(res), px = w => Math.round(w * 7) + 5, pt = h => Math.round(h * 4 / 3);
-  const why = !opts.workbook, WHY_PX = 480;
+  const why = !opts.workbook;
   // fixed layout only holds the workbook's column widths when the table has a width of its own;
   // left to fit the panel, the columns squeeze and every Why wraps into a tall row
   const width = P.skin.widths.reduce((a, w) => a + px(w), 0) + (why ? WHY_PX : 0);
@@ -2394,8 +2400,8 @@ function toHtml(res, inline, opts) {
       const bold = why && r.type === "row" && i === ACTION_COL && r.row.filled;
       return '<td style="' + planXfCss(P.kind, r.xfs[i]) + (bold ? ";font-weight:700" : "") + '">' + (r.type === "blank" ? "" : esc(c)) + "</td>";
     });
-    if (why) tds.push('<td style="font-family:Arial,sans-serif;font-size:10pt;color:#3C464D;font-style:italic;padding:0 6px;white-space:normal;vertical-align:middle">' +
-      (r.type === "header" ? "Why" : r.type === "row" ? whyCell(r.why) : "") + "</td>");
+    if (why) tds.push('<td class="brwhycell" style="font-family:Arial,sans-serif;font-size:10pt;color:#3C464D;font-style:italic;padding:0 6px;vertical-align:middle">' +
+      (r.type === "header" ? '<span class="brwhytxt">Why</span>' : r.type === "row" ? whyCell(r.why) : "") + "</td>");
     out.push(tr + tds.join("") + "</tr>");
   }
   out.push("</tbody></table>");

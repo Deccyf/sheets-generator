@@ -485,11 +485,18 @@
      clipboard and the Excel file draw the same thing; the sheet only adds
      the margin and the fold on a long Why */
   .brtable{border-collapse:collapse; margin:0 0 18px}
+  /* A closed Why is held to one line, so a long reason cannot make its row
+     taller than the workbook makes it and leave the ruling uneven. Opening
+     one lets that row - and only that row - grow to hold it. */
+  .brplan:not(.brhs) .brwhytxt,
+  .brplan:not(.brhs) .brwhy:not([open]) > summary{display:block; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis}
   .brwhy summary{cursor:pointer; list-style:none}
   .brwhy summary::-webkit-details-marker{display:none}
   .brwhy .more{color:var(--ink-3, #5A646B); font-style:normal; font-size:11px; letter-spacing:.04em}
   .brwhy[open] .more{display:none}
-  .brwhy[open]{padding:2px 0}
+  .brwhy[open] > summary{white-space:normal}
+  .brplan:not(.brhs) .brwhy[open]{padding:3px 0}
   .brkind{display:inline-flex; align-items:center; gap:8px; font-size:13px; margin-right:6px}
   .brkind select{font:inherit; padding:4px 6px; border:1px solid var(--apron-dk); background:#fff}
   /* the lettered list, as the Excel text box shows it: Calibri 11 bold,
