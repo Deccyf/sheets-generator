@@ -185,12 +185,13 @@ test("the plan comes back in its own shape, the suggestion in the Action column 
     "A black, B green, C red, XS50 blue - the workbook's colours");
   assert.ok(shape[0].rows.every(r => r.filled), "an empty Action is filled");
   const text = B().toText(out);
-  assert.match(text, /^Exams\nUnit Nr\tExam\tWhen\tWhere\tAction\tWhy\n375601\tA\tTUE AM 04\/08\tAFK\tAFK BERTH off 2A01\tat AFK 05\+35, leaves on 2A01 · on GT101 · ENDS DVP 23\+50 · calls AFK 05\+35 off 2A01, AFK 10 30 off 5A03, AFK 10\+40 \(stands 3\.3 h\) off 5A05 \+1 more$/m,
+  // 375601 is multiple only on its defect line, so its exam line carries the check too
+  assert.match(text, /^Exams\nUnit Nr\tExam\tWhen\tWhere\tAction\tWhy\n375601\tA\tTUE AM 04\/08\tAFK\tAFK BERTH off 2A01\tMO — multiple only, but runs as one unit on 2A02 09 00 today: check · at AFK 05\+35, leaves on 2A01 · on GT101 · ENDS DVP 23\+50 · calls AFK 05\+35 off 2A01, AFK 10 30 off 5A03, AFK 10\+40 \(stands 3\.3 h\) off 5A05 \+1 more$/m,
     "tab-separated, the workbook's columns with the suggestion in Action and the reason beside it: " + text.split("\n").slice(0, 3).join(" | "));
   // a plan line that had its own action keeps it in the reason
   const kept = B().run(PLAN, res, { ignore: "375698" });
   const line = B().toText(kept).split("\n").find(l => /^375601\tA\t/.test(l));
-  assert.match(line, /\tAFK BERTH off 2A01\tplan had: AFK HOLD · at AFK 05\+35/, line);
+  assert.match(line, /\tAFK BERTH off 2A01\tplan had: AFK HOLD · MO — multiple only, but runs as one unit on 2A02 09 00 today: check · at AFK 05\+35/, line);
   const html = B().toHtml(out, true);
   assert.match(html, /<tr style="color:#00B050[^"]*"><td[^>]*>375602<\/td>/, "a B exam is green in the copied table");
   assert.match(html, /<caption[^>]*>Defects<\/caption>/);
@@ -1224,4 +1225,28 @@ test("the Up Sidings at Slade Green are strict: an Up Sidings unit goes out on a
   // Tonbridge and Gillingham have roads of their own; Ramsgate is one road
   assert.equal(B().roadName("TONBPMY"), "Jubilee Sidings"); assert.equal(B().roadName("TONBDMS"), "Down Main sidings");
   assert.equal(B().roadName("GLNGMUS"), "Up Sidings"); assert.equal(B().placeOf("GLNGMUS"), "GI");
+});
+
+test("multiple only on any line of a unit keeps every line's request coupled: no single unit, no portion", async () => {
+  /* 375705 stands in the Grove Park Up Sidings with an exam line and an
+     MO defect line. Out of the Up Sidings tomorrow: 5J90, one diagram on
+     its own, and 5J91, two diagrams coupled to Ramsgate. The exam line
+     comes first, and its request - the one both lines carry - is 5J91. */
+  const day = SWAP_DAY.concat([
+    { code: "RM190", units: "375790.", stops: [S("GRVPKUS", "", "05:50", "5J90"), S("RAMSGTE", "07:30", "07:35", "5J90"), S("RAMSGTD", "07:45", "", "")] },
+    { code: "RM191", units: "375791.", pos: 1, stops: [S("GRVPKUS", "", "06:10", "5J91"), S("RAMSGTE", "07:50", "07:55", "5J91"), S("RAMSGTD", "08:05", "", "")] },
+    { code: "RM192", units: "375792.", pos: 2, stops: [S("GRVPKUS", "", "06:10", "5J91"), S("RAMSGTE", "07:50", "07:55", "5J91"), S("RAMSGTD", "08:05", "", "")] },
+  ]);
+  const p = geniusPairCsv(day); const rd = await N.GENIUS.read([p.summary, p.detail]);
+  rd.alloc = B().parseAllocation(allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "GRVPKUS"));
+  const plan = ["Exams", "Unit Nr \tExam\t\tWhere\tAction", "375705\tA\tMON AM 03/08\tRE\t",
+                "Defects", "Unit Nr \tDays\tPriority\tTarget Date\tAction ", "375705\t3\t2. Restriction MO\t03/08/2026 00:00:00\t"].join("\n");
+  const out = B().run(plan, rd, {});
+  const [exam, defect] = out.rows.map(r => r.suggest);
+  assert.equal(exam.action, "GP BERTH 5J91", "the exam line keeps it coupled: " + JSON.stringify(exam));
+  assert.equal(defect.action, "GP BERTH 5J91", JSON.stringify(defect));
+  assert.ok(!/5J90/.test(exam.action + defect.action), "never the diagram on its own");
+  // without the MO line the single diagram is offered too, first off its own road
+  const free = B().run(planFor(["375705\tA\tMON AM 03/08\tRE\t"]), rd, {}).rows[0].suggest;
+  assert.match(free.action, /5J90/, JSON.stringify(free));
 });

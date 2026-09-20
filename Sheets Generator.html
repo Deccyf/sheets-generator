@@ -12335,7 +12335,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
      call at its terminal - and, for multiple only, two or more of them
      have to get there together */
   const top = e => e.diags.filter(x => x.how === e.diags[0].how && x.via === e.diags[0].via);
-  const fitMO = es => es.filter(e => r.category !== "MO" || top(e).length >= 2);
+  const fitMO = es => es.filter(e => !opts.mo || top(e).length >= 2);
   /* A unit at its own depot, not due tomorrow, goes out on a peak diagram
      - one that stands at Grove Park or Victoria through the day, from
      where it is brought back the night before it is due - not on one
@@ -12345,6 +12345,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
     ? fitMO(all.map(e => ({ ...e, diags: e.diags.filter(x => x.peak) })).filter(e => e.diags.length)) : [];
   const fit = peak.length ? peak : fitMO(all);
   if (!fit.length) return { why: ["MO — " + lab + " " + all.map(e => e.name).join(", ") + " out of " + from + " would run it on alone to " + targets.join("/")] };
+  // (opts.mo: multiple only on any of the unit's lines, so every line's request keeps it coupled)
   /* the morning departures where there are any - the unit goes out on one
      of them - and the PM workings off a stand, which are the depot's own */
   const am = fit.filter(e => e.start && e.dep < 12 * 60);
@@ -12477,10 +12478,12 @@ function candidatesFor(r, mine, days, wanted, taken, keep) {
     // a restriction is a formation: multiple only needs a train of two
     // diagrams or more. No multiple is no multiple on ONE END, which is
     // a check on which end couples, not a bar on coupling - said below.
-    if (r.category === "MO" && sharing.length < 2) continue;
+    if (r.mo && sharing.length < 2) continue;
     /* the portion, where the train splits before the depot and only this
-       diagram's goes there: "RP 5F87" */
+       diagram's goes there: "RP 5F87" - and multiple only cannot be that
+       portion, which runs on alone */
     const portion = portionOf(d, sharing, days, d.endDepot);
+    if (r.mo && portion) continue;
     /* A unit whose formation-mate has already been given this working goes
        with it, so a 12-car that arrives as one train is not split three
        ways for three requests: a mate is already on this working, or every
@@ -12616,7 +12619,7 @@ function suggestCore(r, ctx) {
   /* a restriction is a formation, and today's is checked: multiple only
      on a working of one unit, or no multiple on a working of two, is said */
   const legName = l => (l.hcOut || "?") + " " + hhmm(l.dep, /^5/.test(l.hcOut || ""));
-  if (r.category === "MO" && r.alone && r.alone.length)
+  if (r.mo && r.alone && r.alone.length)
     s.notes.push("MO — multiple only, but runs as one unit on " + legName(r.alone[0]) + " today: check");
   if (r.category === "NM" && r.coupled && r.coupled.length)
     s.notes.push("NM — no multiple on one end: check which end couples on " + legName(r.coupled[0]) + " today");
@@ -12653,7 +12656,7 @@ function suggestCore(r, ctx) {
     /* the road it landed on, where the reports say; a unit placed by the
        plan's own word is anywhere in the depot. ASAP, a mileage trigger
        or a defect is wanted in the day. */
-    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1,
+    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1, mo: !!r.mo,
                    dayFirst: !!(r.when.asap || r.when.miles != null || r.isDefect), ...(reachBy >= 0 ? { reachBy } : {}) };
     if (ctx.dayToRun && r.starts && r.starts.place && r.starts.place !== "?") {
       const t = departuresFrom(r, ctx.days, r.starts.place, targets, ctx.taken, { ...base, today: true, code: r.starts.code, mates: matesAtStart(ctx.mine, ctx.days), ...(extra || {}) });
@@ -13015,6 +13018,10 @@ function run(planText, genius, opts) {
     r.coupled = legs.filter(l => l.n > 1);
     r.day = day;
   }
+  /* multiple only on any line of a unit is multiple only on all of them:
+     the one request every line carries has to keep it coupled */
+  const moUnits = new Set(dated.filter(x => x.category === "MO").map(x => x.unit));
+  for (const r of dated) r.mo = moUnits.has(r.unit);
   /* the units on each road tonight, by fleet: a road with more departures
      than units to put on them is offered the best few, not all */
   const roadKey = r => r.ends ? (r.standing ? homeOf(r.ends.place) : r.ends.code) + "|" + loosely(familyOfUnit(r.unit)) : null;
