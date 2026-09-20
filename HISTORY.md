@@ -140,6 +140,21 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.12.1 — 20 September 2026 — the roads as the depots work them
+
+The planner's answers on the roads. Ramsgate is one road: the staff shunt
+depot to station, so a departure off the platform is a depot unit's too,
+as it was before 3.12.0. Ashford's Down Sidings and East Berthing are
+connected, and so are Grove Park's roads: a unit's own road comes first
+in the list and the other roads' departures follow it, marked as a shunt
+across, rather than being held back until its own has nothing. The Up
+Sidings at Slade Green and at Ashford stay strict. Tonbridge is not one
+road but three — the Jubilee Sidings, the Down Main sidings and the
+platform — and is worked like a depot's roads. And two departures
+that print the same time are told apart by where they go — *05 55 VIC*
+and *05 55 RAM* out of Ashford — the way the Telex writes them, off the
+book's own destination column.
+
 ## 3.12.0 — 20 September 2026 — the road it lands on
 
 **Off the road the unit landed on.** A unit in the Up Sidings at Slade

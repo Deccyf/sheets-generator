@@ -37,7 +37,7 @@ const stationOf = code => STATION[code] || CODE_TO_PLACE.get(code) || code || "?
 const PLACES = {
   RE:   ["RAMSGTD", "RAMSDRW", "RAMSNEW", "RAMMKEX", "RAMMIEX", "RAMSGTE"],
   RAM:  ["RAMSGTE"],
-  GI:   ["GLNGDEP", "GLNGHMK"],
+  GI:   ["GLNGDEP", "GLNGHMK", "GLNGMUS"],
   GLM:  ["GLNGHMK"],
   SG:   ["SLADEGD", "SLADGUS", "SLADGDP", "SLADGEH", "SLADEGN"],
   SGUPS:["SLADGUS"],
@@ -69,12 +69,17 @@ const ROAD_NAMES = {
   ASHFDNS: "Down Sidings", ASHFEBS: "East Berthing", ASHFUPS: "Up Sidings", ASHFDYW: "Down Yard", ASHFKY: "station",
   RAMSGTD: "EMU Depot", RAMSNEW: "New Sidings", RAMSDRW: "Depot reception", RAMSGTE: "station",
   DOVERPS: "Sidings", DOVERP: "station", STLNWCS: "Carriage Sidings", STLNWMS: "West Marina", STLNSHN: "shunt neck", STLNCET: "CET road",
-  TONBDMS: "DM Sidings", TONBPMY: "Jubilee Sidings", TONBDG: "station", HASTPSD: "Park Sidings", HASTING: "station",
+  TONBDMS: "Down Main sidings", TONBPMY: "Jubilee Sidings", TONBDG: "platform", HASTPSD: "Park Sidings", HASTING: "station",
   FAVRUPS: "Up Sidings", FAVRBRD: "Back Road", FAVRSHM: "station", VICTGCS: "Grosvenor Sidings", VICTRIE: "station",
-  GLNGDEP: "Depot", GLNGHMK: "station", FLKSETR: "Turnback Road", FLKSTNE: "station",
+  GLNGDEP: "Depot", GLNGHMK: "platform", GLNGMUS: "Up Sidings", FLKSETR: "Turnback Road", FLKSTNE: "station",
   DARTFUS: "Up Sidings", DARTFD: "station", ORPNDSG: "Down Sidings", ORPNGTN: "station",
 };
 const roadName = code => ROAD_NAMES[code] || code;
+// the roads a unit cannot be shunted off for a departure, and the depots that are one road
+const STRICT_ROADS = new Set(["SLADGUS", "ASHFUPS"]);
+const ONE_ROAD = new Set(["RE"]);
+// the outstations whose roads matter too: Tonbridge is the Jubilee, the Down Main and the platform
+const ROADED_OUTSTATIONS = new Set(["TON"]);
 /* The depots - where a unit is worked on, and where a berth request can
    put it. A call here is a chance to hold it; a call at a station is not. */
 const DEPOTS = new Set(["RE", "GI", "SG", "GP", "AFK", "XSE", "FKE", "VIC", "SU"]);
@@ -680,7 +685,11 @@ function bookLines(genius, date) {
   return null;
 }
 const secLines = (m, name) => !m ? [] : (typeof m.get === "function" ? m.get(name) : m[name]) || [];
-function sheetName(pool, place, diag, hc, dep) {
+function sheetName(pool, place, diag, hc, dep) { const l = sheetLine(pool, place, diag, hc, dep); return l ? l.name : null; }
+/* the book's line for a departure: its printed name, and where it goes -
+   two departures printing the same time are told apart by that, "05 55
+   VIC" and "05 55 RAM", the way the plan writes them */
+function sheetLine(pool, place, diag, hc, dep) {
   const lines = pool && pool.lines, sec = SECTION_OF[place] || SECTION_OF[homeOf(place)];
   if (!lines || !sec || dep == null) return null;
   const all = secLines(lines.main, sec).concat(secLines(lines.metro, sec));
@@ -694,8 +703,9 @@ function sheetName(pool, place, diag, hc, dep) {
   }
   if (!best) return null;
   const depot = depotOf(homeOf(place)) || place;
-  if (HEADCODE_DEPOTS.has(depot)) return best.headcode || null;
-  return typeof SHEETS_CORE !== "undefined" && SHEETS_CORE.fmtTime ? SHEETS_CORE.fmtTime(best.time, best.time_kind) : null;
+  const name = HEADCODE_DEPOTS.has(depot) ? (best.headcode || null)
+             : typeof SHEETS_CORE !== "undefined" && SHEETS_CORE.fmtTime ? SHEETS_CORE.fmtTime(best.time, best.time_kind) : null;
+  return name ? { name, dest: best.dest || "" } : null;
 }
 /* Where a diagram calls at a place a changeover can be made - Ramsgate or
    a London terminal - with what it came in on and from where, and what it
@@ -1095,9 +1105,11 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
          over */
       if (opts.backBy != null && (how === "hub" ? atHome : (when == null || when > opts.backBy))) continue;
       if (opts.reachBy != null && how !== "hub" && when != null && when > opts.reachBy) continue;
-      if (!byKey.has(wid))
-        byKey.set(wid, { wid, hc: o.hc, dep: o.dep, start: !o.idx, road: o.code, sharing, diags: [], reach: [],
-                         name: sheetName(pool, from0, d.diag, o.hc, o.dep) || (HEADCODE_DEPOTS.has(from) ? o.hc : hhmm(o.dep, /^5/.test(o.hc))) });
+      if (!byKey.has(wid)) {
+        const line = sheetLine(pool, from0, d.diag, o.hc, o.dep);
+        byKey.set(wid, { wid, hc: o.hc, dep: o.dep, start: !o.idx, road: o.code, sharing, diags: [], reach: [], dest: line ? line.dest : "",
+                         name: line ? line.name : (HEADCODE_DEPOTS.has(from) ? o.hc : hhmm(o.dep, /^5/.test(o.hc))) });
+      }
       const e = byKey.get(wid);
       e.reach.push(d.diag);
       /* a peak diagram: out for the morning peak, two hours or more at a
@@ -1139,15 +1151,20 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
      of them - and the PM workings off a stand, which are the depot's own */
   const am = fit.filter(e => e.start && e.dep < 12 * 60);
   const morning = fit.filter(e => !e.start || !am.length || e.dep < 12 * 60);
-  /* The road it landed on, at a depot: a unit in the Up Sidings at Slade
-     Green goes out on an Up Sidings diagram, one in Ashford's East
-     Berthing on one of the East's. Another road's departures are offered
-     only where its own has none, and said to be a shunt to check with the
-     depot. An outstation is one road: its sidings feed its platforms. */
-  const road = opts.code && DEPOTS.has(from) && codes.indexOf(opts.code) >= 0 ? opts.code : null;
+  /* The road it landed on, at a depot: its own road's departures come
+     first, and another road's after them, said to be a shunt across - the
+     depot can divert a unit, but from where it stands. The Up Sidings at
+     Slade Green and at Ashford are strict: an Up Sidings unit goes out on
+     an Up Sidings diagram, and another road's is offered only where its
+     own has none. Ramsgate is one road, the staff shunting depot to
+     station; so is an outstation whose sidings feed its platforms - but
+     not Tonbridge, whose Jubilee, Down Main and platform are three. */
+  const road = opts.code && (DEPOTS.has(from) || ROADED_OUTSTATIONS.has(from)) && !ONE_ROAD.has(from) && codes.indexOf(opts.code) >= 0 ? opts.code : null;
+  const strict = !!road && STRICT_ROADS.has(road);
   const onRoad = road ? morning.filter(e => e.road === road) : morning;
   const offRoad = road ? morning.filter(e => e.road !== road) : [];
-  const pick0 = onRoad.length ? onRoad : morning;
+  const pick0 = strict && onRoad.length ? onRoad : morning;
+  const ownFirst = (a, b) => road ? ((a.road === road ? 0 : 1) - (b.road === road ? 0 : 1)) : 0;
   /* Which come first: back nearest the time it is due, where there is one;
      for ASAP, a mileage trigger or a defect, on hand in the day - by 16 00
      - so the depot has it for the day shift; otherwise into the depot over
@@ -1160,7 +1177,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
   const best = opts.backBy != null ? (a, b) => (arrives(b) - arrives(a)) || (a.dep - b.dep)
              : opts.dayFirst ? (a, b) => ((soonest(a) <= DAY_SHIFT_END ? 0 : 1) - (soonest(b) <= DAY_SHIFT_END ? 0 : 1)) || (rankOf(a) - rankOf(b)) || (a.dep - b.dep)
              : (a, b) => (rankOf(a) - rankOf(b)) || (a.dep - b.dep);
-  const ranked = pick0.slice().sort(best);
+  const ranked = pick0.slice().sort((a, b) => ownFirst(a, b) || best(a, b));
   const cap = ranked.length > (opts.demand || 1) ? 3 : 6;
   // in the order the sheet prints them, which is the order the plan lists them in
   const printed = e => { const m = /^(\d\d)[ +](\d\d)$/.exec(e.name); return m ? +m[1] * 60 + +m[2] : e.dep; };
@@ -1178,7 +1195,8 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
     const ps = [...new Set(f.map(x => x.pos <= Math.min(...poss) ? "FP" : x.pos >= Math.max(...poss) ? "RP" : "MP"))];
     return ps.length === 1 ? ps[0] : "";
   };
-  const nameOf = e => (portionOf_(e) ? portionOf_(e) + " " : "") + e.name;
+  const twins = e => listed.filter(x => x.name === e.name).length > 1 && e.dest;
+  const nameOf = e => (portionOf_(e) ? portionOf_(e) + " " : "") + e.name + (twins(e) ? " " + e.dest : "");
   const names = [...new Set(listed.map(nameOf))];
   const lead = listed[0], first = top(lead)[0];
   const whereTo = x => (x.how === "ends" ? (atHome ? "back " : "ends ") : x.how === "stands" ? (atHome ? "back " : "stands ") : x.how === "calls" ? "calls " : x.ends ? "ends " : x.via === from ? "back " : "stands ") +
@@ -1198,11 +1216,14 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
       for (const m of (H === from ? ownMoves : opts.dow != null ? movesFrom(H, targets, opts.dow) : [])) parts.push("fleet move " + m.hc + " " + m.time + " (" + m.days + ")");
       notes.push("then " + H + " has " + (parts.length ? parts.join(", ") : "nothing on the Detail") + " to " + targets.join("/") + " when it is due");
     }
-  if (more.length) notes.push("also off the " + roadName(listed[0].road) + ": " + more.map(nameOf).join(", "));
+  if (more.length) notes.push("also: " + more.map(nameOf).join(", "));
+  const shunted = listed.filter(e => road && e.road !== road);
   if (road && !onRoad.length) notes.push("nothing off the " + roadName(road) + " gets there — these leave the " +
     [...new Set(listed.map(e => roadName(e.road)))].join(" and ") + ", a shunt to check with the depot");
-  else if (road && offRoad.length) notes.push("off the " + roadName(road) + ", where it lands; " +
+  else if (strict && offRoad.length) notes.push("off the " + roadName(road) + ", where it lands; " +
     [...new Set(offRoad.map(e => roadName(e.road)))].join(" and ") + ": " + offRoad.sort(byPrint).slice(0, 4).map(nameOf).join(", ") + " — a shunt across, to check with the depot");
+  else if (shunted.length) notes.push("off the " + roadName(road) + " first; " +
+    shunted.map(e => nameOf(e) + " leaves the " + roadName(e.road)).join(", ") + " — a shunt across");
   const later = fit.filter(e => morning.indexOf(e) < 0);
   if (later.length) notes.push("or, later in the day, " + later.slice(0, 3).map(nameOf).join(", "));
   if (peak.length) {

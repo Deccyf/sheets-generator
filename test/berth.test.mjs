@@ -1145,7 +1145,7 @@ test("an Allocation Summary for some other day places nothing, and is named", as
 });
 
 /* ---- the road a unit lands on, and how many departures a list carries ---- */
-test("at a depot the request is off the road the unit landed on; another road is a shunt, said so", async () => {
+test("at a depot the request is off the road the unit landed on first; another road's follows, said to be a shunt", async () => {
   /* 375705 stands in the Grove Park Up Sidings. Tomorrow's 5J01 to
      Ramsgate leaves the Carriage Shed; 5J90 leaves the Up Sidings. The Up
      Sidings departure is the request, the Carriage Shed one a shunt. */
@@ -1156,8 +1156,9 @@ test("at a depot the request is off the road the unit landed on; another road is
   const inUps = () => B().parseAllocation(allocRow("375705", "RM105", "02/08/26 05:00", "RAMSGTD", "RM105", "02/08/26 21:30", "GRVPKUS"));
   const p = geniusPairCsv(day); const rd = await N.GENIUS.read([p.summary, p.detail]); rd.alloc = inUps();
   const s = B().run(planFor(["375705\tA\tMON AM 03/08\tRE\t"]), rd, {}).rows[0].suggest;
-  assert.equal(s.action, "GP BERTH 5J90", JSON.stringify(s));
-  assert.match(s.notes.join("; "), /off the Up Sidings, where it lands; Carriage Shed: 5J01 — a shunt across, to check with the depot/);
+  // its own road first, the other road's after it and said to be a shunt
+  assert.equal(s.action, "GP BERTH 5J90/5J01", JSON.stringify(s));
+  assert.match(s.notes.join("; "), /off the Up Sidings first; 5J01 leaves the Carriage Shed — a shunt across/);
   // with nothing off its own road, the other road is offered and said to be a shunt
   const q = geniusPairCsv(SWAP_DAY); const bare = await N.GENIUS.read([q.summary, q.detail]); bare.alloc = inUps();
   const t = B().run(planFor(["375705\tA\tMON AM 03/08\tRE\t"]), bare, {}).rows[0].suggest;
@@ -1191,7 +1192,7 @@ test("more departures than units on the road: the best three, the rest noted", a
   const p = geniusPairCsv(SWAP_DAY.concat(extra)); const res = await N.GENIUS.build([p.summary, p.detail]);
   const s = B().run(planFor(["375799\tA\tTUE AM 04/08\tRE\tO/H GP"]), res, {}).rows[0].suggest;
   assert.equal(s.action.split("/").length, 3, "three named: " + JSON.stringify(s));
-  assert.match(s.notes.join("; "), /also off the Carriage Shed: /);
+  assert.match(s.notes.join("; "), /also: /);
   // five units on the road: every departure is listed
   const five = B().run(planFor(["375799\tA\tTUE AM 04/08\tRE\tO/H GP", "375798\tA\tTUE AM 04/08\tRE\tO/H GP", "375797\tA\tTUE AM 04/08\tRE\tO/H GP",
                                 "375796\tA\tTUE AM 04/08\tRE\tO/H GP", "375795\tA\tTUE AM 04/08\tRE\tO/H GP"]), res, {}).rows[0].suggest;
@@ -1204,4 +1205,23 @@ test("the metro outstations and the other fleets: Orpington and Dartford are pla
   assert.equal(B().maxUnits("395002"), 2); assert.equal(B().maxUnits("707001"), 2); assert.equal(B().maxUnits("465003"), 3); assert.equal(B().maxUnits("466001"), 6);
   assert.equal(B().defectHome("465003"), "SG/GI"); assert.equal(B().defectHome("707001"), "SG/GI"); assert.equal(B().defectHome("395002"), "AFK");
   assert.equal(B().roadName("SLADGUS"), "Up Sidings"); assert.equal(B().roadName("ASHFEBS"), "East Berthing"); assert.equal(B().roadName("XYZ"), "XYZ");
+});
+
+test("the Up Sidings at Slade Green are strict: an Up Sidings unit goes out on an Up Sidings diagram", async () => {
+  /* 376001 lands in the Up Sidings, wanted at Gillingham. 5L12 out of the
+     Up Sidings calls at Gillingham in the morning; 5L52 out of the Depot
+     ends in Gillingham depot. Only the Up Sidings one is the request. */
+  const day = SWAP_DAY.concat([
+    { code: "SG901", fleet: "376/0", units: "376901.", stops: [S("SLADGUS", "", "05:21", "5L12"), S("DARTFD", "05:26", "05:34", "2D12"), S("GLNGHMK", "06:10", "06:12", "2D12"), S("RAMSGTE", "07:30", "", "")] },
+    { code: "SG902", fleet: "376/0", units: "376902.", stops: [S("SLADEGD", "", "05:14", "5L52"), S("DARTFD", "05:20", "05:30", "2L52"), S("GLNGDEP", "06:30", "", "")] },
+  ]);
+  const p = geniusPairCsv(day);
+  const rd = await N.GENIUS.read([p.summary, p.detail]);
+  rd.alloc = B().parseAllocation(allocRow("376001", "SG905", "02/08/26 05:00", "SLADEGD", "SG905", "02/08/26 23:30", "SLADGUS"));
+  const s = B().run(planFor(["376001\tA\tMON AM 03/08\tGI\t"]), rd, {}).rows[0].suggest;
+  assert.equal(s.action, "SG BERTH 05+21", JSON.stringify(s));
+  assert.match(s.notes.join("; "), /off the Up Sidings, where it lands; Depot: 05\+14 — a shunt across, to check with the depot/);
+  // Tonbridge and Gillingham have roads of their own; Ramsgate is one road
+  assert.equal(B().roadName("TONBPMY"), "Jubilee Sidings"); assert.equal(B().roadName("TONBDMS"), "Down Main sidings");
+  assert.equal(B().roadName("GLNGMUS"), "Up Sidings"); assert.equal(B().placeOf("GLNGMUS"), "GI");
 });
