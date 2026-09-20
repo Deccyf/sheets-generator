@@ -53,8 +53,13 @@ test("the built file is self-contained and lean", () => {
      over 3.8.0), and the how-to names all four tabs. Still no library. The
      copy without that road is ~140 KB smaller, and is what most people
      open. */
-  assert.ok(html.length < 950 * 1024,
-    "under 950 KB (was 1.2 MB); this build is " +
+  /* 1000 KB at 3.15.0: the plan goes back in the workbook's own dress - each
+     control document's fonts, fills, borders and row heights carried as a
+     style record per cell, for the preview, the clipboard and the Excel
+     file alike (~15 KB over 3.14.0, most of it the two skins). No library:
+     the workbook writer already here takes a raw stylesheet. */
+  assert.ok(html.length < 1000 * 1024,
+    "under 1000 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

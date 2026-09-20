@@ -193,8 +193,8 @@ test("the plan comes back in its own shape, the suggestion in the Action column 
   const line = B().toText(kept).split("\n").find(l => /^375601\tA\t/.test(l));
   assert.match(line, /\tAFK BERTH off 2A01\tplan had: AFK HOLD · MO — multiple only, but runs as one unit on 2A02 09 00 today: check · at AFK 05\+35/, line);
   const html = B().toHtml(out, true);
-  assert.match(html, /<tr style="color:#00B050[^"]*"><td[^>]*>375602<\/td>/, "a B exam is green in the copied table");
-  assert.match(html, /<caption[^>]*>Defects<\/caption>/);
+  assert.match(html, /<tr[^>]*class="ex-b"><td style="[^"]*color:#00B050[^"]*">375602<\/td>/, "a B exam is green in the copied table");
+  assert.match(html, /<tr[^>]*><td style="[^"]*text-decoration:underline[^"]*">Defects<\/td>/, "the section title is a row of its own, underlined as in the workbook");
   // the nearest-first list is still there for whoever wants the day in that order
   assert.match(B().render(out), /== NEXT: today, tomorrow, ASAP and overdue ==/);
 });

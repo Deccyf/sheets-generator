@@ -270,11 +270,13 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
      the workbook's colours, the empty Action filled in bold */
   const rows = await page.locator("#brout table.brtable tr").count();
   if (rows < 4) throw new Error("the plan should come back as a table: " + rows + " rows");
-  const first = await page.locator("#brout tr.ex-a td").allTextContents();
+  // a long Why is folded on the page behind "… more"; the smoke reads it whole
+  const unfold = cells => cells.map(t => t.replace(/ … more/g, " "));
+  const first = unfold(await page.locator("#brout tr.ex-a td").allTextContents());
   if (first[4] !== "AFK BERTH off 2A01") throw new Error("the suggestion goes in the Action column: " + first[4]);
   if (!/plan had: AFK HOLD/.test(first[5])) throw new Error("and what the plan had is kept in the reason: " + first[5]);
   if (!/on GT101 · ENDS DVP 23\+50 · calls AFK/.test(first[5])) throw new Error("375601 should be placed: " + first.join(" | "));
-  const green = await page.locator("#brout tr.ex-b td").allTextContents();
+  const green = unfold(await page.locator("#brout tr.ex-b td").allTextContents());
   if (!/ends where it is wanted/.test(green[5])) throw new Error("375602 ends at Ashford: " + green.join(" | "));
   if (!/O\/O\/S — ignored/.test(await page.textContent("#brout"))) throw new Error("the ignore box should take");
   console.log("br built    :", (await page.textContent("#brstatus")).trim());

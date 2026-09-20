@@ -378,6 +378,7 @@ function parsePlan(text, kindWanted) {
   const rows = [], reviews = [], order = [], groups = [];
   const lines = String(text || "").split(/\r?\n/).map(l => l.split("\t").map(x => x.trim()));
   let group = null, pendingTitle = null, n = 0, blanks = 0, metroHeads = 0, metroUnits = 0;
+  const preamble = [];   // what stands above the first section - the Metro Telex's banner and its blank rows
   const open = (title, header) => {
     const section = sectionOfTitle(title, header);
     const canon = CANON_ROLES[section === "EXAMS" ? "EXAMS" : section === "DEFECTS" ? "DEFECTS" : "OTHER"];
@@ -390,12 +391,18 @@ function parsePlan(text, kindWanted) {
     if (order.indexOf(section) < 0) order.push(section);
     if (/slot|location/.test(header.join(" ").toLowerCase())) metroHeads++;
   };
-  for (const f of lines) {
-    if (!f.some(Boolean)) { blanks++; continue; }
+  for (let i = 0; i < lines.length; i++) {
+    const f = lines[i];
+    if (!f.some(Boolean)) { blanks++; if (!groups.length && !pendingTitle) preamble.push(""); continue; }
     n++;
     const unitCell = UNIT_CELL_RE.exec(f[0]);
     if (HEADER_RE.test(f[0])) { open(pendingTitle || "", f); pendingTitle = null; blanks = 0; continue; }
-    if (!unitCell) { pendingTitle = f[0]; blanks = 0; continue; }
+    if (!unitCell) {
+      // a line of text above the first section that is not the title of it: the banner
+      const next = lines.slice(i + 1).find(l => l.some(Boolean));
+      if (!groups.length && !(next && HEADER_RE.test(next[0])) && !SECTION_RE.test(f[0])) { preamble.push(f[0]); continue; }
+      pendingTitle = f[0]; blanks = 0; continue;
+    }
     if (pendingTitle && SECTION_RE.test(pendingTitle)) { open(pendingTitle, []); pendingTitle = null; }
     if (!group) {
       reviews.push("Line " + n + " (" + f[0] + ") is above any section title, so which list it belongs to is not known — it is read as a request.");
@@ -426,7 +433,9 @@ function parsePlan(text, kindWanted) {
   }
   const kind = kindWanted && kindWanted !== "auto" ? kindWanted : (metroHeads > 0 || (rows.length && metroUnits > rows.length / 2) ? "metro" : "mainline");
   for (const r of rows) r.kind = kind;
-  return { rows, reviews, order, groups, kind };
+  // trailing blank lines above the first section belong to the gap before it
+  while (preamble.length && preamble[preamble.length - 1] === "" && !preamble.some(x => x)) preamble.pop();
+  return { rows, reviews, order, groups, kind, preamble };
 }
 
 /* ---------- when a line is due ----------
@@ -1839,7 +1848,7 @@ function mergeDefects(plan, defects) {
   }
   // plan defect lines the export did not carry stay as they were
   for (const rs of kept.values()) for (const r of rs) rows.push(r);
-  return { rows, reviews: plan.reviews.concat(defects.reviews), order, groups, kind: plan.kind };
+  return { rows, reviews: plan.reviews.concat(defects.reviews), order, groups, kind: plan.kind, preamble: plan.preamble || [] };
 }
 function run(planText, genius, opts) {
   opts = opts || {};
@@ -2091,7 +2100,7 @@ function run(planText, genius, opts) {
   if (plan.kind === "metro") for (const r of out) r.suggest.action = metroForm(r.suggest, r);
   const tiered = out.slice().sort(byPriority);
   const inTraffic = new Set(out.filter(r => r.inTraffic).map(r => r.unit)).size;
-  return { rows: out, tiered, notices, swaps, order: plan.order, groups: plan.groups, kind: plan.kind, reviews, date, today, lines: out.length,
+  return { rows: out, tiered, notices, swaps, order: plan.order, groups: plan.groups, kind: plan.kind, preamble: plan.preamble || [], reviews, date, today, lines: out.length,
            units: new Set(plan.rows.map(r => r.unit)).size, inTraffic, ignored: ignore.size,
            mseUnits: [...new Set(out.filter(r => r.mse).map(r => r.unit))], mseAttending: mse.size,
            suggested: out.filter(r => !r.action && r.suggest.action).length };
@@ -2225,70 +2234,189 @@ function noticesText(res) {
   }
   return out.join("\n");
 }
-/* The plan back as text: in the workbook's own shape - the titles, the
-   heading rows, the blank rows between groups, five columns, the request
-   in the Action column - so it pastes over the Maintenance Plan tab; or,
-   with the Why column, for reading. */
+/* ---------- the two workbooks' own dress ----------
+   The Maintenance Plan tab of the Mainline workbook is Arial 10, every
+   cell centred, the section title underlined, the heading row ruled
+   underneath, and the exam rows coloured by class: B green, C red, the M
+   exams purple, the T exams and the XS50s blue. The Metro Telex's tab is
+   Arial 12, titles bold, the heading rows boxed in medium rules, the
+   banner across A2:E2 in bold underlined 16, the unit cell of a "Reduce
+   by" line on yellow and a SPEED UP line in bold red. Both dressings are
+   written out as the workbook writes them - a style record per cell - and
+   drawn the same way on the page and on the clipboard. */
+const PLAN_SKINS = {
+  mainline: {
+    widths: [17.14, 8.57, 40.86, 30, 63.43],
+    fonts: [{ sz: 10 }, { sz: 10, u: 1 }, { sz: 10, rgb: "FF00B050" }, { sz: 10, rgb: "FFFF0000" }, { sz: 10, rgb: "FF7030A0" }, { sz: 10, rgb: "FF0070C0" }],
+    fills: [],
+    borders: [[null, null, null, null], [null, null, null, "thin"]],
+    xfs: [{ h: "center" }, { h: "center", font: 1 }, { h: "center", border: 1 },
+          { h: "center", font: 2 }, { h: "center", font: 3 }, { h: "center", font: 4 }, { h: "center", font: 5 }],
+    title: 1, header: 2, body: 0, cls: { "ex-b": 3, "ex-c": 4, "ex-m": 5, "ex-t": 6, "ex-x": 6 },
+    heights: { EXAMS: [13.5, 13.5, 13.5], DEFECTS: [15, 13.5, 13.5], "SCHEDULED MAINT": [14.25, 14.25, 12.75], UAT: [12.75, 13.5, 13.5], "MLT/LATHE": [13.5, 13.5, 12.75] },
+    height: [12.75, 12.75, 12.75], zoom: 90,
+  },
+  metro: {
+    widths: [32.57, 33.71, 56.71, 58.86, 60.14],
+    fonts: [{ sz: 12 }, { sz: 12, b: 1 }, { sz: 16, b: 1, u: 1 }, { sz: 12, b: 1, rgb: "FFFF0000" }],
+    fills: ["FFFFFF00"],
+    borders: [[null, null, null, null], ["medium", null, "medium", "medium"], [null, null, "medium", "medium"], [null, "medium", "medium", "medium"],
+              ["medium", "thin", "medium", "medium"], ["thin", "thin", "medium", "medium"], ["thin", "medium", "medium", "medium"]],
+    xfs: [{ h: "left" }, { h: "left" }, { h: "center" }, { h: "left", font: 1 },
+          { h: "center", font: 2, border: 1 }, { h: "center", font: 2, border: 2 }, { h: "center", font: 2, border: 3 },
+          { h: "left", border: 4 }, { h: "left", border: 5 }, { h: "center", border: 5 }, { h: "left", border: 6 },
+          { h: "left", font: 3 }, { h: "center", font: 3 }, { h: "left", font: 3, fill: 2 }, { h: "left", fill: 2 }],
+    title: 3, header: [7, 9, 8, 8, 10], body: [1, 2, 0, 0, 0], banner: [4, 5, 6, 6, 6],
+    speedUp: [11, 12, 11, 11, 11], reduce: [13, 12, 11, 11, 11], choice: [14, 2, 0, 0, 0],
+    height: [15.75, 15.75, 15.75], zoom: 90,
+  },
+};
+function planStylesXml(kind) {
+  const S = PLAN_SKINS[kind] || PLAN_SKINS.mainline;
+  const fonts = S.fonts.map(f => "<font>" + (f.b ? "<b/>" : "") + (f.u ? "<u/>" : "") + '<sz val="' + f.sz + '"/>' +
+    (f.rgb ? '<color rgb="' + f.rgb + '"/>' : "") + '<name val="Arial"/><family val="2"/></font>').join("");
+  const fills = '<fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    S.fills.map(rgb => '<fill><patternFill patternType="solid"><fgColor rgb="' + rgb + '"/><bgColor indexed="64"/></patternFill></fill>').join("");
+  const side = (t, v) => v ? "<" + t + ' style="' + v + '"/>' : "<" + t + "/>";
+  const borders = S.borders.map(b => "<border>" + side("left", b[0]) + side("right", b[1]) + side("top", b[2]) + side("bottom", b[3]) + "<diagonal/></border>").join("");
+  const xfs = S.xfs.map(x => '<xf numFmtId="0" fontId="' + (x.font || 0) + '" fillId="' + (x.fill || 0) + '" borderId="' + (x.border || 0) + '" xfId="0"' +
+    (x.font ? ' applyFont="1"' : "") + (x.fill ? ' applyFill="1"' : "") + (x.border ? ' applyBorder="1"' : "") +
+    ' applyAlignment="1"><alignment horizontal="' + (x.h || "left") + '" vertical="center"/></xf>').join("");
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="' + S.fonts.length + '">' + fonts + '</fonts><fills count="' + (S.fills.length + 2) + '">' + fills + '</fills>' +
+    '<borders count="' + S.borders.length + '">' + borders + '</borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="' + S.xfs.length + '">' + xfs + '</cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+}
+// the same style record as CSS, for the page and the clipboard
+function planXfCss(kind, i) {
+  const S = PLAN_SKINS[kind] || PLAN_SKINS.mainline, x = S.xfs[i] || S.xfs[0], f = S.fonts[x.font || 0], b = S.borders[x.border || 0];
+  const rgb = c => "#" + c.slice(2);
+  const rule = v => v === "medium" ? "2px solid #000" : v === "thin" ? "1px solid #000" : "0";
+  return "font-family:Arial,sans-serif;font-size:" + f.sz + "pt;color:" + (f.rgb ? rgb(f.rgb) : "#000") +
+    ";font-weight:" + (f.b ? "700" : "400") + ";text-decoration:" + (f.u ? "underline" : "none") +
+    ";background:" + (x.fill ? rgb(S.fills[x.fill - 2]) : "transparent") + ";text-align:" + (x.h || "left") + ";vertical-align:middle" +
+    ";border-left:" + rule(b[0]) + ";border-right:" + rule(b[1]) + ";border-top:" + rule(b[2]) + ";border-bottom:" + rule(b[3]) +
+    ";padding:0 4px;white-space:nowrap";
+}
+/* The plan, row by row, each with its five cells and the style record for
+   each: the banner rows above the first section, then a title, a heading
+   row and the lines of each section, the blank rows between groups kept. */
+function planRows(res) {
+  const kind = res.kind === "metro" ? "metro" : "mainline", S = PLAN_SKINS[kind];
+  const five = a => { const c = (a || []).slice(0, ACTION_COL + 1); while (c.length < ACTION_COL + 1) c.push(""); return c; };
+  const same = i => [i, i, i, i, i];
+  const out = [];
+  for (const line of (res.preamble || [])) {
+    if (!line) out.push({ type: "blank", cells: five([]), xfs: same(0), ht: S.height[0] });
+    else out.push({ type: "banner", cells: five([line]), xfs: S.banner || same(S.title), ht: kind === "metro" ? 15.75 : S.height[0], merge: !!S.banner });
+  }
+  for (const sec of shape(res)) {
+    // one blank row between sections, and the Metro banner's own blank row below it is that row for the first
+    if (out.length && out[out.length - 1].type !== "blank") out.push({ type: "blank", cells: five([]), xfs: same(0), ht: S.height[0] });
+    const h = (S.heights && S.heights[sec.key]) || S.height;
+    out.push({ type: "title", cells: five([sec.title]), xfs: same(S.title), ht: h[0], sec });
+    out.push({ type: "header", cells: five(sec.headers), xfs: Array.isArray(S.header) ? S.header : same(S.header), ht: h[1], sec });
+    for (const row of sec.rows) {
+      if (row.gapBefore) out.push({ type: "blank", cells: five([]), xfs: same(0), ht: h[2] });
+      let xfs = Array.isArray(S.body) ? S.body.slice() : same(S.body);
+      if (kind === "mainline") { if (sec.key === "EXAMS" && S.cls[row.cls]) xfs = same(S.cls[row.cls]); }
+      else {
+        const u = row.cells[0] || "";
+        if (/SPEED UP/i.test(u)) xfs = S.speedUp;
+        else if (/reduce by/i.test(u)) xfs = S.reduce;
+        else if (/\bor\b/i.test(u)) xfs = S.choice;
+      }
+      out.push({ type: "row", cells: five(row.cells), why: row.cells[ACTION_COL + 1] || "", xfs, ht: h[2], sec, row });
+    }
+  }
+  return { kind, rows: out, skin: S };
+}
+/* The plan back as text: in the workbook's own shape - the banner, the
+   titles, the heading rows, the blank rows between groups, five columns,
+   the request in the Action column - so it pastes over the Maintenance
+   Plan tab from A1; or, with the Why column, for reading. */
 function toText(res, opts) {
   opts = opts || {};
-  const cols = opts.workbook ? ACTION_COL + 1 : ACTION_COL + 2;
   const out = [];
-  for (const s of shape(res)) {
-    if (out.length) out.push("");
-    out.push(s.title);
-    out.push(s.headers.slice(0, cols).join("\t"));
-    for (const row of s.rows) { if (row.gapBefore) out.push(""); out.push(row.cells.slice(0, cols).join("\t")); }
+  for (const r of planRows(res).rows) {
+    const cells = r.type === "blank" ? [] : r.cells.slice();
+    if (!opts.workbook && r.type !== "blank") cells.push(r.type === "header" ? "Why" : r.type === "row" ? r.why : "");
+    while (cells.length && !cells[cells.length - 1]) cells.pop();
+    out.push(cells.join("\t"));
   }
   const n = opts.workbook ? "" : noticesText(res);
   return out.join("\n") + (n ? "\n\n" + n : "");
 }
 const esc = v => String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+/* A Why on the page: short ones as they are; a long one folded to its first
+   clause or two with the rest a click away, so the rows stay the workbook's
+   height and the table reads as the tab does. */
+const WHY_FOLD = 150;
+function whyCell(why) {
+  const s = String(why || "");
+  if (s.length <= WHY_FOLD) return esc(s);
+  let cut = s.lastIndexOf(" · ", WHY_FOLD);
+  if (cut < 40) cut = s.lastIndexOf(" ", WHY_FOLD);
+  if (cut < 40) cut = WHY_FOLD;
+  return '<details class="brwhy"><summary>' + esc(s.slice(0, cut)) + ' <span class="more">… more</span></summary>' + esc(s.slice(cut).trim()) + "</details>";
+}
+/* The plan as the workbook draws it, on the page and on the clipboard: the
+   tab's own fonts, colours, rules, widths and row heights, cell by cell.
+   On the page the Why column sits beside it and a request that differs
+   from the plan's is bold; the clipboard and the workbook get neither. */
 function toHtml(res, inline, opts) {
   opts = opts || {};
-  const cols = opts.workbook ? ACTION_COL + 1 : ACTION_COL + 2;
-  const colour = { "ex-a": "#000000", "ex-b": "#00B050", "ex-c": "#FF0000", "ex-m": "#7030A0", "ex-t": "#0070C0", "ex-x": "#0070C0" };
-  const style = c => inline ? ' style="color:' + colour[c] + ';font-family:Calibri,Arial,sans-serif;font-size:11pt"' : ' class="' + c + '"';
-  const out = [];
-  for (const s of shape(res)) {
-    out.push('<table class="brtable"' + (inline ? ' style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt"' : "") + ">");
-    out.push('<caption' + (inline ? ' style="text-align:left;font-weight:700"' : "") + ">" + esc(s.title) + "</caption>");
-    out.push("<thead><tr>" + s.headers.slice(0, cols).map(h => "<th" + (inline ? ' style="text-align:left;padding:2px 8px;border-bottom:1px solid #999"' : "") + ">" + esc(h) + "</th>").join("") + "</tr></thead><tbody>");
-    for (const row of s.rows) {
-      if (row.gapBefore) out.push("<tr" + (inline ? "" : ' class="gap"') + ">" + "<td" + (inline ? ' style="padding:2px 8px"' : "") + ">&nbsp;</td>".repeat(1) + "</tr>");
-      const tds = row.cells.slice(0, cols).map((c, i) => {
-        const filled = i === ACTION_COL && row.filled;
-        return "<td" + (inline ? ' style="padding:2px 8px;white-space:nowrap' + (filled ? ";font-weight:700" : "") + '"' : (filled ? ' class="filled"' : "")) + ">" + esc(c) + "</td>";
-      });
-      out.push("<tr" + style(row.cls) + ">" + tds.join("") + "</tr>");
+  const P = planRows(res), px = w => Math.round(w * 7) + 5, pt = h => Math.round(h * 4 / 3);
+  const why = !opts.workbook, WHY_PX = 480;
+  // fixed layout only holds the workbook's column widths when the table has a width of its own;
+  // left to fit the panel, the columns squeeze and every Why wraps into a tall row
+  const width = P.skin.widths.reduce((a, w) => a + px(w), 0) + (why ? WHY_PX : 0);
+  // on the page, at the zoom the tab is saved at (both workbooks keep theirs at 90%); the clipboard copy is at 100%
+  const out = ['<table class="brtable brplan" style="border-collapse:collapse;table-layout:fixed;width:' + width + 'px;background:#fff' + (why && P.skin.zoom ? ";zoom:" + P.skin.zoom / 100 : "") + '">',
+    "<colgroup>" + P.skin.widths.map(w => '<col style="width:' + px(w) + 'px">').join("") + (why ? '<col style="width:' + WHY_PX + 'px">' : "") + "</colgroup><tbody>"];
+  for (const r of P.rows) {
+    const tr = '<tr style="height:' + pt(r.ht) + 'px"' + (r.type === "row" && r.row ? ' class="' + r.row.cls + '"' : "") + ">";
+    if (r.type === "banner" && r.merge) {
+      out.push(tr + '<td colspan="5" style="' + planXfCss(P.kind, r.xfs[0]) + '">' + esc(r.cells[0]) + "</td>" + (why ? "<td></td>" : "") + "</tr>");
+      continue;
     }
-    out.push("</tbody></table>");
+    const tds = r.cells.map((c, i) => {
+      const bold = why && r.type === "row" && i === ACTION_COL && r.row.filled;
+      return '<td style="' + planXfCss(P.kind, r.xfs[i]) + (bold ? ";font-weight:700" : "") + '">' + (r.type === "blank" ? "" : esc(c)) + "</td>";
+    });
+    if (why) tds.push('<td style="font-family:Arial,sans-serif;font-size:10pt;color:#3C464D;font-style:italic;padding:0 6px;white-space:normal;vertical-align:middle">' +
+      (r.type === "header" ? "Why" : r.type === "row" ? whyCell(r.why) : "") + "</td>");
+    out.push(tr + tds.join("") + "</tr>");
   }
-  if (!opts.workbook && ((res.notices && res.notices.length) || (res.swaps && res.swaps.length))) {
+  out.push("</tbody></table>");
+  if (why && ((res.notices && res.notices.length) || (res.swaps && res.swaps.length))) {
     out.push('<pre class="brnotices"' + (inline ? ' style="font-family:Calibri,Arial,sans-serif;font-size:11pt"' : "") + ">" + esc(noticesText(res)) + "</pre>");
   }
   return out.join("\n");
 }
-/* The plan as a workbook: a Maintenance Plan sheet in the tab's own shape
-   and widths, and a Why sheet beside it with the reasons. Every cell is
-   text, so a unit number and a time paste as typed. */
+/* The plan as a workbook, dressed as the tab is: its stylesheet, a style
+   record per cell, the widths and row heights, the banner merged across;
+   and a Why sheet beside it with the reasons. */
 function toXlsx(res, zipFn) {
-  const widths = res.kind === "metro" ? [32.57, 33.71, 56.71, 58.86, 60.14] : [17.14, 8.57, 40.86, 30, 63.43];
-  const cell = (r, c, v) => ({ r, c, v, look: 0, sides: [null, null, null, null], text: true });
-  const sheet = (name, cols) => {
-    const cells = []; let r = 0;
-    for (const s of shape(res)) {
-      if (r) r++;
-      r++; cells.push(cell(r, 1, s.title));
-      r++; s.headers.slice(0, cols).forEach((h, i) => cells.push(cell(r, i + 1, h)));
-      for (const row of s.rows) {
-        if (row.gapBefore) r++;
-        r++; row.cells.slice(0, cols).forEach((v, i) => { if (v) cells.push(cell(r, i + 1, v)); });
-      }
+  const P = planRows(res), S = P.skin;
+  const sheet = (name, withWhy) => {
+    const cells = [], merges = [], rowHeights = new Map();
+    let r = 0;
+    for (const row of P.rows) {
+      r++;
+      rowHeights.set(r, row.ht);
+      if (row.type === "blank") continue;
+      if (row.type === "banner" && row.merge) merges.push("A" + r + ":E" + r);
+      row.cells.forEach((v, i) => { if (v || row.type === "banner" || row.type === "header") cells.push({ r, c: i + 1, v, xf: row.xfs[i], sides: [null, null, null, null] }); });
+      if (withWhy) { const w = row.type === "header" ? "Why" : row.type === "row" ? row.why : ""; if (w) cells.push({ r, c: ACTION_COL + 2, v: w, xf: 0, sides: [null, null, null, null] }); }
     }
-    return { name, layout: { cells, merges: [], rowHeights: new Map(), maxRow: r,
-             opts: { widths: cols > widths.length ? widths.concat([90]) : widths, noPageSetup: true } } };
+    return { name, layout: { cells, merges, rowHeights, maxRow: r,
+             opts: { stylesXml: planStylesXml(P.kind), widths: withWhy ? S.widths.concat([90]) : S.widths, noPageSetup: true, defaultRowHeight: S.height[2] } } };
   };
-  return SHEETS_XLSX.writeWorkbook([sheet("Maintenance Plan", ACTION_COL + 1), sheet("Why", ACTION_COL + 2)], zipFn);
+  return SHEETS_XLSX.writeWorkbook([sheet("Maintenance Plan", false), sheet("Why", true)], zipFn);
 }
 function render(res) {
   const W = { unit: 7, sec: 10, needs: 9, due: 26, action: 22, sugg: 34 };
@@ -2315,7 +2443,7 @@ function render(res) {
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
          detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
-         PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom, toXlsx, metroAt, metroForm };
+         PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom, toXlsx, metroAt, metroForm, planRows, PLAN_SKINS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_BERTH = SHEETS_BERTH;

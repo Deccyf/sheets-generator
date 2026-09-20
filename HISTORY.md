@@ -140,6 +140,29 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.15.0 — 20 September 2026 — the plan in the workbook's own dress
+
+**Cell for cell.** 3.14.0 gave the plan back in the tab's shape, but
+in the page's own look: a caption and a bold heading where the workbook
+has an underlined title and a ruled heading row, the page's colours for
+the exams, and an Excel file in the writer's plain house style. Now each
+workbook's tab is carried as a style record per cell, lifted from the
+two control documents — the Mainline plan in Arial 10, every cell
+centred, the section title underlined, the heading row ruled beneath,
+the exam rows coloured by class (B green, C red, the M exams purple, the
+T exams and the XS50s blue), the tab's column widths and row heights;
+the Metro Telex in Arial 12, the banner across A2:E2 in bold underlined
+16 with its blank row above and below, the titles bold, the heading rows
+boxed in medium rules, a *SPEED UP* line in bold red, a *Reduce by* line
+with its unit cell on yellow. The preview draws it at the 90% the tabs
+are saved at, the clipboard copy pastes it into Excel as it is, and
+*Save as Excel* writes the same records into the file, banner merged and
+all. A long Why is folded on the page behind *… more* so the rows stay
+the workbook's height.
+
+**The size ceiling** moves to 1000 KB for the two dressings; still no
+library.
+
 ## 3.14.0 — 20 September 2026 — the plan back in the workbook's shape, the Metro Telex, and Excel
 
 **The workbook's own shape.** The plan is read as it was pasted — the
