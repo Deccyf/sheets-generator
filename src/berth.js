@@ -104,6 +104,24 @@ const minOf = t => { const m = /^(\d\d)[+ :](\d\d)$/.exec(String(t || "")); retu
 // a move that runs as two headcodes is named by the one it arrives as, the way the plan writes it
 const moveName = m => m.hc.split("/").pop();
 
+/* ---------- how far each place is from each depot ----------
+   Rail miles, near enough: what they decide is only which of two places
+   is NEARER a depot, for a unit due in three days that cannot get home
+   yet and is moved as close as it can be - Ashford for Ramsgate, Grove
+   Park for Victoria. Home is nearest of all. */
+const MILES = {
+  RE:  { RE: 0, RAM: 0, FAV: 30, DVP: 21, FKE: 30, AFK: 26, GI: 50, GLM: 50, TON: 52, GP: 70, GPD: 70, SG: 65, SGUPS: 65, CST: 78, CHX: 79, VIC: 79, SU: 87, XSE: 82, HGS: 80 },
+  GI:  { GI: 0, GLM: 0, FAV: 17, RE: 50, RAM: 50, DVP: 45, FKE: 55, AFK: 45, SG: 20, SGUPS: 20, GP: 25, GPD: 25, CST: 33, CHX: 34, VIC: 34, SU: 42, TON: 40, XSE: 75, HGS: 73 },
+  SG:  { SG: 0, SGUPS: 0, GP: 8, GPD: 8, GI: 20, GLM: 20, CST: 15, CHX: 16, VIC: 20, SU: 25, FAV: 40, RE: 65, RAM: 65, DVP: 70, FKE: 70, AFK: 60, TON: 30, XSE: 62, HGS: 60 },
+  GP:  { GP: 0, GPD: 0, SG: 8, SGUPS: 8, CST: 9, CHX: 10, VIC: 14, SU: 12, GI: 25, GLM: 25, TON: 22, FAV: 45, RE: 70, RAM: 70, DVP: 70, FKE: 65, AFK: 47, XSE: 57, HGS: 55 },
+  AFK: { AFK: 0, FKE: 15, DVP: 20, FAV: 28, RE: 26, RAM: 26, TON: 27, HGS: 35, XSE: 37, GI: 45, GLM: 45, GP: 47, GPD: 47, SG: 60, SGUPS: 60, CST: 56, CHX: 57, VIC: 56, SU: 64 },
+  XSE: { XSE: 0, HGS: 2, TON: 33, AFK: 37, FKE: 50, DVP: 55, FAV: 62, RE: 82, RAM: 82, GI: 75, GLM: 75, GP: 57, GPD: 57, SG: 62, SGUPS: 62, CST: 66, CHX: 67, VIC: 70, SU: 75 },
+  VIC: { VIC: 0, SU: 8, CST: 3, CHX: 2, GP: 14, GPD: 14, SG: 20, SGUPS: 20, GI: 34, GLM: 34, FAV: 50, RE: 79, RAM: 79, DVP: 77, FKE: 70, AFK: 56, TON: 40, XSE: 70, HGS: 72 },
+  FKE: { FKE: 0, DVP: 7, AFK: 15, RE: 30, RAM: 30, FAV: 40, TON: 42, HGS: 45, XSE: 47, GI: 55, GLM: 55, GP: 65, GPD: 65, SG: 70, SGUPS: 70, CST: 70, CHX: 71, VIC: 70, SU: 78 },
+};
+MILES.SU = MILES.VIC;
+const distTo = (place, depot) => { const t = MILES[depot]; if (!t) return 999; const v = t[place] != null ? t[place] : t[homeOf(place)]; return v == null ? 999 : v; };
+
 /* ---------- the standing fleet moves ----------
    Engineering Planning's own sheet (September 2026): the empty paths that
    run between the depots, and the days they run. A unit that is at the
@@ -351,9 +369,20 @@ function tierOf(when, ahead) {
   if (when.miles !== null) return 2;
   if (ahead === null) return 3;
   if (ahead <= 1) return 1;
-  if (ahead <= 6) return 2;
+  if (ahead <= SOON_DAYS) return 2;
   return 3;
 }
+/* How far ahead a request is made: the planner's own plans ask one to
+   three days ahead and write where the unit ends beyond that - on a
+   Tuesday the Friday lines read ENDS, on a Thursday the Monday ones do.
+   The weekend rule stands on top: Saturday, Sunday and Monday are near
+   from Friday on. */
+const SOON_DAYS = 3;
+/* …and how far ahead a unit is brought all the way home: due within two
+   days it comes home, in two legs where one will not do; due in three it
+   is moved as near as it can be got, the last leg left for the day
+   before. */
+const HOME_DAYS = 2;
 
 /* ---------- the reports ---------- */
 function parseShort(s) {          // "dd/mm/yy" -> Date
@@ -534,6 +563,7 @@ function allDays(genius, date) {
   const out = new Map();
   out.workings = new Map();
   out.date = date;
+  out.lines = bookLines(genius, date);   // the sheets for the day, where they were built
   const dets = genius.detail && genius.detail.get(date);
   if (!dets) return out;
   /* the Summary's rows per diagram, in time order: each is a working
@@ -599,6 +629,45 @@ function finalWorking(stops) {
 function requestName(depot, fin) {
   if (!fin) return "";
   return HEADCODE_DEPOTS.has(depot) ? (fin.hc || hhmm(fin.dep, fin.ecs)) : hhmm(fin.dep, fin.ecs);
+}
+/* ---------- the sheets' own names ----------
+   The depots and outstations work from the berthing books, so a request
+   names a working the way the book prints it: the line for that diagram
+   at that place - by headcode where the book carries one, by the time it
+   leaves the platform where it does not, "+" for an empty move. Read off
+   the books built from the same Summary and Detail; where none could be
+   built, the Detail's own times stand in under the same rule. */
+const SECTION_OF = { GP: "GROVE PARK", GPD: "GROVE PARK", XSE: "WEST MARINA", AFK: "ASHFORD", RE: "RAMSGATE", RAM: "RAMSGATE",
+  TON: "TONBRIDGE", GI: "GILLINGHAM", GLM: "GILLINGHAM", SG: "SLADE GREEN", SGUPS: "SLADE GREEN", VIC: "VICTORIA", SU: "VICTORIA",
+  DVP: "DOVER PRIORY", FAV: "FAVERSHAM", FKE: "FOLKESTONE EAST", HGS: "HASTINGS", CHX: "CHARING CROSS", CST: "CANNON STREET" };
+/* the books for a date: dropped on the tab and built there (genius.lines),
+   or the weekday books themselves (secsByDay, keyed by weekday letter) */
+function bookLines(genius, date) {
+  if (!genius || !date) return null;
+  if (genius.lines && genius.lines.get) return genius.lines.get(date) || null;
+  const b = genius.books || (genius.secsByDay ? genius : null);
+  if (!b || !b.dates) return null;
+  for (const k of Object.keys(b.dates)) if (b.dates[k] === date)
+    return { main: b.secsByDay && b.secsByDay[k], metro: b.metroSecs && b.metroSecs[k] };
+  return null;
+}
+const secLines = (m, name) => !m ? [] : (typeof m.get === "function" ? m.get(name) : m[name]) || [];
+function sheetName(pool, place, diag, hc, dep) {
+  const lines = pool && pool.lines, sec = SECTION_OF[place] || SECTION_OF[homeOf(place)];
+  if (!lines || !sec || dep == null) return null;
+  const all = secLines(lines.main, sec).concat(secLines(lines.metro, sec));
+  const gap = t => { const a = (((t - dep) % 1440) + 1440) % 1440; return Math.min(a, 1440 - a); };
+  let best = null, bestGap = 91;
+  for (const e of all) {
+    if (!e.units || !e.units.some(u => (u.code || "") + (u.diag || "") === diag)) continue;
+    const g = gap(e.time);
+    if (e.headcode === hc && g <= 180) { best = e; break; }   // the working itself
+    if (g < bestGap) { best = e; bestGap = g; }
+  }
+  if (!best) return null;
+  const depot = depotOf(homeOf(place)) || place;
+  if (HEADCODE_DEPOTS.has(depot)) return best.headcode || null;
+  return typeof SHEETS_CORE !== "undefined" && SHEETS_CORE.fmtTime ? SHEETS_CORE.fmtTime(best.time, best.time_kind) : null;
 }
 /* Where a diagram calls at a place a changeover can be made - Ramsgate or
    a London terminal - with what it came in on and from where, and what it
@@ -938,7 +1007,7 @@ function morningFrom(r, days, mates, wanted, taken, proxy) {
     const at = ends ? null : d.stops.slice(1).find(s => DEPOT_CODES.has(s.code) && depotOf(placeOf(s.code)) === x.depot && s.arr != null);
     cands.push({ day: d, depot: x.depot, ends, at, dep: x.dep, hc: x.hc, sharing, key,
                  portion: portionOf(d, sharing, days, x.depot), variation: !fits(r.unit, d.fleet),
-                 name: HEADCODE_DEPOTS.has(depotOf(from)) ? x.hc : hhmm(x.dep, /^5/.test(x.hc)) });
+                 name: sheetName(days, from, d.diag, x.hc, x.dep) || (HEADCODE_DEPOTS.has(depotOf(from)) ? x.hc : hhmm(x.dep, /^5/.test(x.hc))) });
   }
   // the same fleet first, then the one that ends there, then the earliest out
   cands.sort((p, q) => ((p.variation ? 1 : 0) - (q.variation ? 1 : 0)) || ((q.ends ? 1 : 0) - (p.ends ? 1 : 0)) || (p.dep - q.dep));
@@ -992,8 +1061,9 @@ function legTwo(r, days, X, arr, targets, dow, skip) {
       const later = targets.indexOf(d2.endDepot) >= 0 ||
         d2.stops.slice(st.idx + 1).some(s => DEPOT_CODES.has(s.code) && targets.indexOf(depotOf(placeOf(s.code))) >= 0 && s.arr != null);
       if (!later) continue;
-      out.push({ sameDay: true, dep: st.dep, name: nm(st.hcOut, st.dep),
-                 what: nm(st.hcOut, st.dep) + " (" + d2.diag + ", ends " + d2.endPlace + " " + hhmm(d2.endTime, true) + ")" });
+      const name = sheetName(days, X, d2.diag, st.hcOut, st.dep) || nm(st.hcOut, st.dep);
+      out.push({ sameDay: true, dep: st.dep, name,
+                 what: name + " (" + d2.diag + ", ends " + d2.endPlace + " " + hhmm(d2.endTime, true) + ")" });
     }
   }
   for (const m of movesFrom(X, targets, dow)) {
@@ -1007,7 +1077,7 @@ function legTwo(r, days, X, arr, targets, dow, skip) {
   for (const d2 of days.values()) {
     const q0 = d2.stops[0];
     if (!q0 || codes.indexOf(q0.code) < 0 || q0.dep == null || !q0.hcOut || !ok(d2)) continue;
-    out.push({ sameDay: false, dep: q0.dep, name: nm(q0.hcOut, q0.dep),
+    out.push({ sameDay: false, dep: q0.dep, name: sheetName(days, X, d2.diag, q0.hcOut, q0.dep) || nm(q0.hcOut, q0.dep),
                what: "next day's " + q0.hcOut + " " + hhmm(q0.dep, /^5/.test(q0.hcOut)) + " (" + d2.diag + ", ends " + d2.endPlace + " " + hhmm(d2.endTime, true) + "), if it runs the same" });
   }
   for (const m of movesFrom(X, targets, (dow + 1) % 7))
@@ -1042,12 +1112,14 @@ function twoLeg(r, days, targets, taken, proxy, dow, mates, wanted) {
       if (!second.length) continue;
       routes.push({ d1, key1, sharing1, hc1: s0.hcOut, dep1: s0.dep, X, arr: st.arr, ends: d1.endDepot === X && st.dep == null, second,
                     portion: portionOf(d1, sharing1, days, X), variation: !fits(r.unit, d1.fleet),
-                    name1: HEADCODE_DEPOTS.has(from) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut)) });
+                    name1: sheetName(days, from, d1.diag, s0.hcOut, s0.dep) || (HEADCODE_DEPOTS.has(from) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut))) });
     }
   }
   if (!routes.length) return null;
-  // the same fleet first, a same-day second leg first, then the earliest out
-  routes.sort((p, q) => ((p.variation ? 1 : 0) - (q.variation ? 1 : 0)) || ((q.second[0].sameDay ? 1 : 0) - (p.second[0].sameDay ? 1 : 0)) || (p.dep1 - q.dep1));
+  // the same fleet first, a same-day second leg first, the depot nearest home, then the earliest out
+  const target = targets[0];
+  routes.sort((p, q) => ((p.variation ? 1 : 0) - (q.variation ? 1 : 0)) || ((q.second[0].sameDay ? 1 : 0) - (p.second[0].sameDay ? 1 : 0)) ||
+                        (distTo(p.X, target) - distTo(q.X, target)) || (p.dep1 - q.dep1));
   const c = routes[0];
   const names2 = [...new Set(c.second.map(x => x.name))].slice(0, 4);
   return {
@@ -1056,6 +1128,57 @@ function twoLeg(r, days, targets, taken, proxy, dow, mates, wanted) {
     notes: ["two legs: " + lab + " " + c.hc1 + " " + hhmm(c.dep1, /^5/.test(c.hc1)) + " from " + from + (c.portion ? ", " + c.portion + " (" + c.sharing1.join("+") + ")" : "") +
             " — " + on + " " + c.d1.diag + (c.ends ? " ends " : " stands ") + c.X + " " + hhmm(c.arr, true) + "; then " + c.X + " has " +
             c.second.slice(0, 3).map(x => x.what).join(", ") + (c.second.length > 1 ? " — the depot to choose" : "")]
+      .concat(c.variation ? ["VARIATION — " + (c.d1.fleet || "?") + " diagram, same fleets exhausted"] : [])
+      .concat(routes.length > 1 ? ["or " + routes.slice(1, 3).map(k => k.d1.diag + " " + k.name1 + " to " + k.X).join(", ")] : []),
+  };
+}
+/* Due in three days and not able to get home yet: nearer. A working out of
+   where the unit is to a depot that is nearer the one wanted, so the last
+   leg can be asked for the day before - "XSE BERTH 06+13 TO GP". Home
+   itself is nearest of all, and a working that gets there is taken first
+   by the ordinary search, so this only runs where none does. */
+function closerLeg(r, days, targets, taken, proxy, mates, wanted) {
+  const from = homeOf(r.ends && r.ends.place), codes = codesAt(r.ends && r.ends.place);
+  if (!codes.length || !days || !days.size || NO_REQUEST_AT.has(from)) return null;
+  const splits = (mates || []).length > 0 && !(mates || []).every(u => targets.some(t => ((wanted && wanted.get(u)) || []).indexOf(t) >= 0));
+  if (splits && NO_SPLIT_AT.has(from)) return null;
+  const target = targets[0];
+  if (!target) return null;
+  const here = distTo(from, target);
+  const lab = days.on || "tomorrow's", on = proxy ? "today's" : lab;
+  const routes = [];
+  for (const d1 of days.values()) {
+    const s0 = d1.stops[0];
+    if (!s0 || codes.indexOf(s0.code) < 0 || s0.dep == null || !s0.hcOut) continue;
+    if (r.diags.indexOf(d1.diag) >= 0) continue;
+    if (!fits(r.unit, d1.fleet) && !fitsLoosely(r.unit, d1.fleet)) continue;
+    const wk1 = workingKey(s0.code, s0.hcOut, s0.dep), key1 = dayKey(days, wk1);
+    const sharing1 = (days.workings && days.workings.get(wk1)) || [d1.diag];
+    if (taken && (taken.get("D:" + d1.diag + "@" + key1) || (taken.get("W:" + key1) || 0) >= Math.min(maxUnits(r.unit), sharing1.length))) continue;
+    if (r.category === "MO" && sharing1.length < 2) continue;
+    const seen = new Set();
+    for (const st of d1.stops.slice(1)) {
+      if (!DEPOT_CODES.has(st.code) || st.arr == null) continue;
+      const X = depotOf(placeOf(st.code));
+      if (!X || seen.has(X) || X === from || NO_REQUEST_AT.has(X)) continue;
+      seen.add(X);
+      const dist = distTo(X, target);
+      if (dist >= here) continue;                       // no nearer than where it is
+      routes.push({ d1, key1, sharing1, hc1: s0.hcOut, dep1: s0.dep, X, arr: st.arr, ends: d1.endDepot === X && st.dep == null, dist,
+                    portion: portionOf(d1, sharing1, days, X), variation: !fits(r.unit, d1.fleet),
+                    name1: sheetName(days, from, d1.diag, s0.hcOut, s0.dep) || (HEADCODE_DEPOTS.has(from) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut))) });
+    }
+  }
+  if (!routes.length) return null;
+  // the same fleet first, then the depot nearest home, then the earliest out
+  routes.sort((p, q) => ((p.variation ? 1 : 0) - (q.variation ? 1 : 0)) || (p.dist - q.dist) || (p.dep1 - q.dep1));
+  const c = routes[0];
+  return {
+    taken: { diag: c.d1.diag, work: c.key1 },
+    action: from + " BERTH " + (c.portion ? c.portion + " " : "") + c.name1 + " TO " + c.X,
+    notes: ["due in " + r.ahead + " days, so nearer " + target + " rather than home yet: " + lab + " " + c.hc1 + " " + hhmm(c.dep1, /^5/.test(c.hc1)) + " from " + from +
+            (c.portion ? ", " + c.portion + " (" + c.sharing1.join("+") + ")" : "") + " — " + on + " " + c.d1.diag + (c.ends ? " ends " : " stands ") + c.X + " " + hhmm(c.arr, true) +
+            "; the last leg from " + c.X + " is asked for the day before it is due"]
       .concat(c.variation ? ["VARIATION — " + (c.d1.fleet || "?") + " diagram, same fleets exhausted"] : [])
       .concat(routes.length > 1 ? ["or " + routes.slice(1, 3).map(k => k.d1.diag + " " + k.name1 + " to " + k.X).join(", ")] : []),
   };
@@ -1153,7 +1276,8 @@ function candidatesFor(r, mine, days, wanted, taken, keep, tomDays, dayToRun) {
       if (taken && taken.get("D:" + d.diag + "@" + k0id)) continue;
       cand.morning = { from, hc: s0.hcOut, dep: s0.dep, sharing: (pool.workings && pool.workings.get(k0)) || [d.diag], today: !!start };
       cand.morning.portion = portionOf(d, cand.morning.sharing, pool, d.endDepot);
-      cand.morning.name = HEADCODE_DEPOTS.has(depotOf(from)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut));
+      cand.morning.name = sheetName(pool, from, d.diag, s0.hcOut, s0.dep) ||
+        (HEADCODE_DEPOTS.has(depotOf(from)) ? s0.hcOut : hhmm(s0.dep, /^5/.test(s0.hcOut)));
       // the unit displaced is the one on the diagram's FIRST segment
       cand.displaced = (d.rows[0] && d.rows[0].units.length ? d.rows[0].units : d.units).join("/");
       cand.work = k0id; cand.workName = s0.hcOut; cand.sharing = cand.morning.sharing; cand.portion = cand.morning.portion;
@@ -1235,14 +1359,20 @@ function weekendHold(r) {
 }
 function suggest(r, ctx) {
   const s = suggestCore(r, ctx);
-  /* Selhurst: what gets it to Victoria, and the move over from there */
+  /* Selhurst: what gets it to Victoria, and the move over from there. A
+     unit is wanted at Selhurst on the day or the day before, not sooner,
+     so the move is asked for only when the line is due today or tomorrow;
+     further out, the request gets it to Victoria and the move is noted. */
   if (r.places.length === 1 && r.places[0] === "SU" && s.action) {
     const mv = FLEET_MOVES.filter(m => m.from === "VIC" && m.to === "SU");
     const name = mv.length ? moveName(mv[0]) : "5Y41";
+    const when = mv.map(m => m.hc + " " + m.time).join(" or ") + (mv.length ? " (" + mv[0].days + ")" : "");
+    const dueNow = r.tier === 1 && (r.ahead === null || r.ahead <= 1);
     // a weekend hold keeps its Monday: "VIC HOLD FOR MON - 5Y41"
-    if (/^VIC HOLD/.test(s.action)) s.action = "VIC HOLD FOR " + (/FOR MON$/.test(s.action) ? "MON - " : "") + name;
-    else if (/ BERTH /.test(s.action) && !/^VIC BERTH/.test(s.action) && !/ - VIC BERTH /.test(s.action)) s.action += " - VIC BERTH " + name;
-    if (/VIC/.test(s.action) && mv.length) s.notes.push("over to Selhurst on " + mv.map(m => m.hc + " " + m.time).join(" or ") + " (" + mv[0].days + ")");
+    if (/^VIC HOLD/.test(s.action)) { if (dueNow) s.action = "VIC HOLD FOR " + (/FOR MON$/.test(s.action) ? "MON - " : "") + name; }
+    else if (dueNow && / BERTH /.test(s.action) && !/^VIC BERTH/.test(s.action) && !/ - VIC BERTH /.test(s.action)) s.action += " - VIC BERTH " + name;
+    if (/VIC/.test(s.action) && mv.length)
+      s.notes.push(dueNow ? "over to Selhurst on " + when : "then over to Selhurst on " + when + " the day before it is due, or on the day");
   }
   return s;
 }
@@ -1348,7 +1478,8 @@ function suggestCore(r, ctx) {
            named the way that depot names workings */
         const at = sw.mine.depot;
         const nm = w => HEADCODE_DEPOTS.has(at) ? (w.hc || hhmm(w.dep, /^5/.test(w.hc || ""))) : hhmm(w.dep, /^5/.test(w.hc || ""));
-        const outName = k => (k.portion ? k.portion + " " : "") + nm({ hc: k.swap.theirs.hcOut, dep: k.swap.theirs.dep });
+        const outName = k => (k.portion ? k.portion + " " : "") +
+          (sheetName(ctx.days, at, k.day.diag, k.swap.theirs.hcOut, k.swap.theirs.dep) || nm({ hc: k.swap.theirs.hcOut, dep: k.swap.theirs.dep }));
         const outs = [outName(c)];
         for (const k of cands.slice(1)) {
           if (!k.swap || k.swap.kind !== "depot" || k.swap.mine.depot !== at || k.variation !== c.variation) continue;
@@ -1437,7 +1568,13 @@ function suggestCore(r, ctx) {
       if (mv.length > 1) s.notes.push("the depot to choose");
       return s;
     }
-    const tl = ctx && ctx.mine ? twoLeg(r, ctx.tomDays || ctx.days, targets, ctx.taken, proxy, dow, matesOn(ctx.mine, null, ctx.days), ctx.wanted) : null;
+    /* due within two days: home, in two legs where one will not do. Due in
+       three: not home yet, but as near as it can be got. */
+    const home = r.ahead === null || r.ahead <= HOME_DAYS;
+    const tl = ctx && ctx.mine
+      ? (home ? twoLeg : closerLeg)(r, ctx.tomDays || ctx.days, targets, ctx.taken, proxy, home ? dow : matesOn(ctx.mine, null, ctx.days),
+                                      home ? matesOn(ctx.mine, null, ctx.days) : ctx.wanted, home ? ctx.wanted : undefined)
+      : null;
     if (tl) {
       s.action = tl.action;
       if (!near) s.notes.push("due " + dueOf(r));
@@ -1578,6 +1715,11 @@ function run(planText, genius, opts) {
   }
   if (opts.dayToRun && date)
     reviews.push("Read as a day still to run: every unit is where its first working starts, and can be asked for from there before it goes out.");
+  /* the sheets are what the depots work from, so the requests read as the
+     sheets print them wherever the books could be built */
+  const namedBy = [...new Set([days, tomDays].filter(p => p && p.lines && (p.lines.main || p.lines.metro)).map(p => p.date))];
+  if (namedBy.length) reviews.push("The requests are named as the " + namedBy.join(" and ") + " books print them — the same line the depot reads on its sheet.");
+  else if (date) reviews.push("No books could be built from what was dropped (a Diagram Summary and Detail for one weekday build them), so the requests are named off the Diagram Detail by the books' own rule.");
   /* When each line is due, first, because what a swap may not do depends
      on it. */
   const dated = plan.rows.map(row => {
@@ -1754,6 +1896,18 @@ function suggestedOf(r) {
   const s = r.suggest || { action: "", notes: [] };
   return s.action + (s.notes.length ? " (" + s.notes.join("; ") + ")" : "");
 }
+/* Why: what the plan had where the suggestion differs, the reasons the
+   suggestion carries, and where the unit is today. */
+function whyOf(r) {
+  const s = r.suggest || { action: "", notes: [] };
+  const parts = [];
+  const had = String(r.action || "").trim();
+  if (had && had !== s.action) parts.push("plan had: " + had);
+  for (const n of s.notes) parts.push(n);
+  const f = factsOf(r);
+  if (f) parts.push(f);
+  return parts.join(" · ");
+}
 function dueOf(r) {
   if (r.when.asap) return "ASAP";
   if (r.when.miles !== null) return "after " + r.when.miles + " mi";
@@ -1768,8 +1922,11 @@ function dueOf(r) {
 
 /* ---------- the plan, given back in its own shape ----------
    The same sections in the same order, the same columns, every row where
-   it was, with SUGGESTED and TODAY added on the right. The exam rows keep
-   the workbook's colours by exam type. */
+   it was. The suggestion is written in the ACTION column - in bold where
+   it differs from what the plan had - and a WHY column beside it carries
+   what the plan had, the reasons, and where the unit is today. The exam
+   rows keep the workbook's colours by exam type. */
+const ACTION_COL = 4;
 const EXAM_CLASS = what => {
   const w = String(what || "").toUpperCase();
   if (/^B\b/.test(w)) return "ex-b";
@@ -1786,13 +1943,16 @@ function shape(res) {
     if (!rows.length) continue;
     sections.push({
       key: sec, title: SECTION_TITLE[sec] || sec,
-      headers: (SECTION_COLS[sec] || SECTION_COLS.REQUESTS).concat(["Suggested", "Today"]),
-      rows: rows.map(r => ({
-        cells: r.raw.concat([suggestedOf(r), factsOf(r)]),
-        cls: sec === "EXAMS" ? EXAM_CLASS(r.what) : (r.ignored ? "ex-x" : "ex-a"),
-        filled: !r.action && !!r.suggest.action,
-        r,
-      })),
+      headers: (SECTION_COLS[sec] || SECTION_COLS.REQUESTS).concat(["Why"]),
+      rows: rows.map(r => {
+        const action = (r.suggest && r.suggest.action) || r.raw[ACTION_COL] || "";
+        return {
+          cells: r.raw.slice(0, ACTION_COL).concat([action, whyOf(r)]),
+          cls: sec === "EXAMS" ? EXAM_CLASS(r.what) : (r.ignored ? "ex-x" : "ex-a"),
+          filled: !!(r.suggest && r.suggest.action) && action !== String(r.action || "").trim(),
+          r,
+        };
+      }),
     });
   }
   return sections;
@@ -1844,7 +2004,7 @@ function toHtml(res, inline) {
     out.push("<thead><tr>" + s.headers.map(h => "<th" + (inline ? ' style="text-align:left;padding:2px 8px;border-bottom:1px solid #999"' : "") + ">" + esc(h) + "</th>").join("") + "</tr></thead><tbody>");
     for (const row of s.rows) {
       const tds = row.cells.map((c, i) => {
-        const filled = i === 5 && row.filled;
+        const filled = i === ACTION_COL && row.filled;
         return "<td" + (inline ? ' style="padding:2px 8px;white-space:nowrap' + (filled ? ";font-weight:700" : "") + '"' : (filled ? ' class="filled"' : "")) + ">" + esc(c) + "</td>";
       });
       out.push("<tr" + style(row.cls) + ">" + tds.join("") + "</tr>");
@@ -1871,7 +2031,7 @@ function render(res) {
       tier = r.tier;
       if (lines.length > 2) lines.push("");
       lines.push(tier === 1 ? "== NEXT: today, tomorrow, ASAP and overdue ==" :
-                 tier === 2 ? "== THIS WEEK, and the mileage triggers ==" :
+                 tier === 2 ? "== THE NEXT THREE DAYS, and the mileage triggers ==" :
                               "== LATER: where it ends tonight ==");
     }
     lines.push(pad(r.unit, W.unit) + " " + pad(r.section, W.sec) + " " + pad(r.places.join("/") || "—", W.needs) + " " +

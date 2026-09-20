@@ -535,7 +535,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.9.0</b> · 20 September 2026</span>
+      <span class="ver">Version <b>3.10.0</b> · 20 September 2026</span>
     </div>
   </header>
 
@@ -991,7 +991,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.9.0
+      works without an internet connection. Version 3.10.0
       &middot; 20 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -12260,6 +12260,24 @@ function decodeText(u8) {
           for (const [unit, rec] of m) own.alloc.get(date).set(unit, rec);
         }
         if (!own.dates.length) { own.dates = [...own.alloc.keys()]; own.labels = Object.fromEntries(own.dates.map(d => [d, d])); }
+      }
+      /* the books, built from each day's own Summary and Detail where both
+         are here, so the requests read as the sheets print them; a pair
+         the books refuse - a weekend's - leaves the Detail to name them */
+      own.lines = new Map();
+      const byDate = new Map();
+      for (const f of ownFiles) if (f.data) {
+        const m = /^(Summary|Detail) (\d\d\/\d\d\/\d\d)/.exec(f.label || "");
+        if (!m) continue;
+        if (!byDate.has(m[2])) byDate.set(m[2], {});
+        byDate.get(m[2])[m[1]] = f.data;
+      }
+      for (const [d, pair] of byDate) if (pair.Summary && pair.Detail) {
+        try {
+          const b = await GENIUS.build([pair.Summary, pair.Detail]);
+          const k = Object.keys(b.dates || {}).find(x => b.dates[x] === d);
+          if (k) own.lines.set(d, { main: b.secsByDay && b.secsByDay[k], metro: b.metroSecs && b.metroSecs[k] });
+        } catch (e) { /* no books for that day: the Detail names the requests */ }
       }
       for (const f of prints) {
         const det = SHEETS_BERTH.detailFromPrints(SheetsEngine.parseDiagrams(f.prints, []));

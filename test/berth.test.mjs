@@ -100,7 +100,7 @@ test("each line says where its unit is today, where it ends, and whether it call
   // 375604 is the second unit of GT103's formation and is still found
   const c = row("375604", "EXAMS");
   assert.deepEqual(norm(c.diags), ["GT103"]); assert.equal(c.ends.place, "DVP");
-  assert.equal(c.tier, 2, "Saturday is this week");
+  assert.equal(c.tier, 3, "Saturday is five days off — later than the three days a request is made for");
   assert.equal(row("375603", "SCHEDULED MAINT").tier, 2);
   assert.equal(row("375602", "DEFECTS").tier, 3, "a week out is later");
   // an end-of-day defect with no date is due today
@@ -110,7 +110,7 @@ test("each line says where its unit is today, where it ends, and whether it call
   assert.equal(row("375699", "EXAMS").inTraffic, false);
   assert.equal(row("375698", "EXAMS").ignored, true);
   // nearest first in the tiered list; the plan's own order in rows
-  assert.deepEqual(norm(out.tiered.map(r => r.tier)), [1, 1, 1, 1, 1, 2, 2, 3]);
+  assert.deepEqual(norm(out.tiered.map(r => r.tier)), [1, 1, 1, 1, 1, 2, 3, 3]);
   assert.deepEqual(norm(out.rows.map(r => r.unit)), ["375601", "375602", "375604", "375699", "375698", "375603", "375601", "375602"]);
 });
 
@@ -173,19 +173,23 @@ test("a hold seen from the weekend is held for Monday, and a changeover is at Ra
   assert.match(restricted.notes.join("; "), /after midnight — counts/);
 });
 
-test("the plan comes back in its own shape, with two columns added and the colours kept", async () => {
+test("the plan comes back in its own shape, the suggestion in the Action column and the reason beside it", async () => {
   const res = await weekday();
   const out = B().run(BLANK, res, { ignore: "375698" });
   const shape = B().shape(out);
   assert.deepEqual(norm(shape.map(s => s.title)), ["Exams", "Scheduled Maint", "Defects"]);
-  assert.deepEqual(norm(shape[0].headers), ["Unit Nr", "Exam", "When", "Where", "Action", "Suggested", "Today"]);
-  assert.deepEqual(norm(shape[2].headers), ["Unit Nr", "Days", "Priority", "Target Date", "Action", "Suggested", "Today"]);
+  assert.deepEqual(norm(shape[0].headers), ["Unit Nr", "Exam", "When", "Where", "Action", "Why"]);
+  assert.deepEqual(norm(shape[2].headers), ["Unit Nr", "Days", "Priority", "Target Date", "Action", "Why"]);
   assert.deepEqual(norm(shape[0].rows.map(r => r.cls)), ["ex-a", "ex-b", "ex-c", "ex-a", "ex-x"],
     "A black, B green, C red, XS50 blue - the workbook's colours");
   assert.ok(shape[0].rows.every(r => r.filled), "an empty Action is filled");
   const text = B().toText(out);
-  assert.match(text, /^Exams\nUnit Nr\tExam\tWhen\tWhere\tAction\tSuggested\tToday\n375601\tA\tTUE AM 04\/08\tAFK\t\tAFK BERTH off 2A01 \(at AFK 05\+35, leaves on 2A01\)\ton GT101 · ENDS DVP 23\+50 · calls AFK 05\+35 off 2A01, AFK 10 30 off 5A03, AFK 10\+40 \(stands 3\.3 h\) off 5A05 \+1 more$/m,
-    "tab-separated, the workbook's columns then the two new ones: " + text.split("\n").slice(0, 3).join(" | "));
+  assert.match(text, /^Exams\nUnit Nr\tExam\tWhen\tWhere\tAction\tWhy\n375601\tA\tTUE AM 04\/08\tAFK\tAFK BERTH off 2A01\tat AFK 05\+35, leaves on 2A01 · on GT101 · ENDS DVP 23\+50 · calls AFK 05\+35 off 2A01, AFK 10 30 off 5A03, AFK 10\+40 \(stands 3\.3 h\) off 5A05 \+1 more$/m,
+    "tab-separated, the workbook's columns with the suggestion in Action and the reason beside it: " + text.split("\n").slice(0, 3).join(" | "));
+  // a plan line that had its own action keeps it in the reason
+  const kept = B().run(PLAN, res, { ignore: "375698" });
+  const line = B().toText(kept).split("\n").find(l => /^375601\tA\t/.test(l));
+  assert.match(line, /\tAFK BERTH off 2A01\tplan had: AFK HOLD · at AFK 05\+35/, line);
   const html = B().toHtml(out, true);
   assert.match(html, /<tr style="color:#00B050[^"]*"><td[^>]*>375602<\/td>/, "a B exam is green in the copied table");
   assert.match(html, /<caption[^>]*>Defects<\/caption>/);

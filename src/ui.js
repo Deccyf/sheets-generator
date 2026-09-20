@@ -1524,6 +1524,24 @@ function decodeText(u8) {
         }
         if (!own.dates.length) { own.dates = [...own.alloc.keys()]; own.labels = Object.fromEntries(own.dates.map(d => [d, d])); }
       }
+      /* the books, built from each day's own Summary and Detail where both
+         are here, so the requests read as the sheets print them; a pair
+         the books refuse - a weekend's - leaves the Detail to name them */
+      own.lines = new Map();
+      const byDate = new Map();
+      for (const f of ownFiles) if (f.data) {
+        const m = /^(Summary|Detail) (\d\d\/\d\d\/\d\d)/.exec(f.label || "");
+        if (!m) continue;
+        if (!byDate.has(m[2])) byDate.set(m[2], {});
+        byDate.get(m[2])[m[1]] = f.data;
+      }
+      for (const [d, pair] of byDate) if (pair.Summary && pair.Detail) {
+        try {
+          const b = await GENIUS.build([pair.Summary, pair.Detail]);
+          const k = Object.keys(b.dates || {}).find(x => b.dates[x] === d);
+          if (k) own.lines.set(d, { main: b.secsByDay && b.secsByDay[k], metro: b.metroSecs && b.metroSecs[k] });
+        } catch (e) { /* no books for that day: the Detail names the requests */ }
+      }
       for (const f of prints) {
         const det = SHEETS_BERTH.detailFromPrints(SheetsEngine.parseDiagrams(f.prints, []));
         for (const [date, m] of det) {

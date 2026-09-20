@@ -140,6 +140,37 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.10.0 — 20 September 2026 — named as the sheets print them, three days, and the Action column
+
+**The depots work from the sheets.** A request now names a working the
+way the berthing book prints it. The books are built from each day's
+Diagram Summary and Detail dropped on the tab — the weekday tab's own
+where they are built — and the request is the line the depot reads: by
+headcode where the book carries one, by the time the train leaves the
+platform where it does not. West Marina's 5H91 is *06+13* on the sheet,
+off the platform, where the Detail's sidings departure said 06+01; that
+is the difference a depot notices. Where no book could be built — a
+weekend's pair, or a Detail on its own — the Detail names the request by
+the same rule, and the review says which.
+
+**Three days, then nearer.** A request was made for anything due within
+six days, so on a Saturday night a 377 due at Selhurst on the Friday was
+given the move over. The planner's own plans ask one to three days ahead
+and write where the unit ends beyond that. So: due today or tomorrow, a
+hold or a request; due within two days, brought home, in two legs where
+one will not do; due in three, moved as near as it can be got — Ashford
+for Ramsgate, Grove Park for Victoria — with the last leg left for the
+day before, *XSE BERTH 06+13 TO GP*; later than that, where it ends. A
+unit is wanted at Selhurst on the day or the day before, not sooner, so
+the move over is asked for only when the line is due today or tomorrow;
+further out the request gets it to Victoria and the move is a note.
+
+**The Action column.** The suggestion is written into the plan's own
+Action column — in bold where it differs from what the plan had — and a
+*Why* column beside it carries what the plan had, the reasons, and where
+the unit is today. Copied back, the Action column pastes straight over
+the workbook's.
+
 ## 3.9.0 — 20 September 2026 — a second copy, three audits, and the page read through
 
 **Two copies of the tool.** `Sheets Generator (no berth requests).html`
