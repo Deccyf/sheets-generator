@@ -39,13 +39,13 @@ const PLACES = {
   RAM:  ["RAMSGTE"],
   GI:   ["GLNGDEP", "GLNGHMK"],
   GLM:  ["GLNGHMK"],
-  SG:   ["SLADEGD", "SLADGUS", "SLADGDP", "SLADEGN"],
+  SG:   ["SLADEGD", "SLADGUS", "SLADGDP", "SLADGEH", "SLADEGN"],
   SGUPS:["SLADGUS"],
-  GP:   ["GRVPCSD", "GRVPKDS", "GRVPKUS", "GRVPDCE", "GRVPKLE"],
+  GP:   ["GRVPCSD", "GRVPKDS", "GRVPKUS", "GRVPDCE", "GRVPKLE", "GRVPUHS"],
   GPD:  ["GRVPKDS"],
   AFK:  ["ASHFDNS", "ASHFEBS", "ASHFUPS", "ASHFKY", "ASHFDYW"],
-  XSE:  ["STLNWCS", "STLNWMS"],
-  FKE:  ["FLKSETR"],
+  XSE:  ["STLNWCS", "STLNWMS", "STLNSHN", "STLNCET"],
+  FKE:  ["FLKSETR", "FLKSTNE"],
   DVP:  ["DOVERP", "DOVERPS"],
   TON:  ["TONBDG", "TONBPMY", "TONBDMS"],
   HGS:  ["HASTING", "HASTPSD"],
@@ -54,7 +54,27 @@ const PLACES = {
   CHX:  ["CHRX"],
   CST:  ["CANONST"],
   SU:   ["VICTRIE", "VICTGCS"],
+  // the metro fleet's outstations
+  ORP:  ["ORPNDSG", "ORPNGTN"],
+  DFD:  ["DARTFUS", "DARTFD"],
 };
+/* The roads of a place, by the name the depot uses for each. A unit goes
+   out from the road it landed on - the Up Sidings at Slade Green have
+   their own diagrams, Ashford's East Berthing and Up Sidings theirs - so a
+   request names departures off that road, and says so where it has to
+   offer another. A code not here is named as the Detail prints it. */
+const ROAD_NAMES = {
+  GRVPKUS: "Up Sidings", GRVPKDS: "Down Sidings", GRVPCSD: "Carriage Shed", GRVPDCE: "Depot exit", GRVPUHS: "Up headshunt",
+  SLADGUS: "Up Sidings", SLADEGD: "Depot", SLADGEH: "Depot", SLADGDP: "Depot", SLADEGN: "station",
+  ASHFDNS: "Down Sidings", ASHFEBS: "East Berthing", ASHFUPS: "Up Sidings", ASHFDYW: "Down Yard", ASHFKY: "station",
+  RAMSGTD: "EMU Depot", RAMSNEW: "New Sidings", RAMSDRW: "Depot reception", RAMSGTE: "station",
+  DOVERPS: "Sidings", DOVERP: "station", STLNWCS: "Carriage Sidings", STLNWMS: "West Marina", STLNSHN: "shunt neck", STLNCET: "CET road",
+  TONBDMS: "DM Sidings", TONBPMY: "Jubilee Sidings", TONBDG: "station", HASTPSD: "Park Sidings", HASTING: "station",
+  FAVRUPS: "Up Sidings", FAVRBRD: "Back Road", FAVRSHM: "station", VICTGCS: "Grosvenor Sidings", VICTRIE: "station",
+  GLNGDEP: "Depot", GLNGHMK: "station", FLKSETR: "Turnback Road", FLKSTNE: "station",
+  DARTFUS: "Up Sidings", DARTFD: "station", ORPNDSG: "Down Sidings", ORPNGTN: "station",
+};
+const roadName = code => ROAD_NAMES[code] || code;
 /* The depots - where a unit is worked on, and where a berth request can
    put it. A call here is a chance to hold it; a call at a station is not. */
 const DEPOTS = new Set(["RE", "GI", "SG", "GP", "AFK", "XSE", "FKE", "VIC", "SU"]);
@@ -75,6 +95,9 @@ const PM_WINDOW = [540, 990];
    the plan writes it: a finish between 03+00 (after the night's arrivals)
    and midday. Minutes from midnight. */
 const AM_FINISH = [180, 720];
+/* On hand by 16 00 is on hand for the day shift: what ASAP, a mileage
+   trigger and a defect want. Minutes from midnight. */
+const DAY_SHIFT_END = 960;
 /* A Genius code -> the plan's word for it, for saying where a unit ends. */
 const CODE_TO_PLACE = (() => {
   const m = new Map();
@@ -122,6 +145,11 @@ const MILES = {
   FKE: { FKE: 0, DVP: 7, AFK: 15, RE: 30, RAM: 30, FAV: 40, TON: 42, HGS: 45, XSE: 47, GI: 55, GLM: 55, GP: 65, GPD: 65, SG: 70, SGUPS: 70, CST: 70, CHX: 71, VIC: 70, SU: 78 },
 };
 MILES.SU = MILES.VIC;
+// the metro outstations, from each depot
+Object.assign(MILES.RE, { ORP: 68, DFD: 60 }); Object.assign(MILES.GI, { ORP: 28, DFD: 17 });
+Object.assign(MILES.SG, { ORP: 14, DFD: 3 });  Object.assign(MILES.GP, { ORP: 5, DFD: 12 });
+Object.assign(MILES.AFK, { ORP: 40, DFD: 50 }); Object.assign(MILES.XSE, { ORP: 45, DFD: 60 });
+Object.assign(MILES.VIC, { ORP: 14, DFD: 20 }); Object.assign(MILES.FKE, { ORP: 60, DFD: 65 });
 const distTo = (place, depot) => { const t = MILES[depot]; if (!t) return 999; const v = t[place] != null ? t[place] : t[homeOf(place)]; return v == null ? 999 : v; };
 
 /* ---------- the standing fleet moves ----------
@@ -175,6 +203,8 @@ function defectHome(unit) {
   if (/^3753/.test(unit)) return "RE/GI";
   if (/^375/.test(unit)) return "RE";
   if (/^377/.test(unit)) return "VIC";
+  if (/^(465|466|707)/.test(unit)) return "SG/GI";   // the metro fleets
+  if (/^395/.test(unit)) return "AFK";               // the High Speed fleet, at Ashford
   return "RE";
 }
 /* The plan's priority column, boiled down: EOD (back at a maintenance
@@ -550,7 +580,7 @@ function fleetFromDiag(diag) {
    377s, two 5-car 376s, four 3-car 375/3s. */
 function maxUnits(unit) {
   const f = familyOfUnit(unit);
-  return Math.floor(12 / (f === "375/3" ? 3 : f === "376" ? 5 : 4));
+  return Math.floor(12 / (f === "375/3" ? 3 : f === "376" || f === "707" ? 5 : f === "395" ? 6 : f === "466" ? 2 : 4));
 }
 /* A claim on a working names the day too: today's 5H91 06+01 and
    tomorrow's are two trains, and a request on one must not use up the
@@ -636,7 +666,8 @@ function requestName(depot, fin) {
    built, the Detail's own times stand in under the same rule. */
 const SECTION_OF = { GP: "GROVE PARK", GPD: "GROVE PARK", XSE: "WEST MARINA", AFK: "ASHFORD", RE: "RAMSGATE", RAM: "RAMSGATE",
   TON: "TONBRIDGE", GI: "GILLINGHAM", GLM: "GILLINGHAM", SG: "SLADE GREEN", SGUPS: "SLADE GREEN", VIC: "VICTORIA", SU: "VICTORIA",
-  DVP: "DOVER PRIORY", FAV: "FAVERSHAM", FKE: "FOLKESTONE EAST", HGS: "HASTINGS", CHX: "CHARING CROSS", CST: "CANNON STREET" };
+  DVP: "DOVER PRIORY", FAV: "FAVERSHAM", FKE: "FOLKESTONE EAST", HGS: "HASTINGS", CHX: "CHARING CROSS", CST: "CANNON STREET",
+  ORP: "ORPINGTON", DFD: "DARTFORD" };
 /* the books for a date: dropped on the tab and built there (genius.lines),
    or the weekday books themselves (secsByDay, keyed by weekday letter) */
 function bookLines(genius, date) {
@@ -1017,8 +1048,10 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
        those are what go out and come back. */
     const outs = [];
     const s0 = d.stops[0];
-    if (s0 && codes.indexOf(s0.code) >= 0 && s0.dep != null && s0.hcOut) outs.push({ idx: 0, code: s0.code, dep: s0.dep, hc: s0.hcOut });
-    if (!atHome && (HEADCODE_DEPOTS.has(from) || opts.nested))
+    const startsHere = !!(s0 && codes.indexOf(s0.code) >= 0);
+    if (startsHere && s0.dep != null && s0.hcOut) outs.push({ idx: 0, code: s0.code, dep: s0.dep, hc: s0.hcOut });
+    // a diagram that starts here is named by its start: its PM leg off a stand back here is the same working
+    if (!atHome && !startsHere && (HEADCODE_DEPOTS.has(from) || opts.nested))
       for (const st of depotStands(d.stops)) if (codes.indexOf(st.code) >= 0 && st.hcOut) outs.push({ idx: st.idx, code: st.code, dep: st.dep, hc: st.hcOut });
     for (const o of outs) {
       const rest = o.idx ? { ...d, stops: d.stops.slice(o.idx) } : d;
@@ -1063,7 +1096,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
       if (opts.backBy != null && (how === "hub" ? atHome : (when == null || when > opts.backBy))) continue;
       if (opts.reachBy != null && how !== "hub" && when != null && when > opts.reachBy) continue;
       if (!byKey.has(wid))
-        byKey.set(wid, { wid, hc: o.hc, dep: o.dep, start: !o.idx, sharing, diags: [], reach: [],
+        byKey.set(wid, { wid, hc: o.hc, dep: o.dep, start: !o.idx, road: o.code, sharing, diags: [], reach: [],
                          name: sheetName(pool, from0, d.diag, o.hc, o.dep) || (HEADCODE_DEPOTS.has(from) ? o.hc : hhmm(o.dep, /^5/.test(o.hc))) });
       const e = byKey.get(wid);
       e.reach.push(d.diag);
@@ -1105,9 +1138,35 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
   /* the morning departures where there are any - the unit goes out on one
      of them - and the PM workings off a stand, which are the depot's own */
   const am = fit.filter(e => e.start && e.dep < 12 * 60);
+  const morning = fit.filter(e => !e.start || !am.length || e.dep < 12 * 60);
+  /* The road it landed on, at a depot: a unit in the Up Sidings at Slade
+     Green goes out on an Up Sidings diagram, one in Ashford's East
+     Berthing on one of the East's. Another road's departures are offered
+     only where its own has none, and said to be a shunt to check with the
+     depot. An outstation is one road: its sidings feed its platforms. */
+  const road = opts.code && DEPOTS.has(from) && codes.indexOf(opts.code) >= 0 ? opts.code : null;
+  const onRoad = road ? morning.filter(e => e.road === road) : morning;
+  const offRoad = road ? morning.filter(e => e.road !== road) : [];
+  const pick0 = onRoad.length ? onRoad : morning;
+  /* Which come first: back nearest the time it is due, where there is one;
+     for ASAP, a mileage trigger or a defect, on hand in the day - by 16 00
+     - so the depot has it for the day shift; otherwise into the depot over
+     a stand, a call or a nearer depot, the earliest out first. And no more
+     than the depot can use: where there are more departures than units on
+     that road, the best three, the rest noted. */
+  const arrives = e => top(e)[0].when != null ? top(e)[0].when : 9999;
+  const soonest = e => Math.min(...e.diags.map(x => x.when != null ? x.when : 9999));   // on hand somewhere useful, by any diagram of it
+  const rankOf = e => RANK[top(e)[0].how];
+  const best = opts.backBy != null ? (a, b) => (arrives(b) - arrives(a)) || (a.dep - b.dep)
+             : opts.dayFirst ? (a, b) => ((soonest(a) <= DAY_SHIFT_END ? 0 : 1) - (soonest(b) <= DAY_SHIFT_END ? 0 : 1)) || (rankOf(a) - rankOf(b)) || (a.dep - b.dep)
+             : (a, b) => (rankOf(a) - rankOf(b)) || (a.dep - b.dep);
+  const ranked = pick0.slice().sort(best);
+  const cap = ranked.length > (opts.demand || 1) ? 3 : 6;
   // in the order the sheet prints them, which is the order the plan lists them in
   const printed = e => { const m = /^(\d\d)[ +](\d\d)$/.exec(e.name); return m ? +m[1] * 60 + +m[2] : e.dep; };
-  const listed = fit.filter(e => !e.start || !am.length || e.dep < 12 * 60).sort((a, b) => (printed(a) - printed(b)) || (a.dep - b.dep));
+  const byPrint = (a, b) => (printed(a) - printed(b)) || (a.dep - b.dep);
+  const listed = ranked.slice(0, cap).sort(byPrint);
+  const more = ranked.slice(cap).sort(byPrint);
   /* the portion, where only that part of the train goes into the depot -
      "RP 05 25" - and none where every portion gets there one way or
      another, the depot to say which it takes off */
@@ -1139,7 +1198,12 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
       for (const m of (H === from ? ownMoves : opts.dow != null ? movesFrom(H, targets, opts.dow) : [])) parts.push("fleet move " + m.hc + " " + m.time + " (" + m.days + ")");
       notes.push("then " + H + " has " + (parts.length ? parts.join(", ") : "nothing on the Detail") + " to " + targets.join("/") + " when it is due");
     }
-  const later = fit.filter(e => listed.indexOf(e) < 0);
+  if (more.length) notes.push("also off the " + roadName(listed[0].road) + ": " + more.map(nameOf).join(", "));
+  if (road && !onRoad.length) notes.push("nothing off the " + roadName(road) + " gets there — these leave the " +
+    [...new Set(listed.map(e => roadName(e.road)))].join(" and ") + ", a shunt to check with the depot");
+  else if (road && offRoad.length) notes.push("off the " + roadName(road) + ", where it lands; " +
+    [...new Set(offRoad.map(e => roadName(e.road)))].join(" and ") + ": " + offRoad.sort(byPrint).slice(0, 4).map(nameOf).join(", ") + " — a shunt across, to check with the depot");
+  const later = fit.filter(e => morning.indexOf(e) < 0);
   if (later.length) notes.push("or, later in the day, " + later.slice(0, 3).map(nameOf).join(", "));
   if (peak.length) {
     const back = fitMO(all).filter(e => !peak.some(p => p.wid === e.wid)).sort((a, b) => a.dep - b.dep);
@@ -1367,12 +1431,16 @@ function suggestCore(r, ctx) {
   const reachBy = REACH_VIA[t] ? movesFrom(REACH_VIA[t], [t], dow).map(m => mins(m.time)).filter(x => x != null).reduce((a, b) => Math.max(a, b), -1) : -1;
   const listFrom = (from, extra) => {
     if (!ctx || !ctx.mine || !pool) return null;
-    const base = { dow, wanted: ctx.wanted, ...(reachBy >= 0 ? { reachBy } : {}) };
+    /* the road it landed on, where the reports say; a unit placed by the
+       plan's own word is anywhere in the depot. ASAP, a mileage trigger
+       or a defect is wanted in the day. */
+    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1,
+                   dayFirst: !!(r.when.asap || r.when.miles != null || r.isDefect), ...(reachBy >= 0 ? { reachBy } : {}) };
     if (ctx.dayToRun && r.starts && r.starts.place && r.starts.place !== "?") {
-      const t = departuresFrom(r, ctx.days, r.starts.place, targets, ctx.taken, { ...base, today: true, mates: matesAtStart(ctx.mine, ctx.days), ...(extra || {}) });
+      const t = departuresFrom(r, ctx.days, r.starts.place, targets, ctx.taken, { ...base, today: true, code: r.starts.code, mates: matesAtStart(ctx.mine, ctx.days), ...(extra || {}) });
       if (t && t.action) return t;
     }
-    return departuresFrom(r, pool, from, targets, ctx.taken, { ...base, proxy, mates: matesOn(ctx.mine, null, ctx.days), ...(extra || {}) });
+    return departuresFrom(r, pool, from, targets, ctx.taken, { ...base, proxy, code: r.standing ? null : r.ends.code, mates: matesOn(ctx.mine, null, ctx.days), ...(extra || {}) });
   };
   const useList = lst => {
     s.action = lst.action;
@@ -1406,7 +1474,7 @@ function suggestCore(r, ctx) {
       // back by the time it is due: 20 00 for a Ramsgate exam, midnight for end of day - and ASAP is back tonight, whatever the hour
       const by = r.ahead === 1 ? (r.when.time != null ? r.when.time : r.when.half === "PM" && endsAt === "RE" ? 20 * 60 : 24 * 60) : r.when.asap ? 30 * 60 : null;
       const lst = listFrom(r.ends.place, by != null ? { backBy: by } : null);
-      if (lst && lst.action) { useList(lst); if (by != null) s.notes.push("back here by " + hhmm(by, true) + ", when it is due"); return s; }
+      if (lst && lst.action) { useList(lst); if (by != null) s.notes.push(by >= 24 * 60 ? "back here tonight, whatever the hour" : "back here by " + hhmm(by, true) + ", when it is due"); return s; }
       if (near) { hold(); if (lst && lst.why) s.notes = s.notes.concat(lst.why); return s; }
       if (r.standing) { s.action = standingWord(); if (lst && lst.why) s.notes = s.notes.concat(lst.why); return s; }
       s.action = endsWord();
@@ -1687,7 +1755,9 @@ function run(planText, genius, opts) {
      same working home, the one that matters more gets it and the other is
      given the next. The plan comes back in its own order all the same. */
   const out = [], notices = [], taken = new Map(), requested = new Map();
-  for (const r of dated.slice().sort(byPriority)) {
+  /* Where every unit is tonight, first - so that each request can know how
+     many units share its road - then the requests, nearest first. */
+  for (const r of dated) {
     const row = r;
     let day = date ? unitDay(row.unit, genius, date) : null;
     // placed on a later day before the departures: that is where it is
@@ -1724,8 +1794,18 @@ function run(planText, genius, opts) {
       .map(s => ({ ...s, n: ((legDays.workings && legDays.workings.get(workingKey(s.code, s.hcOut, s.dep))) || [s.diag]).length })) : [];
     r.alone = legs.filter(l => l.n <= 1);
     r.coupled = legs.filter(l => l.n > 1);
+    r.day = day;
+  }
+  /* the units on each road tonight, by fleet: a road with more departures
+     than units to put on them is offered the best few, not all */
+  const roadKey = r => r.ends ? (r.standing ? homeOf(r.ends.place) : r.ends.code) + "|" + loosely(familyOfUnit(r.unit)) : null;
+  const onRoad = new Map();
+  for (const r of dated) { const k = roadKey(r); if (k) { if (!onRoad.has(k)) onRoad.set(k, new Set()); onRoad.get(k).add(r.unit); } }
+  for (const r of dated.slice().sort(byPriority)) {
+    const row = r, day = r.day;
+    const k = roadKey(r);
     r.suggest = suggest(r, { mine: day, days, tomDays, tomDow, wanted, taken, mse, keep: !!opts.keep, dayToRun: !!opts.dayToRun,
-                             already: requested.get(row.unit) || null });
+                             already: requested.get(row.unit) || null, demand: k ? onRoad.get(k).size : 1 });
     if (/BERTH|C\/O|HOLD/.test(r.suggest.action) && !requested.has(row.unit)) requested.set(row.unit, r.suggest.action);
     if (r.suggest.taken) {
       const t = r.suggest.taken;
@@ -1985,7 +2065,7 @@ function render(res) {
 return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
          detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
-         PLACES, placeOf, FLEET_MOVES, movesFrom };
+         PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_BERTH;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_BERTH = SHEETS_BERTH;

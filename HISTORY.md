@@ -140,6 +140,45 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.12.0 — 20 September 2026 — the road it lands on
+
+**Off the road the unit landed on.** A unit in the Up Sidings at Slade
+Green goes out on an Up Sidings diagram, one in Ashford's East Berthing on
+one of the East's, one in the Grove Park Down Sidings on a Down Sidings
+departure — the depot can divert it, but from where it stands. The road
+now reads the finishing location off the Allocation Summary and lists
+that road's departures; another road's are offered only where its own
+has none, and marked as a shunt to check with the depot. Against the
+Sunday Telex that is what turns the Grove Park list for the Down Sidings
+376s from nine headcodes into 5N08/5N18/5N17, and the Ramsgate list into
+the four the Telex has, the station-platform start set aside. An
+outstation — Dover, Tonbridge, Faversham — is one road: its sidings feed
+its platforms, so the 04 50 off the Dover platform is still the request
+for a unit in the sidings. Ramsgate depot and station, and Ashford's Down
+Sidings against its East Berthing, are the two the planner has been asked
+about.
+
+**One working, named once.** A diagram that starts at the place — 5N17
+out of the Down Sidings at 05+48, back into the Up Sidings at 09+20 and
+out again at 13+45 as 5F43 — was listed twice, by its start and by its
+PM leg. It is named by its start alone.
+
+**No more than the depot can use.** Where a road has more departures
+than units standing on it, the best three are named and the rest kept in
+the Why column: back nearest the time it is due where there is one; on
+hand by 16 00, for the day shift, for ASAP, a mileage trigger or a
+defect; otherwise into the depot over a stand, a call or a nearer depot,
+earliest out first. A road with as many units as departures lists them
+all, as the Telex does for the six 377s at Ashford.
+
+**The metro fleets and the 395s.** Orpington and Dartford are places the
+road knows, with their sidings and stations, so a Networker berthed there
+is placed and asked for; a Networker or a 707 is Slade Green's or
+Gillingham's for a defect; a 395 is Ashford's, and two of them make a
+12-car. The High Speed diagrams are on a separate control cycle, so a
+395 is placed by the Allocation Summary but its departures need the High
+Speed Summary and Detail dropped as well, which has not been tried.
+
 ## 3.11.0 — 20 September 2026 — the requests as the Telex writes them
 
 **Lists of departures, not a single working.** The planner's own Telex
