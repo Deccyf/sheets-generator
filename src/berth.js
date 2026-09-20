@@ -129,7 +129,10 @@ const codesAt = place => [...new Set((PLACES[homeOf(place)] || []).concat(PLACES
    move - "GP BERTH 5F42 - VIC BERTH 5Y41", "VIC HOLD FOR 5Y41". */
 const REACH_VIA = { SU: "VIC" };
 const reachOf = t => REACH_VIA[t] || t;
-const targetsOf = r => [...new Set(r.places.map(depotOf).filter(Boolean).map(reachOf))];
+/* the XS50 campaign on a 376 is done at Slade Green or Gillingham, so a
+   line for either is answered at both */
+const xs50 = r => r.section === "EXAMS" && /^XS/i.test(r.what || "") && /^376/.test(r.unit);
+const targetsOf = r => [...new Set((xs50(r) ? r.places.concat(["SG", "GI"]) : r.places).map(depotOf).filter(Boolean).map(reachOf))];
 const minOf = t => { const m = /^(\d\d)[+ :](\d\d)$/.exec(String(t || "")); return m ? +m[1] * 60 + +m[2] : null; };
 // a move that runs as two headcodes is named by the one it arrives as, the way the plan writes it
 const moveName = m => m.hc.split("/").pop();
@@ -409,12 +412,12 @@ function tierOf(when, ahead) {
   if (ahead <= SOON_DAYS) return 2;
   return 3;
 }
-/* How far ahead a request is made: the planner's own plans ask one to
-   three days ahead and write where the unit ends beyond that - on a
-   Tuesday the Friday lines read ENDS, on a Thursday the Monday ones do.
+/* How far ahead a request is made: the planner's own plans ask up to
+   four days ahead and write where the unit ends beyond that - on a
+   Tuesday the Saturday lines read ENDS, on a Thursday the Tuesday ones do.
    The weekend rule stands on top: Saturday, Sunday and Monday are near
    from Friday on. */
-const SOON_DAYS = 3;
+const SOON_DAYS = 4;
 
 /* ---------- the reports ---------- */
 function parseShort(s) {          // "dd/mm/yy" -> Date
@@ -1190,11 +1193,16 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
   const arrives = e => top(e)[0].when != null ? top(e)[0].when : 9999;
   const soonest = e => Math.min(...e.diags.map(x => x.when != null ? x.when : 9999));   // on hand somewhere useful, by any diagram of it
   const rankOf = e => RANK[top(e)[0].how];
-  const best = opts.backBy != null ? (a, b) => (arrives(b) - arrives(a)) || (a.dep - b.dep)
+  // a slow-down job: the diagram with the fewest miles first, off the Detail's own mileage column
+  const milesOf = d => Math.max(0, ...d.stops.map(x => +x.ml || 0));
+  const fewest = e => Math.min(...top(e).map(x => milesOf(x.d)));
+  const best = opts.lowMiles ? (a, b) => (fewest(a) - fewest(b)) || (a.dep - b.dep)
+             : opts.backBy != null ? (a, b) => (arrives(b) - arrives(a)) || (a.dep - b.dep)
              : opts.dayFirst ? (a, b) => ((soonest(a) <= DAY_SHIFT_END ? 0 : 1) - (soonest(b) <= DAY_SHIFT_END ? 0 : 1)) || (rankOf(a) - rankOf(b)) || (a.dep - b.dep)
              : (a, b) => (rankOf(a) - rankOf(b)) || (a.dep - b.dep);
   const ranked = pick0.slice().sort((a, b) => ownFirst(a, b) || best(a, b));
-  const cap = ranked.length > (opts.demand || 1) ? 3 : 6;
+  // and a slow-down job takes the four with the fewest miles, the way the plan lists them
+  const cap = Math.min(ranked.length > (opts.demand || 1) ? 3 : 6, opts.lowMiles ? 4 : 6);
   // in the order the sheet prints them, which is the order the plan lists them in
   const printed = e => { const m = /^(\d\d)[ +](\d\d)$/.exec(e.name); return m ? +m[1] * 60 + +m[2] : e.dep; };
   const byPrint = (a, b) => (printed(a) - printed(b)) || (a.dep - b.dep);
@@ -1221,6 +1229,7 @@ function departuresFrom(r, pool, from0, targets, taken, opts) {
   const notes = listed.map(e => lab + " " + e.hc + " " + hhmm(e.dep, /^5/.test(e.hc)) + (e.sharing.length > 1 ? " (" + e.sharing.join("+") + ")" : "") + ": " +
                                 e.diags.map(x => x.d.diag + (x.own ? " (its own diagram)" : "") + " " + whereTo(x)).join(", "));
   if (names.length > 1) notes.push("the depot to choose");
+  if (opts.lowMiles) notes.push("miles: " + listed.map(e => nameOf(e) + " " + Math.round(fewest(e))).join(", "));
   if (opts.proxy && !opts.today) notes.push("check tomorrow's diagram" + (listed.length > 1 ? "s run" : " runs") + " the same");
   const shared = listed.filter(e => e.by.length);
   if (shared.length) notes.push(shared.map(e => nameOf(e) + " is on " + e.by.join(", ") + "'s list too").join("; "));
@@ -1457,10 +1466,12 @@ function suggestCore(r, ctx) {
   const endsWord = () => "ENDS " + r.ends.place +
     (r.ends.time != null && !r.afterMidnight && r.ends.time >= AM_FINISH[0] && r.ends.time < AM_FINISH[1] && DEPOTS.has(homeOf(r.ends.place)) ? " AM" : "");
   /* near: today, tomorrow, ASAP, overdue, or this coming weekend and
-     Monday - holds and requests. Soon: the next three days - requests,
+     Monday - holds and requests. Soon: the next four days - requests,
      after the near lines have had theirs. A defect is soon whenever it is
      due: a repair is wanted as soon as the unit can be got there. */
-  const near = r.tier === 1, soon = r.tier <= 2 || !!r.isDefect;
+  const near = r.tier === 1, soon = r.tier <= 2 || !!r.isDefect || !!r.slowDown;
+  if (r.slowDown) s.notes.push("slow down — the low-mileage diagrams first");
+  if (xs50(r) && targets.length > 1) s.notes.push("XS50 — Slade Green or Gillingham does it");
   const mon = weekendHold(r);
   // exams: Ramsgate wants them back by 20 00 where it can be done, never after 22 00
   const backBy = () => {
@@ -1484,7 +1495,7 @@ function suggestCore(r, ctx) {
     /* the road it landed on, where the reports say; a unit placed by the
        plan's own word is anywhere in the depot. ASAP, a mileage trigger
        or a defect is wanted in the day. */
-    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1, mo: !!r.mo,
+    const base = { dow, wanted: ctx.wanted, demand: ctx.demand || 1, mo: !!r.mo, lowMiles: !!r.slowDown,
                    contain: !!(r.mo && r.section === "DEFECTS" && ((r.days || 0) >= 1 || (r.ahead != null && r.ahead >= 1))),
                    dayFirst: !!(r.when.asap || r.when.miles != null || r.isDefect), ...(reachBy >= 0 ? { reachBy } : {}) };
     if (ctx.dayToRun && r.starts && r.starts.place && r.starts.place !== "?") {
@@ -1874,6 +1885,8 @@ function run(planText, genius, opts) {
      the one request every line carries has to keep it coupled */
   const moUnits = new Set(dated.filter(x => x.category === "MO").map(x => x.unit));
   for (const r of dated) r.mo = moUnits.has(r.unit);
+  // a slow-down job - H2H (SLOW DOWN) - wants low-mileage diagrams, at any horizon
+  for (const r of dated) r.slowDown = /SLOW\s*DOWN|LOW\s*MILE/i.test(r.what || "");
   /* the units on each road tonight, by fleet: a road with more departures
      than units to put on them is offered the best few, not all */
   const roadKey = r => r.ends ? (r.standing ? (r.standingRoad || homeOf(r.ends.place)) : r.ends.code) + "|" + loosely(familyOfUnit(r.unit)) : null;
@@ -2130,7 +2143,7 @@ function render(res) {
       tier = r.tier;
       if (lines.length > 2) lines.push("");
       lines.push(tier === 1 ? "== NEXT: today, tomorrow, ASAP and overdue ==" :
-                 tier === 2 ? "== THE NEXT THREE DAYS, and the mileage triggers ==" :
+                 tier === 2 ? "== THE NEXT FOUR DAYS, and the mileage triggers ==" :
                               "== LATER: where it ends tonight ==");
     }
     lines.push(pad(r.unit, W.unit) + " " + pad(r.section, W.sec) + " " + pad(r.places.join("/") || "—", W.needs) + " " +

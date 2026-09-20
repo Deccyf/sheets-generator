@@ -1288,3 +1288,26 @@ test("a unit the plan places by its own request is put on the road that working 
   assert.equal(out.rows[0].suggest.action, "GP BERTH 5J90/5J01", JSON.stringify(out.rows[0].suggest));
   assert.match(out.rows[0].suggest.notes.join("; "), /off the Up Sidings first; 5J01 leaves the Carriage Shed — a shunt across/);
 });
+
+test("a slow-down job is asked for whatever the date, the fewest miles first; an XS50 on a 376 is Slade Green's or Gillingham's", async () => {
+  const res = await swapDay();
+  // 375704 ends at Ramsgate; its H2H has a slow down on it and is eleven days out
+  const plan = ["Scheduled Maint", "Unit Nr \tWhere\tWhen\tFor\tAction", "375704\tRE\tEOD FRI 14/08\tH2H (SLOW DOWN)\t"].join("\n");
+  const s = B().run(plan, res, {}).rows[0];
+  assert.equal(s.slowDown, true);
+  assert.match(s.suggest.action, /^RE BERTH /, "a request eleven days out: " + JSON.stringify(s.suggest));
+  assert.match(s.suggest.notes.join("; "), /slow down — the low-mileage diagrams first/);
+  assert.match(s.suggest.notes.join("; "), /miles: /);
+  // the same job without the slow down is where it ends
+  const plain = ["Scheduled Maint", "Unit Nr \tWhere\tWhen\tFor\tAction", "375704\tRE\tEOD FRI 14/08\tH2H\t"].join("\n");
+  assert.match(B().run(plain, res, {}).rows[0].suggest.action, /^ENDS RE/);
+  // an XS50 on a 376 at Grove Park, written for Slade Green, is answered at Gillingham too
+  const day = SWAP_DAY.concat([
+    { code: "SG901", fleet: "376/0", units: "376901.", stops: [S("GRVPKDS", "", "05:10", "5N01"), S("GLNGHMK", "06:10", "06:12", "2N01"), S("GLNGDEP", "06:30", "", "")] },
+  ]);
+  const q = geniusPairCsv(day); const rd = await N.GENIUS.read([q.summary, q.detail]);
+  rd.alloc = B().parseAllocation(allocRow("376001", "SG905", "02/08/26 05:00", "SLADEGD", "SG905", "02/08/26 23:30", "GRVPKDS"));
+  const x = B().run(planFor(["376001\tXS50\tASAP\tSG\t"]), rd, {}).rows[0].suggest;
+  assert.equal(x.action, "GP BERTH 5N01", JSON.stringify(x));
+  assert.match(x.notes.join("; "), /XS50 — Slade Green or Gillingham does it/);
+});

@@ -140,6 +140,22 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.13.0 — 20 September 2026 — four days, slow down, and the XS50s
+
+**Four days.** A request is made for anything due within four days, not
+three: the planner asks for a Thursday exam on the Sunday night.
+
+**Slow down.** A line whose job says *SLOW DOWN* — an H2H with a slow
+down on it — is asked for whatever the date, and its list is the diagrams
+with the fewest miles first, off the Detail's own mileage column, the
+miles said in the Why. That is what the planner was doing by hand with
+*RE BERTH 06 02/06 20/06+20/07 02* twelve days out.
+
+**The XS50s.** The XS50 campaign on a 376 is done at Slade Green or
+Gillingham, so a line for either depot is answered at both. Which unit
+takes which departure is the depot's: the campaign is mileage-based and
+the miles are not on any report.
+
 ## 3.12.3 — 20 September 2026 — contained
 
 **Contained.** A unit with a multiple-only restriction and days to run
