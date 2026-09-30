@@ -20,7 +20,7 @@
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
 const SKIN = SHEETS_HS_SKIN;
-const { fmtTime, AM_CUTOFF } = SHEETS_CORE;
+const { fmtTime } = SHEETS_CORE;
 const { DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
@@ -284,6 +284,17 @@ const kindOf = hc => /^[12]/.test(hc || "") ? "pax" : "ecs";
 const RETURN_PM_FROM = 960;
 /* a stand long enough to be a reference on an all-day diagram */
 const LONG_STAND = 90;
+/* Where each block's bar goes. A unit's first move of the day, off its
+   overnight berth, is above it if it leaves before this - the morning
+   run-out - and everything else is below it, in time order. From their own
+   tabs: on a weekday every first move up to 09:40 is above the bar, while
+   5R27 at 09:54 is below it on 44 tabs and 5J25 at 10:05 on 45 of 55 (the
+   planner: "the green bar for Ashford needs to go before 10 05"). The
+   weekend runs out later - Saturdays up to 10:18 above, nothing below
+   before 12:43; Sundays up to 08:50 - so midday there. The house AM/PM
+   line at 14:00 put 10:05 above it. */
+const RUN_OUT_TO = 9 * 60 + 45;
+const RUN_OUT_TO_WEEKEND = 12 * 60;
 
 /* Rough per-column widths for the on-screen preview only - the saved file
    carries the workbook's own <cols> verbatim from the skin. */
@@ -396,6 +407,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   };
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
+  const runOutTo = dayKey === "SA" || dayKey === "SU" ? RUN_OUT_TO_WEEKEND : RUN_OUT_TO;
   const today = longDate(dayKey, dates[dayKey]);
   /* the day's own stops, and the night before's - by DATE, so Sunday's
      reports give Monday its arrivals although no Sunday tab is built */
@@ -462,11 +474,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           hl: u.hl,
           time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
           endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
-          /* the morning's allocations - a unit's first move of the day,
-             off its overnight berth, before two - go above the bar. The
-             weekend prints do not say which move is the first; there it
-             is the time alone. */
-          am: (e.overnight === undefined || !!e.overnight) && e.time < AM_CUTOFF,
+          /* the morning run-out - a unit's first move of the day, off its
+             overnight berth - goes above the bar. The weekend prints do not
+             say which move is the first; there it is the time alone. */
+          am: (e.overnight === undefined || !!e.overnight) && e.time < runOutTo,
           follows: false,
         };
         if (!has) {

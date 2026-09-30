@@ -170,10 +170,12 @@ const SHEETS_RULES = (() => {
              "Sunday's included for a Monday, and a single day's reports say " +
              "“no previous day loaded” in the heading rather than leaving a " +
              "blank you have to guess at. On the right, today's allocations, " +
-             "in the order they leave: each unit's first move of the day, off " +
-             "its overnight berth before two, above a bar in the depot's own " +
-             "colour — green Ashford, pink Faversham, purple Margate, blue " +
-             "Ramsgate — and everything that goes out later below it." },
+             "in the order they leave: the morning run-out — each unit's " +
+             "first move of the day off its overnight berth, leaving before " +
+             "09:45 (midday at a weekend) — above a bar in the depot's own " +
+             "colour, green Ashford, pink Faversham, purple Margate, blue " +
+             "Ramsgate; everything else below it, in time order, so 5R27 at " +
+             "09:54 comes before a first move at 10:05." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +

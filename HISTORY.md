@@ -140,6 +140,20 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.18.3 — 30 September 2026 — the bar closes the morning run-out
+
+The bar went under every first move of the day that left before two, so on
+a Friday - when AZ625 berths at Ashford and its 5J25 at 10:05 is its first
+move - 10:05 sat above Ashford's bar and 5R27 at 09:54 below it, out of
+time order. The planner: the bar goes before 10:05, and 5R27 before that.
+The bar now closes the morning run-out: a first move leaving before 09:45
+is above it, everything else below it in time order. That is where their
+own weekday tabs put it - every first move up to 09:40 above the bar, 5R27
+at 09:54 below it on 44 tabs and 5J25 at 10:05 on 45 of 55. The weekend
+runs out later (Saturdays up to 10:18 above the bar and nothing below it
+before 12:43; Sundays up to 08:50), so the line is midday there. Against
+18/09 the only row that moves is that 10:05.
+
 ## 3.18.2 — 30 September 2026 — the 395 tables boxed in bold
 
 Every data row of the allocations sheet was written with row 9's record -

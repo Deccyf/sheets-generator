@@ -648,3 +648,31 @@ test("each table is boxed in a bold rule, with thin ones inside", async () => {
   assert.equal(rule(pm, "G", "bottom"), "2", "the grey strip closes with the block");
   assert.equal(rule(am, "G", "bottom"), "0", "and has no rules across it before then");
 });
+
+test("the bar closes the morning run-out: 5R27 at 09 54 and a first move at 10 05 both go under it, in time order", () => {
+  const N = built();
+  const H = N.SHEETS_HS, SKIN = N.SHEETS_HS_SKIN;
+  const e = (time, headcode, diag, overnight) => ({ time, time_kind: "ecs", dest: "AFK",
+    headcode, overnight, units: [{ diag, code: "AZ", am: "", pm: "AFK", ends: "AFK PM",
+                                   mg: 100, miles: 100 }] });
+  const day = key => ({ [key]: new Map([["ASHFORD", [
+    e(15 * 60 + 35, "5L47", "625", false), e(10 * 60 + 5, "5J25", "625", true),
+    e(9 * 60 + 54, "5R27", "623", false), e(5 * 60 + 58, "5R07", "610", true)]]]) });
+  const order = key => {
+    const lay = H.layoutDay(key, { [key]: "02/10/26" }, day(key), null);
+    const out = [];
+    for (let r = 9; r < lay.maxRow; r++) {
+      const at = c => (lay.cells.find(x => x.r === r && x.c === c) || {});
+      if (at(8).xf === SKIN.bars.ASHFORD.H) out.push("BAR");
+      else if (at(9).v) out.push(at(12).v);
+    }
+    return out;
+  };
+  /* Thursday 01/10 on their sheet: the run-out, the bar, then 5R27 at 09 54
+     and 5J25 at 10 05. On Friday AZ625 berths at Ashford and its 10 05 is
+     its first move of the day - it still goes under the bar, as the planner
+     asked and 45 of their weekday tabs have it. */
+  assert.deepEqual(order("F"), ["05+58", "BAR", "09+54", "10+05", "15+35"]);
+  // a Saturday runs out later: its 10 05 first move is still the morning
+  assert.deepEqual(order("SA"), ["05+58", "10+05", "BAR", "09+54", "15+35"]);
+});

@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.18.2</b> · 30 September 2026</span>
+      <span class="ver">Version <b>3.18.3</b> · 30 September 2026</span>
     </div>
   </header>
 
@@ -1646,7 +1646,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.18.2
+      works without an internet connection. Version 3.18.3
       &middot; 30 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2821,10 +2821,12 @@ const SHEETS_RULES = (() => {
              "Sunday's included for a Monday, and a single day's reports say " +
              "“no previous day loaded” in the heading rather than leaving a " +
              "blank you have to guess at. On the right, today's allocations, " +
-             "in the order they leave: each unit's first move of the day, off " +
-             "its overnight berth before two, above a bar in the depot's own " +
-             "colour — green Ashford, pink Faversham, purple Margate, blue " +
-             "Ramsgate — and everything that goes out later below it." },
+             "in the order they leave: the morning run-out — each unit's " +
+             "first move of the day off its overnight berth, leaving before " +
+             "09:45 (midday at a weekend) — above a bar in the depot's own " +
+             "colour, green Ashford, pink Faversham, purple Margate, blue " +
+             "Ramsgate; everything else below it, in time order, so 5R27 at " +
+             "09:54 comes before a first move at 10:05." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +
@@ -5611,7 +5613,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKI
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
 const SKIN = SHEETS_HS_SKIN;
-const { fmtTime, AM_CUTOFF } = SHEETS_CORE;
+const { fmtTime } = SHEETS_CORE;
 const { DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
@@ -5875,6 +5877,17 @@ const kindOf = hc => /^[12]/.test(hc || "") ? "pax" : "ecs";
 const RETURN_PM_FROM = 960;
 /* a stand long enough to be a reference on an all-day diagram */
 const LONG_STAND = 90;
+/* Where each block's bar goes. A unit's first move of the day, off its
+   overnight berth, is above it if it leaves before this - the morning
+   run-out - and everything else is below it, in time order. From their own
+   tabs: on a weekday every first move up to 09:40 is above the bar, while
+   5R27 at 09:54 is below it on 44 tabs and 5J25 at 10:05 on 45 of 55 (the
+   planner: "the green bar for Ashford needs to go before 10 05"). The
+   weekend runs out later - Saturdays up to 10:18 above, nothing below
+   before 12:43; Sundays up to 08:50 - so midday there. The house AM/PM
+   line at 14:00 put 10:05 above it. */
+const RUN_OUT_TO = 9 * 60 + 45;
+const RUN_OUT_TO_WEEKEND = 12 * 60;
 
 /* Rough per-column widths for the on-screen preview only - the saved file
    carries the workbook's own <cols> verbatim from the skin. */
@@ -5987,6 +6000,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   };
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
+  const runOutTo = dayKey === "SA" || dayKey === "SU" ? RUN_OUT_TO_WEEKEND : RUN_OUT_TO;
   const today = longDate(dayKey, dates[dayKey]);
   /* the day's own stops, and the night before's - by DATE, so Sunday's
      reports give Monday its arrivals although no Sunday tab is built */
@@ -6053,11 +6067,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           hl: u.hl,
           time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
           endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
-          /* the morning's allocations - a unit's first move of the day,
-             off its overnight berth, before two - go above the bar. The
-             weekend prints do not say which move is the first; there it
-             is the time alone. */
-          am: (e.overnight === undefined || !!e.overnight) && e.time < AM_CUTOFF,
+          /* the morning run-out - a unit's first move of the day, off its
+             overnight berth - goes above the bar. The weekend prints do not
+             say which move is the first; there it is the time alone. */
+          am: (e.overnight === undefined || !!e.overnight) && e.time < runOutTo,
           follows: false,
         };
         if (!has) {
