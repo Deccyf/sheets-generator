@@ -290,10 +290,11 @@ The 395 sheet reads more of the day than a berthing book does, so
 and Summary rows, keyed by date, a weekend's included (Monday's arrivals are
 Sunday night's), and each unit carries its stint's stop range (`sa`, `sb`).
 From those `src/hs.js` fills every column the depot fills by hand except
-the next-day forming and CET: the working a train ID actually runs to, N/M
+the units, which the stock controller chooses, the next-day forming and CET: the working a train ID actually runs to, N/M
 and M/O per line, where each line ends and on what, a long platform stand
 as a reference, the next working after a return, the "not over high level"
-note on a line that never calls at Gravesend, and last night's arrivals
+note on a line that never goes by the North Kent (Gravesend, Strood,
+Rochester, Gillingham), and last night's arrivals
 with their working, time, unit and 6 or 12. **Which end of a 12** each unit
 is at — FP/RP, MAR/MIN leaving, L/C/MIN/MAR arriving — is not in any
 report, so it is followed: the Summary's position 1 leads the first move,
@@ -315,11 +316,10 @@ departure ("602(1)\603(2)", leading unit first), and each unit its stint's
 stop range. The print's place names become the reports' codes (`PRINT_CODE`,
 lined up stop by stop against the Saturday 19/09 Detail); the ends of a 12
 are read off the printed order; and because a print lists only where a
-diagram does something, the Gravesend note is read off each working's
-headcode (`viaGravesend`, right on all 726 workings of four days' Detail
-exports) and the neighbour a train really passes stands in for a far-off
-print stop when an end is worked out. The units are left blank for the
-stock controller; last night's arrivals come from the day before's Summary
+diagram does something, the North Kent note is read off the places it does
+list and each working's headcode (`viaNorthKent`, right on all 726 workings
+of four days' Detail exports) and the neighbour a train really passes stands in for a far-off
+print stop when an end is worked out. Last night's arrivals come from the day before's Summary
 and Detail dropped with the prints, read by `GENIUS.hsDaysFrom`, which does
 not turn a weekend pair away. Against the depot's Saturday 19/09 tab it
 matches every train ID, FP/RP, ENDS PM and PM arrival (28 of 28).

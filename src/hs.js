@@ -287,14 +287,23 @@ const PRINT_CODE = {
   "StPancInt": "STPANCI", "Mgate": "MARGATE", "Ram": "RAMSGTE", "Ram Depot": "RAMSGTD",
   "RM DRW": "RAMSDRW", "RMUSW": "RAMSUSW", "RM EK5143": "RAM5143", "RM EK5145": "RAM5145",
   "Fav": "FAVRSHM", "Fav Bk Rd": "FAVRBRD", "Fav Up Sd": "FAVRUPS", "FV EK4327": "FAV4327",
-  "CantrbryW": "CNTBW", "Dover P": "DOVERP", "Sndwch": "SWCH", "Gill": "GLNGHMK" };
-/* Whether a working runs by Gravesend, from its headcode and the two ends it
-   runs between - for the prints, which list only where a diagram does
-   something, never the calls in between. Over four days of Detail exports
-   (18 to 21/09, 726 workings) this is right every time: a passenger C, F
-   or T and an empty T always call there, and an empty F only between St
-   Pancras and Faversham; J, L, R, U and W never do. */
-function viaGravesend(hc, from, to) {
+  "CantrbryW": "CNTBW", "Dover P": "DOVERP", "Sndwch": "SWCH", "Gill": "GLNGHMK",
+  "Strood": "STROOD", "Roch": "RCHT", "Sitt": "STNGBRN", "Maid W": "MSTONEW" };
+/* The North Kent: a 395 that calls at any of these has gone by Gravesend -
+   "if it calls Strood, Gillingham, Rochester it will go via the North
+   Kent", in the planner's words, and on all 787 workings of four days'
+   Detail exports a call at one of them and a call at Gravesend go
+   together. */
+const NORTH_KENT = new Set(["GRVSEND", "STROOD", "RCHT", "GLNGHMK"]);
+/* Whether a working runs by the North Kent, from its headcode and the two
+   ends it runs between - for the prints, which list only where a diagram
+   does something, never the calls in between. Over four days of Detail
+   exports (18 to 21/09, 726 workings) this is right every time: a
+   passenger C, F or T and an empty T always go that way, and an empty F
+   only between St Pancras and Faversham; J, L, R, U and W never do. One
+   that starts or ends on the North Kent is on it, whatever its headcode. */
+function viaNorthKent(hc, from, to) {
+  if (NORTH_KENT.has(from) || NORTH_KENT.has(to)) return true;
   const m = /^([125])([A-Z])/.exec(hc || "");
   if (!m) return false;
   if (m[2] === "T") return true;
@@ -322,7 +331,7 @@ function dayFromPrint(date, diagrams) {
       // the whole working, end to end, however many places it is printed at
       let a = k; while (a > 0 && st[a - 1].hcOut === hc) a--;
       let b = k + 1; while (b < st.length - 1 && st[b].hcOut === hc) b++;
-      st[k].grv = viaGravesend(hc, st[a].code, st[b].code);
+      st[k].grv = viaNorthKent(hc, st[a].code, st[b].code);
     }
   /* The place next door. Which end of a 12 is which turns on the side of
      the station the train is on, and a print often names a far-off place
@@ -564,7 +573,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           mg: u.mg != null ? u.mg
             : (u.miles == null ? "" : Math.round(u.miles)),
           hl: u.hl,
-          time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
+          /* UNIT NO is the stock controller's: they choose the units for
+             the day, so it is left ruled and empty with the fleet drop-down
+             on it, weekday and weekend alike. The only units the sheet
+             fills are last night's arrivals. */
+          time: fmtTime(e.time, e.time_kind), unit: "",
           endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
           /* the morning run-out - a unit's first move of the day, off its
              overnight berth - goes above the bar. The weekend prints do not
@@ -628,12 +641,13 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           }
         }
         /* The note their sheet keeps on the DIAGRAM cell: this part of the
-           day never goes via Gravesend. Their own tabs for 18, 19 and 20/09
-           carry it on 77 parts of 83 and on no part that does call there;
-           the other six never call there either, and were not marked. A
-           weekend print lists no calls in between, so there it is each
-           working's headcode that says (viaGravesend). */
-        row.note = st.slice(u.sa, sb + 1).some(s => s.code === "GRVSEND") ||
+           day never goes by the North Kent - never calls at Gravesend,
+           Strood, Rochester or Gillingham. Their own tabs for 18, 19 and
+           20/09 carry it on 77 parts of 83 and on no part that does call
+           there; the other six never call there either, and were not marked.
+           A weekend print lists no calls in between, so there it is each
+           working's headcode that says (viaNorthKent). */
+        row.note = st.slice(u.sa, sb + 1).some(s => NORTH_KENT.has(s.code)) ||
                    st.slice(u.sa, sb).some(s => s.grv) ? "" : "not over high level";
         row.nm = multipleMark(F, diag, u.sa, sb);
         return row;
@@ -651,20 +665,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
        Ramsgate first. Each side stays in time order. */
     const amN = rows.filter(v => v.am).length;
     rows.splice(0, rows.length, ...rows.filter(v => v.am), ...rows.filter(v => !v.am));
-    /* Ramsgate's own rule, written on their sheet: an arrival is shown on
-       the same line as the diagram its unit is allocated to. Where the units
-       are known both sides, each arrival goes on its unit's line; the rest
-       fill the lines left, in the order they got in. */
-    if (depot === "RAMSGATE" && arr.some(a => a.unit) && rows.some(v => v.unit)) {
-      const placed = new Array(Math.max(rows.length, arr.length)).fill(null), rest = [];
-      for (const a of arr) {
-        const i = a.unit ? rows.findIndex((v, j) => v.unit === a.unit && !placed[j]) : -1;
-        if (i >= 0) placed[i] = a; else rest.push(a);
-      }
-      for (let j = 0; j < placed.length && rest.length; j++) if (!placed[j]) placed[j] = rest.shift();
-      arr = placed.concat(rest);
-      while (arr.length && !arr[arr.length - 1]) arr.pop();
-    }
+    /* Ramsgate's own rule, written on their sheet - an arrival on the same
+       line as the diagram its unit is given - is the stock controller's to
+       follow as they choose the units, so the arrivals are listed in the
+       order they get in, as at every other depot. */
     const n = Math.max(rows.length, arr.length);
     const d0 = r;
     const mgRows = [];
@@ -837,7 +841,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
 }
 
 return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand,
-         dayFromPrint, viaGravesend, PRINT_CODE, dayBefore,
+         dayFromPrint, viaNorthKent, NORTH_KENT, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;

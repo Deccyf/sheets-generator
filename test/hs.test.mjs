@@ -500,14 +500,38 @@ test("last night's arrivals come off that night's own reports: working, time, un
   assert.deepEqual(rows, [["5J20", "09+50 C", "395011", "12"], ["5J20", "09+50 L", "395012", "12"]]);
 });
 
-test("at Ramsgate an arrival sits on the line of the diagram its unit is allocated to", async () => {
+test("UNIT NO is the stock controller's to fill in; last night's arrivals keep their units", async () => {
+  /* The stock controller chooses the units for the day, so the allocations'
+     UNIT NO is left ruled and empty on a weekday too, though the Summary
+     names 395099 and 395001 for these two. The only units the sheet fills
+     are the arrivals'. And with no allocated units to line them up by, the
+     Ramsgate arrivals are listed in the order they got in, as everywhere. */
   const { tab } = await week("03/08/26", "04/08/26");
   const t = tab("Tue 04 08");
-  const on = t.row("AZ621", "07+00");
-  assert.equal(on.at("N"), "395001");
-  assert.deepEqual(["B", "C", "D", "E"].map(c => on.at(c)), ["5R32", "18+50", "395001", "6"],
-    "Monday's AZ601 unit, on the line of the diagram it works on Tuesday");
-  assert.equal(t.row("AZ620", "06+00").at("B"), "", "not on the first line just because it is first");
+  const a = t.row("AZ620", "06+00"), b = t.row("AZ621", "07+00");
+  assert.equal(a.at("N"), ""); assert.equal(b.at("N"), "");
+  assert.deepEqual(["B", "C", "D", "E"].map(c => a.at(c)), ["5R32", "18+50", "395001", "6"],
+    "Monday's AZ601 unit, in with its number");
+});
+
+test("a working that calls at Strood, Rochester or Gillingham has gone by the North Kent", () => {
+  const H = built().SHEETS_HS;
+  // "if it calls Strood, Gillingham, Rochester it will go via the North Kent"
+  for (const c of ["GRVSEND", "STROOD", "RCHT", "GLNGHMK"]) assert.ok(H.NORTH_KENT.has(c), c);
+  assert.equal(H.viaNorthKent("5J99", "FAVRSHM", "GLNGHMK"), true, "ending there, whatever the headcode");
+  assert.equal(H.viaNorthKent("1F23", "FAVRSHM", "STPANCI"), true);
+  assert.equal(H.viaNorthKent("1J21", "STPANCI", "MARGATE"), false);
+  assert.equal(H.viaNorthKent("5F24", "FAVRSHM", "FAVRBRD"), false, "an empty F off the main line");
+  // the prints' own names for them
+  assert.deepEqual(["Strood", "Roch", "Gill"].map(n => H.PRINT_CODE[n]), ["STROOD", "RCHT", "GLNGHMK"]);
+  /* and a print that shows the call is read by it: a J working, which by
+     its headcode alone never goes that way, calling at Strood */
+  const day = H.dayFromPrint("01/08/26", [{ diag: "AZ601", stops: [
+    { loc: "Ashfrd DS", arr: null, dep: 420, hcIn: null, hcOut: "5J01" },
+    { loc: "Strood", arr: 480, dep: 490, hcIn: "5J01", hcOut: "5J02" },
+    { loc: "Ashfrd DS", arr: 560, dep: null, hcIn: "5J02", hcOut: null }] }]);
+  assert.deepEqual(Array.from(day.stops.get("AZ601"), s => s.grv), [true, true, false],
+    "both workings touch the North Kent");
 });
 
 test("Sunday's reports give Monday its arrivals, though Sunday has no tab of its own", async () => {

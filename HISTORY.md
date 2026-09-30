@@ -140,6 +140,26 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.19.1 — 30 September 2026 — UNIT NO for the stock controller, and the North Kent by name
+
+**UNIT NO is left blank on weekdays too.** The stock controller chooses the
+units for the day, so the allocations' unit column is theirs to fill, with
+the fleet drop-down on it - the Summary's units no longer go in. The only
+units the sheet fills are last night's arrivals. Ramsgate's arrivals were
+being lined up with the diagram their unit had in the Summary; with no
+allocated units to go by they are listed in the order they got in, as at
+every other depot, and lining them up is the stock controller's as they
+choose.
+
+**The North Kent by name.** From the planner: a 395 that calls at Strood,
+Gillingham or Rochester has gone by the North Kent. The route note now
+treats a call at any of those like a call at Gravesend - on four days of
+Detail exports the two always go together (787 workings), so no weekday
+sheet changes, but a print that shows one of them is now read by it, and a
+working that starts or ends at one is on the North Kent whatever its
+headcode. The prints' own names for them ("Strood", "Roch", "Gill", with
+"Sitt" and "Maid W") are in `PRINT_CODE`.
+
 ## 3.19.0 — 30 September 2026 — the weekend 395 sheet from the prints, filled like the weekday one
 
 **The weekend prints build the same allocations sheet, filled the same way.**

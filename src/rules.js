@@ -210,10 +210,10 @@ const SHEETS_RULES = (() => {
            "Margate end and MIN the Minster end at Ramsgate. Off the Summary's " +
            "position and the way the first move goes; the London or Margate " +
            "end is on the first line. Empty for a unit that leaves alone."],
-          ["UNIT NO", "The unit where the report names one. Where it does " +
-           "not — and always on a sheet built from the weekend prints, which " +
-           "name no units — the cell is left ruled and empty for the stock " +
-           "controller to fill in."],
+          ["UNIT NO", "Left ruled and empty, weekday and weekend: the stock " +
+           "controller chooses the units for the day. The fleet list is on " +
+           "it as a drop-down. The only units the sheet fills in are last " +
+           "night's arrivals."],
           ["ENDS AM, ARRIVES", "A line that comes back into a depot before " +
            "four in the afternoon and goes out again: where, and when it gets " +
            "in. On a diagram out all day, its first platform stand of an hour " +
@@ -238,9 +238,10 @@ const SHEETS_RULES = (() => {
              "TIME are the working the unit came in on and when, with the " +
              "end it came in at where it was half of a 12; UNIT NUMBER where " +
              "the report names one; 6 OR 12 CAR off whether it came in " +
-             "coupled; and CET DUE is left empty to write in. At Ramsgate, " +
-             "as their sheet asks, each arrival sits on the line of the " +
-             "diagram its unit is allocated to, where the units are known." },
+             "coupled; and CET DUE is left empty to write in. They are listed " +
+             "in the order they got in — at Ramsgate too, where their sheet " +
+             "asks for each arrival on the line of the diagram its unit is " +
+             "given, which follows from the units the stock controller chooses." },
         { p: "Between the two tables, outside Ashford, every morning " +
              "allocation has WORKS written against it: what that unit forms " +
              "next is for you to fill in, from what you can see and the " +
@@ -250,8 +251,10 @@ const SHEETS_RULES = (() => {
              "calls in between, but it writes the formation against every " +
              "departure, leading unit first — so the ends of a 12 are read " +
              "off it rather than worked out, and whether a working goes by " +
-             "Gravesend is read off its headcode: a passenger C, F or T, " +
-             "any T, and an empty F between St Pancras and Faversham. Drop " +
+             "the North Kent is read off the places it does list and the " +
+             "headcode: a passenger C, F or T, any T, an empty F between St " +
+             "Pancras and Faversham, and anything to or from Strood, Rochester " +
+             "or Gillingham. Drop " +
              "the day before's Diagram Summary and Detail with the print and " +
              "last night's arrivals fill in, units and all." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
@@ -259,7 +262,8 @@ const SHEETS_RULES = (() => {
              "a cell and the arrow is there." },
         { note: "The DIAGRAM cells carry the route note as a comment, the " +
           "way the hand-kept workbook does — hover over one to read it. “not " +
-          "over high level” goes on a line that never calls at Gravesend, " +
+          "over high level” goes on a line that never goes by the North " +
+          "Kent — never calls at Gravesend, Strood, Rochester or Gillingham — " +
           "which is also what the workbook's “avoids North Kent” means. It is " +
           "per line, not per diagram — a diagram can go out by Gravesend first " +
           "thing and spend the rest of the day off it. A report saved as a " +
