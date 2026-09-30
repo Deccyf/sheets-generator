@@ -280,7 +280,11 @@ test("each depot block is arrivals on the left, allocations on the right", async
   assert.ok(note, "the footer notes block is re-anchored under the last depot");
 });
 
-test("the columns the reports cannot fill are ruled and empty", async () => {
+/* Without the day's own stops - a build that carries only the books - the
+   columns that need them are ruled and left for the depot, rather than
+   filled with something the books cannot know. With them, see the tests
+   at the end of this file. */
+test("with no stops to read, the columns that need them are ruled and empty", async () => {
   const N = built();
   const H = N.SHEETS_HS;
   const r = await res(N);
@@ -393,4 +397,138 @@ test("a merged panel's box comes from the range's edges, not the anchor's sides"
     assert.equal((all.pop() || "").split(":").slice(1).join(":").trim(), want[s],
       "the panel's " + s + " is drawn where the workbook draws it");
   }
+});
+
+/* ---- the sheet filled from the day's own stops ----
+   A Monday and a Tuesday of 395 work (test/helpers/hs-synth.mjs): a 12 out
+   of Ramsgate to St Pancras and home to Ashford depot, a unit out of Ashford
+   that comes back mid-morning and goes out again by Gravesend, and on the
+   Tuesday two Ramsgate diagrams, one on Monday's AZ601 unit. */
+import { hsWeekCsv } from "./helpers/hs-synth.mjs";
+const COLS = "ABCDEFGHIJKLMNOPQRST";
+async function week(...dates) {
+  const N = built();
+  const files = []; for (const d of dates) files.push(...hsWeekCsv(d));
+  const r = await N.GENIUS.build(files);
+  const sheets = N.SHEETS_HS.sheetsFor(r.hsSecs, r.labels, r.dates, r.hsDays);
+  return { N, r, sheets, tab: name => {
+    const sh = sheets.find(s => s.name === name);
+    const g = new Map(); for (const c of sh.layout.cells) g.set(c.r + ":" + COLS[c.c - 1], c.v);
+    const notes = new Map(sh.layout.comments.map(c => [c.ref, c.text]));
+    const row = (diag, time) => { for (let r = 1; r <= sh.layout.maxRow; r++)
+      if (g.get(r + ":I") === diag && g.get(r + ":L") === time) return { r, at: c => g.get(r + ":" + c) || "", note: notes.get("I" + r) || "" };
+      return null; };
+    const title = re => { for (let r = 1; r <= sh.layout.maxRow; r++) if (re.test(g.get(r + ":B") || "")) return r; return null; };
+    return { g, row, title, at: (r, c) => g.get(r + ":" + c) || "" };
+  } };
+}
+
+test("each part of the day says where it ends, on what and when, and what it works next", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  const am = t.row("AZ601", "06+00"), pm = t.row("AZ601", "16+00");
+  // back into Ashford depot at ten and out again at four: ENDS AM, and WORKS names the next working
+  assert.equal(am.at("O"), "ASH"); assert.equal(am.at("P"), "10+00");
+  assert.equal(am.at("Q"), "", "a morning return is not where it ends the day");
+  assert.equal(am.at("T"), "5R30", "WORKS: the working it goes back out on");
+  // the last part runs to the end of the day: ENDS PM, the working it came in on, the time
+  assert.equal(pm.at("Q"), "RAM"); assert.equal(pm.at("R"), "5R32"); assert.equal(pm.at("S"), "18+50");
+  assert.equal(pm.at("T"), "", "nothing to work next that day");
+});
+
+test("NM on a part of the day that never runs coupled, M/O on one that never runs alone", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  assert.equal(t.row("AZ601", "06+00").at("J"), "NM");
+  assert.equal(t.row("AZ601", "16+00").at("J"), "NM");
+  assert.equal(t.row("AZ611", "05+00").at("J"), "M/O");
+  assert.equal(t.row("AZ612", "05+00").at("J"), "M/O");
+});
+
+test("a 12 leaving Ramsgate names its Margate and Minster ends, Margate end first, the train ID once", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  const a = t.row("AZ611", "05+00"), b = t.row("AZ612", "05+00");
+  // position 1 leads the first move, and the first move is out of the Margate end
+  assert.equal(a.at("M"), "MAR"); assert.equal(b.at("M"), "MIN");
+  assert.equal(b.r, a.r + 1, "the Margate end on the first line");
+  assert.equal(a.at("H"), "5J05 MAR"); assert.equal(b.at("H"), "", "the train ID once, for the pair");
+});
+
+test("a 12 arriving names the end each unit comes in at, where the order can be followed", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  /* The order is carried from Ramsgate depot: turned at Margate, through
+     Ramsgate and Canterbury, turned at St Pancras, turned at Ashford to go
+     into the Down Yard, and in to the depot - so AZ612 leads the last move
+     and stands at the London end. */
+  assert.equal(t.row("AZ611", "05+00").at("S"), "09+50 C");
+  assert.equal(t.row("AZ612", "05+00").at("S"), "09+50 L");
+  assert.equal(t.row("AZ611", "05+00").at("R"), "5J20");
+});
+
+test("the TRAIN ID names where that working itself goes, in the sheet's own words", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  assert.equal(t.row("AZ601", "06+00").at("H"), "5R01 AFK", "the empty run from the depot to Ashford station");
+  assert.equal(t.row("AZ601", "16+00").at("H"), "5R30 AFK");
+});
+
+test("an all-day diagram's long platform stand is shown in ENDS AM, beside where it ends", async () => {
+  const { tab } = await week("03/08/26");
+  const a = tab("Mon 03 08").row("AZ611", "05+00");
+  assert.equal(a.at("O"), "SPX", "nearly two hours at St Pancras");
+  assert.equal(a.at("P"), "06 50");
+  assert.equal(a.at("Q"), "ASH", "and ENDS PM still says where it ends");
+});
+
+test("the high-level note sits on a part of the day that never calls at Gravesend", async () => {
+  const { tab } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  assert.equal(t.row("AZ601", "06+00").note, "not over high level", "Ashford to Dover and back");
+  assert.equal(t.row("AZ601", "16+00").note, "", "out by Gravesend and the North Kent");
+});
+
+test("last night's arrivals come off that night's own reports: working, time, unit, 6 or 12 and the end", async () => {
+  const { tab } = await week("03/08/26", "04/08/26");
+  const t = tab("Tue 04 08");
+  const h = t.title(/^ASHFORD PM ARRIVALS Monday 03\/08\/26$/);
+  assert.ok(h, "titled with the night they are from");
+  const rows = [h + 2, h + 3].map(r => ["B", "C", "D", "E"].map(c => t.at(r, c)));
+  assert.deepEqual(rows, [["5J20", "09+50 C", "395011", "12"], ["5J20", "09+50 L", "395012", "12"]]);
+});
+
+test("at Ramsgate an arrival sits on the line of the diagram its unit is allocated to", async () => {
+  const { tab } = await week("03/08/26", "04/08/26");
+  const t = tab("Tue 04 08");
+  const on = t.row("AZ621", "07+00");
+  assert.equal(on.at("N"), "395001");
+  assert.deepEqual(["B", "C", "D", "E"].map(c => on.at(c)), ["5R32", "18+50", "395001", "6"],
+    "Monday's AZ601 unit, on the line of the diagram it works on Tuesday");
+  assert.equal(t.row("AZ620", "06+00").at("B"), "", "not on the first line just because it is first");
+});
+
+test("Sunday's reports give Monday its arrivals, though Sunday has no tab of its own", async () => {
+  const { sheets, tab } = await week("02/08/26", "03/08/26");
+  assert.deepEqual(Array.from(sheets, s => s.name), ["Mon 03 08"]);
+  const t = tab("Mon 03 08");
+  const h = t.title(/^ASHFORD PM ARRIVALS Sunday 02\/08\/26$/);
+  assert.ok(h);
+  assert.deepEqual(["B", "C", "D", "E"].map(c => t.at(h + 2, c)), ["5J60", "20+05", "395030", "6"]);
+});
+
+test("an end is left blank where the order passes somewhere the sheet cannot follow it", () => {
+  const H = built().SHEETS_HS;
+  assert.equal(H.reverses("CNTBW", "NOWHERE", "EBSFLTI"), "?", "a station with no sides");
+  assert.equal(H.reverses("STFORDI", "STPANCI", "STFORDI"), true, "St Pancras turns everything round");
+  assert.equal(H.reverses("MARGATE", "RAMSGTE", "MINSTER"), false, "Ramsgate is a through station");
+  assert.equal(H.reverses("EBSFLTI", "ASHFKY", "ASHFDYW"), true, "HS1 into Ashford and back out to the yard");
+  // two units coupled from a depot, through a station the table does not know, into Ashford depot
+  const S = (code, arr, dep, hcIn, hcOut) => ({ code, name: code, arr, dep, hcIn, hcOut });
+  const leg = [S("RAMSGTD", null, 300, null, "5X01"), S("NOWHERE", 320, 330, "5X01", "5X01"),
+               S("ASHFKY", 360, 365, "5X01", "5X01"), S("ASHFDYW", 370, 375, "5X01", "5X01"), S("ASHFDNS", 380, null, "5X01", null)];
+  const F = H.dayFacts({ date: "03/08/26", stops: new Map([["AZ691", leg], ["AZ692", leg]]),
+                         rows: [{ diag: "AZ691", start: 300, pos: 1 }, { diag: "AZ692", start: 300, pos: 2 }] });
+  assert.equal(H.arrivalEnd(F, "AZ691", 4), null, "one of a 12, but which end cannot be said");
+  assert.ok(F.mate.has("AZ691@3"), "…and still known to be one of a 12");
 });

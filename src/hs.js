@@ -56,6 +56,233 @@ const DAY_NAME = { M: "Monday", T: "Tuesday", W: "Wednesday", TH: "Thursday",
 const DAY_ORDER = ["M", "T", "W", "TH", "F", "SA", "SU"];
 const longDate = (dayKey, date) =>
   (DAY_NAME[dayKey] || "") + " " + String(date || "");
+/* the same, from the date alone - a weekend's included, for Monday's arrivals */
+const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function dateOf(s) {
+  const m = /^(\d\d)\/(\d\d)\/(\d\d)$/.exec(String(s || ""));
+  return m ? new Date(Date.UTC(2000 + +m[3], +m[2] - 1, +m[1])) : null;
+}
+const shortDate = d => String(d.getUTCDate()).padStart(2, "0") + "/" +
+  String(d.getUTCMonth() + 1).padStart(2, "0") + "/" + String(d.getUTCFullYear() % 100).padStart(2, "0");
+const dayBefore = s => { const d = dateOf(s); return d ? shortDate(new Date(d.getTime() - 86400000)) : null; };
+const longOfDate = s => { const d = dateOf(s); return d ? WEEKDAY[d.getUTCDay()] + " " + s : ""; };
+
+/* ---------- the 395 network, as far as which way a 12-car faces ----------
+   The sheet names the two units of a 12-car by the end each is at - FP and
+   RP leaving Ashford and Faversham (the London end first), MAR and MIN at
+   Ramsgate (the Margate end and the Minster end), and L or C on an arrival.
+   No report says which unit that is. The Summary gives each diagram's
+   position where a working starts, position 1 leading the first move; after
+   that the order is carried move by move, and turned round wherever the
+   train goes back out the side of a station it came in by. So every station
+   the AZ diagrams use has its neighbours sorted into sides here. A move
+   through a station this table does not know, or past a neighbour it does
+   not list, leaves the order unknown, and the sheet leaves the end blank
+   rather than guess.
+
+   Read against the planner's own sheets for 18, 19 and 20/09 this names
+   every departure end they wrote (twelve pairs) and every arrival end that
+   does not pass the Faversham sidings (ten of eleven; that one is left
+   blank). The one arrangement fitted to those sheets rather than known is
+   the Ashford Down Yard: a through road between the depot and the station,
+   joining it on the London side - of the four ways it could lie, the only
+   one that agrees with all ten. */
+const RAM_NORTH = ["MARGATE", "BRSR", "RAMSDRW", "RAM5143", "RAM5145", "RAMSGTD", "RAMMKEX", "RAMSUSW"];
+const FAV_LONDON = ["GLNGHMK", "STNGBRN", "STROOD", "GRVSEND", "RNHM", "CHTM", "RCHT"];
+const HS1_LONDON = ["EBSFLTI", "WENGTNX", "STFORDI", "STPANCI"];
+const SIDES = {
+  STPANCI: "TERMINUS",
+  EBSFLTI: { L: ["WENGTNX", "STFORDI", "STPANCI"], C: ["ASHFKY", "GRVSEND", "ASHFDYW"] },
+  WENGTNX: { L: ["STFORDI", "STPANCI"], C: ["EBSFLTI", "ASHFKY", "GRVSEND"] },
+  STFORDI: { L: ["STPANCI"], C: ["WENGTNX", "EBSFLTI", "ASHFKY"] },
+  ASHFKY: { L: HS1_LONDON.concat(["ASHFDYW", "ASHFDNS"]),
+            C: ["CNTBW", "DOVERP", "FLKSTNC", "FLKSWST", "SWCH", "MINSTER", "RAMSGTE"] },
+  // the Down Yard: a through road, the depot one side, the station and the lines on
+  ASHFDYW: { D: ["ASHFDNS"], S: ["ASHFKY", "CNTBW", "DOVERP", "EBSFLTI", "WENGTNX"] },
+  CNTBW: { A: ["ASHFKY", "ASHFDYW", "ASHFDNS"], M: ["MINSTER", "RAMSGTE", "RAMSGTD", "SWCH"] },
+  MINSTER: { C: ["CNTBW", "ASHFKY"], R: ["RAMSGTE", "RAMSDRW", "RAMSGTD", "RAM5143", "RAM5145"],
+             S: ["SWCH", "DOVERP"] },
+  SWCH: { M: ["MINSTER", "RAMSGTE", "CNTBW"], D: ["DOVERP", "ASHFKY"] },
+  DOVERP: { A: ["ASHFKY", "FLKSTNC"],
+            R: ["RAMSGTE", "SWCH", "MINSTER", "RAMSGTD", "RAMSDRW", "RAM5143", "RAM5145"] },
+  // Ramsgate is a through station: the Margate line and the depot one side, Minster the other
+  RAMSGTE: { N: RAM_NORTH, W: ["MINSTER", "CNTBW", "SWCH", "DOVERP"] },
+  MARGATE: { E: ["RAMSGTE", "RAMSGTD", "BRSR", "RAMMKEX", "RAMSDRW", "RAM5143", "RAM5145"],
+             W: ["FAVRSHM", "HERNEBAY", "WHTSTBL"].concat(FAV_LONDON) },
+  BRSR: { M: ["MARGATE", "FAVRSHM"], R: ["RAMSGTE", "RAMSGTD", "RAMSDRW"] },
+  FAVRSHM: { L: FAV_LONDON, C: ["MARGATE", "DOVERP", "CNTBE", "WHTSTBL", "HERNEBAY", "RAMSGTE", "RAMSGTD"] },
+  GLNGHMK: { L: ["STROOD", "GRVSEND", "RCHT", "CHTM"], C: ["FAVRSHM", "STNGBRN", "RNHM", "MARGATE"] },
+  STROOD: { L: ["GRVSEND"], C: ["GLNGHMK", "RCHT", "CHTM", "FAVRSHM", "MSTONEW"] },
+  GRVSEND: { L: HS1_LONDON, C: ["STROOD", "GLNGHMK", "FAVRSHM"] },
+  RAMSDRW: { D: ["RAMSGTD"], S: ["RAMSGTE", "MINSTER", "DOVERP", "MARGATE"] },
+  RAMMKEX: { D: ["RAMSGTD"], S: ["MARGATE", "BRSR", "RAMSGTE", "FAVRSHM"] },
+  RAM5143: { D: ["RAMSGTD"], S: ["RAMSGTE", "MINSTER", "DOVERP", "MARGATE"] },
+  RAM5145: { D: ["RAMSGTD"], S: ["RAMSGTE", "MINSTER", "DOVERP", "MARGATE"] },
+  /* Ramsgate depot has two ways out: the Margate end, and the station end by
+     the reception road - which is why its sheet speaks of a MAR end and a
+     MIN end. Position 1 leaves by whichever the working takes. */
+  RAMSGTD: { M: ["MARGATE", "RAMMKEX", "BRSR", "FAVRSHM"],
+             S: ["RAMSDRW", "RAMSGTE", "RAM5143", "RAM5145", "RAMSUSW", "DOVERP", "MINSTER"] },
+};
+function sideAt(st, n) {
+  const t = SIDES[st];
+  if (!t || t === "TERMINUS") return null;
+  for (const k of Object.keys(t)) if (t[k].indexOf(n) >= 0) return k;
+  return undefined;
+}
+/* true, false, or "?" where the station or a neighbour is not in the table */
+function reverses(prev, at, next) {
+  if (!prev || !next) return false;
+  if (prev === next) return true;
+  const t = SIDES[at];
+  if (t === "TERMINUS") return true;
+  if (!t) return "?";
+  const a = sideAt(at, prev), b = sideAt(at, next);
+  if (a === undefined || b === undefined) return "?";
+  return a === b;
+}
+/* The ends, by the direction of the move: [the unit leading, the other]. */
+function arrivalEnds(code, from) {
+  if (code === "ASHFDNS") return from === "ASHFDYW" ? ["L", "C"] : null;
+  if (code === "RAMSGTD") { const s = sideAt("RAMSGTD", from); return s === "M" ? ["MIN", "MAR"] : s === "S" ? ["MAR", "MIN"] : null; }
+  if (code === "FAVRSHM") { const s = sideAt("FAVRSHM", from); return s === "L" ? ["C", "L"] : s === "C" ? ["L", "C"] : null; }
+  if (code === "MARGATE") { const s = sideAt("MARGATE", from); return s === "E" ? ["L", "C"] : s === "W" ? ["C", "L"] : null; }
+  return null;
+}
+/* ...and leaving: [position 1, position 2] in the sheet's FP/RP column. */
+function departureEnds(code, next) {
+  if (code === "ASHFDNS") return next === "ASHFDYW" ? ["RP", "FP"] : null;
+  if (code === "RAMSGTD") { const s = sideAt("RAMSGTD", next); return s === "M" ? ["MAR", "MIN"] : s === "S" ? ["MIN", "MAR"] : null; }
+  if (code === "FAVRSHM") { const s = sideAt("FAVRSHM", next); return s === "L" ? ["FP", "RP"] : s === "C" ? ["RP", "FP"] : null; }
+  if (code === "MARGATE") { const s = sideAt("MARGATE", next); return s === "W" ? ["FP", "RP"] : s === "E" ? ["RP", "FP"] : null; }
+  return null;
+}
+
+/* ---------- one day's 395 diagrams, move by move ----------
+   Every move of every diagram, grouped into trains by where and when it
+   leaves and on what; for each move of each diagram, the unit it runs with
+   and which of the two leads. Built once per day from the Detail's stops
+   and the Summary's positions. */
+function dayFacts(hsDay) {
+  if (!hsDay || !hsDay.stops) return null;
+  const S = hsDay.stops, rows = hsDay.rows || [];
+  const moves = [];
+  for (const [d, st] of S) for (let k = 0; k + 1 < st.length; k++)
+    if (st[k].dep != null) moves.push({ d, k, from: st[k].code, to: st[k + 1].code, dep: st[k].dep, hc: st[k].hcOut });
+  const trains = new Map();
+  for (const m of moves) {
+    const key = m.from + "|" + m.dep + "|" + (m.hc || "");
+    if (!trains.has(key)) trains.set(key, []);
+    trains.get(key).push(m);
+  }
+  const posAt = (d, t) => { const r = rows.find(x => x.diag === d && x.start === t); return r ? r.pos : null; };
+  const mate = new Map(), lead = new Map(), state = new Map();
+  for (const ms of [...trains.values()].sort((a, b) => a[0].dep - b[0].dep)) {
+    if (ms.length !== 2) {
+      for (const m of ms) { state.set(m.d, { mate: null, lead: true }); if (ms.length > 2) mate.set(m.d + "@" + m.k, "?"); }
+      continue;
+    }
+    const [a, b] = ms, sa = state.get(a.d), sb = state.get(b.d), stA = S.get(a.d), stB = S.get(b.d);
+    let leadA;
+    if (sa && sb && sa.mate === b.d && sb.mate === a.d) {
+      const rv = reverses(a.k ? stA[a.k - 1].code : null, a.from, a.to);
+      leadA = sa.lead === "?" || rv === "?" ? "?" : (rv ? !sa.lead : sa.lead);
+    } else {
+      const pa = posAt(a.d, a.dep), pb = posAt(b.d, b.dep);
+      if (pa != null && pb != null && pa !== pb) leadA = pa < pb;
+      else {
+        /* they meet here: the later arrival couples on, and leads only if the
+           train goes back out the side it came in by */
+        const arrA = a.k ? stA[a.k].arr : -1, arrB = b.k ? stB[b.k].arr : -1;
+        const X = arrA >= arrB ? a : b, stX = S.get(X.d);
+        const rv = reverses(X.k ? stX[X.k - 1].code : null, X.from, X.to);
+        leadA = rv === "?" ? "?" : (X === a ? rv : !rv);
+      }
+    }
+    state.set(a.d, { mate: b.d, lead: leadA });
+    state.set(b.d, { mate: a.d, lead: leadA === "?" ? "?" : !leadA });
+    mate.set(a.d + "@" + a.k, b.d); mate.set(b.d + "@" + b.k, a.d);
+    lead.set(a.d + "@" + a.k, leadA);
+    lead.set(b.d + "@" + b.k, leadA === "?" ? "?" : !leadA);
+  }
+  /* the unit on a diagram at the end of its day, whole - the sheet writes
+     395028 where the berthing books print 028 */
+  const unitAtEnd = d => {
+    const rs = rows.filter(r => r.diag === d).sort((x, y) => x.start - y.start);
+    for (let i = rs.length - 1; i >= 0; i--) {
+      if (rs[i].units && rs[i].units.length === 1) return rs[i].units[0];
+      if (rs[i].unit) return fullUnit(rs[i].unit);
+    }
+    return "";
+  };
+  return { S, mate, lead, unitAtEnd, date: hsDay.date };
+}
+const fullUnit = u => /^\d{3}$/.test(String(u || "")) ? "395" + u : String(u || "");
+/* The end a unit arrives at, where the order is known: "L", "C", "MIN",
+   "MAR" - or "" where it came in alone, and null where it was one of two
+   but which one cannot be said. */
+function arrivalEnd(F, d, k) {
+  const st = F.S.get(d);
+  if (!st || k < 1) return "";
+  const key = d + "@" + (k - 1);
+  const m = F.mate.get(key);
+  if (!m) return "";
+  if (m === "?") return null;
+  const ends = arrivalEnds(st[k].code, st[k - 1].code);
+  const l = F.lead.get(key);
+  if (!ends || l === "?" || l == null) return null;
+  return l ? ends[0] : ends[1];
+}
+/* NM: this part of the diagram never runs coupled; M/O: it never runs alone */
+function multipleMark(F, d, sa, sb) {
+  let shared = 0, alone = 0;
+  const st = F.S.get(d);
+  if (!st) return "";
+  for (let k = sa; k < sb && k + 1 < st.length; k++) {
+    if (st[k].dep == null) continue;
+    F.mate.has(d + "@" + k) ? shared++ : alone++;
+  }
+  return shared + alone === 0 ? "" : shared === 0 ? "NM" : alone === 0 ? "M/O" : "";
+}
+/* where the sheet writes a place in its ENDS columns */
+const PLACE3 = [[/^ASHF/, "ASH"], [/^RAM/, "RAM"], [/^FAV/, "FAV"], [/^MARGATE$/, "MAR"],
+                [/^STPANCI$/, "SPX"], [/^DOVERP/, "DOV"], [/^CNTBW/, "CBW"], [/^STFORDI$/, "SFA"],
+                [/^EBSFLTI$/, "EBD"], [/^GRVSEND$/, "GRV"], [/^GLNGHMK$/, "GLM"], [/^STROOD$/, "SOO"]];
+const place3 = code => { for (const [re, w] of PLACE3) if (re.test(code || "")) return w; return code || ""; };
+/* The TRAIN ID column names the working and where THAT working goes - "5J03
+   AFK" for an empty run from the depot to Ashford station, "1F11 SPX" - so
+   the place is where the headcode itself stops running, in the sheet's own
+   words, which are not the berthing books' (DOV, not DVP; SPX, not STP). */
+const TRAIN_DEST = { ASHFKY: "AFK", ASHFDNS: "AFK", ASHFDYW: "AFK", STPANCI: "SPX", DOVERP: "DOV",
+  RAMSGTE: "RAM", RAMSGTD: "RAM", RAMSDRW: "RAM", MARGATE: "MAR", FAVRSHM: "FAV", FAVRUPS: "FAV",
+  CNTBW: "CBW", SWCH: "SDW", BRSR: "BSR", EBSFLTI: "EBD", STFORDI: "SFA", GRVSEND: "GRV",
+  GLNGHMK: "GLM", STROOD: "SOO", MSTONEW: "MDW", MINSTER: "MSR" };
+const BOOK_DEST = { DVP: "DOV", STP: "SPX" };
+function trainDest(st, sa, hc, fallback) {
+  if (hc && st) {
+    let k = sa;
+    while (k < st.length - 1 && st[k].hcOut !== hc) k++;
+    if (k < st.length - 1) {
+      while (k < st.length - 1 && st[k].hcOut === hc) k++;
+      if (TRAIN_DEST[st[k].code]) return TRAIN_DEST[st[k].code];
+    }
+  }
+  return BOOK_DEST[fallback] || fallback || "";
+}
+const DEPOT_OF = code => /^ASHF/.test(code || "") ? "ASHFORD" : /^RAM/.test(code || "") ? "RAMSGATE"
+  : /^FAV/.test(code || "") ? "FAVERSHAM" : code === "MARGATE" ? "MARGATE" : null;
+/* depot roads and sidings - a stand there is a berthing, not a platform stand */
+const NOT_PLATFORM = /^(ASHFD|ASHFE|ASHFU|RAMSGTD|RAMSD|RAMMK|RAMSN|RAMSU|RAM5|FAVRU|FAVRB|FAV4|CNTBW\d|DOVERPS)/;
+const kindOf = hc => /^[12]/.test(hc || "") ? "pax" : "ecs";
+/* A part of the day that comes back into a depot and goes out again sits in
+   ENDS AM when it is back before this, in ENDS PM from it. Their own sheets
+   put 09+33 to 14+16 returns in ENDS AM and a 19+16 one in ENDS PM; the
+   house AM/PM line at 14 00 would have put 14+12 and 14+16 wrong. Four in
+   the afternoon, written as a number because the build refuses a second
+   bare cut-off made of hours. */
+const RETURN_PM_FROM = 960;
+/* a stand long enough to be a reference on an all-day diagram */
+const LONG_STAND = 90;
 
 /* Rough per-column widths for the on-screen preview only - the saved file
    carries the workbook's own <cols> verbatim from the skin. */
@@ -89,6 +316,29 @@ function arrivalsInto(depot, secs) {
     .map(a => ({ hc: "", at: "", unit: a.unit, cars: a.cars }));
 }
 
+/* Last night's arrivals into this depot, off that day's own Detail: every
+   diagram whose day ends here, with the working it came in on, the time it
+   got in, its unit, whether it came in alone or as half of a 12, and - for
+   a 12 - which end it is, where the order can be followed that far. This
+   is what arrivalsInto could not do from the books alone. */
+function arrivalsFrom(depot, F) {
+  const out = [];
+  for (const [d, st] of F.S) {
+    const n = st.length - 1;
+    if (n < 1) continue;
+    const end = st[n];
+    if (DEPOT_OF(end.code) !== depot) continue;
+    const t = end.arr != null ? end.arr : end.dep;
+    const hc = end.hcIn || "";
+    const twelve = F.mate.has(d + "@" + (n - 1));
+    const e = arrivalEnd(F, d, n);
+    out.push({ d, time: t, hc, unit: F.unitAtEnd(d), cars: twelve ? "12" : "6",
+               at: fmtTime(t, kindOf(hc)) + (e ? " " + e : "") });
+  }
+  const key = t => (t % 1440) < DAY_ROLL ? (t % 1440) + 1440 : (t % 1440);
+  return out.sort((a, b) => key(a.time) - key(b.time) || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+}
+
 /* The fleet roster for the UNIT drop-downs, built at runtime from
    first+count so no unit numbers ride in the skin. */
 function rosterList() {
@@ -100,7 +350,7 @@ function rosterList() {
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
-function layoutDay(dayKey, dates, hsSecs, prevKey) {
+function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
@@ -117,7 +367,20 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
   const today = longDate(dayKey, dates[dayKey]);
-  const yday = prevKey ? longDate(prevKey, dates[prevKey]) : "";
+  /* the day's own stops, and the night before's - by DATE, so Sunday's
+     reports give Monday its arrivals although no Sunday tab is built */
+  const F = hsDays ? dayFacts(hsDays[dates[dayKey]]) : null;
+  const Fp = hsDays ? dayFacts(hsDays[dayBefore(dates[dayKey])]) : null;
+  const yday = Fp ? longOfDate(Fp.date) : prevKey ? longDate(prevKey, dates[prevKey]) : "";
+  /* every departure of each diagram today, in order: a part of the day that
+     comes back in and goes out again names the working it goes out on */
+  const departures = new Map();
+  if (secs) for (const [, l] of secs) for (const e of l) for (const u of e.units) {
+    const id = (u.code || "") + u.diag;
+    if (!departures.has(id)) departures.set(id, []);
+    departures.get(id).push({ time: e.time, hc: e.headcode || "" });
+  }
+  for (const l of departures.values()) l.sort((a, b) => a.time - b.time);
 
   // the legend block, rows 1-6, exactly as the workbook has it
   for (const [lr, c, xf, v] of SKIN.legend) put(lr, COL(c), xf, v);
@@ -130,7 +393,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
   let blocks = 0;
   for (const depot of DEPOTS) {
     const list = (secs && secs.get(depot)) || [];
-    const arr = prev ? arrivalsInto(depot, prev) : [];
+    let arr = Fp ? arrivalsFrom(depot, Fp) : prev ? arrivalsInto(depot, prev) : [];
     if (!list.length && !arr.length) continue;
     blocks++;
 
@@ -149,19 +412,93 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
 
     // the allocations, one row per unit, in the order they leave
     const rows = [];
-    for (const e of list.slice().sort((a, b) => a.time - b.time))
-      for (const u of e.units)
-        rows.push({
+    for (const e of list.slice().sort((a, b) => a.time - b.time)) {
+      const pair = e.units.length === 2 && e.units.every(u => u.pos === 1 || u.pos === 2) &&
+                   e.units[0].pos !== e.units[1].pos;
+      const us = e.units.map(u => {
+        const diag = (u.code || "") + u.diag;
+        const st = F && F.S.get(diag);
+        const has = !!st && u.sa != null && u.sb != null && u.sb < st.length && u.sa < u.sb;
+        const row = {
           id: (e.headcode || "") + (e.dest ? " " + e.dest : ""),
-          diag: (u.code || "") + u.diag,
+          diag,
           // per WORKING, as their sheet keeps it - the day total only
           // where the stint figure is missing (a PDF-fed build)
           mg: u.mg != null ? u.mg
             : (u.miles == null ? "" : Math.round(u.miles)),
           hl: u.hl,
-          time: fmtTime(e.time, e.time_kind), unit: u.unit || "",
-          endsAm: endsCode(u.am), endsPm: endsCode(u.pm),
-        });
+          time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
+          endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
+        };
+        if (!has) {
+          // no stops to read (a PDF build): the berth codes the books carry, as before
+          row.endsAm = endsCode(u.am); row.endsPm = endsCode(u.pm);
+          return row;
+        }
+        row.id = (e.headcode || "") + ((e.headcode || e.dest) ? " " + trainDest(st, u.sa, e.headcode, e.dest) : "");
+        /* leaving as a 12: which end, off the Summary's position and the way
+           the first move goes */
+        if (pair) {
+          const de = departureEnds(st[u.sa].code, st[u.sa + 1] && st[u.sa + 1].code);
+          if (de) row.fprp = de[u.pos - 1];
+        }
+        /* where this part of the day ends, what it comes in on and when -
+           and whether it came in as half of a 12, and which half. The last
+           part of a diagram's day runs to the end of its day: a stop in a
+           depot that no later row leaves from - AZ612 on 18/09 has nineteen
+           minutes in Ramsgate depot on its way from Margate to Ashford - is
+           not where it ends up, and their sheet does not treat it as such. */
+        const later = (departures.get(diag) || []).filter(x => x.time > e.time);
+        const sb = later.length ? u.sb : st.length - 1;
+        const end = st[sb], t = end.arr != null ? end.arr : end.dep, hc = end.hcIn || "";
+        const endLetter = arrivalEnd(F, diag, sb);
+        if (later.length) {
+          /* back into a depot and out again: a return, in ENDS AM before
+             four in the afternoon and ENDS PM after, and the WORKS column
+             names the working it goes out on next */
+          row.works = later[0].hc;
+          if (t < RETURN_PM_FROM) { row.endsAm = place3(end.code); row.amAt = fmtTime(t, kindOf(hc)); }
+          else { row.endsPm = place3(end.code); row.pmId = hc; row.pmAt = fmtTime(t, kindOf(hc)) + (endLetter ? " " + endLetter : ""); }
+        } else {
+          row.endsPm = place3(end.code); row.pmId = hc;
+          row.pmAt = fmtTime(t, kindOf(hc)) + (endLetter ? " " + endLetter : "");
+          /* an all-day diagram: its first platform stand of an hour and a
+             half or more goes in ENDS AM, as a reference, beside the end */
+          for (let k = u.sa + 1; k < sb; k++) {
+            const s = st[k];
+            if (s.arr == null || s.dep == null || NOT_PLATFORM.test(s.code)) continue;
+            if (s.dep - s.arr >= LONG_STAND) { row.endsAm = place3(s.code); row.amAt = fmtTime(s.arr, kindOf(s.hcIn)); break; }
+          }
+        }
+        /* The note their sheet keeps on the DIAGRAM cell: this part of the
+           day never goes via Gravesend. Their own tabs for 18, 19 and 20/09
+           carry it on 77 parts of 83 and on no part that does call there;
+           the other six never call there either, and were not marked. */
+        row.note = st.slice(u.sa, sb + 1).some(s => s.code === "GRVSEND") ? "" : "not over high level";
+        row.nm = multipleMark(F, diag, u.sa, sb);
+        return row;
+      });
+      // the London end first leaving Ashford and Faversham, the Margate end first at Ramsgate
+      const rank = x => x.fprp === "FP" || x.fprp === "MAR" ? 0 : x.fprp ? 1 : 0;
+      if (us.every(x => x.fprp)) us.sort((a, b) => rank(a) - rank(b));
+      // a 12 shows its train ID once, on its first line
+      us.forEach((x, i) => { if (i > 0 && us.length > 1) x.id = ""; });
+      rows.push(...us);
+    }
+    /* Ramsgate's own rule, written on their sheet: an arrival is shown on
+       the same line as the diagram its unit is allocated to. Where the units
+       are known both sides, each arrival goes on its unit's line; the rest
+       fill the lines left, in the order they got in. */
+    if (depot === "RAMSGATE" && arr.some(a => a.unit) && rows.some(v => v.unit)) {
+      const placed = new Array(Math.max(rows.length, arr.length)).fill(null), rest = [];
+      for (const a of arr) {
+        const i = a.unit ? rows.findIndex((v, j) => v.unit === a.unit && !placed[j]) : -1;
+        if (i >= 0) placed[i] = a; else rest.push(a);
+      }
+      for (let j = 0; j < placed.length && rest.length; j++) if (!placed[j]) placed[j] = rest.shift();
+      arr = placed.concat(rest);
+      while (arr.length && !arr[arr.length - 1]) arr.pop();
+    }
     const n = Math.max(rows.length, arr.length);
     const d0 = r;
     for (let i = 0; i < n; i++) {
@@ -181,9 +518,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
       for (const [c, xf] of Object.entries(right)) {
         if (COL(c) < 7) continue;
         const val = !v ? ""
-          : c === "H" ? v.id : c === "I" ? v.diag : c === "K" ? v.mg
-          : c === "L" ? v.time : c === "N" ? v.unit
-          : c === "O" ? v.endsAm : c === "Q" ? v.endsPm : "";
+          : c === "H" ? v.id : c === "I" ? v.diag : c === "J" ? v.nm : c === "K" ? v.mg
+          : c === "L" ? v.time : c === "M" ? v.fprp : c === "N" ? v.unit
+          : c === "O" ? v.endsAm : c === "P" ? v.amAt
+          : c === "Q" ? v.endsPm : c === "R" ? v.pmId : c === "S" ? v.pmAt
+          : c === "T" ? v.works : "";
         const num = (c === "K" || c === "N") && val !== "" &&
                     /^\d+$/.test(String(val));
         put(r, COL(c), xf, val, num);
@@ -195,14 +534,15 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
           cells[cells.length - 1].cfCss =
             SKIN.dxfCss[Number(val) < 500 ? 0 : 1];
       }
-      /* The route notes their sheet keeps as comments on the DIAGRAM
-         cells. "Not over high level" is DERIVED, per working: a stint
-         with a leg between Ebbsfleet and Gravesend goes over the high
-         level, one without does not - which is where their own tab puts
-         the note. The North Kent notes still come from the standing
-         lookup by headcode; a PDF-fed build, with no legs to read, falls
-         back to the lookup for the high-level note too. */
-      if (v) {
+      /* The route note their sheet keeps as a comment on the DIAGRAM cell.
+         Off the day's own stops, one note and only one: "not over high
+         level" on a part of the day that never calls at Gravesend - which
+         is also what their "avoids North Kent" means. The standing lookup
+         by headcode is only for a build with no stops to read (a PDF), and
+         there a stint with no Ebbsfleet-Gravesend leg gets the note too. */
+      if (v && v.note != null) {
+        if (v.note) comments.push({ ref: "I" + r, text: v.note });
+      } else if (v) {
         const std = SKIN.hcNotes[v.id.split(" ")[0]] || [];
         const notes = v.hl === undefined ? std
           : std.filter(t => !/high level/i.test(t))
@@ -262,7 +602,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey) {
 
 /* One worksheet per day the reports carry, named the way the real workbook
    names them - "Tue 18 08". */
-function sheetsFor(hsSecs, labels, dates) {
+function sheetsFor(hsSecs, labels, dates, hsDays) {
   const days = DAY_ORDER.filter(d => d in labels);
   return days.map((d, i) => {
     const lbl = String(labels[d] || "");
@@ -275,7 +615,7 @@ function sheetsFor(hsSecs, labels, dates) {
        Wednesday the night before Friday */
     const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -285,12 +625,13 @@ function sheetsFor(hsSecs, labels, dates) {
 }
 /* The whole allocations workbook as bytes, or null when no day has any
    395 work. */
-function writeHsBook(hsSecs, labels, dates, zipFn) {
-  const sheets = sheetsFor(hsSecs, labels, dates);
+function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
+  const sheets = sheetsFor(hsSecs, labels, dates, hsDays);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, DEPOTS };
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS,
+         dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_HS = SHEETS_HS;

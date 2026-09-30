@@ -832,6 +832,12 @@ const GENIUS = (() => {
         }
         const blk = { diag: u.diag, si: u.si, exitIdx: u.exitIdx,
                       dayEnd, miles, mg, hl, turn,
+                      /* the stint's first and last stop, as indices into
+                         stopsOf() of the diagram's Detail: the High Speed
+                         allocations sheet reads where this part of the day
+                         ends, what it arrives on and what it passes, off the
+                         same stops the row was cut from */
+                      sa: sa2, sb: sb2,
                       pos: posAt(sums, e.tmin), D, E,
                       cls: prof.fleets[sum.fleet], paxAfter, shunted,
                       later: later.length > 0 };
@@ -1295,6 +1301,7 @@ const GENIUS = (() => {
                       ends: x.dayEnd || "", miles: x.miles };
           if (x.mg != null) u.mg = x.mg;
           if (x.hl != null) u.hl = x.hl;
+          if (x.sa != null) { u.sa = x.sa; u.sb = x.sb; }
           // only where the export named the allocated unit, so every other
           // entry keeps the exact shape the golden test pins
           if (x.unit) u.unit = x.unit;
@@ -1359,6 +1366,26 @@ const GENIUS = (() => {
     const stock = {};
     const dayDate = {};      // the full dd/mm/yy behind each label
     const dates = [...new Set(sumRows.map(r => r.date))].filter(Boolean);
+    /* The Class 395 allocations sheet reads more of the day than a berthing
+       book does: where each part of a diagram ends and on what, which unit
+       leads a 12-car, what arrives at each depot at night. So the raw stops
+       and Summary rows of every 395 diagram ride out beside the books, keyed
+       by DATE - a weekend's included, since Monday's tab lists Sunday
+       night's arrivals and nothing else carries them. */
+    const hsDays = {};
+    {
+      const hsFleets = PROFILES_G[2].fleets;
+      for (const date of dates) {
+        const det = byDate.get(date);
+        if (!det) continue;
+        const rows = sumRows.filter(r => r.date === date && r.fleet in hsFleets);
+        if (!rows.length) continue;
+        const want = new Set(rows.map(r => r.diag));
+        const stops = new Map();
+        for (const [diag, raw] of det) if (want.has(diag) && raw.length) stops.set(diag, stopsOf(raw));
+        hsDays[date] = { date, stops, rows };
+      }
+    }
     for (const date of dates) {
       const dk = dayKey(date);
       if (!dk) { noteAll(date + ": falls on a weekend — use the weekend prints panel"); continue; }
@@ -1466,7 +1493,7 @@ const GENIUS = (() => {
               " re-pin it or clear it");
     }
     return { secsByDay, metroSecs, hsSecs, labels, dates: dayDate, review, reviews,
-             stock,
+             stock, hsDays,
              /* what this build actually ran with, for the Rules tab to
                 render - never a second copy of the tables read separately */
              rules: { orderFix: fixTable, edits, coupled: fx.coupled,

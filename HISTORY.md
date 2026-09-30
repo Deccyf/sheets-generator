@@ -140,6 +140,63 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.18.0 — 30 September 2026 — the 395 allocations sheet, filled as the depot fills it
+
+**What it did before**: the headcode, the diagram, the miles, the time, the
+unit and the berth codes, and every other column ruled and empty. Held
+against the depot's own tabs for Friday 18, Saturday 19 and Sunday 20
+September, it now fills the columns they fill by hand, from the day's own
+Summary and Detail:
+
+- **TRAIN ID** names where that working itself goes — "5J03 AFK" for the
+  empty run from the depot to Ashford station, not where the diagram is
+  heading — in the sheet's own words (DOV, SPX). On a 12, once. Friday:
+  27 of 27.
+- **N/M M/O**: NM on a line that never runs coupled, M/O on one that never
+  runs alone. Per line, as their sheet marks it — Friday's AZ623 is NM on
+  the two parts that run alone and not on the one that couples at Ashford.
+  70 of 72 across the three days, and both others were left unmarked by hand
+  on a line that qualifies.
+- **FP/RP** says which end of a 12 each unit leaves at: FP the London end
+  and RP the country end out of Ashford and Faversham, MAR and MIN at
+  Ramsgate, London or Margate end first. Twelve pairs of twelve.
+- **ENDS AM / ENDS PM / TRAIN ID / ARRIVES**: where each line ends, what it
+  comes in on and when. A line that comes back into a depot and goes out
+  again is a return, in ENDS AM before four in the afternoon and ENDS PM
+  after, and **WORKS** names the working it goes out on next. An all-day
+  diagram's first platform stand of an hour and a half or more goes in ENDS
+  AM as a reference beside its end. The last line of a diagram runs to the
+  end of its day, so AZ612's nineteen minutes in Ramsgate depot on its way to
+  Ashford is not taken for where it ends up.
+- **The DIAGRAM note**: "not over high level" on a line that never calls at
+  Gravesend, one note, off the day's stops rather than a list by headcode.
+  Their three tabs carry it on 77 lines of 83 and on no line that calls at
+  Gravesend; the other six never call there either.
+- **Last night's arrivals**, on the left: the working each unit came in on,
+  the time, the unit, 6 or 12, and for a 12 the end it came in at. Off that
+  night's own reports - so drop the day before's with today's, a Sunday's
+  included for a Monday. Friday night's 24 arrivals are, to the minute, the
+  24 ENDS PM lines of their Friday tab. At Ramsgate each arrival sits on the
+  line of the diagram its unit is allocated to, as their sheet asks.
+- **The unit number** is written whole, 395028, as their sheet writes it.
+
+**Which end of a 12.** No report says. The Summary gives each diagram's
+position where a working starts, position 1 leading the first move; the
+order is then followed move by move and turned round wherever the train
+goes back out the side of a station it came in by. That needs to know which
+side of each station every neighbour lies on, so the network the AZ
+diagrams use is written down as such a table — Ramsgate a through station
+with its depot open at both ends, Margate and St Pancras where trains turn,
+Ashford where an HS1 train turns to go into the depot. A move through a
+place the table does not know leaves the end blank rather than guessed. The
+Ashford Down Yard's layout is the one thing fitted to their sheets rather
+than known: of the four ways it could lie, one agrees with all ten arrival
+ends that can be followed, the next best with seven. The eleventh couples
+in the Faversham sidings, which the table does not know, and is left blank.
+
+**Still the depot's:** the next-day forming in WORKS at Faversham and
+Ramsgate, CET, and which of a depot's own diagrams a unit goes on.
+
 ## 3.17.0 — 20 September 2026 — a blank Action to write over, and the ends named
 
 **A unit no report places now gets a blank Action**, where it used to get

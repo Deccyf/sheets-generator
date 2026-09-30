@@ -73,6 +73,84 @@ export function hsDetailCsv() {
   return out.join("\r\n");
 }
 
+/* ---- two days of 395 work for the allocations sheet (Mon 03/08, Tue 04/08) ----
+   Monday: AZ611 and AZ612 leave Ramsgate depot together at 05 00 for Margate
+   (AZ611 position 1), turn there, run up to St Pancras - standing there nearly
+   two hours - and come back to Ashford depot by the Down Yard, a 12 all day.
+   AZ601 goes out of Ashford at 06 00, down to Dover and back into the depot
+   at 10 00, and out again at 16 00 by Gravesend and the North Kent to end the
+   day in Ramsgate depot. Tuesday: AZ620 and AZ621 go out of Ramsgate, the
+   second one on 395001 - Monday's AZ601 unit, which came in there the night
+   before. Every place is a Genius code the sheet's network table knows. */
+const X = (code, arr, dep, hc, ml) => ({ code, name: code, arr, dep, hc, ml });
+const PAIR = [
+  X("RAMSGTD", null, "05:00", "5J05", 0), X("MARGATE", "05:10", "05:20", "1J05", 4),
+  X("RAMSGTE", "05:32", "05:33", "1J05", 8), X("MINSTER", "05:40", "05:40", "1J05", 12),
+  X("CNTBW", "05:52", "05:54", "1J05", 20), X("ASHFKY", "06:10", "06:12", "1J05", 34),
+  X("EBSFLTI", "06:30", "06:31", "1J05", 70), X("STFORDI", "06:40", "06:42", "1J05", 80),
+  X("STPANCI", "06:50", "08:45", "1J20", 86), X("STFORDI", "08:52", "08:54", "1J20", 92),
+  X("EBSFLTI", "09:04", "09:05", "1J20", 102), X("ASHFKY", "09:25", "09:27", "5J20", 138),
+  X("ASHFDYW", "09:32", "09:40", "5J20", 139), X("ASHFDNS", "09:50", null, null, 140)];
+export const HS_WEEK = {
+  // Sunday: no tab of its own, but Monday's arrivals are its arrivals
+  "02/08/26": {
+    units: { AZ630: "395030" },
+    pos: {},
+    diagrams: {
+      AZ630: [X("RAMSGTD", null, "09:00", "5J60", 0), X("RAMSGTE", "09:05", "09:08", "1J60", 1),
+              X("MINSTER", "09:15", "09:15", "1J60", 5), X("CNTBW", "09:27", "09:29", "1J60", 13),
+              X("ASHFKY", "09:45", "09:47", "5J60", 27), X("ASHFDNS", "20:05", null, null, 28)],
+    },
+  },
+  "03/08/26": {
+    units: { AZ611: "395011", AZ612: "395012", AZ601: "395001" },
+    pos: { AZ611: 1, AZ612: 2 },
+    diagrams: {
+      AZ611: PAIR, AZ612: PAIR,
+      AZ601: [
+        X("ASHFDNS", null, "06:00", "5R01", 0), X("ASHFDYW", "06:10", "06:18", "5R01", 1),
+        X("ASHFKY", "06:25", "06:30", "2R01", 2), X("DOVERP", "07:00", "07:20", "2R04", 24),
+        X("ASHFKY", "07:50", "07:55", "5R04", 46), X("ASHFDYW", "08:00", "08:10", "5R04", 47),
+        X("ASHFDNS", "10:00", "16:00", "5R30", 48), X("ASHFDYW", "16:10", "16:18", "5R30", 49),
+        X("ASHFKY", "16:25", "16:30", "1R30", 50), X("EBSFLTI", "16:50", "16:51", "1R30", 86),
+        X("GRVSEND", "17:00", "17:01", "1R30", 90), X("STROOD", "17:10", "17:11", "1R30", 97),
+        X("GLNGHMK", "17:20", "17:21", "1R30", 102), X("FAVRSHM", "17:40", "17:41", "1R30", 118),
+        X("MARGATE", "18:20", "18:30", "5R32", 140), X("RAMSGTD", "18:50", null, null, 144)],
+    },
+  },
+  "04/08/26": {
+    units: { AZ620: "395099", AZ621: "395001" },
+    pos: {},
+    diagrams: {
+      AZ620: [X("RAMSGTD", null, "06:00", "5J40", 0), X("MARGATE", "06:10", "06:20", "1J40", 4),
+              X("FAVRSHM", "07:00", null, null, 30)],
+      AZ621: [X("RAMSGTD", null, "07:00", "5J42", 0), X("MARGATE", "07:10", "07:20", "1J42", 4),
+              X("FAVRSHM", "08:00", null, null, 30)],
+    },
+  },
+};
+const headSum = date => SHEAD.replace(" 03/08/26", " " + date);
+const headDet = date => DHEAD.replace(" 03/08/26", " " + date);
+export function hsWeekCsv(date) {
+  const D = HS_WEEK[date];
+  const sum = Object.entries(D.diagrams).map(([diag, st]) => headSum(date) + ['"' + diag + '"',
+    '"' + (D.units[diag] ? D.units[diag] + "." : "") + '"', '"395/0"', "0.00", D.pos[diag] || 1,
+    '"' + st[0].dep + '"', '"' + st[0].code + '"', '"' + st[st.length - 1].code + '"',
+    '"' + st[st.length - 1].arr + '"', "-0.60", "100.00", "100.00", "", ""].join(",")).join("\r\n");
+  const det = [];
+  for (const [diag, st] of Object.entries(D.diagrams)) {
+    const head = headDet(date) + '"Diagram","' + diag + '","On","' + date + '","Notes",,"Miles","Fuel Miles",';
+    for (let i = 0; i + 1 < st.length; i++) {
+      const a = st[i], b = st[i + 1];
+      det.push(head + ['"' + a.code + '"', '"' + a.name + '"', a.arr ? '"' + a.arr + '"' : "",
+        a.dep ? '"' + a.dep + '"' : "", "", '"' + (a.hc || "") + '"', '"' + a.ml.toFixed(2) + '"', "1.00",
+        '"' + b.code + '"', '"' + b.name + '"', '"' + (b.arr || b.dep) + '"', '"Off Diagram"', '"  000"',
+        '"Works"', '"  000"'].join(","));
+    }
+  }
+  return [sum, det.join("\r\n")];
+}
+
 /* The disposition statement as it pastes out of the workbook: the header
    block's boxes, the heading row, then a line per unit. `plan` fills the
    four planning columns, which is what a finished sheet looks like; left

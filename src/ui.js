@@ -936,7 +936,7 @@ const panels = {};
   const WRITE = {
     berthing: (b, res, opts) => X.writeBooks(b.secs(res), res.labels, b.ram, opts),
     metro: (b, res) => METRO.writeMetroBook(b.secs(res), res.labels, b.order(res), zipFn, res.dates),
-    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn),
+    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn, res.hsDays),
   };
 
   async function renderBooks(res) {
@@ -1000,7 +1000,7 @@ const panels = {};
       } else {
         const sheets = b.kind === "metro"
           ? METRO.sheetsFor(secs, res.labels, b.order(res), res.dates)
-          : HS.sheetsFor(secs, res.labels, res.dates);
+          : HS.sheetsFor(secs, res.labels, res.dates, res.hsDays);
         panes = [[b.kind === "metro" ? "Sheet" : "Allocations",
                   () => metroPane(sheets, b.kind === "metro" ? "Location" : "Day")]];
       }

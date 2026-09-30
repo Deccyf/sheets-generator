@@ -276,11 +276,30 @@ and their ROAD column carries the road the working comes off in the depot's
 own words (DOWNS, UPS, SHED, C/END, L/END), from `DEPOT_ROAD` in
 `src/data.js`. The weekday **High Speed** book is the
 Class 395 Allocations Sheet: a worksheet per day, a block per depot, last
-night's arrivals (one row per unit; arrival time and train ID left for the
-depot, since the reports do not carry them) beside today's allocations, in
-the sheet's own style records, drop-downs and mileage colouring. Neither has
-a formation order to correct, so neither has a Unit order tab, and each
-one's Rules tab describes the document it is.
+night's arrivals beside today's allocations, in the sheet's own style
+records, drop-downs and mileage colouring. Neither has a formation order to
+correct, so neither has a Unit order tab, and each one's Rules tab
+describes the document it is.
+
+The 395 sheet reads more of the day than a berthing book does, so
+`GENIUS.build` hands it `hsDays` beside the books: each 395 diagram's stops
+and Summary rows, keyed by date, a weekend's included (Monday's arrivals are
+Sunday night's), and each unit carries its stint's stop range (`sa`, `sb`).
+From those `src/hs.js` fills every column the depot fills by hand except
+the next-day forming and CET: the working a train ID actually runs to, NM
+and M/O per line, where each line ends and on what, a long platform stand
+as a reference, the next working after a return, the "not over high level"
+note on a line that never calls at Gravesend, and last night's arrivals
+with their working, time, unit and 6 or 12. **Which end of a 12** each unit
+is at — FP/RP, MAR/MIN leaving, L/C/MIN/MAR arriving — is not in any
+report, so it is followed: the Summary's position 1 leads the first move,
+and the order turns round wherever the train goes back out the side of a
+station it came in by, from a table of which side of each station every
+neighbour lies (`SIDES` in `src/hs.js`). A move through a place that table
+does not know leaves the end blank. Against the depot's own sheets for 18,
+19 and 20/09 it names every departure end (twelve pairs) and ten of eleven
+arrival ends, the eleventh being left blank; the one fitted fact is the
+Ashford Down Yard's layout, the only one of four that agrees with all ten.
 
 ## The stock requirements form
 

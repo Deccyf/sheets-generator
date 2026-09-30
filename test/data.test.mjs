@@ -231,8 +231,9 @@ test("each book's rules describe the document that book actually is", () => {
   assert.match(hs, /Class 395 Allocations Sheet/, "the allocations sheet");
   assert.match(hs, /Ashford, Faversham, Margate and Ramsgate/,
     "naming the blocks the writer really lays out");
-  assert.match(hs, /Ebbsfleet and Gravesend/, "and where the high-level note " +
+  assert.match(hs, /never calls at Gravesend/, "and where the high-level note " +
     "comes from, since it is worked out rather than looked up");
+  assert.match(hs, /followed from the Summary's position/, "and how the end of a 12 is known");
   assert.doesNotMatch(hs, /SIDINGS|This is the Metro sheet/,
     "and nothing from the Metro sheet's columns");
 

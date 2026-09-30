@@ -165,17 +165,24 @@ const SHEETS_RULES = (() => {
              "nothing to show that day is left off, the same as the " +
              "hand-kept workbook does." },
         { p: "Each block is two tables side by side. On the left, what came " +
-             "in last night, read off the day before's own entries — so it " +
-             "fills whenever the reports cover more than one day, and a " +
-             "single day's reports say “no previous day loaded” in the " +
-             "heading rather than leaving a blank you have to guess at. On " +
-             "the right, today's allocations, in the order they leave." },
+             "in last night, read off that night's own Summary and Detail — " +
+             "drop the day before's reports with today's and it fills, a " +
+             "Sunday's included for a Monday, and a single day's reports say " +
+             "“no previous day loaded” in the heading rather than leaving a " +
+             "blank you have to guess at. On the right, today's allocations, " +
+             "in the order they leave." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
-          ["TRAIN ID", "The headcode and where it goes."],
+          ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +
+           "for an empty run from the depot to Ashford station, 1F11 SPX. On " +
+           "the first line of a 12 only."],
           ["DIAGRAM", "The day's work the unit is booked to, with its " +
            "code — AZ601."],
-          ["N/M M/O", "Left ruled and empty, to write in."],
+          ["N/M M/O", "NM where this part of the day never runs coupled to " +
+           "another unit, so a unit that must not run in multiple can take it; " +
+           "M/O where it never runs alone. Per line, not per diagram: a " +
+           "diagram that couples for an hour in the morning is NM on its " +
+           "afternoon line if that part runs alone."],
           ["MG", "The miles this WORKING runs, not the diagram's total for " +
            "the day. A diagram that comes out twice has a figure for each " +
            "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
@@ -189,34 +196,48 @@ const SHEETS_RULES = (() => {
            "saved as a PDF carries no mileage and the column stays empty."],
           ["TIME", "When it leaves. A space in the time (08 42) means it " +
            "leaves in service; a plus (08+42) means it leaves empty."],
-          ["FP/RP", "Left ruled and empty, to write in."],
+          ["FP/RP", "Which end of a 12 each unit leaves at: FP the London " +
+           "end and RP the country end out of Ashford and Faversham, MAR the " +
+           "Margate end and MIN the Minster end at Ramsgate. Off the Summary's " +
+           "position and the way the first move goes; the London or Margate " +
+           "end is on the first line. Empty for a unit that leaves alone."],
           ["UNIT NO", "The unit where the report names one. Where it does " +
            "not, the cell is left ruled and empty to write in."],
-          ["ENDS AM, ENDS PM", "Where the diagram stands next and where it " +
-           "finishes, in the depot's own berth codes — ASH, RAM, FAV — not " +
-           "the berthing books'."],
-          ["TRAIN ID, ARRIVES, WORKS", "The third table on the right hand " +
-           "side. Left ruled and empty, to write in."],
+          ["ENDS AM, ARRIVES", "A line that comes back into a depot before " +
+           "four in the afternoon and goes out again: where, and when it gets " +
+           "in. On a diagram out all day, its first platform stand of an hour " +
+           "and a half or more instead — SPX 09 10 — as a reference beside where " +
+           "it ends."],
+          ["ENDS PM, TRAIN ID, ARRIVES", "Where it ends the day, the working " +
+           "it comes in on and the time — and for half of a 12, the end it " +
+           "comes in at: L or C at Ashford, Faversham and Margate, MIN or MAR " +
+           "at Ramsgate. That end is followed from the Summary's position " +
+           "through every place the train turns round; where it passes " +
+           "somewhere the sheet cannot follow, the letter is left off rather " +
+           "than guessed. A line that comes back after four and goes out " +
+           "again is written here too."],
+          ["WORKS", "The working a line that comes back into a depot goes out " +
+           "on next — 5J94 after an Ashford morning. What forms what the next " +
+           "day is left to write in."],
         ] } },
         { p: "And last night's arrivals, on the left: TRAIN ID and ARRIVAL " +
-             "TIME are what the unit came in on, UNIT NUMBER where the " +
-             "report names one, 6 OR 12 CAR off the formation it arrived " +
-             "in, and CET DUE is left empty to write in." },
+             "TIME are the working the unit came in on and when, with the " +
+             "end it came in at where it was half of a 12; UNIT NUMBER where " +
+             "the report names one; 6 OR 12 CAR off whether it came in " +
+             "coupled; and CET DUE is left empty to write in. At Ramsgate, " +
+             "as their sheet asks, each arrival sits on the line of the " +
+             "diagram its unit is allocated to, where the units are known." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
              "a cell and the arrow is there." },
-        { note: "The DIAGRAM cells carry the standing route notes as " +
-          "comments, the way the hand-kept workbook does — hover over one " +
-          "to read it. “Not over high level” is worked out from the " +
-          "diagram itself: a working that runs between Ebbsfleet and " +
-          "Gravesend, either way round, goes over the high level, and one " +
-          "that does not gets the note. It is per working, not per " +
-          "diagram — a diagram can position out over the high level first " +
-          "thing and spend the rest of the day off it, and the real sheet " +
-          "marks those later workings. “Avoids North Kent” is not " +
-          "something the reports can show, so it comes from a standing " +
-          "list of the workings that carry it. A report saved as a PDF has " +
-          "no route to read and falls back to that list for both." },
+        { note: "The DIAGRAM cells carry the route note as a comment, the " +
+          "way the hand-kept workbook does — hover over one to read it. “not " +
+          "over high level” goes on a line that never calls at Gravesend, " +
+          "which is also what the workbook's “avoids North Kent” means. It is " +
+          "per line, not per diagram — a diagram can go out by Gravesend first " +
+          "thing and spend the rest of the day off it. A report saved as a " +
+          "PDF has no route to read and falls back to a standing list of the " +
+          "workings that carry a note." },
       ]);
     } else if (env.metro) {
       push("sheet", "What you are looking at", [
@@ -623,9 +644,14 @@ const SHEETS_RULES = (() => {
     /* ---- 10. what it will not do ---- */
     push("limits", "What the tool will not decide for you", [
       { ul: [
-        "It does not know which way a train physically faces. Everything " +
-        "about formation order comes from the position numbers" +
-        (notBerth ? "." : " and the corrections list above."),
+        env.hs
+          ? "It does not know which way a train physically faces except by " +
+            "following it: the end of a 12 comes from the position numbers, " +
+            "turned round where the train turns, and is left blank where it " +
+            "passes somewhere the sheet cannot follow."
+          : "It does not know which way a train physically faces. Everything " +
+            "about formation order comes from the position numbers" +
+            (notBerth ? "." : " and the corrections list above."),
         "It does not read the Sectional Appendix, and it makes no claim " +
         "about gauge clearance, route availability or what may run where. " +
         "Those questions go to the Appendix and the Weekly Operating Notice.",
