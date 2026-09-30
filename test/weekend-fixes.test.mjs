@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { built, norm } from "./helpers/compare.mjs";
 import { makeDocx, PRINTS_LINES, REISSUE_LINES, RUN_ROUND_PRINTS,
          SECTION_TURN_PRINTS, STABLED_PRINTS } from "./helpers/synth.mjs";
+import { hsWeekCsv } from "./helpers/hs-synth.mjs";
 
 const N = built();
 const zip = { un: b => N.fflate.unzipSync(b), z: f => N.fflate.zipSync(f) };
@@ -548,4 +549,89 @@ test("a run-round that works nothing afterwards is not claimed to be listed", ()
   const diags = metro.sheets.flatMap(s => Array.from(s.layout.cells)
     .filter(c => c.c === 6 && /^GN/.test(String(c.v))).map(c => String(c.v)));
   assert.deepEqual(norm(diags), ["GN621"], "GN622 really is on no sheet");
+});
+
+test("the weekend 395 sheet is filled from the print's stops and formations, as the weekday one is from the reports", async () => {
+  /* The prints list only where a diagram does something - no calls in
+     between - but they write the formation against every departure, leading
+     unit first. That, the stops and the headcodes fill every column the
+     weekday sheet fills from the reports; the units are left for the stock
+     controller, and last night's arrivals come from the day before's
+     Summary and Detail dropped with the print. */
+  const D = n => ["Diagram:\tAZ\t" + n + "\tMO", "Fleet:\t395/0", "From:\t03/08/2026"];
+  // a 12 out of the Down Sidings, straight to Margate as the print writes it
+  const pair = [
+    "\t\tAshfrd DS\t\t07+20\t5J21\t\t35.00\t605(1)\\606(2)",
+    "\t\tMgate\t08+30\t08.45\t1J21\t\t127.00\t606(1)\\605(2)",
+    "\t\tStPancInt\t10.15\t10.40\t1J24\t\t218.00\t605(1)\\606(2)",
+    "\t\tMgate\t12.10\t12+25\t5J72\t\t223.00\t606(1)\\605(2)",
+    "\t\tRam Depot\t12+45\t\t\t\t\t"];
+  // Faversham: back to the Back Road at midday and out again at five
+  const fav = [
+    "\t\tFav\t\t09.30\t1F23\t\t51.00\t",
+    "\t\tStPancInt\t10.35\t10.50\t1F24\t\t102.00\t",
+    "\t\tFav\t11.55\t12+05\t5F24\t\t103.00\t",
+    "\t\tFav Bk Rd\t12+30\t\t\t#\t\t",
+    "\t\tFav Bk Rd\t\t17+10\t5F51\t\t104.00\t",
+    "\t\tFav\t17+20\t17.30\t1F55\t\t155.00\t",
+    "\t\tStPancInt\t18.35\t18.50\t1F56\t\t206.00\t",
+    "\t\tFav\t19.55\t20+05\t5F56\t\t234.00\t",
+    "\t\tRam Depot\t20+45\t\t\t\t\t"];
+  // Ashford: back to the Down Sidings before noon, out again at 15+40
+  const ash = [
+    "\t\tAshfrd DS\t\t09+05\t5L23\t\t0.82\t",
+    "\t\tAshford I\t09+15\t09.30\t1L23\t\t57.00\t",
+    "\t\tStPancInt\t10.10\t10.40\t1L26\t\t113.00\t",
+    "\t\tAshford I\t11.20\t11+30\t5L26\t\t113.82\t",
+    "\t\tAshfrd DS\t11+45\t\t\t#\t\t",
+    "\t\tAshfrd DS\t\t15+40\t5L47\t\t114.64\t",
+    "\t\tAshford I\t15+50\t16.00\t1L47\t\t170.00\t",
+    "\t\tStPancInt\t16.40\t17.10\t1L50\t\t226.00\t",
+    "\t\tAshford I\t17.50\t18+00\t5L50\t\t226.82\t",
+    "\t\tAshfrd DS\t18+15\t\t\t\t\t"];
+  const lines = [...D(605), ...pair, ...D(606), ...pair, ...D(613), ...fav, ...D(608), ...ash];
+  const hsPrev = await N.GENIUS.hsDaysFrom(hsWeekCsv("02/08/26"));
+  const build = prev => N.SheetsEngine.run([docx(lines, "prints.docx")], zip.un, zip.z, { hsPrev: prev });
+  const hs = build(hsPrev).books.find(b => b.road === "High Speed");
+  const L = hs.sheets[0].layout, COLS = "ABCDEFGHIJKLMNOPQRST", SKIN = N.SHEETS_HS_SKIN;
+  const g = new Map(), x = new Map();
+  for (const c of L.cells) { g.set(c.r + COLS[c.c - 1], String(c.v || "")); x.set(c.r + COLS[c.c - 1], c.xf); }
+  const notes = new Map(L.comments.map(c => [c.ref, c.text]));
+  const rowsOf = diag => { const out = []; for (let r = 1; r <= L.maxRow; r++) if (g.get(r + "I") === diag) out.push(r); return out; };
+  const at = (r, c) => g.get(r + c) || "";
+  const yellow = (r, c) => /background:#FFFF00/.test(SKIN.xfCss[x.get(r + c)] || "");
+
+  // the 12: London end first, off the printed order; each end it gets in at
+  const [a6] = rowsOf("AZ606"), [a5] = rowsOf("AZ605");
+  assert.equal(a5, a6 + 1, "the London end's line first");
+  assert.deepEqual([at(a6, "H"), at(a6, "J"), at(a6, "M")], ["5J21 MAR", "M/O", "FP"]);
+  assert.deepEqual([at(a5, "H"), at(a5, "J"), at(a5, "M")], ["", "M/O", "RP"]);
+  assert.deepEqual([at(a6, "Q"), at(a6, "R"), at(a6, "S")], ["RAM", "5J72", "12+45 MIN"]);
+  assert.equal(at(a5, "S"), "12+45 MAR");
+  assert.equal(notes.get("I" + a6), "not over high level", "1J never calls at Gravesend");
+  assert.equal(at(a6, "N"), "", "the unit is the stock controller's to fill in");
+
+  // Faversham: one line for the day, the return in ENDS AM, the miles for the lot
+  const f = rowsOf("AZ613");
+  assert.equal(f.length, 1, "no second Faversham line: " + f);
+  assert.deepEqual(["O", "P", "Q", "R", "S", "T", "K"].map(c => at(f[0], c)),
+                   ["FAV", "12+30", "RAM", "5F56", "20+45", "", "234"]);
+  assert.ok(!notes.has("I" + f[0]), "1F runs by Gravesend, so no note");
+
+  // Ashford: the return, the working it goes out on, both marked
+  const [m1, m2] = rowsOf("AZ608");
+  assert.deepEqual(["O", "P", "T"].map(c => at(m1, c)), ["ASH", "11+45", "5L47"]);
+  assert.ok(yellow(m1, "T") && yellow(m2, "H"), "WORKS and the working it names on yellow");
+  assert.equal(at(m2, "H"), "5L47 AFK");
+  assert.ok(m2 > m1 + 1, "under the bar");
+
+  // last night's arrivals, from the day before's reports
+  const t = [...g.entries()].find(([k, v]) => /^ASHFORD PM ARRIVALS/.test(v));
+  assert.equal(t[1], "ASHFORD PM ARRIVALS Sunday 02/08/26");
+  const r0 = parseInt(t[0], 10) + 2;
+  assert.deepEqual(["B", "C", "D", "E"].map(c => at(r0, c)), ["5J60", "20+05", "395030", "6"]);
+  assert.ok(!hs.report.includes("PM arrivals"), "nothing to say when they are there");
+  // …and without them, the sheet says what to drop
+  const bare = build(null).books.find(b => b.road === "High Speed");
+  assert.match(bare.report, /PM arrivals: empty — drop the Diagram Summary and Diagram Detail for 02\/08\/26/);
 });

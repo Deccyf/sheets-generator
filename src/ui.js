@@ -77,6 +77,8 @@ const MSG = {
   zoneMixed: ["Mixed sources loaded", "drop a matching pair — both from Genius, or both from Integrale"],
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
+  weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
+    "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
   notAReport: name => "“" + name + "” isn't a report this reads — it takes the Diagram Summary and Diagrams CSVs from Integrale, or the Diagram Summary and Detail reports from Genius saved as CSV.",
   notThisPanel: "This panel takes the Diagram Summary and Diagram Detail reports (.pdf or .csv). Weekend prints go on the Weekend panel.",
@@ -1255,6 +1257,11 @@ const panels = {};
   const [wePasteMain, wePasteRe] = P.boxes;
   let built = null;
   let loadedDocs = [];
+  /* The day before's Diagram Summary and Detail, dropped with the prints:
+     the High Speed allocations sheet takes last night's arrivals from them,
+     the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
+     for a Sunday. Everything else comes from the prints. */
+  let hsPrev = null;
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
   const SPRITE_FOR = { Mainline: SPRITES.Mainline, "RAM SHEETS": SPRITES.Ramsgate,
                        Metro: SPRITES.Metro, "High Speed": SPRITES["High Speed"] };
@@ -1307,7 +1314,7 @@ const panels = {};
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true });
+      { allHeadcodes, splitRamsgate: true, hsPrev });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
@@ -1342,15 +1349,35 @@ const panels = {};
         let txt = "";
         try { txt = decodeText(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
         if (txt && !SHEETS_PRINTS.looksLikePrints(txt) && !SHEETS_PRINTS.printsFromCsv(txt) &&
-            (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) weekday.push(d);
+            (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
+          d.genius = !!GENIUS.sniffGeniusCsv(txt);
+          weekday.push(d);
+        }
       }
-      if (weekday.length) {
+      const docs = newDocs.filter(d => !weekday.includes(d));
+      /* With prints - in this drop or already loaded - the reports are the
+         day before's, for the High Speed arrivals. On their own they are
+         the weekday panel's, as they always were. */
+      let kept = false;
+      if (weekday.length && weekday.every(d => d.genius) && (docs.length || loadedDocs.length)) {
+        try {
+          hsPrev = await GENIUS.hsDaysFrom(weekday.map(d => decodeText(d.bytes)));
+          const ds = Object.keys(hsPrev);
+          if (ds.length) { say(MSG.weArrivals(ds)); kept = true; }
+          else hsPrev = null;
+        } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); kept = true; }
+      }
+      if (weekday.length && !kept) {
         say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
         switchMode("wk");
         panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
       }
-      const docs = newDocs.filter(d => !weekday.includes(d));
-      if (!docs.length) return;
+      if (!docs.length) {
+        if (kept && hsPrev && loadedDocs.length) {
+          try { rebuildFromLoaded(); } catch (err) { say(err && err.message ? err.message : MSG.weUnreadable, "err"); }
+        }
+        return;
+      }
       for (const d of docs) {
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
@@ -1407,7 +1434,7 @@ const panels = {};
     say(MSG.savedUpdated(built.updated.name), "go");
   });
   $("#we_clearall").addEventListener("click", () => {
-    loadedDocs = []; built = null;
+    loadedDocs = []; built = null; hsPrev = null;
     P.clearBoxes();
     roadsEl.textContent = "";
     P.showBars(false);

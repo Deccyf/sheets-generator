@@ -527,7 +527,8 @@ function generate(diags, prof, stabling, warn){
          total after its own leg, so both ends are read with `before`. */
       const mgFrom = before(stops[a].dep_idx !== null ? stops[a].dep_idx : stops[a].i0);
       const mgTo = before(stops[b].i0);
-      blocks.push({dk, num, code, si, pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
+      blocks.push({dk, num, code, si, sa: a, sb: b,
+                   pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
                    D:Dv, E:Ev, att:attBefore, devents, bound_loc:stops[b].loc,
                    pax_after:paxAfter, later:later.length > 0,
                    ends: dayEnd, miles,
@@ -647,7 +648,8 @@ function generate(diags, prof, stabling, warn){
     }
     order.splice(at, 0, name);
   }
-  return {out: out, order: order};
+  // meta: every diagram's rows and stops, for the 395 sheet's day
+  return {out: out, order: order, meta: meta};
 }
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 const DAYS = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
@@ -792,6 +794,8 @@ function weekdayShape(secsOut){
         time_kind: e.hc && /^[12]/.test(e.hc) ? "pax" : "ecs",
         dest: e.dest, headcode: e.hc || null,
         flag: e.splits ? "SPLITS" : (e.splits_pm ? "SPLITS PM" : ""),
+        // every unit's first move of the day, off its overnight berth
+        overnight: e.blocks.every(function(x){ return x.si === 0; }),
         units: e.blocks.map(function(x){
           const u = { cls: x.cls, diag: dnum(x.num), code: x.code,
                       am: x.D || "", pm: x.E || "", unit: "",
@@ -799,6 +803,8 @@ function weekdayShape(secsOut){
           // 999 is "the prints gave no position", not a position
           if (x.pos !== 999) u.pos = x.pos;
           if (x.mg !== undefined) u.mg = x.mg;
+          // the stint's first and last stop, as the 395 sheet reads them
+          if (x.sa !== undefined){ u.sa = x.sa; u.sb = x.sb; }
           return u;
         }),
         // which road it comes off, for the Metro book's ROAD column
@@ -1080,10 +1086,37 @@ function run(input, unzipFn, zipFn, opts){
       labels[dk] = banner;
       dates[dk] = dateStr.replace(/\/(\d\d)(\d\d)$/, "/$2");   // dd/mm/yy, as the sign-off writes it
       shaped[dk] = weekdayShape(secs);
+      /* The 395 sheet reads the whole day, not just the departures: each
+         diagram's stops off the print, with the formation it writes against
+         every departure, so every column the weekday sheet fills from the
+         reports is filled here too - bar the units, which a print does not
+         name and the stock controller chooses. Last night's arrivals come
+         from the day before's Summary and Detail where they were dropped
+         with the print (opts.hsPrev). */
+      let hsDays;
+      if (!isMetro){
+        const mine = [];
+        for (const m of gen.meta.values()){
+          if (!Object.prototype.hasOwnProperty.call(prof.fleets, m.fleet || "")) continue;
+          mine.push({ diag: m.code + dnum(m.num), stops: m.stops.map(function(x){
+            const f = x.dep_idx !== null ? fmtParse(m.rows[x.dep_idx].fm) : new Map();
+            return { loc: x.loc, arr: x.arr, dep: x.dep, hcIn: x.hc_in, hcOut: x.hc_out,
+                     form: Array.from(f).sort(function(p, q){ return p[1] - q[1]; })
+                       .map(function(p){ return m.code + dnum(p[0]); }) };
+          }) });
+        }
+        hsDays = Object.assign({}, (opts && opts.hsPrev) || {});
+        hsDays[dates[dk]] = SHEETS_HS.dayFromPrint(dates[dk], mine);
+        const prevDay = SHEETS_HS.dayBefore(dates[dk]);
+        if (!hsDays[prevDay])
+          warn.push(["merge", "PM arrivals: empty — drop the Diagram Summary and " +
+            "Diagram Detail for " + prevDay + " with the print and last night's " +
+            "arrivals fill in"]);
+      }
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays);
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);

@@ -304,6 +304,25 @@ does not know leaves the end blank. Against the depot's own sheets for 18,
 19 and 20/09 it names every departure end (twelve pairs) and ten of eleven
 arrival ends, the eleventh being left blank; the one fitted fact is the
 Ashford Down Yard's layout, the only one of four that agrees with all ten.
+At Faversham a unit that comes back and goes out again keeps one line - 49
+of the depot's tabs have such a line, and none has a Faversham line under
+the bar.
+
+The **weekend** 395 sheet is the same sheet, filled the same way from the
+prints. `src/engine.js` hands `SHEETS_HS.dayFromPrint` each 395 diagram's
+stops as the print lists them, with the formation it writes against every
+departure ("602(1)\603(2)", leading unit first), and each unit its stint's
+stop range. The print's place names become the reports' codes (`PRINT_CODE`,
+lined up stop by stop against the Saturday 19/09 Detail); the ends of a 12
+are read off the printed order; and because a print lists only where a
+diagram does something, the Gravesend note is read off each working's
+headcode (`viaGravesend`, right on all 726 workings of four days' Detail
+exports) and the neighbour a train really passes stands in for a far-off
+print stop when an end is worked out. The units are left blank for the
+stock controller; last night's arrivals come from the day before's Summary
+and Detail dropped with the prints, read by `GENIUS.hsDaysFrom`, which does
+not turn a weekend pair away. Against the depot's Saturday 19/09 tab it
+matches every train ID, FP/RP, ENDS PM and PM arrival (28 of 28).
 
 ## The stock requirements form
 

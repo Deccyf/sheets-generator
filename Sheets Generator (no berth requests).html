@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.18.3</b> · 30 September 2026</span>
+      <span class="ver">Version <b>3.19.0</b> · 30 September 2026</span>
     </div>
   </header>
 
@@ -803,7 +803,9 @@
     <p class="whatfor">Needs the weekend <strong>diagram prints</strong> — the
       Word document (.docx or .doc), or the same saved as text or as a CSV.
       Drop reissued prints too, together or in a later drop, and the reissued
-      diagrams replace their originals before anything is built.</p>
+      diagrams replace their originals before anything is built. For the High
+      Speed sheet's PM arrivals, drop the day before's Diagram Summary and
+      Detail with the prints — Friday's for Saturday, Saturday's for Sunday.</p>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
@@ -1018,7 +1020,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.18.3
+      works without an internet connection. Version 3.19.0
       &middot; 30 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2234,12 +2236,16 @@ const SHEETS_RULES = (() => {
            "position and the way the first move goes; the London or Margate " +
            "end is on the first line. Empty for a unit that leaves alone."],
           ["UNIT NO", "The unit where the report names one. Where it does " +
-           "not, the cell is left ruled and empty to write in."],
+           "not — and always on a sheet built from the weekend prints, which " +
+           "name no units — the cell is left ruled and empty for the stock " +
+           "controller to fill in."],
           ["ENDS AM, ARRIVES", "A line that comes back into a depot before " +
            "four in the afternoon and goes out again: where, and when it gets " +
            "in. On a diagram out all day, its first platform stand of an hour " +
            "and a half or more instead — SPX 09 10 — as a reference beside where " +
-           "it ends."],
+           "it ends. At Faversham a unit that comes back and goes out again " +
+           "keeps its one line, as the depot's sheet does: the return here, " +
+           "the end of its day under ENDS PM, and MG the miles for the lot."],
           ["ENDS PM, TRAIN ID, ARRIVES", "Where it ends the day, the working " +
            "it comes in on and the time — and for half of a 12, the end it " +
            "comes in at: L or C at Ashford, Faversham and Margate, MIN or MAR " +
@@ -2264,6 +2270,15 @@ const SHEETS_RULES = (() => {
              "allocation has WORKS written against it: what that unit forms " +
              "next is for you to fill in, from what you can see and the " +
              "reports cannot. Ashford's column is the grey strip, as theirs is." },
+        { p: "On a weekend the same sheet is built from the diagram prints. " +
+             "A print lists only where a diagram does something, never the " +
+             "calls in between, but it writes the formation against every " +
+             "departure, leading unit first — so the ends of a 12 are read " +
+             "off it rather than worked out, and whether a working goes by " +
+             "Gravesend is read off its headcode: a passenger C, F or T, " +
+             "any T, and an empty F between St Pancras and Faversham. Drop " +
+             "the day before's Diagram Summary and Detail with the print and " +
+             "last night's arrivals fill in, units and all." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
              "a cell and the arrow is there." },
@@ -5149,8 +5164,13 @@ function dayFacts(hsDay) {
     }
     const [a, b] = ms, sa = state.get(a.d), sb = state.get(b.d), stA = S.get(a.d), stB = S.get(b.d);
     let leadA;
-    if (sa && sb && sa.mate === b.d && sb.mate === a.d) {
-      const rv = reverses(a.k ? stA[a.k - 1].code : null, a.from, a.to);
+    /* The weekend prints write the formation against every departure -
+       "602(1)\603(2)", the unit leading out first - so there it is read, not
+       followed: no turn-round has to be worked out. */
+    const fa = stA[a.k].form;
+    if (fa && fa.includes(a.d) && fa.includes(b.d)) leadA = fa.indexOf(a.d) < fa.indexOf(b.d);
+    else if (sa && sb && sa.mate === b.d && sb.mate === a.d) {
+      const rv = reverses(prevNb(stA, a.k), a.from, nextNb(stA, a.k));
       leadA = sa.lead === "?" || rv === "?" ? "?" : (rv ? !sa.lead : sa.lead);
     } else {
       const pa = posAt(a.d, a.dep), pb = posAt(b.d, b.dep);
@@ -5160,7 +5180,7 @@ function dayFacts(hsDay) {
            train goes back out the side it came in by */
         const arrA = a.k ? stA[a.k].arr : -1, arrB = b.k ? stB[b.k].arr : -1;
         const X = arrA >= arrB ? a : b, stX = S.get(X.d);
-        const rv = reverses(X.k ? stX[X.k - 1].code : null, X.from, X.to);
+        const rv = reverses(prevNb(stX, X.k), X.from, nextNb(stX, X.k));
         leadA = rv === "?" ? "?" : (X === a ? rv : !rv);
       }
     }
@@ -5193,7 +5213,7 @@ function arrivalEnd(F, d, k) {
   const m = F.mate.get(key);
   if (!m) return "";
   if (m === "?") return null;
-  const ends = arrivalEnds(st[k].code, st[k - 1].code);
+  const ends = arrivalEnds(st[k].code, prevNb(st, k));
   const l = F.lead.get(key);
   if (!ends || l === "?" || l == null) return null;
   return l ? ends[0] : ends[1];
@@ -5235,6 +5255,84 @@ function trainDest(st, sa, hc, fallback) {
   }
   return BOOK_DEST[fallback] || fallback || "";
 }
+/* The weekend prints name places their own way - "Ashford I", "Mgate",
+   "Ram Depot" - where the reports use codes, and everything on this sheet
+   is keyed by the codes. Lined up stop by stop against that day's Detail
+   export, each of the ten places on the Saturday 19/09 print matched one
+   code and only one; the rest are the other 395 places the prints are known
+   to call by these names (PLACE_NAMES in src/data.js). A place not listed
+   keeps its print name, which no code matches, so it is never taken for one. */
+const PRINT_CODE = {
+  "Ashfrd DS": "ASHFDNS", "AshfDYWRd": "ASHFDYW", "Ashford I": "ASHFKY",
+  "StPancInt": "STPANCI", "Mgate": "MARGATE", "Ram": "RAMSGTE", "Ram Depot": "RAMSGTD",
+  "RM DRW": "RAMSDRW", "RMUSW": "RAMSUSW", "RM EK5143": "RAM5143", "RM EK5145": "RAM5145",
+  "Fav": "FAVRSHM", "Fav Bk Rd": "FAVRBRD", "Fav Up Sd": "FAVRUPS", "FV EK4327": "FAV4327",
+  "CantrbryW": "CNTBW", "Dover P": "DOVERP", "Sndwch": "SWCH", "Gill": "GLNGHMK" };
+/* Whether a working runs by Gravesend, from its headcode and the two ends it
+   runs between - for the prints, which list only where a diagram does
+   something, never the calls in between. Over four days of Detail exports
+   (18 to 21/09, 726 workings) this is right every time: a passenger C, F
+   or T and an empty T always call there, and an empty F only between St
+   Pancras and Faversham; J, L, R, U and W never do. */
+function viaGravesend(hc, from, to) {
+  const m = /^([125])([A-Z])/.exec(hc || "");
+  if (!m) return false;
+  if (m[2] === "T") return true;
+  if (m[1] !== "5") return m[2] === "C" || m[2] === "F";
+  return m[2] === "F" && [from, to].includes("STPANCI") && [from, to].includes("FAVRSHM");
+}
+/* A day of the weekend prints in the shape the reports give hsDays[date]:
+   each 395 diagram's stops in the reports' codes, with the headcode in and
+   out - and two things the reports do not carry, the formation the print
+   writes against each departure, leading unit first, and whether the
+   working out of each stop runs by Gravesend. No Summary rows: the prints
+   name no units, which the stock controller chooses for the day. */
+function dayFromPrint(date, diagrams) {
+  const stops = new Map();
+  for (const d of diagrams)
+    stops.set(d.diag, d.stops.map(x => ({
+      code: PRINT_CODE[x.loc] || x.loc, name: x.loc, arr: x.arr, dep: x.dep,
+      hcIn: x.hcIn || null, hcOut: x.hcOut || null,
+      form: x.form && x.form.length > 1 ? x.form : null })));
+  for (const st of stops.values())
+    for (let k = 0; k < st.length; k++) {
+      const hc = st[k].hcOut;
+      st[k].grv = false;
+      if (!hc || st[k].dep == null || k + 1 >= st.length) continue;
+      // the whole working, end to end, however many places it is printed at
+      let a = k; while (a > 0 && st[a - 1].hcOut === hc) a--;
+      let b = k + 1; while (b < st.length - 1 && st[b].hcOut === hc) b++;
+      st[k].grv = viaGravesend(hc, st[a].code, st[b].code);
+    }
+  /* The place next door. Which end of a 12 is which turns on the side of
+     the station the train is on, and a print often names a far-off place
+     as the stop before or after - St Pancras before Faversham, Margate
+     after Ashford Down Sidings. The neighbour it really passes is then the
+     way that working runs: by Gravesend and Faversham, or by Ashford and
+     Ramsgate. Over four days of Detail exports these depots are only ever
+     entered and left by these neighbours; the Down Sidings only through the
+     Down Yard. */
+  for (const st of stops.values())
+    for (let k = 0; k < st.length; k++) {
+      if (k > 0 && !nextDoor(st[k].code, st[k - 1].code))
+        st[k].nbIn = PRINT_NB[st[k].code] ? PRINT_NB[st[k].code](st[k - 1].grv) : null;
+      if (k + 1 < st.length && !nextDoor(st[k].code, st[k + 1].code))
+        st[k].nbOut = PRINT_NB[st[k].code] ? PRINT_NB[st[k].code](st[k].grv) : null;
+    }
+  return { date, stops, rows: [] };
+}
+const nextDoor = (at, far) => at === "ASHFDNS" ? far === "ASHFDYW"
+  : !!SIDES[at] && SIDES[at] !== "TERMINUS" && sideAt(at, far) !== undefined;
+const PRINT_NB = {
+  ASHFDNS: () => "ASHFDYW",
+  FAVRSHM: grv => grv ? "GRVSEND" : null,
+  MARGATE: grv => grv ? "FAVRSHM" : "RAMSGTE",
+  RAMSGTD: grv => grv ? "MARGATE" : "RAMSGTE",
+  RAMSGTE: grv => grv ? "MARGATE" : "MINSTER" };
+/* the neighbour a stop is entered from and left towards, where a print put
+   a far-off place there instead */
+const prevNb = (st, k) => k > 0 ? (st[k].nbIn || st[k - 1].code) : null;
+const nextNb = (st, k) => k + 1 < st.length ? (st[k].nbOut || st[k + 1].code) : null;
 const DEPOT_OF = code => /^ASHF/.test(code || "") ? "ASHFORD" : /^RAM/.test(code || "") ? "RAMSGATE"
   : /^FAV/.test(code || "") ? "FAVERSHAM" : code === "MARGATE" ? "MARGATE" : null;
 /* depot roads and sidings - a stand there is a berthing, not a platform stand */
@@ -5382,10 +5480,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   /* every departure of each diagram today, in order: a part of the day that
      comes back in and goes out again names the working it goes out on */
   const departures = new Map();
-  if (secs) for (const [, l] of secs) for (const e of l) for (const u of e.units) {
+  if (secs) for (const [sec, l] of secs) for (const e of l) for (const u of e.units) {
     const id = (u.code || "") + u.diag;
     if (!departures.has(id)) departures.set(id, []);
-    departures.get(id).push({ time: e.time, hc: e.headcode || "" });
+    departures.get(id).push({ time: e.time, hc: e.headcode || "", sec, mg: u.mg, sb: u.sb });
   }
   for (const l of departures.values()) l.sort((a, b) => a.time - b.time);
 
@@ -5423,9 +5521,18 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     // the allocations, one row per unit, in the order they leave
     const rows = [];
     for (const e of list.slice().sort((a, b) => a.time - b.time)) {
-      const pair = e.units.length === 2 && e.units.every(u => u.pos === 1 || u.pos === 2) &&
-                   e.units[0].pos !== e.units[1].pos;
-      const us = e.units.map(u => {
+      /* Faversham keeps a unit that comes back to it and goes out again on
+         ONE line: the return in ENDS AM, the end of its day in ENDS PM, the
+         miles for the lot - never a second line under the bar. 49 of their
+         tabs do it and none has a Faversham line below the bar. So a
+         Faversham departure after that diagram's first one there is folded
+         into the line above it, not listed. */
+      const units = depot !== "FAVERSHAM" || !F ? e.units : e.units.filter(u =>
+        !(departures.get((u.code || "") + u.diag) || []).some(x => x.sec === depot && x.time < e.time));
+      if (!units.length) continue;
+      const pair = units.length === 2 && units.every(u => u.pos === 1 || u.pos === 2) &&
+                   units[0].pos !== units[1].pos;
+      const us = units.map(u => {
         const diag = (u.code || "") + u.diag;
         const st = F && F.S.get(diag);
         const has = !!st && u.sa != null && u.sb != null && u.sb < st.length && u.sa < u.sb;
@@ -5454,7 +5561,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
         /* leaving as a 12: which end, off the Summary's position and the way
            the first move goes */
         if (pair) {
-          const de = departureEnds(st[u.sa].code, st[u.sa + 1] && st[u.sa + 1].code);
+          const de = departureEnds(st[u.sa].code, nextNb(st, u.sa));
           if (de) row.fprp = de[u.pos - 1];
         }
         /* where this part of the day ends, what it comes in on and when -
@@ -5463,11 +5570,23 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
            depot that no later row leaves from - AZ612 on 18/09 has nineteen
            minutes in Ramsgate depot on its way from Margate to Ashford - is
            not where it ends up, and their sheet does not treat it as such. */
-        const later = (departures.get(diag) || []).filter(x => x.time > e.time);
+        let later = (departures.get(diag) || []).filter(x => x.time > e.time);
         /* a later part of the day: some earlier row's WORKS names this
            working, and both are marked yellow so the pair can be found */
         row.follows = (departures.get(diag) || []).some(x => x.time < e.time);
-        const sb = later.length ? u.sb : st.length - 1;
+        // Faversham's own rule, above: its re-departures fold into this line
+        let foldTo = null;
+        if (depot === "FAVERSHAM")
+          while (later.length && later[0].sec === depot) {
+            foldTo = later[0];
+            if (typeof row.mg === "number" && typeof foldTo.mg === "number") row.mg += foldTo.mg;
+            later = later.slice(1);
+          }
+        if (foldTo) {
+          const back = st[u.sb], tb = back.arr != null ? back.arr : back.dep;
+          row.endsAm = place3(back.code); row.amAt = fmtTime(tb, kindOf(back.hcIn));
+        }
+        const sb = later.length ? (foldTo && foldTo.sb != null ? foldTo.sb : u.sb) : st.length - 1;
         const end = st[sb], t = end.arr != null ? end.arr : end.dep, hc = end.hcIn || "";
         const endLetter = arrivalEnd(F, diag, sb);
         if (later.length) {
@@ -5475,14 +5594,14 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
              four in the afternoon and ENDS PM after, and the WORKS column
              names the working it goes out on next */
           row.works = later[0].hc;
-          if (t < RETURN_PM_FROM) { row.endsAm = place3(end.code); row.amAt = fmtTime(t, kindOf(hc)); }
+          if (t < RETURN_PM_FROM && !foldTo) { row.endsAm = place3(end.code); row.amAt = fmtTime(t, kindOf(hc)); }
           else { row.endsPm = place3(end.code); row.pmId = hc; row.pmAt = fmtTime(t, kindOf(hc)) + (endLetter ? " " + endLetter : ""); }
         } else {
           row.endsPm = place3(end.code); row.pmId = hc;
           row.pmAt = fmtTime(t, kindOf(hc)) + (endLetter ? " " + endLetter : "");
           /* an all-day diagram: its first platform stand of an hour and a
              half or more goes in ENDS AM, as a reference, beside the end */
-          for (let k = u.sa + 1; k < sb; k++) {
+          for (let k = u.sa + 1; k < sb && !foldTo; k++) {
             const s = st[k];
             if (s.arr == null || s.dep == null || NOT_PLATFORM.test(s.code)) continue;
             if (s.dep - s.arr >= LONG_STAND) { row.endsAm = place3(s.code); row.amAt = fmtTime(s.arr, kindOf(s.hcIn)); break; }
@@ -5491,8 +5610,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
         /* The note their sheet keeps on the DIAGRAM cell: this part of the
            day never goes via Gravesend. Their own tabs for 18, 19 and 20/09
            carry it on 77 parts of 83 and on no part that does call there;
-           the other six never call there either, and were not marked. */
-        row.note = st.slice(u.sa, sb + 1).some(s => s.code === "GRVSEND") ? "" : "not over high level";
+           the other six never call there either, and were not marked. A
+           weekend print lists no calls in between, so there it is each
+           working's headcode that says (viaGravesend). */
+        row.note = st.slice(u.sa, sb + 1).some(s => s.code === "GRVSEND") ||
+                   st.slice(u.sa, sb).some(s => s.grv) ? "" : "not over high level";
         row.nm = multipleMark(F, diag, u.sa, sb);
         return row;
       });
@@ -5695,6 +5817,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
 }
 
 return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand,
+         dayFromPrint, viaGravesend, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
@@ -6230,7 +6353,8 @@ function generate(diags, prof, stabling, warn){
          total after its own leg, so both ends are read with `before`. */
       const mgFrom = before(stops[a].dep_idx !== null ? stops[a].dep_idx : stops[a].i0);
       const mgTo = before(stops[b].i0);
-      blocks.push({dk, num, code, si, pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
+      blocks.push({dk, num, code, si, sa: a, sb: b,
+                   pos: e.exit_fm.has(num) ? e.exit_fm.get(num) : 999,
                    D:Dv, E:Ev, att:attBefore, devents, bound_loc:stops[b].loc,
                    pax_after:paxAfter, later:later.length > 0,
                    ends: dayEnd, miles,
@@ -6350,7 +6474,8 @@ function generate(diags, prof, stabling, warn){
     }
     order.splice(at, 0, name);
   }
-  return {out: out, order: order};
+  // meta: every diagram's rows and stops, for the 395 sheet's day
+  return {out: out, order: order, meta: meta};
 }
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 const DAYS = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
@@ -6495,6 +6620,8 @@ function weekdayShape(secsOut){
         time_kind: e.hc && /^[12]/.test(e.hc) ? "pax" : "ecs",
         dest: e.dest, headcode: e.hc || null,
         flag: e.splits ? "SPLITS" : (e.splits_pm ? "SPLITS PM" : ""),
+        // every unit's first move of the day, off its overnight berth
+        overnight: e.blocks.every(function(x){ return x.si === 0; }),
         units: e.blocks.map(function(x){
           const u = { cls: x.cls, diag: dnum(x.num), code: x.code,
                       am: x.D || "", pm: x.E || "", unit: "",
@@ -6502,6 +6629,8 @@ function weekdayShape(secsOut){
           // 999 is "the prints gave no position", not a position
           if (x.pos !== 999) u.pos = x.pos;
           if (x.mg !== undefined) u.mg = x.mg;
+          // the stint's first and last stop, as the 395 sheet reads them
+          if (x.sa !== undefined){ u.sa = x.sa; u.sb = x.sb; }
           return u;
         }),
         // which road it comes off, for the Metro book's ROAD column
@@ -6783,10 +6912,37 @@ function run(input, unzipFn, zipFn, opts){
       labels[dk] = banner;
       dates[dk] = dateStr.replace(/\/(\d\d)(\d\d)$/, "/$2");   // dd/mm/yy, as the sign-off writes it
       shaped[dk] = weekdayShape(secs);
+      /* The 395 sheet reads the whole day, not just the departures: each
+         diagram's stops off the print, with the formation it writes against
+         every departure, so every column the weekday sheet fills from the
+         reports is filled here too - bar the units, which a print does not
+         name and the stock controller chooses. Last night's arrivals come
+         from the day before's Summary and Detail where they were dropped
+         with the print (opts.hsPrev). */
+      let hsDays;
+      if (!isMetro){
+        const mine = [];
+        for (const m of gen.meta.values()){
+          if (!Object.prototype.hasOwnProperty.call(prof.fleets, m.fleet || "")) continue;
+          mine.push({ diag: m.code + dnum(m.num), stops: m.stops.map(function(x){
+            const f = x.dep_idx !== null ? fmtParse(m.rows[x.dep_idx].fm) : new Map();
+            return { loc: x.loc, arr: x.arr, dep: x.dep, hcIn: x.hc_in, hcOut: x.hc_out,
+                     form: Array.from(f).sort(function(p, q){ return p[1] - q[1]; })
+                       .map(function(p){ return m.code + dnum(p[0]); }) };
+          }) });
+        }
+        hsDays = Object.assign({}, (opts && opts.hsPrev) || {});
+        hsDays[dates[dk]] = SHEETS_HS.dayFromPrint(dates[dk], mine);
+        const prevDay = SHEETS_HS.dayBefore(dates[dk]);
+        if (!hsDays[prevDay])
+          warn.push(["merge", "PM arrivals: empty — drop the Diagram Summary and " +
+            "Diagram Detail for " + prevDay + " with the print and last night's " +
+            "arrivals fill in"]);
+      }
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays);
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);
@@ -8172,6 +8328,23 @@ const GENIUS = (() => {
 
   /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
      over parsed summary rows + detail itineraries, whatever their source. */
+  /* Every date's 395 diagrams: their stops and their Summary rows. */
+  function hsDaysOf(sumRows, byDate) {
+    const hsDays = {};
+    const hsFleets = PROFILES_G[2].fleets;
+    for (const date of [...new Set(sumRows.map(r => r.date))].filter(Boolean)) {
+      const det = byDate.get(date);
+      if (!det) continue;
+      const rows = sumRows.filter(r => r.date === date && r.fleet in hsFleets);
+      if (!rows.length) continue;
+      const want = new Set(rows.map(r => r.diag));
+      const stops = new Map();
+      for (const [diag, raw] of det) if (want.has(diag) && raw.length) stops.set(diag, stopsOf(raw));
+      hsDays[date] = { date, stops, rows };
+    }
+    return hsDays;
+  }
+
   function assemble(sumRows, byDate, extraNotes, opts) {
     /* The table this build runs with: the shipped one unless the page has
        local edits overlaid. Computed once so every book sees the same rules
@@ -8217,20 +8390,7 @@ const GENIUS = (() => {
        and Summary rows of every 395 diagram ride out beside the books, keyed
        by DATE - a weekend's included, since Monday's tab lists Sunday
        night's arrivals and nothing else carries them. */
-    const hsDays = {};
-    {
-      const hsFleets = PROFILES_G[2].fleets;
-      for (const date of dates) {
-        const det = byDate.get(date);
-        if (!det) continue;
-        const rows = sumRows.filter(r => r.date === date && r.fleet in hsFleets);
-        if (!rows.length) continue;
-        const want = new Set(rows.map(r => r.diag));
-        const stops = new Map();
-        for (const [diag, raw] of det) if (want.has(diag) && raw.length) stops.set(diag, stopsOf(raw));
-        hsDays[date] = { date, stops, rows };
-      }
-    }
+    const hsDays = hsDaysOf(sumRows, byDate);
     for (const date of dates) {
       const dk = dayKey(date);
       if (!dk) { noteAll(date + ": falls on a weekend — use the weekend prints panel"); continue; }
@@ -8391,6 +8551,15 @@ const GENIUS = (() => {
     if (!sumRows.length && !byDate.size) throw new Error("Neither a Diagram Summary nor a Diagram Detail was found in what was dropped.");
     return { sumRows, byDate };
   }
+  /* Only the 395 days, for the weekend panel: its sheet is built from the
+     prints, but last night's arrivals come from the day before's Summary and
+     Detail - a Friday's for a Saturday, a Saturday's for a Sunday. No book is
+     built, so a weekend pair is not turned away the way build() turns it. */
+  async function hsDaysFrom(inputs) {
+    const { sumRows, byDate } = await ingest(inputs, []);
+    return hsDaysOf(sumRows, byDate);
+  }
+
   async function build(inputs, opts) {
     const notes = [];
     const { sumRows, byDate } = await ingest(inputs, notes);
@@ -8812,7 +8981,7 @@ const GENIUS = (() => {
 
   // _stopsOf and _boundaries are the golden tests' hooks into the two
   // shapes shared with the weekend engine; nothing else calls them.
-  return { build, read, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
+  return { build, hsDaysFrom, read, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
            pdfText,
            /* parseSummaryCsvG is out here for the shortages road, which wants
               the POS column and nothing else the weekday pipeline does with
@@ -10081,6 +10250,8 @@ const MSG = {
   zoneMixed: ["Mixed sources loaded", "drop a matching pair — both from Genius, or both from Integrale"],
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
+  weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
+    "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
   notAReport: name => "“" + name + "” isn't a report this reads — it takes the Diagram Summary and Diagrams CSVs from Integrale, or the Diagram Summary and Detail reports from Genius saved as CSV.",
   notThisPanel: "This panel takes the Diagram Summary and Diagram Detail reports (.pdf or .csv). Weekend prints go on the Weekend panel.",
@@ -11259,6 +11430,11 @@ const panels = {};
   const [wePasteMain, wePasteRe] = P.boxes;
   let built = null;
   let loadedDocs = [];
+  /* The day before's Diagram Summary and Detail, dropped with the prints:
+     the High Speed allocations sheet takes last night's arrivals from them,
+     the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
+     for a Sunday. Everything else comes from the prints. */
+  let hsPrev = null;
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
   const SPRITE_FOR = { Mainline: SPRITES.Mainline, "RAM SHEETS": SPRITES.Ramsgate,
                        Metro: SPRITES.Metro, "High Speed": SPRITES["High Speed"] };
@@ -11311,7 +11487,7 @@ const panels = {};
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true });
+      { allHeadcodes, splitRamsgate: true, hsPrev });
     built = res;
     render(res);
     const dlupd = $("#we_dlupd");
@@ -11346,15 +11522,35 @@ const panels = {};
         let txt = "";
         try { txt = decodeText(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
         if (txt && !SHEETS_PRINTS.looksLikePrints(txt) && !SHEETS_PRINTS.printsFromCsv(txt) &&
-            (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) weekday.push(d);
+            (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
+          d.genius = !!GENIUS.sniffGeniusCsv(txt);
+          weekday.push(d);
+        }
       }
-      if (weekday.length) {
+      const docs = newDocs.filter(d => !weekday.includes(d));
+      /* With prints - in this drop or already loaded - the reports are the
+         day before's, for the High Speed arrivals. On their own they are
+         the weekday panel's, as they always were. */
+      let kept = false;
+      if (weekday.length && weekday.every(d => d.genius) && (docs.length || loadedDocs.length)) {
+        try {
+          hsPrev = await GENIUS.hsDaysFrom(weekday.map(d => decodeText(d.bytes)));
+          const ds = Object.keys(hsPrev);
+          if (ds.length) { say(MSG.weArrivals(ds)); kept = true; }
+          else hsPrev = null;
+        } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); kept = true; }
+      }
+      if (weekday.length && !kept) {
         say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
         switchMode("wk");
         panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
       }
-      const docs = newDocs.filter(d => !weekday.includes(d));
-      if (!docs.length) return;
+      if (!docs.length) {
+        if (kept && hsPrev && loadedDocs.length) {
+          try { rebuildFromLoaded(); } catch (err) { say(err && err.message ? err.message : MSG.weUnreadable, "err"); }
+        }
+        return;
+      }
       for (const d of docs) {
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
@@ -11411,7 +11607,7 @@ const panels = {};
     say(MSG.savedUpdated(built.updated.name), "go");
   });
   $("#we_clearall").addEventListener("click", () => {
-    loadedDocs = []; built = null;
+    loadedDocs = []; built = null; hsPrev = null;
     P.clearBoxes();
     roadsEl.textContent = "";
     P.showBars(false);

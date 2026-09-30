@@ -1327,6 +1327,23 @@ const GENIUS = (() => {
 
   /* Shared tail of both weekday paths: per-date, per-fleet rulebook runs
      over parsed summary rows + detail itineraries, whatever their source. */
+  /* Every date's 395 diagrams: their stops and their Summary rows. */
+  function hsDaysOf(sumRows, byDate) {
+    const hsDays = {};
+    const hsFleets = PROFILES_G[2].fleets;
+    for (const date of [...new Set(sumRows.map(r => r.date))].filter(Boolean)) {
+      const det = byDate.get(date);
+      if (!det) continue;
+      const rows = sumRows.filter(r => r.date === date && r.fleet in hsFleets);
+      if (!rows.length) continue;
+      const want = new Set(rows.map(r => r.diag));
+      const stops = new Map();
+      for (const [diag, raw] of det) if (want.has(diag) && raw.length) stops.set(diag, stopsOf(raw));
+      hsDays[date] = { date, stops, rows };
+    }
+    return hsDays;
+  }
+
   function assemble(sumRows, byDate, extraNotes, opts) {
     /* The table this build runs with: the shipped one unless the page has
        local edits overlaid. Computed once so every book sees the same rules
@@ -1372,20 +1389,7 @@ const GENIUS = (() => {
        and Summary rows of every 395 diagram ride out beside the books, keyed
        by DATE - a weekend's included, since Monday's tab lists Sunday
        night's arrivals and nothing else carries them. */
-    const hsDays = {};
-    {
-      const hsFleets = PROFILES_G[2].fleets;
-      for (const date of dates) {
-        const det = byDate.get(date);
-        if (!det) continue;
-        const rows = sumRows.filter(r => r.date === date && r.fleet in hsFleets);
-        if (!rows.length) continue;
-        const want = new Set(rows.map(r => r.diag));
-        const stops = new Map();
-        for (const [diag, raw] of det) if (want.has(diag) && raw.length) stops.set(diag, stopsOf(raw));
-        hsDays[date] = { date, stops, rows };
-      }
-    }
+    const hsDays = hsDaysOf(sumRows, byDate);
     for (const date of dates) {
       const dk = dayKey(date);
       if (!dk) { noteAll(date + ": falls on a weekend — use the weekend prints panel"); continue; }
@@ -1546,6 +1550,15 @@ const GENIUS = (() => {
     if (!sumRows.length && !byDate.size) throw new Error("Neither a Diagram Summary nor a Diagram Detail was found in what was dropped.");
     return { sumRows, byDate };
   }
+  /* Only the 395 days, for the weekend panel: its sheet is built from the
+     prints, but last night's arrivals come from the day before's Summary and
+     Detail - a Friday's for a Saturday, a Saturday's for a Sunday. No book is
+     built, so a weekend pair is not turned away the way build() turns it. */
+  async function hsDaysFrom(inputs) {
+    const { sumRows, byDate } = await ingest(inputs, []);
+    return hsDaysOf(sumRows, byDate);
+  }
+
   async function build(inputs, opts) {
     const notes = [];
     const { sumRows, byDate } = await ingest(inputs, notes);
@@ -1967,7 +1980,7 @@ const GENIUS = (() => {
 
   // _stopsOf and _boundaries are the golden tests' hooks into the two
   // shapes shared with the weekend engine; nothing else calls them.
-  return { build, read, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
+  return { build, hsDaysFrom, read, buildIntegrale, sniffIntegrale, sniffGeniusCsv, pastedCsv,
            pdfText,
            /* parseSummaryCsvG is out here for the shortages road, which wants
               the POS column and nothing else the weekday pipeline does with

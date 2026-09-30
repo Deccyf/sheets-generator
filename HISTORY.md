@@ -140,6 +140,54 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.19.0 — 30 September 2026 — the weekend 395 sheet from the prints, filled like the weekday one
+
+**The weekend prints build the same allocations sheet, filled the same way.**
+They had been giving it only the departures, so a Saturday sheet came out
+with its train IDs pointing at the berthing book's destination, no N/M or
+M/O, no FP/RP, no ends, no WORKS and no arrivals. The planner's question
+was the right one - surely the prints have the same information? They
+have nearly all of it. A print lists only where a diagram does something
+(ten places for the whole 395 fleet on 19/09, no calls in between), but it
+writes the formation against every departure, leading unit first -
+"602(1)\603(2)" - which the reports never do. So:
+
+- The weekend engine hands the sheet each 395 diagram's stops and printed
+  formations, and each unit its stint's stop range, the way the report
+  reader does on a weekday (`SHEETS_HS.dayFromPrint`).
+- The print's place names are turned into the reports' codes: lined up
+  stop by stop against the Saturday 19/09 Detail export, each of the ten
+  matched one code and only one.
+- The ends of a 12 are read off the printed order rather than followed.
+  Where a print names a far-off place next to a depot - St Pancras before
+  Faversham, Margate after the Ashford Down Sidings - the neighbour the
+  train really passes stands in, by the way the working runs.
+- "Not over high level" is read off each working's headcode, since the
+  print lists no Gravesend call to see: a passenger C, F or T, any T, and
+  an empty F between St Pancras and Faversham run by Gravesend; J, L, R, U
+  and W never do. Right on all 726 workings of four days' Detail exports.
+- The units are left for the stock controller, who chooses them.
+- **Last night's arrivals**: drop the day before's Diagram Summary and
+  Detail with the prints - Friday's for Saturday, Saturday's for Sunday -
+  and they fill in, units and all. The weekend panel keeps a Genius pair
+  dropped with prints for this instead of sending it to the weekday panel,
+  and the report reader has a way in (`GENIUS.hsDaysFrom`) that does not
+  turn a weekend pair away. Without them the Review tab says what to drop.
+
+Against the depot's Saturday 19/09 tab, built from the print and Friday's
+reports: train ID, FP/RP, ENDS PM and the PM train ID and arrival 28 of 28,
+N/M-M/O 27, WORKS 24 of 24. What differs is the planner's own (a mileage
+copied from the row above, route notes left off 1L and 5U workings) or the
+90-minute platform stands asked for as a reference.
+
+**Faversham keeps one line per unit** - weekday and weekend. A unit that
+comes back to Faversham at midday and goes out again was given a second
+line under the bar; the depot's sheets never do that (49 tabs carry such a
+line, none has a Faversham line under the bar). It now keeps its line: the
+return in ENDS AM, the end of its day in ENDS PM, MG the miles for the lot
+- 234 for AZ613 on 19/09 and 484 for AZ614 on 18/09, both the planner's
+figures to the mile.
+
 ## 3.18.3 — 30 September 2026 — the bar closes the morning run-out
 
 The bar went under every first move of the day that left before two, so on

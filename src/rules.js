@@ -211,12 +211,16 @@ const SHEETS_RULES = (() => {
            "position and the way the first move goes; the London or Margate " +
            "end is on the first line. Empty for a unit that leaves alone."],
           ["UNIT NO", "The unit where the report names one. Where it does " +
-           "not, the cell is left ruled and empty to write in."],
+           "not — and always on a sheet built from the weekend prints, which " +
+           "name no units — the cell is left ruled and empty for the stock " +
+           "controller to fill in."],
           ["ENDS AM, ARRIVES", "A line that comes back into a depot before " +
            "four in the afternoon and goes out again: where, and when it gets " +
            "in. On a diagram out all day, its first platform stand of an hour " +
            "and a half or more instead — SPX 09 10 — as a reference beside where " +
-           "it ends."],
+           "it ends. At Faversham a unit that comes back and goes out again " +
+           "keeps its one line, as the depot's sheet does: the return here, " +
+           "the end of its day under ENDS PM, and MG the miles for the lot."],
           ["ENDS PM, TRAIN ID, ARRIVES", "Where it ends the day, the working " +
            "it comes in on and the time — and for half of a 12, the end it " +
            "comes in at: L or C at Ashford, Faversham and Margate, MIN or MAR " +
@@ -241,6 +245,15 @@ const SHEETS_RULES = (() => {
              "allocation has WORKS written against it: what that unit forms " +
              "next is for you to fill in, from what you can see and the " +
              "reports cannot. Ashford's column is the grey strip, as theirs is." },
+        { p: "On a weekend the same sheet is built from the diagram prints. " +
+             "A print lists only where a diagram does something, never the " +
+             "calls in between, but it writes the formation against every " +
+             "departure, leading unit first — so the ends of a 12 are read " +
+             "off it rather than worked out, and whether a working goes by " +
+             "Gravesend is read off its headcode: a passenger C, F or T, " +
+             "any T, and an empty F between St Pancras and Faversham. Drop " +
+             "the day before's Diagram Summary and Detail with the print and " +
+             "last night's arrivals fill in, units and all." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
              "a cell and the arrow is there." },
