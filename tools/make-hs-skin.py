@@ -240,6 +240,55 @@ for old in order:
     y = re.sub(r'\s?xfId="\d+"', '', y)
     out_xfs.append(y)
 
+# ---- a bold outline round each table ----
+# Row 9 is the FIRST row of a table - a medium rule over the top, thin under
+# - and the sheet was written with it on every row, so every line inside
+# the tables came out as heavy as the edge and the tables had no outline to
+# speak of. Their own sheet rules each run of rows as a box: medium round the
+# outside, thin between. The other positions are made here from row 9's own
+# records with only the top and bottom rules changed, so the fonts, fills
+# and side rules stay exactly theirs:
+#   first  medium over, thin under (row 9 itself)
+#   mid    thin over and under
+#   last   thin over, medium under
+#   only   medium over and under (a run of one)
+# Ashford's grey strip has no rules across it, only a medium one under its
+# last row.
+RULE = {"thin": '<{0} style="thin"><color rgb="FF000000"/></{0}>',
+        "medium": '<{0} style="medium"><color rgb="FF000000"/></{0}>',
+        None: '<{0}/>'}
+def with_rules(xf_new, top, bottom):
+    x = out_xfs[xf_new]
+    bi = int(re.search(r'borderId="(\d+)"', x).group(1))
+    bd = b_used[bi]
+    for side, rule in (("top", top), ("bottom", bottom)):
+        if rule == "keep": continue
+        new = RULE[rule].format(side)
+        if re.search(r'<%s(?: [^>]*)?(?:/>|>.*?</%s>)' % (side, side), bd, re.S):
+            bd = re.sub(r'<%s(?: [^>]*)?(?:/>|>.*?</%s>)' % (side, side), new, bd, count=1, flags=re.S)
+        else:   # a border record written without that side at all
+            bd = bd.replace("<diagonal", new + "<diagonal", 1) if "<diagonal" in bd \
+                 else bd.replace("</border>", new + "</border>")
+    if bd not in b_used: b_used.append(bd)
+    y = re.sub(r'borderId="\d+"', 'borderId="%d"' % b_used.index(bd), x)
+    if 'applyBorder="1"' not in y:
+        y = y.replace("<xf ", '<xf applyBorder="1" ', 1)
+    if y not in out_xfs: out_xfs.append(y)
+    return out_xfs.index(y)
+row_rules = {}
+RUN = {"first": ("medium", "thin"), "mid": ("thin", "thin"),
+       "last": ("thin", "medium"), "only": ("medium", "medium")}
+for old in set(v for c, v in data.items() if c != "G") | {flag, works_t, later_h}:
+    row_rules[newid[old]] = {pos: with_rules(newid[old], *rules) for pos, rules in RUN.items()}
+g_strip = newid[data["G"]]
+row_rules[g_strip] = {"first": g_strip, "mid": g_strip,
+                      "last": with_rules(g_strip, "keep", "medium"),
+                      "only": with_rules(g_strip, "keep", "medium")}
+# and a WORKS run of one, boxed like its first with the last's rule under
+wg = newid[works_g["first"]]
+row_rules[wg] = {"first": wg, "mid": newid[works_g["mid"]], "last": newid[works_g["last"]],
+                 "only": with_rules(wg, "keep", "medium")}
+
 # ---- the mileage bands ----
 # Three since late August: High, Average and Low, red, amber and green,
 # where it had been two either side of 500. The dxfs are read off the
@@ -486,13 +535,27 @@ skin = {
   "bars": {d: remap(m) for d, m in bars.items()},
   "worksG": remap(works_g), "plainG": newid[plain_g], "headG": newid[head_g],
   "flag": newid[flag], "worksT": newid[works_t], "laterH": newid[later_h],
+  # xf -> the same record for the first / mid / last / only row of a run
+  "rowRules": {str(k): v for k, v in sorted(row_rules.items())},
 }
+# One key per line, each value on one line - the style lists one record
+# per line so a re-lift diffs readably. Indented all the way down it was a
+# quarter of the skin's size in whitespace, carried in every build.
+def compact(o):
+    out = []
+    for k, v in o.items():
+        if isinstance(v, list) and v and isinstance(v[0], str) and k == "xfCss":
+            body = "[\n  " + ",\n  ".join(json.dumps(x) for x in v) + "\n ]"
+        else:
+            body = json.dumps(v, separators=(",", ":"))
+        out.append(" " + json.dumps(k) + ": " + body)
+    return "{\n" + ",\n".join(out) + "\n}"
 js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n"
       "   from the operator's workbook by tools/make-hs-skin.py and renumbered\n"
       "   into a minimal styleSheet. Layout and static house text only: no\n"
       "   unit numbers, headcodes, dates or comments come with it. */\n"
       '"use strict";\n'
-      "const SHEETS_HS_SKIN = " + json.dumps(skin, indent=1) + ";\n"
+      "const SHEETS_HS_SKIN = " + compact(skin) + ";\n"
       'if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS_SKIN;\n'
       'if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKIN;\n')
 

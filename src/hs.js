@@ -359,6 +359,12 @@ function mgBand(n) {
       : b.op === "between" ? n >= a && n <= +b.f[1] : false;
   }) || null;
 }
+/* A row's place in its run of n - which decides the rules over and under
+   it - and the style record for that place. A record with no run variants
+   (the bars, the plain G) is its own for every place. */
+const runPos = (i, n) => n <= 1 ? "only" : i === 0 ? "first" : i === n - 1 ? "last" : "mid";
+const ruled = (xf, pos) => (SKIN.rowRules[xf] && SKIN.rowRules[xf][pos]) || xf;
+
 /* rows [9,10,11,13] -> "K9:K11 K13" */
 function kRanges(rows) {
   const out = [];
@@ -544,20 +550,29 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     const n = Math.max(rows.length, arr.length);
     const d0 = r;
     const mgRows = [];
+    /* Each table is boxed in a bold rule with thin ones inside: the
+       arrivals, run through the bar, as one box; the allocations as two,
+       above the bar and below it. A row's record is the same as row 9's
+       with the rules over and under set for its place in its run. */
+    const bar = rows.length ? 1 : 0;
+    const lines = n + bar;
+    let li = 0;                                  // line of the block, the bar included
+    const leftAt = () => runPos(li, lines);
+    const rightAt = i => i < amN ? runPos(i, amN) : runPos(i - amN, n - amN);
     for (let i = 0; i <= n; i++) {
       /* the bar, between the last AM allocation and the first PM one - on
          every block that has allocations, with or without a PM side, as
          theirs has. The arrivals table runs on through it, ruled and empty,
          so each arrival stays level with the allocation it belongs to. */
-      if (i === amN && rows.length) {
+      if (i === amN && bar) {
         for (const [c, xf] of Object.entries(SKIN.data))
-          if (COL(c) < 7) put(r, COL(c), xf, "");
-        put(r, 7, strip ? SKIN.data.G : SKIN.plainG, "");
-        const bar = SKIN.bars[depot];
+          if (COL(c) < 7) put(r, COL(c), ruled(xf, leftAt()), "");
+        put(r, 7, strip ? ruled(SKIN.data.G, leftAt()) : SKIN.plainG, "");
+        const b = SKIN.bars[depot];
         for (let k = COL("H"); k <= COL("T"); k++)
-          put(r, k, k === COL("H") ? bar.H : k === COL("T") ? bar.T : bar.mid, "");
+          put(r, k, k === COL("H") ? b.H : k === COL("T") ? b.T : b.mid, "");
         merges.push("H" + r + ":T" + r);
-        r++;
+        r++; li++;
       }
       if (i === n) break;
       const a = arr[i], v = rows[i];
@@ -567,16 +582,14 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
                   : c === "D" ? (a ? a.unit : "") : c === "E" ? (a ? a.cars : "")
                   : "";
         // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
-        put(r, COL(c), xf, val,
+        put(r, COL(c), ruled(xf, leftAt()), val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
       /* WORKS against each morning allocation outside Ashford: what that
          unit forms next is filled in by hand, from what the stock
          controller can see and the reports cannot */
-      if (strip) put(r, 7, SKIN.data.G, "");
-      else if (v && i < amN)
-        put(r, 7, i === 0 ? SKIN.worksG.first
-                  : i === amN - 1 ? SKIN.worksG.last : SKIN.worksG.mid, "WORKS");
+      if (strip) put(r, 7, ruled(SKIN.data.G, leftAt()), "");
+      else if (v && i < amN) put(r, 7, ruled(SKIN.worksG.first, runPos(i, amN)), "WORKS");
       else put(r, 7, SKIN.plainG, "");
       for (const [c, xf] of Object.entries(SKIN.data)) {
         if (COL(c) < 8) continue;
@@ -595,7 +608,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
         const mark = c === "J" && val ? SKIN.flag
           : c === "T" && /^[125][A-Z]\d\d$/.test(String(val)) ? SKIN.worksT
           : c === "H" && v && v.follows ? SKIN.laterH : xf;
-        put(r, COL(c), mark, val, num);
+        put(r, COL(c), ruled(mark, rightAt(i)), val, num);
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
            sheet on screen disagrees with the one in the workbook. Same
@@ -621,7 +634,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
                .concat(v.hl ? [] : ["Not over high level"]);
         if (notes.length) comments.push({ ref: "I" + r, text: notes.join("\n") });
       }
-      r++;
+      r++; li++;
     }
     /* Their sheet colours the MG column by the mileage key above it - High,
        Average and Low, dxf 0, 1 and 2 in the skin. Only the cells with a

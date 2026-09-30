@@ -63,8 +63,12 @@ test("the built file is self-contained and lean", () => {
      style records, the largest of the three because that tab is a hundred
      records deep) plus the road that reads it. The copy without the
      berth-request road carries none of it. */
-  assert.ok(html.length < 1100 * 1024,
-    "under 1100 KB (was 1.2 MB); this build is " +
+  /* 1150 KB at 3.18.1: the 395 allocations sheet's tables are boxed in a
+     bold rule with thin ones inside, as the depot's are, so each data
+     record ships in the four places a row can have in its run (~15 KB of
+     skin, trimmed back from ~21 KB by writing it without the indentation). */
+  assert.ok(html.length < 1150 * 1024,
+    "under 1150 KB (was 1.2 MB); this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

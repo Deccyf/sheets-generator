@@ -535,9 +535,17 @@ test("an end is left blank where the order passes somewhere the sheet cannot fol
   assert.ok(F.mate.has("AZ691@3"), "…and still known to be one of a 12");
 });
 
+/* A row's record is its column's record with the rules over and under set
+   for its place in its run; this gives back the column's own. */
+const baseOf = SKIN => {
+  const back = new Map();
+  for (const [x, v] of Object.entries(SKIN.rowRules)) for (const y of Object.values(v)) back.set(y, +x);
+  return xf => back.has(xf) ? back.get(xf) : xf;
+};
+
 test("each block's morning allocations sit above its coloured bar, the rest below", async () => {
   const { N, tab } = await week("03/08/26");
-  const SKIN = N.SHEETS_HS_SKIN;
+  const SKIN = N.SHEETS_HS_SKIN, base = baseOf(SKIN);
   const t = tab("Mon 03 08");
   const am = t.row("AZ601", "06+00"), pm = t.row("AZ601", "16+00");
   /* AZ601's first move off its overnight berth is above the bar; its 16+00,
@@ -549,7 +557,7 @@ test("each block's morning allocations sit above its coloured bar, the rest belo
   assert.equal(pm.r, bar + 1, "and the afternoon under it");
   assert.ok(t.layout.merges.includes("H" + bar + ":T" + bar), "one merged bar, H to T");
   assert.ok([..."HIJKLMNOPQRST"].every(c => t.at(bar, c) === ""), "with nothing written in it");
-  assert.equal(t.xf(bar, "B"), SKIN.data.B, "the arrivals table runs on through it, ruled");
+  assert.equal(base(t.xf(bar, "B")), SKIN.data.B, "the arrivals table runs on through it, ruled");
   // Ramsgate's is blue, and comes after both halves of the 12
   const b = t.row("AZ612", "05+00").r + 1;
   assert.equal(t.xf(b, "H"), SKIN.bars.RAMSGATE.H, "Ramsgate's own colour");
@@ -566,7 +574,7 @@ test("each block's morning allocations sit above its coloured bar, the rest belo
 
 test("WORKS in G against each morning allocation outside Ashford; Ashford keeps its strip", async () => {
   const { N, tab } = await week("03/08/26");
-  const SKIN = N.SHEETS_HS_SKIN;
+  const SKIN = N.SHEETS_HS_SKIN, base = baseOf(SKIN);
   const t = tab("Mon 03 08");
   const a = t.row("AZ611", "05+00"), b = t.row("AZ612", "05+00");
   assert.equal(a.at("G"), "WORKS"); assert.equal(b.at("G"), "WORKS");
@@ -575,24 +583,24 @@ test("WORKS in G against each morning allocation outside Ashford; Ashford keeps 
   assert.equal(t.xf(b.r + 1, "G"), SKIN.plainG, "nothing on the bar row");
   const ash = t.row("AZ601", "06+00");
   assert.equal(ash.at("G"), "", "Ashford's G is the grey strip, with nothing in it");
-  assert.equal(ash.xf("G"), SKIN.data.G);
+  assert.equal(base(ash.xf("G")), SKIN.data.G);
 });
 
 test("N/M, the WORKS headcode and the working it names are marked yellow", async () => {
   const { N, tab } = await week("03/08/26");
-  const SKIN = N.SHEETS_HS_SKIN;
+  const SKIN = N.SHEETS_HS_SKIN, base = baseOf(SKIN);
   const t = tab("Mon 03 08");
   const am = t.row("AZ601", "06+00"), pm = t.row("AZ601", "16+00");
   const yellow = x => /background:#FFFF00/.test(SKIN.xfCss[x]);
-  assert.equal(am.at("J"), "N/M"); assert.equal(am.xf("J"), SKIN.flag);
-  assert.ok(yellow(SKIN.flag), "N/M on yellow");
-  assert.equal(am.at("T"), "5R30"); assert.equal(am.xf("T"), SKIN.worksT);
-  assert.ok(yellow(SKIN.worksT), "the working it goes back out on, on yellow");
-  assert.equal(pm.at("H"), "5R30 AFK"); assert.equal(pm.xf("H"), SKIN.laterH);
-  assert.ok(yellow(SKIN.laterH), "and that working's own train ID, on yellow");
-  assert.equal(am.xf("H"), SKIN.data.H, "a first move is not marked");
-  assert.equal(pm.xf("T"), SKIN.data.T, "nor an empty WORKS");
-  assert.equal(t.row("AZ611", "05+00").xf("J"), SKIN.flag, "M/O too");
+  assert.equal(am.at("J"), "N/M"); assert.equal(base(am.xf("J")), SKIN.flag);
+  assert.ok(yellow(am.xf("J")), "N/M on yellow");
+  assert.equal(am.at("T"), "5R30"); assert.equal(base(am.xf("T")), SKIN.worksT);
+  assert.ok(yellow(am.xf("T")), "the working it goes back out on, on yellow");
+  assert.equal(pm.at("H"), "5R30 AFK"); assert.equal(base(pm.xf("H")), SKIN.laterH);
+  assert.ok(yellow(pm.xf("H")), "and that working's own train ID, on yellow");
+  assert.equal(base(am.xf("H")), SKIN.data.H, "a first move is not marked");
+  assert.equal(base(pm.xf("T")), SKIN.data.T, "nor an empty WORKS");
+  assert.equal(base(t.row("AZ611", "05+00").xf("J")), SKIN.flag, "M/O too");
 });
 
 test("the MG column reads High, Average and Low, as the key above it does", () => {
@@ -610,4 +618,33 @@ test("the MG column reads High, Average and Low, as the key above it does", () =
   // the CET key's second line: YES under each of its three day counts
   const yes = Array.from(SKIN.footer).filter(f => f[3] === "YES").map(f => f[1]);
   assert.deepEqual(yes, ["D", "E", "F"], "YES in each of the three coloured cells");
+});
+
+test("each table is boxed in a bold rule, with thin ones inside", async () => {
+  const { N, tab } = await week("03/08/26");
+  const SKIN = N.SHEETS_HS_SKIN;
+  const t = tab("Mon 03 08");
+  const rule = (r, c, side) => ((SKIN.xfCss[t.xf(r, c)] || "").match(new RegExp("border-" + side + ":(\\d)px")) || [])[1] || "0";
+  /* Ramsgate: AZ611 and AZ612 are the morning's two - the first ruled bold
+     over the top, the second bold underneath, thin between them - then the
+     bar. The arrivals beside them run on through the bar as one box. */
+  const a = t.row("AZ611", "05+00").r, b = t.row("AZ612", "05+00").r;
+  for (const c of "HIJKLMNOPQRST") {
+    assert.equal(rule(a, c, "top"), "2", c + a + " bold over the top of the box");
+    assert.equal(rule(a, c, "bottom"), "1", c + a + " thin inside");
+    assert.equal(rule(b, c, "top"), "1", c + b + " thin inside");
+    assert.equal(rule(b, c, "bottom"), "2", c + b + " bold under the morning's box");
+  }
+  assert.equal(rule(a, "H", "left"), "2", "bold down the left side");
+  assert.equal(rule(a, "T", "right"), "2", "and the right");
+  assert.equal(rule(b, "B", "bottom"), "1", "the arrivals box does not close at AZ612");
+  assert.equal(rule(b + 1, "B", "bottom"), "2", "it closes on its last line, the bar's");
+  assert.equal(rule(b + 1, "B", "left"), "2", "bold down its left side");
+  assert.equal(rule(b + 1, "F", "right"), "2", "and its right");
+  /* Ashford: one line either side of its bar, each boxed on its own */
+  const am = t.row("AZ601", "06+00").r, pm = t.row("AZ601", "16+00").r;
+  for (const r of [am, pm]) for (const side of ["top", "bottom"])
+    assert.equal(rule(r, "K", side), "2", "a run of one is boxed all round: K" + r + " " + side);
+  assert.equal(rule(pm, "G", "bottom"), "2", "the grey strip closes with the block");
+  assert.equal(rule(am, "G", "bottom"), "0", "and has no rules across it before then");
 });

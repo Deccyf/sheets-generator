@@ -140,6 +140,21 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.18.2 — 30 September 2026 — the 395 tables boxed in bold
+
+Every data row of the allocations sheet was written with row 9's record -
+the first row of a table, bold over the top - so every line inside the
+tables was as heavy as the edge and the tables had no outline to see. Each
+table is now boxed the way the depot's are: a bold rule round the outside,
+thin ones inside. The arrivals are one box, run through the bar; the
+allocations are two, the morning's above the bar and the rest below; the
+grey strip at Ashford closes with the block. The records for the other
+places a row can have (middle, last, a run of one) are made by the skin
+lifter from row 9's own, with only the rules over and under changed, so the
+fonts, fills and side rules stay theirs. The skin is now written one key
+per line rather than indented all the way down, which keeps the build
+inside its (raised) 1150 KB ceiling.
+
 ## 3.18.1 — 30 September 2026 — the 395 sheet's bars, WORKS and yellow marks
 
 Held against the depot's Thursday 01/10 tab, the allocations sheet was
