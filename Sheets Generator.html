@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.18.0</b> · 30 September 2026</span>
+      <span class="ver">Version <b>3.18.1</b> · 30 September 2026</span>
     </div>
   </header>
 
@@ -1646,7 +1646,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.18.0
+      works without an internet connection. Version 3.18.1
       &middot; 30 September 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2821,19 +2821,25 @@ const SHEETS_RULES = (() => {
              "Sunday's included for a Monday, and a single day's reports say " +
              "“no previous day loaded” in the heading rather than leaving a " +
              "blank you have to guess at. On the right, today's allocations, " +
-             "in the order they leave." },
+             "in the order they leave: each unit's first move of the day, off " +
+             "its overnight berth before two, above a bar in the depot's own " +
+             "colour — green Ashford, pink Faversham, purple Margate, blue " +
+             "Ramsgate — and everything that goes out later below it." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +
            "for an empty run from the depot to Ashford station, 1F11 SPX. On " +
-           "the first line of a 12 only."],
+           "the first line of a 12 only. On yellow where it is a later part " +
+           "of a diagram — the working an earlier line's WORKS names — so " +
+           "the two ends of a return can be found by eye."],
           ["DIAGRAM", "The day's work the unit is booked to, with its " +
            "code — AZ601."],
-          ["N/M M/O", "NM where this part of the day never runs coupled to " +
+          ["N/M M/O", "N/M where this part of the day never runs coupled to " +
            "another unit, so a unit that must not run in multiple can take it; " +
-           "M/O where it never runs alone. Per line, not per diagram: a " +
-           "diagram that couples for an hour in the morning is NM on its " +
-           "afternoon line if that part runs alone."],
+           "M/O where it never runs alone. Both in red on yellow, the way " +
+           "the depot flags them. Per line, not per diagram: a diagram that " +
+           "couples for an hour in the morning is N/M on its afternoon line " +
+           "if that part runs alone."],
           ["MG", "The miles this WORKING runs, not the diagram's total for " +
            "the day. A diagram that comes out twice has a figure for each " +
            "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
@@ -2842,9 +2848,10 @@ const SHEETS_RULES = (() => {
            "stays out has no second row, so the row it does have carries the " +
            "rest of its day, and a diagram's figures always add up to the " +
            "day it runs. It is written as a number, so the sheet's " +
-           "own colouring works on it — green under 500 miles, red at 500 " +
-           "and over, the same key that is printed at the top. A report " +
-           "saved as a PDF carries no mileage and the column stays empty."],
+           "own colouring works on it — the Mileage Guide at the top: Low, " +
+           "green, under 400 miles; Average, amber, 400 to 700; High, red, " +
+           "700 and over. A report saved as a PDF carries no mileage and " +
+           "the column stays empty and uncoloured."],
           ["TIME", "When it leaves. A space in the time (08 42) means it " +
            "leaves in service; a plus (08+42) means it leaves empty."],
           ["FP/RP", "Which end of a 12 each unit leaves at: FP the London " +
@@ -2868,7 +2875,8 @@ const SHEETS_RULES = (() => {
            "than guessed. A line that comes back after four and goes out " +
            "again is written here too."],
           ["WORKS", "The working a line that comes back into a depot goes out " +
-           "on next — 5J94 after an Ashford morning. What forms what the next " +
+           "on next — 5J94 after an Ashford morning — on yellow, like that " +
+           "working's own TRAIN ID further down. What forms what the next " +
            "day is left to write in."],
         ] } },
         { p: "And last night's arrivals, on the left: TRAIN ID and ARRIVAL " +
@@ -2878,6 +2886,10 @@ const SHEETS_RULES = (() => {
              "coupled; and CET DUE is left empty to write in. At Ramsgate, " +
              "as their sheet asks, each arrival sits on the line of the " +
              "diagram its unit is allocated to, where the units are known." },
+        { p: "Between the two tables, outside Ashford, every morning " +
+             "allocation has WORKS written against it: what that unit forms " +
+             "next is for you to fill in, from what you can see and the " +
+             "reports cannot. Ashford's column is the grey strip, as theirs is." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
              "a cell and the arrow is there." },
@@ -5378,7 +5390,16 @@ const SHEETS_HS_SKIN = {
   "unitCount": 29
  },
  "hcNotes": {
+  "5R06": [
+   "Not over high level"
+  ],
+  "5R03": [
+   "Not over high level"
+  ],
   "5L19": [
+   "Not over high level"
+  ],
+  "5R23": [
    "Not over high level"
   ],
   "5R27": [
@@ -5390,11 +5411,17 @@ const SHEETS_HS_SKIN = {
   "5L51": [
    "Not over high level"
   ],
-  "5J05": [
+  "5L71": [
+   "Not over high level"
+  ],
+  "5L11": [
    "Not over high level"
   ],
   "5J13": [
    "Avoids North Kent",
+   "Not over high level"
+  ],
+  "5L15": [
    "Not over high level"
   ],
   "5R09": [
@@ -5403,6 +5430,12 @@ const SHEETS_HS_SKIN = {
   ],
   "5R13": [
    "Avoids North Kent",
+   "Not over high level"
+  ],
+  "5J17": [
+   "Not over high level"
+  ],
+  "5J21": [
    "Not over high level"
   ],
   "5J07": [
@@ -5416,14 +5449,33 @@ const SHEETS_HS_SKIN = {
   "5J25": [
    "Not over high level"
   ],
+  "5J05": [
+   "Avoids North Kent",
+   "Not over high level"
+  ],
   "5J94": [
    "Not over high level"
   ],
   "5J11": [
    "Not over high level"
+  ],
+  "5J09": [
+   "Not over high level"
+  ],
+  "5J29": [
+   "Not over high level"
+  ],
+  "5J53": [
+   "Not over high level"
+  ],
+  "5L55": [
+   "Not over high level"
+  ],
+  "5W23": [
+   "Not over high level"
   ]
  },
- "stylesXml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><numFmts count=\"2\"><numFmt numFmtId=\"165\" formatCode=\"dd/mm/yyyy;@\"/><numFmt numFmtId=\"167\" formatCode=\"h:mm;@\"/></numFmts><fonts count=\"22\"><font><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF00B050\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF0070C0\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF00B050\"/><name val=\"Calibri\"/></font><font><sz val=\"8\"/><color rgb=\"FF000000\"/><name val=\"Arial\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF0070C0\"/><name val=\"Calibri\"/></font><font><sz val=\"16\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/></font><font><sz val=\"9\"/><name val=\"Arial\"/></font><font><b/><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFED7D31\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"11\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"12\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><sz val=\"12\"/><name val=\"Calibri\"/></font><font><sz val=\"9\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"12\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF242424\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"14\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font></fonts><fills count=\"11\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC5E0B4\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFF0000\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF92D050\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF92D050\"/><bgColor rgb=\"FF000000\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF00B0F0\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF00B050\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFD9D9D9\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"40\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"medium\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"medium\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"medium\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"104\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"2\" borderId=\"0\" applyFill=\"1\"/><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"3\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"4\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"4\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"5\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"6\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"7\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"3\" borderId=\"8\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"3\" borderId=\"9\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"4\" borderId=\"10\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"5\" borderId=\"11\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"6\" borderId=\"12\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"6\" borderId=\"13\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"14\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"0\" borderId=\"15\" quotePrefix=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"0\" borderId=\"16\" quotePrefix=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"4\" borderId=\"17\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"5\" borderId=\"18\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"7\" borderId=\"19\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"5\" borderId=\"20\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"8\" borderId=\"21\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"9\" borderId=\"22\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"4\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"14\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"14\" fillId=\"0\" borderId=\"1\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"2\" borderId=\"2\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"10\" borderId=\"23\" applyFill=\"1\" applyBorder=\"1\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"10\" borderId=\"0\" applyFill=\"1\"/><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"4\" borderId=\"14\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"0\" borderId=\"0\" quotePrefix=\"1\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"8\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"28\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"29\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"8\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"28\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"29\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"28\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"27\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"35\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"165\" fontId=\"20\" fillId=\"0\" borderId=\"28\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"165\" fontId=\"20\" fillId=\"0\" borderId=\"30\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"167\" fontId=\"2\" fillId=\"0\" borderId=\"28\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"167\" fontId=\"2\" fillId=\"0\" borderId=\"30\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"24\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"25\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"26\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"26\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"36\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"37\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"8\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"38\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"39\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"28\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"29\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"38\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"21\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"2\"><dxf><font><b/><i val=\"0\"/><color rgb=\"FF000000\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFA9D18E\"/></patternFill></fill></dxf><dxf><font><b/><i val=\"0\"/><color rgb=\"FFFFFFFF\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFFF0000\"/></patternFill></fill></dxf></dxfs></styleSheet>",
+ "stylesXml": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><numFmts count=\"2\"><numFmt numFmtId=\"167\" formatCode=\"h:mm;@\"/><numFmt numFmtId=\"165\" formatCode=\"dd/mm/yyyy;@\"/></numFmts><fonts count=\"22\"><font><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF00B050\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF0070C0\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"11\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF00B050\"/><name val=\"Calibri\"/></font><font><sz val=\"8\"/><color rgb=\"FF000000\"/><name val=\"Arial\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFFFFFFF\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF0070C0\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFED7D31\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><sz val=\"16\"/><name val=\"Calibri\"/></font><font><b/><sz val=\"12\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/></font><font><sz val=\"12\"/><name val=\"Calibri\"/></font><font><sz val=\"9\"/><color rgb=\"FFFF0000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"11\"/><color rgb=\"FF000000\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF242424\"/><name val=\"Calibri\"/><family val=\"2\"/><scheme val=\"minor\"/></font><font><b/><sz val=\"9\"/><color rgb=\"FF7030A0\"/><name val=\"Calibri\"/></font></fonts><fills count=\"15\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFE89E9E\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFF0000\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF92D050\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFFFF\"/><bgColor rgb=\"FF000000\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF00B0F0\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FF00B050\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFBDD7EE\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFBFBFBF\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFC5E0B4\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFE699\"/><bgColor indexed=\"64\"/></patternFill></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFEB99F7\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"39\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top/><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom style=\"medium\"><color rgb=\"FF000000\"/></bottom><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right/><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color rgb=\"FF000000\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left/><right/><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right style=\"medium\"><color rgb=\"FF000000\"/></right><top style=\"medium\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"medium\"><color rgb=\"FF000000\"/></left><right style=\"medium\"><color rgb=\"FF000000\"/></right><top/><bottom/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"129\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"2\" borderId=\"0\" applyFill=\"1\"/><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"3\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"4\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"5\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"5\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"6\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"7\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"8\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"9\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"3\" borderId=\"3\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"3\" borderId=\"2\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"10\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"2\" borderId=\"11\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"4\" borderId=\"12\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"4\" borderId=\"13\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"7\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"14\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"5\" borderId=\"15\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"6\" borderId=\"16\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"6\" borderId=\"17\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"4\" borderId=\"18\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"7\" borderId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"11\" fillId=\"0\" borderId=\"3\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"19\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"5\" borderId=\"20\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"8\" borderId=\"21\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"9\" borderId=\"22\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"10\" borderId=\"23\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"10\" borderId=\"0\" applyFont=\"1\" applyFill=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"10\" borderId=\"24\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"3\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"13\" fillId=\"0\" borderId=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"13\" fillId=\"0\" borderId=\"1\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"3\" borderId=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"5\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"2\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"11\" borderId=\"25\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"5\" borderId=\"26\" applyFill=\"1\" applyBorder=\"1\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"12\" borderId=\"18\" applyFill=\"1\" applyBorder=\"1\"/><xf numFmtId=\"0\" fontId=\"0\" fillId=\"13\" borderId=\"22\" applyFill=\"1\" applyBorder=\"1\"/><xf numFmtId=\"0\" fontId=\"14\" fillId=\"0\" borderId=\"27\" quotePrefix=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"14\" fillId=\"0\" borderId=\"28\" quotePrefix=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"14\" fillId=\"0\" borderId=\"29\" quotePrefix=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"18\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"12\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"18\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"12\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"18\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"12\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"12\" borderId=\"30\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"12\" borderId=\"31\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"12\" borderId=\"32\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"16\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"12\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"33\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"18\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"167\" fontId=\"2\" fillId=\"0\" borderId=\"24\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"167\" fontId=\"2\" fillId=\"0\" borderId=\"23\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"19\" fillId=\"0\" borderId=\"35\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"36\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"37\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"17\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"165\" fontId=\"20\" fillId=\"0\" borderId=\"24\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"165\" fontId=\"2\" fillId=\"0\" borderId=\"23\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"30\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"31\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"2\" borderId=\"32\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"14\" borderId=\"30\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"14\" borderId=\"31\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"14\" borderId=\"32\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"11\" borderId=\"26\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"11\" borderId=\"38\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"21\" fillId=\"0\" borderId=\"30\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"21\" fillId=\"0\" borderId=\"31\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"21\" fillId=\"0\" borderId=\"32\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"25\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"34\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"24\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"23\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"18\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"12\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"15\" fillId=\"0\" borderId=\"13\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"3\"><dxf><font><color rgb=\"FFFFFFFF\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFFF0000\"/></patternFill></fill></dxf><dxf><font><color rgb=\"FF000000\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFFFE699\"/></patternFill></fill></dxf><dxf><font><color rgb=\"FF000000\"/></font><fill><patternFill patternType=\"solid\"><bgColor rgb=\"FFC5E0B4\"/></patternFill></fill></dxf></dxfs></styleSheet>",
  "xfCss": [
   "font-size:11pt",
   "font-size:11pt;background:#FFFFFF",
@@ -5432,6 +5484,7 @@ const SHEETS_HS_SKIN = {
   "font-weight:700;font-size:9pt;color:#00B050;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#0070C0;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;text-align:center",
   "font-weight:700;font-size:9pt;text-align:center",
@@ -5439,44 +5492,56 @@ const SHEETS_HS_SKIN = {
   "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;background:#FFFFFF;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;background:#FFFFFF;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;background:#FFFFFF;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:11pt;color:#FF0000;white-space:normal",
   "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;color:#00B050;background:#FFFF00;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#00B050;background:#FFFF00;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;text-align:center",
+  "font-weight:700;font-size:9pt;background:#FFFFFF;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;background:#FFFFFF;border-top:1px solid #000000;text-align:center",
+  "font-size:11pt;background:#E89E9E;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#E89E9E;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-size:8pt;font-family:Arial,sans-serif;white-space:normal",
-  "font-weight:700;font-size:9pt;background:#C5E0B4;border-top:2px solid #000000;white-space:normal",
-  "font-weight:700;font-size:9pt;background:#C5E0B4;border-right:2px solid #000000;border-top:2px solid #000000;white-space:normal",
   "font-weight:700;font-size:9pt;color:#FF0000;background:#FFFF00;border-left:2px solid #000000;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#FFFFFF;background:#FF0000;border-left:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;background:#92D050;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;background:#92D050;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;color:#00B050;background:#FFFFFF;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-size:11pt;background:#E89E9E;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#FFFFFF;text-align:center",
   "font-weight:700;font-size:9pt;color:#0070C0;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-size:16pt;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:normal",
-  "font-size:16pt;border-right:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;color:#FF0000;background:#FFFF00;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#FFFFFF;background:#FF0000;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;background:#92D050;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center;white-space:normal",
-  "font-size:9pt;font-family:Arial,sans-serif;background:#FF0000;border-left:2px solid #000000;border-right:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:11pt;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;background:#00B0F0;border-left:2px solid #000000;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;background:#00B050;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;background:#BDD7EE;border-right:2px solid #000000",
+  "font-weight:700;font-size:9pt;background:#BDD7EE",
+  "font-weight:700;font-size:9pt;background:#BDD7EE;border-left:2px solid #000000",
   "font-weight:700;font-size:9pt;background:#FFFF00;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#ED7D31;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#ED7D31;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;color:#00B050;background:#FFFFFF;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#FF0000;background:#FFFF00;border-left:1px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:11pt;color:#FF0000",
-  "font-weight:700;font-size:12pt;color:#FF0000;white-space:normal",
-  "font-size:11pt;background:#D9D9D9;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000",
-  "font-size:11pt;background:#D9D9D9",
+  "font-weight:700;font-size:9pt",
+  "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;text-align:center;white-space:normal",
-  "font-weight:700;font-size:9pt;color:#FF0000;background:#FFFF00;border-left:1px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-size:16pt;text-align:center;white-space:normal",
-  "font-size:12pt;text-align:center",
-  "font-size:9pt;color:#FF0000;text-align:center",
+  "font-weight:700;font-size:9pt;text-align:center;white-space:normal",
+  "font-size:11pt;background:#BFBFBF;border-top:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#FF0000;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000",
+  "font-size:11pt;background:#C5E0B4;border-left:2px solid #000000;border-bottom:2px solid #000000",
+  "font-size:11pt;background:#FFE699;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000",
+  "font-size:16pt;border-right:1px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-size:16pt;border-right:1px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
+  "font-size:16pt;border-left:2px solid #000000;border-right:1px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;color:#00B050;border-left:2px solid #000000;border-top:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;border-top:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center",
@@ -5494,31 +5559,45 @@ const SHEETS_HS_SKIN = {
   "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:11pt;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;background:#C5E0B4;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;background:#C5E0B4;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;background:#C5E0B4;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
+  "font-weight:700;font-size:9pt;color:#FF0000;border-left:2px solid #000000;border-top:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#FF0000;border-top:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#FF0000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#0070C0;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:12pt;border-bottom:2px solid #000000;text-align:center",
+  "font-size:12pt;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-size:9pt;color:#FF0000;border-left:2px solid #000000;border-top:2px solid #000000;text-align:center",
   "font-size:9pt;color:#FF0000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;border-left:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;border-right:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:11pt;text-align:center;white-space:normal",
+  "font-weight:700;font-size:11pt;border-right:2px solid #000000;text-align:center;white-space:normal",
+  "font-size:12pt;border-top:2px solid #000000;text-align:center",
+  "font-size:12pt;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center",
+  "font-size:12pt;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:12pt;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#242424;border-left:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;border-right:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:11pt;border-right:2px solid #000000;text-align:center;white-space:normal",
-  "font-size:12pt;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-size:12pt;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-size:12pt;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-size:12pt;border-right:2px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;color:#242424;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;color:#242424;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;background:#FFFFFF;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;background:#FFFFFF;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:9pt;color:#00B050;background:#FFFFFF;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
-  "font-weight:700;font-size:9pt;color:#0070C0;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:9pt;color:#0070C0;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:9pt;color:#0070C0;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-size:12pt;border-left:1px solid #000000;border-top:2px solid #000000;border-bottom:1px solid #000000;text-align:center",
-  "font-size:12pt;border-left:1px solid #000000;border-top:1px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#EB99F7;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#EB99F7;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#EB99F7;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#BFBFBF;border-left:2px solid #000000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center",
+  "font-size:11pt;background:#BFBFBF;border-left:2px solid #000000;border-right:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#7030A0;border-left:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#7030A0;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
+  "font-weight:700;font-size:9pt;color:#7030A0;border-right:2px solid #000000;border-top:2px solid #000000;border-bottom:2px solid #000000;text-align:center",
   "font-weight:700;font-size:12pt;color:#FF0000;border-top:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:12pt;color:#FF0000;border-right:2px solid #000000;border-top:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:12pt;color:#FF0000;border-left:2px solid #000000;text-align:center;white-space:normal",
@@ -5526,569 +5605,516 @@ const SHEETS_HS_SKIN = {
   "font-weight:700;font-size:12pt;color:#FF0000;border-right:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:12pt;color:#FF0000;border-left:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
   "font-weight:700;font-size:12pt;color:#FF0000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:12pt;color:#FF0000;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:11pt;border-left:2px solid #000000;text-align:center;white-space:normal",
-  "font-weight:700;font-size:14pt;color:#FF0000;text-align:center;white-space:normal"
+  "font-weight:700;font-size:12pt;color:#FF0000;border-right:2px solid #000000;border-bottom:2px solid #000000;text-align:center;white-space:normal"
  ],
- "dxfCss": [
-  "font-weight:700;color:#000000;background:#A9D18E",
-  "font-weight:700;color:#FFFFFF;background:#FF0000"
+ "mg": [
+  {
+   "band": "High",
+   "op": "greaterThanOrEqual",
+   "f": [
+    "700"
+   ],
+   "css": "color:#FFFFFF;background:#FF0000"
+  },
+  {
+   "band": "Average",
+   "op": "between",
+   "f": [
+    "400",
+    "700"
+   ],
+   "css": "color:#000000;background:#FFE699"
+  },
+  {
+   "band": "Low",
+   "op": "lessThan",
+   "f": [
+    "400"
+   ],
+   "css": "color:#000000;background:#C5E0B4"
+  }
  ],
  "colsXml": "<cols><col min=\"2\" max=\"2\" width=\"8.5703125\" customWidth=\"1\"/><col min=\"4\" max=\"4\" width=\"8.5703125\" customWidth=\"1\"/><col min=\"5\" max=\"6\" width=\"8.140625\" customWidth=\"1\"/><col min=\"8\" max=\"8\" width=\"8.5703125\" customWidth=\"1\"/><col min=\"9\" max=\"9\" width=\"8.140625\" customWidth=\"1\"/><col min=\"10\" max=\"10\" width=\"6.42578125\" customWidth=\"1\"/><col min=\"11\" max=\"11\" width=\"5.5703125\" customWidth=\"1\"/><col min=\"12\" max=\"12\" width=\"7.140625\" customWidth=\"1\"/><col min=\"13\" max=\"13\" width=\"6.28515625\" customWidth=\"1\"/><col min=\"14\" max=\"14\" width=\"7.28515625\" customWidth=\"1\"/><col min=\"15\" max=\"15\" width=\"8.28515625\" customWidth=\"1\"/><col min=\"16\" max=\"16\" width=\"7.7109375\" customWidth=\"1\"/><col min=\"17\" max=\"17\" width=\"7.85546875\" customWidth=\"1\"/><col min=\"18\" max=\"18\" width=\"7.7109375\" customWidth=\"1\"/></cols>",
  "tabColor": "FFFFFF00",
  "legend": [
   [
-   1,
+   2,
    "F",
-   9,
-   ""
-  ],
-  [
-   1,
-   "G",
-   33,
-   ""
-  ],
-  [
-   1,
-   "H",
-   33,
-   ""
-  ],
-  [
-   1,
-   "I",
-   33,
-   ""
-  ],
-  [
-   1,
-   "J",
-   44,
-   ""
-  ],
-  [
-   1,
-   "K",
-   46,
-   ""
-  ],
-  [
-   1,
-   "L",
-   47,
-   ""
-  ],
-  [
-   1,
-   "M",
-   47,
-   ""
-  ],
-  [
-   1,
-   "N",
-   47,
-   ""
-  ],
-  [
-   1,
-   "R",
-   48,
-   ""
-  ],
-  [
-   1,
-   "S",
-   48,
-   ""
-  ],
-  [
-   2,
-   "B",
-   103,
-   ""
-  ],
-  [
-   2,
-   "C",
-   103,
-   ""
-  ],
-  [
-   2,
-   "D",
-   103,
-   ""
-  ],
-  [
-   2,
-   "E",
-   103,
+   18,
    ""
   ],
   [
    2,
    "G",
-   35,
+   39,
    "INT CLEAN"
   ],
   [
    2,
    "H",
-   102,
+   99,
    "Mileage Guide"
   ],
   [
    2,
    "I",
-   69,
+   99,
    ""
   ],
   [
    2,
    "J",
-   75,
+   100,
    ""
   ],
   [
    2,
    "K",
-   31,
-   "\u00a0"
+   53,
+   ""
   ],
   [
    2,
    "L",
-   27,
+   57,
    "="
   ],
   [
    2,
    "M",
-   92,
-   "< 500 Miles"
+   101,
+   "High"
   ],
   [
    2,
    "N",
-   76,
+   101,
    ""
   ],
   [
    2,
    "O",
-   77,
+   102,
    ""
   ],
   [
    2,
    "S",
-   70,
+   93,
    "Date Sent"
   ],
   [
    2,
    "T",
-   71,
+   94,
    ""
   ],
   [
    3,
-   "A",
-   41,
-   ""
-  ],
-  [
-   3,
-   "B",
-   103,
-   ""
-  ],
-  [
-   3,
-   "C",
-   103,
-   ""
-  ],
-  [
-   3,
-   "D",
-   103,
-   ""
-  ],
-  [
-   3,
-   "E",
-   103,
+   "F",
+   18,
    ""
   ],
   [
    3,
    "G",
-   34,
+   38,
    "EXT CLEAN"
   ],
   [
    3,
    "H",
-   102,
+   99,
    ""
   ],
   [
    3,
    "I",
-   69,
+   99,
    ""
   ],
   [
    3,
    "J",
-   75,
+   100,
    ""
   ],
   [
    3,
    "K",
-   32,
-   "\u00a0"
+   55,
+   ""
   ],
   [
    3,
    "L",
-   28,
+   56,
    "="
   ],
   [
    3,
    "M",
-   93,
-   "> 500 Miles"
+   103,
+   "Average"
   ],
   [
    3,
    "N",
-   78,
+   103,
    ""
   ],
   [
    3,
    "O",
-   79,
+   104,
    ""
   ],
   [
    3,
    "S",
-   80,
+   105,
    ""
   ],
   [
    3,
    "T",
-   81,
+   106,
    ""
   ],
   [
    4,
-   "B",
-   41,
+   "K",
+   54,
    ""
   ],
   [
    4,
-   "C",
-   41,
+   "L",
+   58,
+   "="
+  ],
+  [
+   4,
+   "M",
+   91,
+   "Low"
+  ],
+  [
+   4,
+   "N",
+   91,
    ""
   ],
   [
    4,
-   "D",
-   41,
-   ""
-  ],
-  [
-   4,
-   "E",
-   41,
+   "O",
+   92,
    ""
   ],
   [
    4,
    "S",
-   70,
+   93,
    "Time Sent"
   ],
   [
    4,
    "T",
-   71,
+   94,
+   ""
+  ],
+  [
+   5,
+   "E",
+   48,
+   ""
+  ],
+  [
+   5,
+   "F",
+   48,
+   ""
+  ],
+  [
+   5,
+   "G",
+   48,
+   ""
+  ],
+  [
+   5,
+   "H",
+   48,
    ""
   ],
   [
    5,
    "S",
-   82,
+   95,
    ""
   ],
   [
    5,
    "T",
-   83,
-   ""
-  ],
-  [
-   6,
-   "A",
-   8,
+   96,
    ""
   ],
   [
    6,
    "S",
-   84,
+   97,
    ""
   ],
   [
    6,
    "T",
-   85,
+   98,
    ""
   ]
  ],
  "legendHts": {
-  "1": "21",
   "2": "21",
   "3": "21",
-  "4": "15.75"
+  "4": "21"
  },
+ "legendMerges": [
+  "H2:J3",
+  "M2:O2",
+  "S2:T2",
+  "M3:O3",
+  "S3:T3",
+  "M4:O4",
+  "S4:T4",
+  "S5:T5",
+  "S6:T6"
+ ],
  "footer": [
   [
    60,
    "A",
-   8,
+   9,
    ""
   ],
   [
    60,
    "B",
-   49,
+   59,
    "NOTE"
   ],
   [
    60,
    "C",
-   50,
+   60,
    ""
   ],
   [
    60,
    "D",
-   50,
+   60,
    ""
   ],
   [
    60,
    "E",
-   50,
+   60,
    ""
   ],
   [
    60,
    "F",
-   51,
+   61,
    ""
   ],
   [
    60,
    "H",
-   89,
+   62,
    "COMMENTS"
   ],
   [
    60,
    "I",
-   90,
+   63,
    ""
   ],
   [
    60,
    "J",
-   90,
+   63,
    ""
   ],
   [
    60,
    "K",
-   90,
+   63,
    ""
   ],
   [
    60,
    "L",
-   90,
+   63,
    ""
   ],
   [
    60,
    "M",
-   90,
+   63,
    ""
   ],
   [
    60,
    "N",
-   90,
+   63,
    ""
   ],
   [
    60,
    "O",
-   90,
+   63,
    ""
   ],
   [
    60,
    "P",
-   90,
+   63,
    ""
   ],
   [
    60,
    "Q",
-   90,
+   63,
    ""
   ],
   [
    60,
    "R",
-   90,
+   63,
    ""
   ],
   [
    60,
    "S",
-   90,
+   63,
    ""
   ],
   [
    60,
    "T",
-   91,
+   64,
    ""
   ],
   [
    61,
    "A",
-   7,
+   8,
    ""
   ],
   [
    61,
    "B",
-   52,
+   65,
    "FP AT ASHFORD IS STOPS END"
   ],
   [
    61,
    "C",
-   53,
+   66,
    ""
   ],
   [
    61,
    "D",
-   53,
+   66,
    ""
   ],
   [
    61,
    "E",
-   53,
+   66,
    ""
   ],
   [
    61,
    "F",
-   54,
+   67,
    ""
   ],
   [
    61,
    "H",
-   55,
+   68,
    ""
   ],
   [
    61,
    "I",
-   94,
+   121,
    ""
   ],
   [
    61,
    "J",
-   94,
+   121,
    ""
   ],
   [
    61,
    "K",
-   94,
+   121,
    ""
   ],
   [
    61,
    "L",
-   94,
+   121,
    ""
   ],
   [
    61,
    "M",
-   94,
+   121,
    ""
   ],
   [
    61,
    "N",
-   94,
+   121,
    ""
   ],
   [
    61,
    "O",
-   94,
+   121,
    ""
   ],
   [
    61,
    "P",
-   94,
+   121,
    ""
   ],
   [
    61,
    "Q",
-   94,
+   121,
    ""
   ],
   [
    61,
    "R",
-   94,
+   121,
    ""
   ],
   [
    61,
    "S",
-   94,
+   121,
    ""
   ],
   [
    61,
    "T",
-   95,
+   122,
    ""
   ],
   [
@@ -6100,109 +6126,109 @@ const SHEETS_HS_SKIN = {
   [
    62,
    "B",
-   56,
+   69,
    "FP AT RAMSGATE IS MARGATE END"
   ],
   [
    62,
    "C",
-   57,
+   70,
    ""
   ],
   [
    62,
    "D",
-   57,
+   70,
    ""
   ],
   [
    62,
    "E",
-   57,
+   70,
    ""
   ],
   [
    62,
    "F",
-   58,
+   71,
    ""
   ],
   [
    62,
    "H",
-   96,
+   123,
    ""
   ],
   [
    62,
    "I",
-   97,
+   124,
    ""
   ],
   [
    62,
    "J",
-   97,
+   124,
    ""
   ],
   [
    62,
    "K",
-   97,
+   124,
    ""
   ],
   [
    62,
    "L",
-   97,
+   124,
    ""
   ],
   [
    62,
    "M",
-   97,
+   124,
    ""
   ],
   [
    62,
    "N",
-   97,
+   124,
    ""
   ],
   [
    62,
    "O",
-   97,
+   124,
    ""
   ],
   [
    62,
    "P",
-   97,
+   124,
    ""
   ],
   [
    62,
    "Q",
-   97,
+   124,
    ""
   ],
   [
    62,
    "R",
-   97,
+   124,
    ""
   ],
   [
    62,
    "S",
-   97,
+   124,
    ""
   ],
   [
    62,
    "T",
-   98,
+   125,
    ""
   ],
   [
@@ -6214,451 +6240,451 @@ const SHEETS_HS_SKIN = {
   [
    63,
    "B",
-   59,
+   72,
    "Ramsgate arrivals. Units to be shown on the same line as their allocated diagram."
   ],
   [
    63,
    "C",
-   60,
+   73,
    ""
   ],
   [
    63,
    "D",
-   60,
+   73,
    ""
   ],
   [
    63,
    "E",
-   60,
+   73,
    ""
   ],
   [
    63,
    "F",
-   61,
+   74,
    ""
   ],
   [
    63,
    "H",
-   96,
+   123,
    ""
   ],
   [
    63,
    "I",
-   97,
+   124,
    ""
   ],
   [
    63,
    "J",
-   97,
+   124,
    ""
   ],
   [
    63,
    "K",
-   97,
+   124,
    ""
   ],
   [
    63,
    "L",
-   97,
+   124,
    ""
   ],
   [
    63,
    "M",
-   97,
+   124,
    ""
   ],
   [
    63,
    "N",
-   97,
+   124,
    ""
   ],
   [
    63,
    "O",
-   97,
+   124,
    ""
   ],
   [
    63,
    "P",
-   97,
+   124,
    ""
   ],
   [
    63,
    "Q",
-   97,
+   124,
    ""
   ],
   [
    63,
    "R",
-   97,
+   124,
    ""
   ],
   [
    63,
    "S",
-   97,
+   124,
    ""
   ],
   [
    63,
    "T",
-   98,
+   125,
    ""
   ],
   [
    64,
    "A",
-   44,
+   50,
    ""
   ],
   [
    64,
    "B",
-   62,
+   75,
    ""
   ],
   [
    64,
    "C",
-   63,
+   76,
    ""
   ],
   [
    64,
    "D",
-   63,
+   76,
    ""
   ],
   [
    64,
    "E",
-   63,
+   76,
    ""
   ],
   [
    64,
    "F",
-   64,
+   77,
    ""
   ],
   [
    64,
    "H",
-   96,
+   123,
    ""
   ],
   [
    64,
    "I",
-   97,
+   124,
    ""
   ],
   [
    64,
    "J",
-   97,
+   124,
    ""
   ],
   [
    64,
    "K",
-   97,
+   124,
    ""
   ],
   [
    64,
    "L",
-   97,
+   124,
    ""
   ],
   [
    64,
    "M",
-   97,
+   124,
    ""
   ],
   [
    64,
    "N",
-   97,
+   124,
    ""
   ],
   [
    64,
    "O",
-   97,
+   124,
    ""
   ],
   [
    64,
    "P",
-   97,
+   124,
    ""
   ],
   [
    64,
    "Q",
-   97,
+   124,
    ""
   ],
   [
    64,
    "R",
-   97,
+   124,
    ""
   ],
   [
    64,
    "S",
-   97,
+   124,
    ""
   ],
   [
    64,
    "T",
-   98,
+   125,
    ""
   ],
   [
    65,
    "A",
-   44,
+   50,
    ""
   ],
   [
    65,
    "B",
-   65,
+   78,
    "CET LEGEND"
   ],
   [
    65,
    "C",
-   66,
+   79,
    ""
   ],
   [
    65,
    "D",
-   30,
+   36,
    "5 DAYS +"
   ],
   [
    65,
    "E",
-   29,
+   35,
    "4 DAYS"
   ],
   [
    65,
    "F",
-   23,
+   30,
    "3 DAYS"
   ],
   [
    65,
    "H",
-   96,
+   123,
    ""
   ],
   [
    65,
    "I",
-   97,
+   124,
    ""
   ],
   [
    65,
    "J",
-   97,
+   124,
    ""
   ],
   [
    65,
    "K",
-   97,
+   124,
    ""
   ],
   [
    65,
    "L",
-   97,
+   124,
    ""
   ],
   [
    65,
    "M",
-   97,
+   124,
    ""
   ],
   [
    65,
    "N",
-   97,
+   124,
    ""
   ],
   [
    65,
    "O",
-   97,
+   124,
    ""
   ],
   [
    65,
    "P",
-   97,
+   124,
    ""
   ],
   [
    65,
    "Q",
-   97,
+   124,
    ""
   ],
   [
    65,
    "R",
-   97,
+   124,
    ""
   ],
   [
    65,
    "S",
-   97,
+   124,
    ""
   ],
   [
    65,
    "T",
-   98,
+   125,
    ""
   ],
   [
    66,
    "B",
-   67,
+   80,
    ""
   ],
   [
    66,
    "C",
-   68,
+   81,
    ""
   ],
   [
    66,
    "D",
-   22,
-   ""
+   29,
+   "YES"
   ],
   [
    66,
    "E",
-   21,
-   ""
+   28,
+   "YES"
   ],
   [
    66,
    "F",
-   24,
-   ""
+   31,
+   "YES"
   ],
   [
    66,
    "G",
-   18,
+   27,
    ""
   ],
   [
    66,
    "H",
-   99,
+   126,
    ""
   ],
   [
    66,
    "I",
-   100,
+   127,
    ""
   ],
   [
    66,
    "J",
-   100,
+   127,
    ""
   ],
   [
    66,
    "K",
-   100,
+   127,
    ""
   ],
   [
    66,
    "L",
-   100,
+   127,
    ""
   ],
   [
    66,
    "M",
-   100,
+   127,
    ""
   ],
   [
    66,
    "N",
-   100,
+   127,
    ""
   ],
   [
    66,
    "O",
-   100,
+   127,
    ""
   ],
   [
    66,
    "P",
-   100,
+   127,
    ""
   ],
   [
    66,
    "Q",
-   100,
+   127,
    ""
   ],
   [
    66,
    "R",
-   100,
+   127,
    ""
   ],
   [
    66,
    "S",
-   100,
+   127,
    ""
   ],
   [
    66,
    "T",
-   101,
+   128,
    ""
   ]
  ],
@@ -6671,174 +6697,257 @@ const SHEETS_HS_SKIN = {
   "B63:F64",
   "B65:C66"
  ],
- "title": {
-  "A": 6,
-  "B": 72,
-  "C": 73,
-  "D": 73,
-  "E": 73,
-  "F": 74,
-  "G": 1,
-  "H": 86,
-  "I": 87,
-  "J": 87,
-  "K": 87,
-  "L": 87,
-  "M": 87,
-  "N": 87,
-  "O": 87,
-  "P": 87,
-  "Q": 87,
-  "R": 87,
-  "S": 87,
-  "T": 88
+ "titles": {
+  "ASHFORD": {
+   "A": 6,
+   "B": 107,
+   "C": 108,
+   "D": 108,
+   "E": 108,
+   "F": 109,
+   "G": 1,
+   "H": 110,
+   "I": 111,
+   "J": 111,
+   "K": 111,
+   "L": 111,
+   "M": 111,
+   "N": 111,
+   "O": 111,
+   "P": 111,
+   "Q": 111,
+   "R": 111,
+   "S": 111,
+   "T": 112
+  },
+  "FAVERSHAM": {
+   "B": 85,
+   "C": 86,
+   "D": 86,
+   "E": 86,
+   "F": 87,
+   "G": 33,
+   "H": 85,
+   "I": 86,
+   "J": 86,
+   "K": 86,
+   "L": 86,
+   "M": 86,
+   "N": 86,
+   "O": 86,
+   "P": 86,
+   "Q": 86,
+   "R": 86,
+   "S": 86,
+   "T": 87
+  },
+  "MARGATE": {
+   "A": 50,
+   "B": 118,
+   "C": 119,
+   "D": 119,
+   "E": 119,
+   "F": 120,
+   "G": 33,
+   "H": 118,
+   "I": 119,
+   "J": 119,
+   "K": 119,
+   "L": 119,
+   "M": 119,
+   "N": 119,
+   "O": 119,
+   "P": 119,
+   "Q": 119,
+   "R": 119,
+   "S": 119,
+   "T": 120
+  },
+  "RAMSGATE": {
+   "A": 51,
+   "B": 88,
+   "C": 89,
+   "D": 89,
+   "E": 89,
+   "F": 90,
+   "H": 88,
+   "I": 89,
+   "J": 89,
+   "K": 89,
+   "L": 89,
+   "M": 89,
+   "N": 89,
+   "O": 89,
+   "P": 89,
+   "Q": 89,
+   "R": 89,
+   "S": 89,
+   "T": 90
+  }
  },
  "header": [
   [
    "A",
-   17,
+   22,
    ""
   ],
   [
    "B",
-   10,
+   11,
    "TRAIN ID"
   ],
   [
    "C",
-   11,
+   12,
    "ARRIVAL TIME"
   ],
   [
    "D",
-   11,
+   12,
    "UNIT NUMBER"
   ],
   [
    "E",
-   11,
+   12,
    "6 OR 12 CAR"
   ],
   [
    "F",
-   16,
+   19,
    "CET DUE"
   ],
   [
    "G",
-   42,
+   116,
    ""
   ],
   [
    "H",
-   15,
+   17,
    "TRAIN ID"
   ],
   [
    "I",
-   12,
+   13,
    "DIAGRAM"
   ],
   [
    "J",
-   12,
+   13,
    "N/M\r\nM/O"
   ],
   [
    "K",
-   12,
+   13,
    "MG"
   ],
   [
    "L",
-   12,
+   13,
    "TIME"
   ],
   [
    "M",
-   12,
+   13,
    "FP/RP"
   ],
   [
    "N",
-   12,
+   13,
    "UNIT NO"
   ],
   [
    "O",
-   12,
+   13,
    "ENDS AM"
   ],
   [
    "P",
-   11,
+   12,
    "ARRIVES"
   ],
   [
    "Q",
-   11,
+   12,
    "ENDS PM"
   ],
   [
    "R",
-   11,
+   12,
    "TRAIN ID"
   ],
   [
    "S",
-   11,
+   12,
    "ARRIVES"
   ],
   [
    "T",
-   13,
+   14,
    "WORKS"
   ]
  ],
- "headerHt": "24.75",
+ "headerHt": "24",
  "data": {
-  "B": 39,
-  "C": 25,
-  "D": 14,
-  "E": 14,
-  "F": 45,
-  "G": 43,
+  "B": 49,
+  "C": 37,
+  "D": 16,
+  "E": 16,
+  "F": 7,
+  "G": 117,
   "H": 3,
   "I": 4,
   "J": 2,
-  "K": 36,
+  "K": 43,
   "L": 4,
   "M": 4,
   "N": 5,
-  "O": 37,
-  "P": 38,
+  "O": 44,
+  "P": 45,
   "Q": 4,
   "R": 4,
   "S": 4,
-  "T": 26
- },
- "greyRight": {
-  "H": 19,
-  "I": 19,
-  "J": 19,
-  "K": 19,
-  "L": 19,
-  "M": 19,
-  "N": 19,
-  "O": 19,
-  "P": 19,
-  "Q": 19,
-  "R": 19,
-  "S": 19,
-  "T": 20
+  "T": 34
  },
  "gapRow": {
-  "B": 40,
-  "C": 40,
-  "D": 40,
-  "E": 40,
-  "F": 40
- }
+  "B": 47,
+  "C": 47,
+  "D": 47,
+  "E": 47,
+  "F": 47
+ },
+ "bars": {
+  "ASHFORD": {
+   "H": 82,
+   "mid": 83,
+   "T": 84
+  },
+  "FAVERSHAM": {
+   "H": 32,
+   "mid": 25,
+   "T": 26
+  },
+  "MARGATE": {
+   "H": 113,
+   "mid": 114,
+   "T": 115
+  },
+  "RAMSGATE": {
+   "H": 42,
+   "mid": 41,
+   "T": 40
+  }
+ },
+ "worksG": {
+  "first": 23,
+  "mid": 24,
+  "last": 15
+ },
+ "plainG": 10,
+ "headG": 52,
+ "flag": 46,
+ "worksT": 20,
+ "laterH": 21
 };
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS_SKIN;
 if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKIN;
@@ -6854,10 +6963,10 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKI
 
    Everything about how it LOOKS comes from SHEETS_HS_SKIN, which is the
    workbook's own style records lifted verbatim (tools/make-hs-skin.py):
-   the exact borders, fills, fonts, row heights, column widths, yellow tab
-   and the conditional formatting that colours the MG column green under
-   500 miles and red over it. This file only decides what goes in which
-   cell.
+   the exact borders, fills, fonts, row heights, column widths, yellow tab,
+   each depot's own colour, and the mileage key's three colours for the MG
+   column - green under 400 miles, amber 400 to 700, red 700 and over. This
+   file only decides what goes in which cell.
 
    The mileage is the strongest check that the reports are read the way the
    depot reads them: on 18/08 the sheet's MG column and the Detail export
@@ -6866,7 +6975,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_HS_SKIN = SHEETS_HS_SKI
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
 const SKIN = SHEETS_HS_SKIN;
-const { fmtTime } = SHEETS_CORE;
+const { fmtTime, AM_CUTOFF } = SHEETS_CORE;
 const { DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
@@ -7079,7 +7188,8 @@ function arrivalEnd(F, d, k) {
   if (!ends || l === "?" || l == null) return null;
   return l ? ends[0] : ends[1];
 }
-/* NM: this part of the diagram never runs coupled; M/O: it never runs alone */
+/* N/M: this part of the diagram never runs coupled; M/O: it never runs
+   alone - written the way their sheet writes both */
 function multipleMark(F, d, sa, sb) {
   let shared = 0, alone = 0;
   const st = F.S.get(d);
@@ -7088,7 +7198,7 @@ function multipleMark(F, d, sa, sb) {
     if (st[k].dep == null) continue;
     F.mate.has(d + "@" + k) ? shared++ : alone++;
   }
-  return shared + alone === 0 ? "" : shared === 0 ? "NM" : alone === 0 ? "M/O" : "";
+  return shared + alone === 0 ? "" : shared === 0 ? "N/M" : alone === 0 ? "M/O" : "";
 }
 /* where the sheet writes a place in its ENDS columns */
 const PLACE3 = [[/^ASHF/, "ASH"], [/^RAM/, "RAM"], [/^FAV/, "FAV"], [/^MARGATE$/, "MAR"],
@@ -7193,6 +7303,29 @@ function rosterList() {
   return out.join(",");
 }
 
+/* Which band of the mileage key a figure is in, tested in the skin's
+   order (High first) so a figure on a boundary lands where Excel's own
+   priority puts it. */
+function mgBand(n) {
+  return SKIN.mg.find(b => {
+    const a = +b.f[0];
+    return b.op === "greaterThanOrEqual" ? n >= a : b.op === "greaterThan" ? n > a
+      : b.op === "lessThan" ? n < a : b.op === "lessThanOrEqual" ? n <= a
+      : b.op === "between" ? n >= a && n <= +b.f[1] : false;
+  }) || null;
+}
+/* rows [9,10,11,13] -> "K9:K11 K13" */
+function kRanges(rows) {
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    let j = i;
+    while (j + 1 < rows.length && rows[j + 1] === rows[j] + 1) j++;
+    out.push(i === j ? "K" + rows[i] : "K" + rows[i] + ":K" + rows[j]);
+    i = j;
+  }
+  return out.join(" ");
+}
+
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
@@ -7231,8 +7364,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   // the legend block, rows 1-6, exactly as the workbook has it
   for (const [lr, c, xf, v] of SKIN.legend) put(lr, COL(c), xf, v);
   for (const [lr, h] of Object.entries(SKIN.legendHts)) rowHeights.set(+lr, +h);
-  merges.push("B2:E3", "H2:J3", "M2:O2", "M3:O3",
-              "S2:T2", "S3:T3", "S4:T4", "S5:T5", "S6:T6");
+  merges.push(...SKIN.legendMerges);
 
   let r = 7;
   let pri = 1;
@@ -7244,7 +7376,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     blocks++;
 
     // title row, merged across each of its two tables
-    for (const [c, xf] of Object.entries(SKIN.title)) {
+    for (const [c, xf] of Object.entries(SKIN.titles[depot])) {
       const v = c === "B" ? depot + " PM ARRIVALS " +
                   (yday || "— no previous day loaded")
               : c === "H" ? depot + " UNIT ALLOCATIONS " + today : "";
@@ -7252,7 +7384,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     }
     merges.push("B" + r + ":F" + r, "H" + r + ":T" + r);
     r++;
-    for (const [c, xf, v] of SKIN.header) put(r, COL(c), xf, v);
+    /* G: Ashford's grey strip runs down the whole block; the other depots'
+       G carries WORKS against each morning allocation instead */
+    const strip = depot === "ASHFORD";
+    for (const [c, xf, v] of SKIN.header)
+      put(r, COL(c), c === "G" && !strip ? SKIN.headG : xf, v);
     rowHeights.set(r, +SKIN.headerHt);
     r++;
 
@@ -7275,6 +7411,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           hl: u.hl,
           time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
           endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
+          /* the morning's allocations - a unit's first move of the day,
+             off its overnight berth, before two - go above the bar. The
+             weekend prints do not say which move is the first; there it
+             is the time alone. */
+          am: (e.overnight === undefined || !!e.overnight) && e.time < AM_CUTOFF,
+          follows: false,
         };
         if (!has) {
           // no stops to read (a PDF build): the berth codes the books carry, as before
@@ -7295,6 +7437,9 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
            minutes in Ramsgate depot on its way from Margate to Ashford - is
            not where it ends up, and their sheet does not treat it as such. */
         const later = (departures.get(diag) || []).filter(x => x.time > e.time);
+        /* a later part of the day: some earlier row's WORKS names this
+           working, and both are marked yellow so the pair can be found */
+        row.follows = (departures.get(diag) || []).some(x => x.time < e.time);
         const sb = later.length ? u.sb : st.length - 1;
         const end = st[sb], t = end.arr != null ? end.arr : end.dep, hc = end.hcIn || "";
         const endLetter = arrivalEnd(F, diag, sb);
@@ -7331,6 +7476,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
       us.forEach((x, i) => { if (i > 0 && us.length > 1) x.id = ""; });
       rows.push(...us);
     }
+    /* Their sheet splits each block with a coloured bar: the morning's
+       allocations above it, everything that goes out later below - 5R27 at
+       09:54 on 01/10 is under Ashford's bar, because AZ623 came in from
+       Ramsgate first. Each side stays in time order. */
+    const amN = rows.filter(v => v.am).length;
+    rows.splice(0, rows.length, ...rows.filter(v => v.am), ...rows.filter(v => !v.am));
     /* Ramsgate's own rule, written on their sheet: an arrival is shown on
        the same line as the diagram its unit is allocated to. Where the units
        are known both sides, each arrival goes on its unit's line; the rest
@@ -7347,11 +7498,24 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     }
     const n = Math.max(rows.length, arr.length);
     const d0 = r;
-    for (let i = 0; i < n; i++) {
+    const mgRows = [];
+    for (let i = 0; i <= n; i++) {
+      /* the bar, between the last AM allocation and the first PM one - on
+         every block that has allocations, with or without a PM side, as
+         theirs has. The arrivals table runs on through it, ruled and empty,
+         so each arrival stays level with the allocation it belongs to. */
+      if (i === amN && rows.length) {
+        for (const [c, xf] of Object.entries(SKIN.data))
+          if (COL(c) < 7) put(r, COL(c), xf, "");
+        put(r, 7, strip ? SKIN.data.G : SKIN.plainG, "");
+        const bar = SKIN.bars[depot];
+        for (let k = COL("H"); k <= COL("T"); k++)
+          put(r, k, k === COL("H") ? bar.H : k === COL("T") ? bar.T : bar.mid, "");
+        merges.push("H" + r + ":T" + r);
+        r++;
+      }
+      if (i === n) break;
       const a = arr[i], v = rows[i];
-      /* An arrivals side that runs on after the allocations have finished
-         is greyed out on the real sheet, so it is here too. */
-      const right = v ? SKIN.data : SKIN.greyRight;
       for (const [c, xf] of Object.entries(SKIN.data)) {
         if (COL(c) >= 7) continue;
         const val = c === "B" ? (a ? a.hc : "") : c === "C" ? (a ? a.at : "")
@@ -7361,8 +7525,16 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
         put(r, COL(c), xf, val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
-      for (const [c, xf] of Object.entries(right)) {
-        if (COL(c) < 7) continue;
+      /* WORKS against each morning allocation outside Ashford: what that
+         unit forms next is filled in by hand, from what the stock
+         controller can see and the reports cannot */
+      if (strip) put(r, 7, SKIN.data.G, "");
+      else if (v && i < amN)
+        put(r, 7, i === 0 ? SKIN.worksG.first
+                  : i === amN - 1 ? SKIN.worksG.last : SKIN.worksG.mid, "WORKS");
+      else put(r, 7, SKIN.plainG, "");
+      for (const [c, xf] of Object.entries(SKIN.data)) {
+        if (COL(c) < 8) continue;
         const val = !v ? ""
           : c === "H" ? v.id : c === "I" ? v.diag : c === "J" ? v.nm : c === "K" ? v.mg
           : c === "L" ? v.time : c === "M" ? v.fprp : c === "N" ? v.unit
@@ -7371,14 +7543,23 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           : c === "T" ? v.works : "";
         const num = (c === "K" || c === "N") && val !== "" &&
                     /^\d+$/.test(String(val));
-        put(r, COL(c), xf, val, num);
+        /* their yellow marks: N/M and M/O in red; the working a unit goes
+           back out on, in WORKS; and that later working's own TRAIN ID -
+           both lines of a 12, as theirs has it - so each return can be
+           traced from the row it comes back on to the row it leaves on */
+        const mark = c === "J" && val ? SKIN.flag
+          : c === "T" && /^[125][A-Z]\d\d$/.test(String(val)) ? SKIN.worksT
+          : c === "H" && v && v.follows ? SKIN.laterH : xf;
+        put(r, COL(c), mark, val, num);
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
-           sheet on screen disagrees with the one in the workbook. Same two
-           dxf records the conditional formatting below names. */
-        if (c === "K" && num)
-          cells[cells.length - 1].cfCss =
-            SKIN.dxfCss[Number(val) < 500 ? 0 : 1];
+           sheet on screen disagrees with the one in the workbook. Same
+           bands, in the same order, as the conditional formatting below. */
+        if (c === "K" && num) {
+          const b = mgBand(Number(val));
+          if (b) cells[cells.length - 1].cfCss = b.css;
+          mgRows.push(r);
+        }
       }
       /* The route note their sheet keeps as a comment on the DIAGRAM cell.
          Off the day's own stops, one note and only one: "not over high
@@ -7397,14 +7578,17 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
       }
       r++;
     }
-    /* Their sheet colours the MG column by the mileage key above: green
-       under 500 miles, red at 500 and over - dxf 0 and 1 in the skin. */
-    if (rows.length)
-      condFmt.push('<conditionalFormatting sqref="K' + d0 + ':K' + (r - 1) +
-        '"><cfRule type="cellIs" dxfId="0" priority="' + pri++ +
-        '" operator="lessThan"><formula>500</formula></cfRule>' +
-        '<cfRule type="cellIs" dxfId="1" priority="' + pri++ +
-        '" operator="greaterThan"><formula>499</formula></cfRule>' +
+    /* Their sheet colours the MG column by the mileage key above it - High,
+       Average and Low, dxf 0, 1 and 2 in the skin. Only the cells with a
+       figure in: Excel reads an empty cell as 0, and would paint the bar
+       and every blank line green. */
+    if (mgRows.length)
+      condFmt.push('<conditionalFormatting sqref="' + kRanges(mgRows) + '">' +
+        SKIN.mg.map((b, i) =>
+          '<cfRule type="cellIs" dxfId="' + i + '" priority="' + pri++ +
+          '" operator="' + b.op + '">' +
+          b.f.map(f => '<formula>' + f + '</formula>').join("") +
+          '</cfRule>').join("") +
         '</conditionalFormatting>');
     /* the drop-downs their sheet keeps on these columns: the fleet on
        both UNIT columns, 6/12, the CET mark, and FP/RP */
@@ -7476,7 +7660,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;

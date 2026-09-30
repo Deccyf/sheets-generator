@@ -53,24 +53,25 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     assert.equal(o.tabColor, "FFFFFF00", "their yellow tab");
     assert.match(o.colsXml, /^<cols>/, "their column widths, verbatim");
     assert.equal(o.noPageSetup, true, "no pageSetup, like their tab");
-    assert.ok(o.condFmt.length, "the MG mileage colours ride along");
-    assert.match(o.condFmt[0], /dxfId="0".*lessThan.*500/s, "green under 500");
+    /* These prints carry no mileage, so there is no MG rule: Excel reads
+       an empty cell as 0, and a rule over blanks paints them all green. */
+    assert.equal(o.condFmt.length, 0, "no MG figures, no MG colours");
   }
   /* …and the saved workbook really carries all of it. */
   const bytes = H.writeHsBook(r.hsSecs, r.labels, r.dates,
                               f => N.fflate.zipSync(f, { level: 6 }));
   const files = N.fflate.unzipSync(bytes);
   const styles = new TextDecoder().decode(files["xl/styles.xml"]);
-  assert.ok(styles.includes("FF00B050") && styles.includes("<dxfs count=\"2\">"),
-    "their styles and the two mileage dxfs are in the saved file");
+  assert.ok(styles.includes("FF00B050") && styles.includes("<dxfs count=\"3\">"),
+    "their styles and the three mileage dxfs are in the saved file");
   /* No theme colours. The workbook painted its greys as theme-0-with-tint,
      and a generated book has no theme part to resolve them against - Excel
      drew every such fill as a dotted haze. The skin ships pure rgb, resolved
-     against their own theme's palette: the between-tables grey is D9D9D9
-     ("white, darker 15%"), the under-500-miles chip is A9D18E. */
+     against their own theme's palette: Ashford's grey strip is BFBFBF
+     ("white, darker 25%"), the Low mileage green is C5E0B4. */
   assert.ok(!styles.includes('theme="'), "no unresolvable theme colours");
-  assert.ok(styles.includes("FFD9D9D9"), "the grey resolved to its rgb");
-  assert.ok(styles.includes("FFA9D18E"), "and the mileage chip to its green");
+  assert.ok(styles.includes("FFBFBFBF"), "the grey resolved to its rgb");
+  assert.ok(styles.includes("FFC5E0B4"), "and the mileage chip to its green");
   /* Excel's reserved slots - the second cause of the haze. Excel paints
      every UNTOUCHED cell of the grid with cellXfs 0 and expects fill 0 to
      be patternType none and fill 1 gray125; the renumbered skin once put
@@ -84,7 +85,6 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     "cellXfs 0 is a plain default");
   const xml = new TextDecoder().decode(files["xl/worksheets/sheet1.xml"]);
   assert.ok(xml.includes('<tabColor rgb="FFFFFF00"/>'), "yellow tab saved");
-  assert.ok(xml.includes("<conditionalFormatting"), "mileage colours saved");
   assert.ok(!xml.includes("<pageSetup"), "and no pageSetup, like theirs");
 
   /* And the whole workbook survives a REAL parser. String checks above
@@ -334,11 +334,12 @@ test("the 395 preview is drawn in the workbook's own dress", () => {
   assert.ok(under.includes("#00B050"), "the depot's green on the block titles");
   /* Excel paints the mileage rules over the cell when the book opens, so the
      preview paints them too — otherwise MG shows its base fill on screen and
-     a different colour in the workbook. */
-  assert.ok(under.includes(SKIN.dxfCss[0].match(/background:(#\w+)/)[1]),
-    "under 500 miles is green, the way the key above it says");
-  assert.ok(html(951).includes(SKIN.dxfCss[1].match(/background:(#\w+)/)[1]),
-    "and 500 or over is red");
+     a different colour in the workbook. High, Average and Low, the way the
+     key above it says: under 400 green, 400 to 700 amber, 700 on red. */
+  const bg = band => SKIN.mg.find(b => b.band === band).css.match(/background:(#\w+)/)[1];
+  assert.ok(under.includes(bg("Low")), "143 miles is Low, green");
+  assert.ok(html(550).includes(bg("Average")), "550 is Average, amber");
+  assert.ok(html(951).includes(bg("High")), "951 is High, red");
   assert.ok(!under.includes("font-size:undefined"),
     "no look without a size behind it");
 });
@@ -413,13 +414,14 @@ async function week(...dates) {
   const sheets = N.SHEETS_HS.sheetsFor(r.hsSecs, r.labels, r.dates, r.hsDays);
   return { N, r, sheets, tab: name => {
     const sh = sheets.find(s => s.name === name);
-    const g = new Map(); for (const c of sh.layout.cells) g.set(c.r + ":" + COLS[c.c - 1], c.v);
+    const g = new Map(), x = new Map();
+    for (const c of sh.layout.cells) { g.set(c.r + ":" + COLS[c.c - 1], c.v); x.set(c.r + ":" + COLS[c.c - 1], c.xf); }
     const notes = new Map(sh.layout.comments.map(c => [c.ref, c.text]));
     const row = (diag, time) => { for (let r = 1; r <= sh.layout.maxRow; r++)
-      if (g.get(r + ":I") === diag && g.get(r + ":L") === time) return { r, at: c => g.get(r + ":" + c) || "", note: notes.get("I" + r) || "" };
+      if (g.get(r + ":I") === diag && g.get(r + ":L") === time) return { r, at: c => g.get(r + ":" + c) || "", xf: c => x.get(r + ":" + c), note: notes.get("I" + r) || "" };
       return null; };
     const title = re => { for (let r = 1; r <= sh.layout.maxRow; r++) if (re.test(g.get(r + ":B") || "")) return r; return null; };
-    return { g, row, title, at: (r, c) => g.get(r + ":" + c) || "" };
+    return { g, row, title, layout: sh.layout, at: (r, c) => g.get(r + ":" + c) || "", xf: (r, c) => x.get(r + ":" + c) };
   } };
 }
 
@@ -436,11 +438,11 @@ test("each part of the day says where it ends, on what and when, and what it wor
   assert.equal(pm.at("T"), "", "nothing to work next that day");
 });
 
-test("NM on a part of the day that never runs coupled, M/O on one that never runs alone", async () => {
+test("N/M on a part of the day that never runs coupled, M/O on one that never runs alone", async () => {
   const { tab } = await week("03/08/26");
   const t = tab("Mon 03 08");
-  assert.equal(t.row("AZ601", "06+00").at("J"), "NM");
-  assert.equal(t.row("AZ601", "16+00").at("J"), "NM");
+  assert.equal(t.row("AZ601", "06+00").at("J"), "N/M", "written the way their sheet writes it");
+  assert.equal(t.row("AZ601", "16+00").at("J"), "N/M");
   assert.equal(t.row("AZ611", "05+00").at("J"), "M/O");
   assert.equal(t.row("AZ612", "05+00").at("J"), "M/O");
 });
@@ -531,4 +533,81 @@ test("an end is left blank where the order passes somewhere the sheet cannot fol
                          rows: [{ diag: "AZ691", start: 300, pos: 1 }, { diag: "AZ692", start: 300, pos: 2 }] });
   assert.equal(H.arrivalEnd(F, "AZ691", 4), null, "one of a 12, but which end cannot be said");
   assert.ok(F.mate.has("AZ691@3"), "…and still known to be one of a 12");
+});
+
+test("each block's morning allocations sit above its coloured bar, the rest below", async () => {
+  const { N, tab } = await week("03/08/26");
+  const SKIN = N.SHEETS_HS_SKIN;
+  const t = tab("Mon 03 08");
+  const am = t.row("AZ601", "06+00"), pm = t.row("AZ601", "16+00");
+  /* AZ601's first move off its overnight berth is above the bar; its 16+00,
+     back out after a morning return, is below it - their sheet's split. */
+  const bar = am.r + 1;
+  assert.equal(t.xf(bar, "H"), SKIN.bars.ASHFORD.H, "Ashford's green bar straight after the morning");
+  assert.equal(t.xf(bar, "M"), SKIN.bars.ASHFORD.mid);
+  assert.equal(t.xf(bar, "T"), SKIN.bars.ASHFORD.T);
+  assert.equal(pm.r, bar + 1, "and the afternoon under it");
+  assert.ok(t.layout.merges.includes("H" + bar + ":T" + bar), "one merged bar, H to T");
+  assert.ok([..."HIJKLMNOPQRST"].every(c => t.at(bar, c) === ""), "with nothing written in it");
+  assert.equal(t.xf(bar, "B"), SKIN.data.B, "the arrivals table runs on through it, ruled");
+  // Ramsgate's is blue, and comes after both halves of the 12
+  const b = t.row("AZ612", "05+00").r + 1;
+  assert.equal(t.xf(b, "H"), SKIN.bars.RAMSGATE.H, "Ramsgate's own colour");
+  assert.notEqual(SKIN.bars.RAMSGATE.H, SKIN.bars.ASHFORD.H);
+  /* the MG rule is kept off the bar: Excel reads a blank as 0 and would
+     paint it green */
+  const k = t.layout.opts.condFmt.map(f => /sqref="([^"]+)"/.exec(f)[1]).join(" ");
+  assert.ok(!new RegExp("\\bK" + bar + "\\b").test(k.replace(/K(\d+):K(\d+)/g,
+    (m, a, z) => Array.from({ length: z - a + 1 }, (_, i) => "K" + (+a + i)).join(" "))),
+    "the bar is not under the MG rule: " + k);
+  // the depot's own colour on its title as well
+  assert.equal(t.xf(t.title(/^RAMSGATE PM ARRIVALS/), "B"), SKIN.titles.RAMSGATE.B);
+});
+
+test("WORKS in G against each morning allocation outside Ashford; Ashford keeps its strip", async () => {
+  const { N, tab } = await week("03/08/26");
+  const SKIN = N.SHEETS_HS_SKIN;
+  const t = tab("Mon 03 08");
+  const a = t.row("AZ611", "05+00"), b = t.row("AZ612", "05+00");
+  assert.equal(a.at("G"), "WORKS"); assert.equal(b.at("G"), "WORKS");
+  assert.equal(a.xf("G"), SKIN.worksG.first, "the first of the run ruled over the top");
+  assert.equal(b.xf("G"), SKIN.worksG.last, "the last ruled under");
+  assert.equal(t.xf(b.r + 1, "G"), SKIN.plainG, "nothing on the bar row");
+  const ash = t.row("AZ601", "06+00");
+  assert.equal(ash.at("G"), "", "Ashford's G is the grey strip, with nothing in it");
+  assert.equal(ash.xf("G"), SKIN.data.G);
+});
+
+test("N/M, the WORKS headcode and the working it names are marked yellow", async () => {
+  const { N, tab } = await week("03/08/26");
+  const SKIN = N.SHEETS_HS_SKIN;
+  const t = tab("Mon 03 08");
+  const am = t.row("AZ601", "06+00"), pm = t.row("AZ601", "16+00");
+  const yellow = x => /background:#FFFF00/.test(SKIN.xfCss[x]);
+  assert.equal(am.at("J"), "N/M"); assert.equal(am.xf("J"), SKIN.flag);
+  assert.ok(yellow(SKIN.flag), "N/M on yellow");
+  assert.equal(am.at("T"), "5R30"); assert.equal(am.xf("T"), SKIN.worksT);
+  assert.ok(yellow(SKIN.worksT), "the working it goes back out on, on yellow");
+  assert.equal(pm.at("H"), "5R30 AFK"); assert.equal(pm.xf("H"), SKIN.laterH);
+  assert.ok(yellow(SKIN.laterH), "and that working's own train ID, on yellow");
+  assert.equal(am.xf("H"), SKIN.data.H, "a first move is not marked");
+  assert.equal(pm.xf("T"), SKIN.data.T, "nor an empty WORKS");
+  assert.equal(t.row("AZ611", "05+00").xf("J"), SKIN.flag, "M/O too");
+});
+
+test("the MG column reads High, Average and Low, as the key above it does", () => {
+  const N = built();
+  const H = N.SHEETS_HS, SKIN = N.SHEETS_HS_SKIN;
+  // the planner's own bands: up to 400 green, 400 to 700 amber, 700 on red
+  for (const [n, band] of [[0, "Low"], [399, "Low"], [400, "Average"], [699, "Average"],
+                           [700, "High"], [1012, "High"]])
+    assert.equal(H.mgBand(n).band, band, n + " miles");
+  assert.deepEqual(Array.from(SKIN.mg, b => b.band), ["High", "Average", "Low"],
+    "High first, so Excel's priority settles 700 the same way");
+  const words = Array.from(SKIN.legend, l => l[3]);
+  for (const w of ["Mileage Guide", "High", "Average", "Low"]) assert.ok(words.includes(w), w);
+  assert.ok(!words.some(w => /500 Miles/.test(w)), "the old two-colour key is gone");
+  // the CET key's second line: YES under each of its three day counts
+  const yes = Array.from(SKIN.footer).filter(f => f[3] === "YES").map(f => f[1]);
+  assert.deepEqual(yes, ["D", "E", "F"], "YES in each of the three coloured cells");
 });

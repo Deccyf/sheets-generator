@@ -140,6 +140,43 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.18.1 — 30 September 2026 — the 395 sheet's bars, WORKS and yellow marks
+
+Held against the depot's Thursday 01/10 tab, the allocations sheet was
+missing the marks the depot reads it by:
+
+- **The AM/PM bar.** Each block's allocations are split by a bar in the
+  depot's own colour — green Ashford, pink Faversham, purple Margate, blue
+  Ramsgate — with each unit's first move of the day, off its overnight berth
+  before two, above it and everything that goes out later below. Against
+  their Friday 18/09 tab: every row on the right side of the bar. The block
+  titles now carry the same colours. (The "grey" the arrivals side was given
+  past the last allocation was in fact Ashford's bar colour, lifted from the
+  wrong kind of row; it is gone.)
+- **WORKS in column G** against every morning allocation outside Ashford,
+  for the next-day forming the stock controller fills in; Ashford keeps its
+  grey strip. 26 of 27 against 18/09 — the 27th is a WORKS the planner wrote
+  on an afternoon line.
+- **Yellow marks.** N/M and M/O are written that way now (not NM) and
+  flagged red on yellow; the headcode in WORKS is on yellow, and so is the
+  TRAIN ID of the later working it names, so both ends of a return can be
+  found by eye. Against 18/09: 27 of 27 train IDs, 26 of 27 WORKS cells.
+- **The Mileage Guide** is High / Average / Low in red, amber and green, in
+  place of "< 500 / > 500 Miles", and the MG column is coloured by it:
+  under 400 green, 400 to 700 amber, 700 and over red — the planner's own
+  figures. Their workbook's rule sits 25 miles higher (425 / 725) on every
+  tab since 24/08, so a unit on 410 or 710 is a band up here. The rule now
+  covers only the cells with a figure in: Excel reads an empty cell as
+  nought and painted the bar and every blank MG green.
+- **The CET key** has YES under 5 DAYS +, 4 DAYS and 3 DAYS again, not
+  three empty coloured cells.
+
+The dress is re-lifted from the October workbook by `tools/make-hs-skin.py`,
+which now finds its tabs by name ("Tue 18 08" for the body, "Thur 01 10"
+for the key) and checks each piece it takes — the bar is one colour across
+and empty, the titles name their depot, the yellow cells are ruled like the
+row they sit in — rather than trusting a row number.
+
 ## 3.18.0 — 30 September 2026 — the 395 allocations sheet, filled as the depot fills it
 
 **What it did before**: the headcode, the diagram, the miles, the time, the

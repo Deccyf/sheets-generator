@@ -12,7 +12,7 @@ import re, json, sys, zipfile
 # The default below is only where it sat on the machine this was written on;
 # it is not expected to exist anywhere else, and the error says so.
 DEFAULT = ("/root/.claude/uploads/a92fd59d-eda0-5a2d-858d-3481c8939b31/"
-           "2bda6967-Provisional_Version_1_Class_395_Allocations_Sheet_18082026.xlsx")
+           "571b1f3c-01_10_2026__Allocations_Sheet.xlsx")
 src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
 try:
     Z = zipfile.ZipFile(src)
@@ -29,26 +29,32 @@ def unesc(t):
         t = t.replace(a, b)
     return t
 st = Z.read('xl/styles.xml').decode()
-# Which worksheet part is the Tue 18 08 tab. The part number does NOT track
-# tab order - this workbook has 114 tabs and this one is the 111th - so the
-# name is checked rather than trusted. Pointed at the wrong part the whole
-# thing still runs and produces a complete, well-formed, leak-clean skin of
-# somebody else's day, with every other assertion passing.
-SHEET_PART = 'xl/worksheets/sheet131.xml'
+# Two daily tabs, found by NAME. The part number does not track tab order -
+# "Tue 18 08" was sheet131 in the August workbook and is sheet44 in the
+# October one - and pointed at the wrong part the whole thing still runs and
+# produces a complete, well-formed, leak-clean skin of somebody else's day.
+#   BASE_TAB   - the body of the sheet: titles, headings, data rows, the
+#                closing strip and the house notes. Its rows are where this
+#                script expects them (7, 8, 9, 27, 60-66) and the checks
+#                below fail by name if they are not.
+#   LEGEND_TAB - the key along the top and the mileage rule. The workbook
+#                changed its mileage key in September from "< 500 / > 500
+#                Miles" to High / Average / Low, so the key comes from a tab
+#                that has the new one.
+# A tab that is only in one of them (Faversham's block is not on 18/08, and
+# 01/10 has no Margate block) is named where it is taken, below.
+BASE_TAB, LEGEND_TAB = "Tue 18 08", "Thur 01 10"
 wb = Z.read('xl/workbook.xml').decode()
 wb_rels = Z.read('xl/_rels/workbook.xml.rels').decode()
 rid_target = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', wb_rels))
-tab_name = None
+PART = {}
 for m in re.finditer(r'<sheet name="([^"]+)"[^>]*r:id="([^"]+)"', wb):
-    tgt = rid_target.get(m.group(2), "")
-    if tgt.lstrip("/").replace("worksheets/", "") == SHEET_PART.split("/")[-1]:
-        tab_name = m.group(1)
-        break
-assert tab_name is not None, SHEET_PART + " is not referenced by the workbook"
-assert re.match(r'^[A-Z][a-z]{2} \d\d \d\d$', tab_name), (
-    "expected a daily tab like 'Tue 18 08', got %r - the part number does not "
-    "track tab order, so check SHEET_PART against this workbook" % tab_name)
+    PART[unesc(m.group(1))] = "xl/" + rid_target[m.group(2)].lstrip("/").replace("xl/", "")
+for t in (BASE_TAB, LEGEND_TAB):
+    assert t in PART, "no tab called %r in this workbook" % t
+SHEET_PART = PART[BASE_TAB]
 sheet = Z.read(SHEET_PART).decode()
+lsheet = Z.read(PART[LEGEND_TAB]).decode()
 ss = [unesc("".join(re.findall(r'<t[^>]*>(.*?)</t>', x, re.S)))
       for x in re.findall(r'<si>(.*?)</si>', Z.read('xl/sharedStrings.xml').decode(), re.S)]
 
@@ -64,13 +70,17 @@ xfs     = re.findall(r'<xf [^>]*/>|<xf [^>]*>.*?</xf>',
 dxfs    = re.findall(r'<dxf>.*?</dxf>',
                      re.search(r'<dxfs[^>]*>.*?</dxfs>', st, re.S).group(0), re.S)
 
-rows = dict(re.findall(r'<row [^>]*r="(\d+)"[^>]*>(.*?)</row>', sheet, re.S))
-hts  = {int(m.group(1)): m.group(2) for m in
-        re.finditer(r'<row r="(\d+)"[^>]*?ht="([\d.]+)"', sheet)}
-def cells(r):
+def rows_of(sx):
+    return dict(re.findall(r'<row [^>]*r="(\d+)"[^>]*>(.*?)</row>', sx, re.S))
+def hts_of(sx):
+    return {int(m.group(1)): m.group(2) for m in
+            re.finditer(r'<row r="(\d+)"[^>]*?ht="([\d.]+)"', sx)}
+ROWS = {BASE_TAB: rows_of(sheet), LEGEND_TAB: rows_of(lsheet)}
+hts, lhts = hts_of(sheet), hts_of(lsheet)
+def cells(r, tab=BASE_TAB):
     out = {}
     for cm in re.finditer(r'<c r="([A-Z]+)\d+"([^>]*?)(?:/>|>(.*?)</c>)',
-                          rows.get(str(r), ""), re.S):
+                          ROWS[tab].get(str(r), ""), re.S):
         col, attrs, inner = cm.group(1), cm.group(2), cm.group(3) or ""
         sid = re.search(r's="(\d+)"', attrs)
         v = re.search(r'<v>(.*?)</v>', inner)
@@ -79,9 +89,9 @@ def cells(r):
     return out
 
 used = set()
-def take(r, keep_values, clear=()):
+def take(r, keep_values, clear=(), tab=BASE_TAB):
     got = []
-    for col, (x, v) in cells(r).items():
+    for col, (x, v) in cells(r, tab).items():
         if col > "T" and len(col) == 1 or len(col) > 1:  # nothing past T
             continue
         used.add(x)
@@ -96,12 +106,21 @@ def take(r, keep_values, clear=()):
 # stops the next one of these going unnoticed.
 legend = []
 for r in range(1, 7):
-    legend += take(r, True, clear=("S", "T") if r in (3, 5, 6) else ())
+    legend += take(r, True, clear=("S", "T") if r in (3, 5, 6) else (),
+                   tab=LEGEND_TAB)
+# its merges, off the tab itself: the September key is three rows of
+# swatch = word where the old one was two, so a fixed list would be wrong
+legend_merges = [m for m in re.findall(r'<mergeCell ref="([A-Z]+\d+:[A-Z]+\d+)"', lsheet)
+                 if all(int(n) <= 6 for n in re.findall(r'\d+', m))]
 # rows 60-66: the notes footer. The RULED SHAPE is template; much of the
 # text is operational (the COMMENTS box named three units and a date, which
 # is what the leak check below caught). Keep only the standing house notes.
+# Row 66 is the CET key's second line - YES under each of the three day
+# counts, in the same three colours. It was blanked with the COMMENTS text
+# and the key came out as three coloured cells with nothing in them.
 KEEP = {(60, "B"), (60, "H"), (61, "B"), (62, "B"), (63, "B"),
-        (65, "B"), (65, "D"), (65, "E"), (65, "F")}
+        (65, "B"), (65, "D"), (65, "E"), (65, "F"),
+        (66, "D"), (66, "E"), (66, "F")}
 footer = []
 for r in range(60, 67):
     got = take(r, True)
@@ -110,18 +129,76 @@ for r in range(60, 67):
             cell[3] = ""
     footer += got
 # archetypes
-title  = {c: x for c, (x, v) in cells(7).items() if len(c) == 1 and c <= "T"}
 header = [[c, x, v] for c, (x, v) in cells(8).items() if len(c) == 1 and c <= "T"]
 data   = {c: x for c, (x, v) in cells(9).items() if len(c) == 1 and c <= "T"}
-grey   = {c: x for c, (x, v) in cells(19).items() if "H" <= c <= "T" and len(c) == 1}
 gaprow = {c: x for c, (x, v) in cells(27).items() if len(c) == 1 and c <= "T"}
-for m in (title, data, grey, gaprow): used.update(m.values())
+# Each depot's block is dressed in its own colour: the title text, and the
+# bar across the allocations that divides the AM from the PM - green for
+# Ashford, pink for Faversham, purple for Margate, blue for Ramsgate. Taken
+# from whichever tab has that depot's block where this says; the text is
+# checked, so a moved block fails here rather than dressing the wrong depot.
+TITLE_AT = {"ASHFORD": (BASE_TAB, 7), "FAVERSHAM": (LEGEND_TAB, 30),
+            "MARGATE": (BASE_TAB, 30), "RAMSGATE": (BASE_TAB, 38)}
+BAR_AT = {"ASHFORD": (LEGEND_TAB, 19), "FAVERSHAM": (LEGEND_TAB, 36),
+          "MARGATE": (BASE_TAB, 34), "RAMSGATE": (LEGEND_TAB, 53)}
+def fill_of(x):
+    m = re.search(r'fillId="(\d+)"', xfs[x])
+    fl = fills[int(m.group(1)) if m else 0]
+    fg = re.search(r'<fgColor [^/]*/>', fl)
+    return fg.group(0) if 'patternType="solid"' in fl and fg else None
+titles, bars = {}, {}
+for depot, (tab, r) in TITLE_AT.items():
+    got = cells(r, tab)
+    assert got.get("B", (0, ""))[1].startswith(depot + " PM ARRIVALS") and \
+           got.get("H", (0, ""))[1].startswith(depot + " UNIT ALLOCATIONS"), \
+        "%s row %d is not the %s title" % (tab, r, depot)
+    titles[depot] = {c: x for c, (x, v) in got.items() if len(c) == 1 and c <= "T"}
+for depot, (tab, r) in BAR_AT.items():
+    got = cells(r, tab)
+    b = {"H": got["H"][0], "mid": got["I"][0], "T": got["T"][0]}
+    # a bar is one colour right across, H to T, and has nothing written in it
+    colours = {fill_of(got[c][0]) for c in "HIJKLMNOPQRST"}
+    assert len(colours) == 1 and None not in colours, \
+        "%s row %d is not %s's AM/PM bar: %r" % (tab, r, depot, colours)
+    assert not any(got[c][1] for c in "HIJKLMNOPQRST"), "the bar has text in it"
+    bars[depot] = b
+# Column G. Ashford's is a grey strip down the block; everywhere else the
+# AM allocations each carry WORKS in it - a prompt for what that unit will
+# form next, which is filled in by hand - and the PM rows are left plain.
+# First / middle / last of a run, off 18/08's Ramsgate block (rows 40-52).
+works_g = {"first": cells(40)["G"], "mid": cells(41)["G"], "last": cells(52)["G"]}
+assert all(v == "WORKS" for _, v in works_g.values()), "G40/G41/G52 are not WORKS"
+works_g = {k: x for k, (x, v) in works_g.items()}
+plain_g = cells(53)["G"][0]
+head_g = cells(31)["G"][0]
+# The yellow marks their sheet puts on a row, each taken from a cell ruled
+# exactly like the ordinary data row it sits in:
+#   J  N/M and M/O, red on yellow
+#   T  the working a unit goes back out on (WORKS), on yellow
+#   H  and that later working's own TRAIN ID, on yellow, so the two ends of
+#      the return can be found by eye - 5J50 in T against 5J50 SPX in H
+def border_of(x):
+    return re.search(r'borderId="(\d+)"', xfs[x]).group(1)
+YELLOW = '<fgColor rgb="FFFFFF00"/>'
+def yellow_like(col, ok):
+    for tab in (BASE_TAB, LEGEND_TAB):
+        for r in range(9, 60):
+            x, v = cells(r, tab).get(col, (0, ""))
+            if ok(v) and fill_of(x) == YELLOW and border_of(x) == border_of(data[col]):
+                return x
+    raise SystemExit("no yellow %s cell ruled like row 9's in either tab" % col)
+flag = yellow_like("J", lambda v: v in ("N/M", "M/O"))
+works_t = yellow_like("T", lambda v: re.match(r'^[125][A-Z]\d\d$', v or ""))
+later_h = yellow_like("H", lambda v: re.match(r'^[125][A-Z]\d\d ', v or ""))
+for m in [data, gaprow] + list(titles.values()): used.update(m.values())
+for b in bars.values(): used.update(b.values())
+used.update(works_g.values()); used.update((plain_g, head_g, flag, works_t, later_h))
 used.update(x for _, x, _ in header)
 # Every archetype has to have actually been found. A blank row 7 would leave
 # `title` empty, and hs.js would then write no title row while still pushing
 # its merges and advancing the cursor - a quietly wrong sheet from a run that
 # reported success.
-for nm, got in [("title", title), ("data", data), ("greyRight", grey),
+for nm, got in [("titles", titles), ("data", data), ("bars", bars),
                 ("gapRow", gaprow), ("header", header), ("legend", legend),
                 ("footer", footer)]:
     assert len(got) > 0, "archetype %r came back empty - wrong tab or wrong row?" % nm
@@ -163,18 +240,39 @@ for old in order:
     y = re.sub(r'\s?xfId="\d+"', '', y)
     out_xfs.append(y)
 
-# ---- which two dxfs are the mileage pair ----
-# They were picked by literal index. The file has 211 of them and any edit to
-# the workbook renumbers them, with nothing to notice: the book would come out
-# plausible and the wrong colour. Read them off the rule that uses them.
+# ---- the mileage bands ----
+# Three since late August: High, Average and Low, red, amber and green,
+# where it had been two either side of 500. The dxfs are read off the
+# legend tab's own rule on the MG column, never picked by number: the file
+# has hundreds of dxfs and any edit to the workbook renumbers them, with
+# nothing to notice - the book would come out plausible and the wrong colour.
 mg_rule = re.search(r'<conditionalFormatting sqref="K[^"]*">(.*?)</conditionalFormatting>',
-                    sheet, re.S)
+                    lsheet, re.S)
 assert mg_rule, "no conditional formatting on the MG column"
-UNDER_500 = int(re.search(r'dxfId="(\d+)"[^>]*>\s*<formula>500</formula>'
-                          .replace("[^>]*>", '[^>]*operator="lessThan"[^>]*>'),
-                          mg_rule.group(1)).group(1))
-OVER_500 = int(re.search(r'dxfId="(\d+)"[^>]*operator="greaterThan"',
-                         mg_rule.group(1)).group(1))
+BAND = {"greaterThan": "High", "between": "Average", "lessThan": "Low"}
+mg_bands = []
+for cr in re.finditer(r'<cfRule type="cellIs" dxfId="(\d+)" priority="\d+" '
+                      r'operator="(\w+)">(.*?)</cfRule>', mg_rule.group(1), re.S):
+    mg_bands.append({"band": BAND[cr.group(2)], "op": cr.group(2),
+                     "f": re.findall(r'<formula>([\d.]+)</formula>', cr.group(3)),
+                     "dxf": int(cr.group(1))})
+mg_bands.sort(key=lambda b: ["High", "Average", "Low"].index(b["band"]))
+assert [b["band"] for b in mg_bands] == ["High", "Average", "Low"], mg_bands
+# The colours are the workbook's; the thresholds are the planner's own, as
+# they gave them on 30/09/26: up to 400 green, 400-700 orange, 700 and over
+# red. The workbook's rule sits 25 miles higher (lessThan 425, between
+# 425.01 and 725, greaterThan 725.01) on every tab from 24/08 on, so a unit
+# on 410 or 710 is coloured one band up here compared with their sheet.
+# High is written first, so at exactly 700 - in both High and Average - it
+# is the one Excel paints, and the preview does the same.
+MG_AT = {"High": ("greaterThanOrEqual", ["700"]),
+         "Average": ("between", ["400", "700"]),
+         "Low": ("lessThan", ["400"])}
+for b in mg_bands:
+    b["op"], b["f"] = MG_AT[b["band"]]
+# and the key has to say the same three words beside its swatches
+key_words = [v for _, c, _, v in legend if c == "M" and v]
+assert key_words == ["High", "Average", "Low"], "legend key reads %r" % key_words
 
 # ---- theme colours -> plain rgb ----
 # The workbook leans on its Office theme: the grey between the tables is
@@ -223,7 +321,7 @@ styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
   + '<cellXfs count="%d">' % len(out_xfs) + "".join(out_xfs) + '</cellXfs>'
   + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
-  + '<dxfs count="2">' + dxfs[UNDER_500] + dxfs[OVER_500] + '</dxfs>'
+  + '<dxfs count="%d">' % len(mg_bands) + "".join(dxfs[b["dxf"]] for b in mg_bands) + '</dxfs>'
   + '</styleSheet>')
 
 # ---- the drop-downs ----
@@ -349,8 +447,8 @@ def css_for(xf):
 
 xf_css = [css_for(x) for x in out_xfs]
 
-# The two mileage rules as CSS as well, in the same order the styleSheet
-# writes them: 0 is under 500, 1 is over. Excel paints these over the cell's
+# The mileage rules as CSS as well, in the same order the styleSheet
+# writes them: 0 High, 1 Average, 2 Low. Excel paints these over the cell's
 # own fill when the book is opened; the preview has to do it itself or MG
 # shows its base colour and the sheet on screen disagrees with the sheet in
 # the workbook - which is the whole point of a preview.
@@ -364,22 +462,30 @@ def dxf_css(d):
                 if re.search(r'<bgColor[^/]*/>', d) else "", None)
     if bg: out.append("background:" + bg)
     return ";".join(out)
-dxf_css_pair = [dxf_css(dxfs[207]), dxf_css(dxfs[206])]
+mg_css = [dxf_css(dxfs[b["dxf"]]) for b in mg_bands]
 
 remap = lambda m: {c: newid[x] for c, x in m.items()}
 skin = {
   "dv": dv, "hcNotes": hcNotes,
-  "stylesXml": styles, "xfCss": xf_css, "dxfCss": dxf_css_pair,
+  "stylesXml": styles, "xfCss": xf_css,
+  # dxf i in the styleSheet is band i here
+  "mg": [{"band": b["band"], "op": b["op"], "f": b["f"], "css": c}
+         for b, c in zip(mg_bands, mg_css)],
   "colsXml": re.search(r'<cols>.*?</cols>', sheet, re.S).group(0),
   "tabColor": "FFFFFF00",
   "legend": [[r, c, newid[x], v] for r, c, x, v in legend],
-  "legendHts": {str(r): hts[r] for r in range(1, 7) if r in hts},
+  "legendHts": {str(r): lhts[r] for r in range(1, 7) if r in lhts},
+  "legendMerges": legend_merges,
   "footer": [[r, c, newid[x], v] for r, c, x, v in footer],
   "footerMerges": ["B60:F60","H60:T60","B61:F61","H61:T66","B62:F62",
                     "B63:F64","B65:C66"],
-  "title": remap(title), "header": [[c, newid[x], v] for c, x, v in header],
+  "titles": {d: remap(m) for d, m in titles.items()},
+  "header": [[c, newid[x], v] for c, x, v in header],
   "headerHt": hts.get(8, "24.75"),
-  "data": remap(data), "greyRight": remap(grey), "gapRow": remap(gaprow),
+  "data": remap(data), "gapRow": remap(gaprow),
+  "bars": {d: remap(m) for d, m in bars.items()},
+  "worksG": remap(works_g), "plainG": newid[plain_g], "headG": newid[head_g],
+  "flag": newid[flag], "worksT": newid[works_t], "laterH": newid[later_h],
 }
 js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n"
       "   from the operator's workbook by tools/make-hs-skin.py and renumbered\n"
@@ -399,7 +505,7 @@ HOUSE_TEXT = {
     # the legend, rows 1-6
     # "\xa0" is the non-breaking spacer in the mileage key: [ ] = < 500
     "INT CLEAN", "EXT CLEAN", "Mileage Guide", "=", " ", "\xa0",
-    "< 500 Miles", "> 500 Miles", "Date Sent", "Time Sent",
+    "High", "Average", "Low", "Date Sent", "Time Sent",
     # the column headings, row 8
     "TRAIN ID", "ARRIVAL TIME", "UNIT NUMBER", "6 OR 12 CAR", "CET DUE",
     "DIAGRAM", "N/M\r\nM/O", "MG", "TIME", "FP/RP", "UNIT NO",
@@ -409,7 +515,7 @@ HOUSE_TEXT = {
     "FP AT RAMSGATE IS MARGATE END",
     "Ramsgate arrivals. Units to be shown on the same line as their "
     "allocated diagram.",
-    "CET LEGEND", "5 DAYS +", "4 DAYS", "3 DAYS",
+    "CET LEGEND", "5 DAYS +", "4 DAYS", "3 DAYS", "YES",
 }
 shipped = ({v for _, _, _, v in legend if v} | {v for _, _, _, v in footer if v}
            | {v for _, _, v in header if v})

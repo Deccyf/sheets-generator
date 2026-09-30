@@ -277,7 +277,10 @@ own words (DOWNS, UPS, SHED, C/END, L/END), from `DEPOT_ROAD` in
 `src/data.js`. The weekday **High Speed** book is the
 Class 395 Allocations Sheet: a worksheet per day, a block per depot, last
 night's arrivals beside today's allocations, in the sheet's own style
-records, drop-downs and mileage colouring. Neither has a formation order to
+records, drop-downs and mileage colouring (High / Average / Low at 700 and
+400 miles), each depot's block split by its coloured AM/PM bar, WORKS
+against the morning rows outside Ashford, and N/M, M/O and each return's
+WORKS and later TRAIN ID on yellow. Neither has a formation order to
 correct, so neither has a Unit order tab, and each one's Rules tab
 describes the document it is.
 
@@ -286,7 +289,7 @@ The 395 sheet reads more of the day than a berthing book does, so
 and Summary rows, keyed by date, a weekend's included (Monday's arrivals are
 Sunday night's), and each unit carries its stint's stop range (`sa`, `sb`).
 From those `src/hs.js` fills every column the depot fills by hand except
-the next-day forming and CET: the working a train ID actually runs to, NM
+the next-day forming and CET: the working a train ID actually runs to, N/M
 and M/O per line, where each line ends and on what, a long platform stand
 as a reference, the next working after a return, the "not over high level"
 note on a line that never calls at Gravesend, and last night's arrivals

@@ -170,19 +170,25 @@ const SHEETS_RULES = (() => {
              "Sunday's included for a Monday, and a single day's reports say " +
              "“no previous day loaded” in the heading rather than leaving a " +
              "blank you have to guess at. On the right, today's allocations, " +
-             "in the order they leave." },
+             "in the order they leave: each unit's first move of the day, off " +
+             "its overnight berth before two, above a bar in the depot's own " +
+             "colour — green Ashford, pink Faversham, purple Margate, blue " +
+             "Ramsgate — and everything that goes out later below it." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +
            "for an empty run from the depot to Ashford station, 1F11 SPX. On " +
-           "the first line of a 12 only."],
+           "the first line of a 12 only. On yellow where it is a later part " +
+           "of a diagram — the working an earlier line's WORKS names — so " +
+           "the two ends of a return can be found by eye."],
           ["DIAGRAM", "The day's work the unit is booked to, with its " +
            "code — AZ601."],
-          ["N/M M/O", "NM where this part of the day never runs coupled to " +
+          ["N/M M/O", "N/M where this part of the day never runs coupled to " +
            "another unit, so a unit that must not run in multiple can take it; " +
-           "M/O where it never runs alone. Per line, not per diagram: a " +
-           "diagram that couples for an hour in the morning is NM on its " +
-           "afternoon line if that part runs alone."],
+           "M/O where it never runs alone. Both in red on yellow, the way " +
+           "the depot flags them. Per line, not per diagram: a diagram that " +
+           "couples for an hour in the morning is N/M on its afternoon line " +
+           "if that part runs alone."],
           ["MG", "The miles this WORKING runs, not the diagram's total for " +
            "the day. A diagram that comes out twice has a figure for each " +
            "time: on the real sheet AZ623 is 143 miles on its 09+54 row and " +
@@ -191,9 +197,10 @@ const SHEETS_RULES = (() => {
            "stays out has no second row, so the row it does have carries the " +
            "rest of its day, and a diagram's figures always add up to the " +
            "day it runs. It is written as a number, so the sheet's " +
-           "own colouring works on it — green under 500 miles, red at 500 " +
-           "and over, the same key that is printed at the top. A report " +
-           "saved as a PDF carries no mileage and the column stays empty."],
+           "own colouring works on it — the Mileage Guide at the top: Low, " +
+           "green, under 400 miles; Average, amber, 400 to 700; High, red, " +
+           "700 and over. A report saved as a PDF carries no mileage and " +
+           "the column stays empty and uncoloured."],
           ["TIME", "When it leaves. A space in the time (08 42) means it " +
            "leaves in service; a plus (08+42) means it leaves empty."],
           ["FP/RP", "Which end of a 12 each unit leaves at: FP the London " +
@@ -217,7 +224,8 @@ const SHEETS_RULES = (() => {
            "than guessed. A line that comes back after four and goes out " +
            "again is written here too."],
           ["WORKS", "The working a line that comes back into a depot goes out " +
-           "on next — 5J94 after an Ashford morning. What forms what the next " +
+           "on next — 5J94 after an Ashford morning — on yellow, like that " +
+           "working's own TRAIN ID further down. What forms what the next " +
            "day is left to write in."],
         ] } },
         { p: "And last night's arrivals, on the left: TRAIN ID and ARRIVAL " +
@@ -227,6 +235,10 @@ const SHEETS_RULES = (() => {
              "coupled; and CET DUE is left empty to write in. At Ramsgate, " +
              "as their sheet asks, each arrival sits on the line of the " +
              "diagram its unit is allocated to, where the units are known." },
+        { p: "Between the two tables, outside Ashford, every morning " +
+             "allocation has WORKS written against it: what that unit forms " +
+             "next is for you to fill in, from what you can see and the " +
+             "reports cannot. Ashford's column is the grey strip, as theirs is." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
              "a cell and the arrow is there." },

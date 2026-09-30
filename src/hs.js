@@ -8,10 +8,10 @@
 
    Everything about how it LOOKS comes from SHEETS_HS_SKIN, which is the
    workbook's own style records lifted verbatim (tools/make-hs-skin.py):
-   the exact borders, fills, fonts, row heights, column widths, yellow tab
-   and the conditional formatting that colours the MG column green under
-   500 miles and red over it. This file only decides what goes in which
-   cell.
+   the exact borders, fills, fonts, row heights, column widths, yellow tab,
+   each depot's own colour, and the mileage key's three colours for the MG
+   column - green under 400 miles, amber 400 to 700, red 700 and over. This
+   file only decides what goes in which cell.
 
    The mileage is the strongest check that the reports are read the way the
    depot reads them: on 18/08 the sheet's MG column and the Detail export
@@ -20,7 +20,7 @@
 const SHEETS_HS = (() => {
 const X = SHEETS_XLSX;
 const SKIN = SHEETS_HS_SKIN;
-const { fmtTime } = SHEETS_CORE;
+const { fmtTime, AM_CUTOFF } = SHEETS_CORE;
 const { DAY_ROLL } = SHEETS_RULEBOOK;
 
 /* The sheet's own berth vocabulary, which is not the berthing books'. Taken
@@ -233,7 +233,8 @@ function arrivalEnd(F, d, k) {
   if (!ends || l === "?" || l == null) return null;
   return l ? ends[0] : ends[1];
 }
-/* NM: this part of the diagram never runs coupled; M/O: it never runs alone */
+/* N/M: this part of the diagram never runs coupled; M/O: it never runs
+   alone - written the way their sheet writes both */
 function multipleMark(F, d, sa, sb) {
   let shared = 0, alone = 0;
   const st = F.S.get(d);
@@ -242,7 +243,7 @@ function multipleMark(F, d, sa, sb) {
     if (st[k].dep == null) continue;
     F.mate.has(d + "@" + k) ? shared++ : alone++;
   }
-  return shared + alone === 0 ? "" : shared === 0 ? "NM" : alone === 0 ? "M/O" : "";
+  return shared + alone === 0 ? "" : shared === 0 ? "N/M" : alone === 0 ? "M/O" : "";
 }
 /* where the sheet writes a place in its ENDS columns */
 const PLACE3 = [[/^ASHF/, "ASH"], [/^RAM/, "RAM"], [/^FAV/, "FAV"], [/^MARGATE$/, "MAR"],
@@ -347,6 +348,29 @@ function rosterList() {
   return out.join(",");
 }
 
+/* Which band of the mileage key a figure is in, tested in the skin's
+   order (High first) so a figure on a boundary lands where Excel's own
+   priority puts it. */
+function mgBand(n) {
+  return SKIN.mg.find(b => {
+    const a = +b.f[0];
+    return b.op === "greaterThanOrEqual" ? n >= a : b.op === "greaterThan" ? n > a
+      : b.op === "lessThan" ? n < a : b.op === "lessThanOrEqual" ? n <= a
+      : b.op === "between" ? n >= a && n <= +b.f[1] : false;
+  }) || null;
+}
+/* rows [9,10,11,13] -> "K9:K11 K13" */
+function kRanges(rows) {
+  const out = [];
+  for (let i = 0; i < rows.length; i++) {
+    let j = i;
+    while (j + 1 < rows.length && rows[j + 1] === rows[j] + 1) j++;
+    out.push(i === j ? "K" + rows[i] : "K" + rows[i] + ":K" + rows[j]);
+    i = j;
+  }
+  return out.join(" ");
+}
+
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
@@ -385,8 +409,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   // the legend block, rows 1-6, exactly as the workbook has it
   for (const [lr, c, xf, v] of SKIN.legend) put(lr, COL(c), xf, v);
   for (const [lr, h] of Object.entries(SKIN.legendHts)) rowHeights.set(+lr, +h);
-  merges.push("B2:E3", "H2:J3", "M2:O2", "M3:O3",
-              "S2:T2", "S3:T3", "S4:T4", "S5:T5", "S6:T6");
+  merges.push(...SKIN.legendMerges);
 
   let r = 7;
   let pri = 1;
@@ -398,7 +421,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     blocks++;
 
     // title row, merged across each of its two tables
-    for (const [c, xf] of Object.entries(SKIN.title)) {
+    for (const [c, xf] of Object.entries(SKIN.titles[depot])) {
       const v = c === "B" ? depot + " PM ARRIVALS " +
                   (yday || "— no previous day loaded")
               : c === "H" ? depot + " UNIT ALLOCATIONS " + today : "";
@@ -406,7 +429,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     }
     merges.push("B" + r + ":F" + r, "H" + r + ":T" + r);
     r++;
-    for (const [c, xf, v] of SKIN.header) put(r, COL(c), xf, v);
+    /* G: Ashford's grey strip runs down the whole block; the other depots'
+       G carries WORKS against each morning allocation instead */
+    const strip = depot === "ASHFORD";
+    for (const [c, xf, v] of SKIN.header)
+      put(r, COL(c), c === "G" && !strip ? SKIN.headG : xf, v);
     rowHeights.set(r, +SKIN.headerHt);
     r++;
 
@@ -429,6 +456,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           hl: u.hl,
           time: fmtTime(e.time, e.time_kind), unit: fullUnit(u.unit),
           endsAm: "", amAt: "", endsPm: "", pmId: "", pmAt: "", works: "", nm: "", fprp: "", note: null,
+          /* the morning's allocations - a unit's first move of the day,
+             off its overnight berth, before two - go above the bar. The
+             weekend prints do not say which move is the first; there it
+             is the time alone. */
+          am: (e.overnight === undefined || !!e.overnight) && e.time < AM_CUTOFF,
+          follows: false,
         };
         if (!has) {
           // no stops to read (a PDF build): the berth codes the books carry, as before
@@ -449,6 +482,9 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
            minutes in Ramsgate depot on its way from Margate to Ashford - is
            not where it ends up, and their sheet does not treat it as such. */
         const later = (departures.get(diag) || []).filter(x => x.time > e.time);
+        /* a later part of the day: some earlier row's WORKS names this
+           working, and both are marked yellow so the pair can be found */
+        row.follows = (departures.get(diag) || []).some(x => x.time < e.time);
         const sb = later.length ? u.sb : st.length - 1;
         const end = st[sb], t = end.arr != null ? end.arr : end.dep, hc = end.hcIn || "";
         const endLetter = arrivalEnd(F, diag, sb);
@@ -485,6 +521,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
       us.forEach((x, i) => { if (i > 0 && us.length > 1) x.id = ""; });
       rows.push(...us);
     }
+    /* Their sheet splits each block with a coloured bar: the morning's
+       allocations above it, everything that goes out later below - 5R27 at
+       09:54 on 01/10 is under Ashford's bar, because AZ623 came in from
+       Ramsgate first. Each side stays in time order. */
+    const amN = rows.filter(v => v.am).length;
+    rows.splice(0, rows.length, ...rows.filter(v => v.am), ...rows.filter(v => !v.am));
     /* Ramsgate's own rule, written on their sheet: an arrival is shown on
        the same line as the diagram its unit is allocated to. Where the units
        are known both sides, each arrival goes on its unit's line; the rest
@@ -501,11 +543,24 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
     }
     const n = Math.max(rows.length, arr.length);
     const d0 = r;
-    for (let i = 0; i < n; i++) {
+    const mgRows = [];
+    for (let i = 0; i <= n; i++) {
+      /* the bar, between the last AM allocation and the first PM one - on
+         every block that has allocations, with or without a PM side, as
+         theirs has. The arrivals table runs on through it, ruled and empty,
+         so each arrival stays level with the allocation it belongs to. */
+      if (i === amN && rows.length) {
+        for (const [c, xf] of Object.entries(SKIN.data))
+          if (COL(c) < 7) put(r, COL(c), xf, "");
+        put(r, 7, strip ? SKIN.data.G : SKIN.plainG, "");
+        const bar = SKIN.bars[depot];
+        for (let k = COL("H"); k <= COL("T"); k++)
+          put(r, k, k === COL("H") ? bar.H : k === COL("T") ? bar.T : bar.mid, "");
+        merges.push("H" + r + ":T" + r);
+        r++;
+      }
+      if (i === n) break;
       const a = arr[i], v = rows[i];
-      /* An arrivals side that runs on after the allocations have finished
-         is greyed out on the real sheet, so it is here too. */
-      const right = v ? SKIN.data : SKIN.greyRight;
       for (const [c, xf] of Object.entries(SKIN.data)) {
         if (COL(c) >= 7) continue;
         const val = c === "B" ? (a ? a.hc : "") : c === "C" ? (a ? a.at : "")
@@ -515,8 +570,16 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
         put(r, COL(c), xf, val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
       }
-      for (const [c, xf] of Object.entries(right)) {
-        if (COL(c) < 7) continue;
+      /* WORKS against each morning allocation outside Ashford: what that
+         unit forms next is filled in by hand, from what the stock
+         controller can see and the reports cannot */
+      if (strip) put(r, 7, SKIN.data.G, "");
+      else if (v && i < amN)
+        put(r, 7, i === 0 ? SKIN.worksG.first
+                  : i === amN - 1 ? SKIN.worksG.last : SKIN.worksG.mid, "WORKS");
+      else put(r, 7, SKIN.plainG, "");
+      for (const [c, xf] of Object.entries(SKIN.data)) {
+        if (COL(c) < 8) continue;
         const val = !v ? ""
           : c === "H" ? v.id : c === "I" ? v.diag : c === "J" ? v.nm : c === "K" ? v.mg
           : c === "L" ? v.time : c === "M" ? v.fprp : c === "N" ? v.unit
@@ -525,14 +588,23 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
           : c === "T" ? v.works : "";
         const num = (c === "K" || c === "N") && val !== "" &&
                     /^\d+$/.test(String(val));
-        put(r, COL(c), xf, val, num);
+        /* their yellow marks: N/M and M/O in red; the working a unit goes
+           back out on, in WORKS; and that later working's own TRAIN ID -
+           both lines of a 12, as theirs has it - so each return can be
+           traced from the row it comes back on to the row it leaves on */
+        const mark = c === "J" && val ? SKIN.flag
+          : c === "T" && /^[125][A-Z]\d\d$/.test(String(val)) ? SKIN.worksT
+          : c === "H" && v && v.follows ? SKIN.laterH : xf;
+        put(r, COL(c), mark, val, num);
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
-           sheet on screen disagrees with the one in the workbook. Same two
-           dxf records the conditional formatting below names. */
-        if (c === "K" && num)
-          cells[cells.length - 1].cfCss =
-            SKIN.dxfCss[Number(val) < 500 ? 0 : 1];
+           sheet on screen disagrees with the one in the workbook. Same
+           bands, in the same order, as the conditional formatting below. */
+        if (c === "K" && num) {
+          const b = mgBand(Number(val));
+          if (b) cells[cells.length - 1].cfCss = b.css;
+          mgRows.push(r);
+        }
       }
       /* The route note their sheet keeps as a comment on the DIAGRAM cell.
          Off the day's own stops, one note and only one: "not over high
@@ -551,14 +623,17 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
       }
       r++;
     }
-    /* Their sheet colours the MG column by the mileage key above: green
-       under 500 miles, red at 500 and over - dxf 0 and 1 in the skin. */
-    if (rows.length)
-      condFmt.push('<conditionalFormatting sqref="K' + d0 + ':K' + (r - 1) +
-        '"><cfRule type="cellIs" dxfId="0" priority="' + pri++ +
-        '" operator="lessThan"><formula>500</formula></cfRule>' +
-        '<cfRule type="cellIs" dxfId="1" priority="' + pri++ +
-        '" operator="greaterThan"><formula>499</formula></cfRule>' +
+    /* Their sheet colours the MG column by the mileage key above it - High,
+       Average and Low, dxf 0, 1 and 2 in the skin. Only the cells with a
+       figure in: Excel reads an empty cell as 0, and would paint the bar
+       and every blank line green. */
+    if (mgRows.length)
+      condFmt.push('<conditionalFormatting sqref="' + kRanges(mgRows) + '">' +
+        SKIN.mg.map((b, i) =>
+          '<cfRule type="cellIs" dxfId="' + i + '" priority="' + pri++ +
+          '" operator="' + b.op + '">' +
+          b.f.map(f => '<formula>' + f + '</formula>').join("") +
+          '</cfRule>').join("") +
         '</conditionalFormatting>');
     /* the drop-downs their sheet keeps on these columns: the fleet on
        both UNIT columns, 6/12, the CET mark, and FP/RP */
@@ -630,7 +705,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = SHEETS_HS;
