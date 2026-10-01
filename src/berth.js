@@ -1854,13 +1854,24 @@ function mergeDefects(plan, defects) {
   for (const rs of kept.values()) for (const r of rs) rows.push(r);
   return { rows, reviews: plan.reviews.concat(defects.reviews), order, groups, kind: plan.kind, preamble: plan.preamble || [] };
 }
+/* The Class 395 Disposition Statement road is switched OFF: berth requests
+   are for the Mainline and Metro fleets only (the planner, 01/10/26). The
+   road itself - berth-hs.js and its skin - is kept and still tested, so
+   setting this true brings it back as it was. While it is off, a pasted
+   disposition statement is turned away by name, and the plan-type list
+   does not offer it. */
+const HS_DISPOSITION = false;
+const HS_OFF = "Berth requests are for the Mainline and Metro fleets only — " +
+  "that is the Class 395 Disposition Statement, which is not read here.";
 function run(planText, genius, opts) {
   opts = opts || {};
   /* the High Speed disposition statement is its own road: one row per
      unit with the diagram to fill in, read by SHEETS_BERTH_HS */
   const HS = typeof SHEETS_BERTH_HS !== "undefined" ? SHEETS_BERTH_HS : null;
-  if (HS && (opts.kind === "hs" || ((opts.kind || "auto") === "auto" && HS.isDisposition(planText))))
+  if (HS && (opts.kind === "hs" || ((opts.kind || "auto") === "auto" && HS.isDisposition(planText)))) {
+    if (!HS_DISPOSITION && !opts.hsDisposition) throw new Error(HS_OFF);
     return HS.run(planText, genius, opts, { allDays, runDate, allocFor, parseShort, shortOf, hhmm });
+  }
   const plan = mergeDefects(parsePlan(planText, opts.kind), opts.defects ? parseDefects(opts.defects) : null);
   const reviews = plan.reviews.slice();
   const allocDates = genius && genius.alloc && genius.alloc.keys ? [...genius.alloc.keys()] : [];
@@ -2455,7 +2466,7 @@ function render(res) {
   return lines.join("\n") + (n ? "\n\n" + n : "");
 }
 
-return { run, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
+return { run, HS_DISPOSITION, render, shape, toText, toHtml, noticesText, parsePlan, parseDefects, faultSummary, whenOf, suggest, placeFromAction,
          detailFromPrints, PRINT_CODES, parseAllocation,
          finalWorking, requestName, terminalCalls, depotStands, swapBetween, fits, fitsLoosely, priorityOf, mergeDefects, candidatesFor, matesOn, unitDay, allDays,
          PLACES, placeOf, roadName, maxUnits, defectHome, FLEET_MOVES, movesFrom, toXlsx, metroAt, metroForm, planRows, PLAN_SKINS };

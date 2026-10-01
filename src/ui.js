@@ -1724,6 +1724,11 @@ function decodeText(u8) {
         dayToRun = $("#brdaytorun"), clear = $("#brclear"), kind = $("#brkind"), xlsx = $("#brxlsx");
   // which workbook the plan is from is remembered with the other options
   if (kind) {
+    // the 395 disposition road is switched off: not offered while it is
+    if (typeof SHEETS_BERTH !== "undefined" && !SHEETS_BERTH.HS_DISPOSITION) {
+      const o = kind.querySelector('option[value="hs"]');
+      if (o) o.remove();
+    }
     if (savedOpts.brkind && [...kind.options].some(o => o.value === savedOpts.brkind)) kind.value = savedOpts.brkind;
     kind.addEventListener("change", () => rememberOpts());
   }
@@ -1923,7 +1928,10 @@ function decodeText(u8) {
     try { result = SHEETS_BERTH.run(plan.value, res, { ignore: ignore ? ignore.value : "", defects: defects ? defects.value : "", mse: mse ? mse.value : "",
                                                          keep: !!(keep && keep.checked), dayToRun: !!(dayToRun && dayToRun.checked),
                                                          kind: kind ? kind.value : "auto" }); }
-    catch (e) { say("The plan could not be read: " + e.message, "err"); return; }
+    catch (e) {
+      say(/Mainline and Metro fleets only/.test(e.message) ? e.message : "The plan could not be read: " + e.message, "err");
+      return;
+    }
     if (mseHint) mseHint.textContent = result.mseUnits.length
       ? "MSE on: " + result.mseUnits.join(" ") + " — list those they are attending here and read the plan again."
       : "Nothing on the plan is flagged MSE.";

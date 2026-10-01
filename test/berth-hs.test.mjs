@@ -11,7 +11,10 @@ const N = built();
 const B = () => N.SHEETS_BERTH;
 const H = () => N.SHEETS_BERTH_HS;
 const reports = async (units) => N.GENIUS.read([hsSummaryCsv(units), hsDetailCsv()]);
-const run = async (opts, units) => B().run(dispositionPaste(opts), await reports(units), {});
+/* the road is switched off on the tab (Mainline and Metro only); these
+   tests switch it on for themselves, so it still works when it is wanted */
+const ON = { hsDisposition: true };
+const run = async (opts, units) => B().run(dispositionPaste(opts), await reports(units), ON);
 
 test("a disposition statement is told from a maintenance plan by its own heading row", async () => {
   assert.equal(H().isDisposition(dispositionPaste()), true);
@@ -86,7 +89,7 @@ test("a diagram the sheet already names is kept, and is not given to a second un
   assert.match(by["395002"].why.join(" · "), /the sheet has it on AZ601/);
   // the same sheet with two units claiming one diagram
   const units = HS_UNITS.map(u => u.unit === "395004" ? { ...u, plan: ["AZ601\n5R09", "07+10", "Ashford", "23+54"] } : u);
-  const twice = B().run(dispositionPaste({ filled: true, units }), await reports(), {});
+  const twice = B().run(dispositionPaste({ filled: true, units }), await reports(), ON);
   const t = Object.fromEntries(twice.rows.map(r => [r.unit, r]));
   assert.equal(t["395002"].suggest.diag, "AZ601");
   assert.notEqual(t["395004"].suggest.diag, "AZ601", "the second claim is turned down: " + t["395004"].why.join(" · "));
@@ -171,4 +174,16 @@ test("the day's diagrams can be read as a list, depot by depot, with the unit on
   assert.match(txt, /AZ603.*395004/);
   assert.match(txt, /NOT OUT/);
   assert.match(txt, /395001/);
+});
+
+test("berth requests are Mainline and Metro only: a disposition statement is turned away by name", async () => {
+  /* At the planner's word the 395 road is switched off. A pasted Class 395
+     Disposition Statement is recognised and refused with a reason - not
+     read as a Mainline plan full of nonsense - and the code is still here. */
+  assert.equal(B().HS_DISPOSITION, false, "switched off");
+  await assert.rejects(async () => B().run(dispositionPaste(), await reports(), {}),
+    /Mainline and Metro fleets only — that is the Class 395 Disposition Statement/);
+  await assert.rejects(async () => B().run("anything", await reports(), { kind: "hs" }),
+    /Mainline and Metro fleets only/, "asking for it by kind too");
+  assert.equal(typeof H().run, "function", "the road is kept");
 });

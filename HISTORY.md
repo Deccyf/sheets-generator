@@ -140,6 +140,22 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.30.0 — 1 October 2026 — berth requests turn the 395s away
+
+Berth requests are for the Mainline and Metro fleets only, at the
+planner's word, and the tab now does what its note says. A pasted Class
+395 Disposition Statement is recognised and turned away by name: "Berth
+requests are for the Mainline and Metro fleets only — that is the Class 395
+Disposition Statement, which is not read here." Nothing is built from it.
+The plan-type list no longer offers High Speed disposition, and the
+how-it-works fold says the same.
+
+The 395 road built at 3.16.0 (`src/berth-hs.js` and its skin) is kept, not
+deleted. One switch, `HS_DISPOSITION` in `src/berth.js`, brings it back as
+it was, and its tests run with the switch on for themselves, so it still
+works when it is wanted. A new test checks the refusal. With your Mainline
+plan and Metro Telex for 20/09 the tab reads 115 and 125 lines, as before.
+
 ## 3.29.2 — 1 October 2026 — the weekend tab is about the weekend
 
 The weekend tab's opening points no longer mention the base diagrams. They

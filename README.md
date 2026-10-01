@@ -419,7 +419,7 @@ paste or set with the *Workbook* choice:
 |---|---|---|
 | **Mainline plan** | The *Maintenance Plan* tab of the Mainline Stock Control Document: Exams, Scheduled Maint, Defects and the rest, each with its own columns. | A berth request in the Action column, in the depot's own words: `AFK BERTH off 2A01`, `RE HOLD`, `ENDS DVP`. |
 | **Metro Telex** | The same tab of the Metro Stock Telex: exam lists headed by depot, a *Location* column for the road a unit stands on. | The Telex's own phrasing: `GPU - BERTH 05+03 (5F08)`, `HOLD FOR EXAM`, the London end, country end or middle of a portion. |
-| **High Speed disposition** | The *Class 395 Disposition Statement*: a row per unit, five day columns of what the depot wants, four planning columns on the right. | Those four columns: the diagram, when it leaves, where it ends and when it gets in. |
+| **High Speed disposition** — switched off | The *Class 395 Disposition Statement*: a row per unit, five day columns of what the depot wants, four planning columns on the right. | Turned away by name: berth requests are for the Mainline and Metro fleets only. The road below is kept and tested; `HS_DISPOSITION` in `src/berth.js` brings it back. |
 
 **What the rules read.** Where each unit is tonight (the Allocation
 Summary, or the Diagram Summary once the day is allocated), where its
@@ -432,7 +432,8 @@ the staff shunt into the station, Tonbridge is the Jubilee, the down main
 and the platform, a restriction that says *multiple only* cannot be offered
 a single-unit working, a slow-down goes on the fewest miles, a defect with
 days to run can be *contained* on a multiple diagram instead of sent home.
-The 395s are a different job again and live in `src/berth-hs.js`: a unit
+The 395s are a different job again and live in `src/berth-hs.js` (switched
+off on the tab - see above - but kept and tested): a unit
 goes out from the depot its *DEPT LOCATION* names, a restriction keeps it
 off the Ebbsfleet high level or the North Kent, and *Early PM*, *Between
 Peaks*, *PM*, *Low Mileage*, *Hold* and *Stable if possible* each pick
