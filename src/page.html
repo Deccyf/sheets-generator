@@ -313,7 +313,7 @@
       Speed sheet's PM arrivals, drop the day before's Diagram Summary and
       Detail with the prints — Friday's for Saturday, Saturday's for Sunday.
       The <strong>base diagrams</strong> for a timetable change go here too:
-      pick the date and the books are built from the diagrams that run on it.</p>
+      every book is built for a week of the timetable, a sheet per day type.</p>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
@@ -380,10 +380,12 @@
 
     <div class="opts-row" id="we_baserow" hidden>
       <span class="opts-label">Base diagrams</span>
-      <label>Build for <input type="date" id="we_basedate" autocomplete="off"></label>
+      <label>Week of <input type="date" id="we_basedate" autocomplete="off"></label>
       <span class="opts-hint" id="we_basehint">These are the base diagrams for a
-        timetable, not one day&rsquo;s prints: the books are built for the date
-        chosen, from the diagrams that run on it.</span>
+        timetable, not one day&rsquo;s prints: every book is built for the week
+        holding the date chosen, a sheet per day type — Monday, Tuesday to
+        Thursday, Friday, Saturday and Sunday in the usual book — from the
+        diagrams that run on it.</span>
     </div>
 
     <div class="roads" id="we_roads"></div>

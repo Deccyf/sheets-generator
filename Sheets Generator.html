@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.20.1</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.21.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -834,7 +834,7 @@
       Speed sheet's PM arrivals, drop the day before's Diagram Summary and
       Detail with the prints — Friday's for Saturday, Saturday's for Sunday.
       The <strong>base diagrams</strong> for a timetable change go here too:
-      pick the date and the books are built from the diagrams that run on it.</p>
+      every book is built for a week of the timetable, a sheet per day type.</p>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
@@ -901,10 +901,12 @@
 
     <div class="opts-row" id="we_baserow" hidden>
       <span class="opts-label">Base diagrams</span>
-      <label>Build for <input type="date" id="we_basedate" autocomplete="off"></label>
+      <label>Week of <input type="date" id="we_basedate" autocomplete="off"></label>
       <span class="opts-hint" id="we_basehint">These are the base diagrams for a
-        timetable, not one day&rsquo;s prints: the books are built for the date
-        chosen, from the diagrams that run on it.</span>
+        timetable, not one day&rsquo;s prints: every book is built for the week
+        holding the date chosen, a sheet per day type — Monday, Tuesday to
+        Thursday, Friday, Saturday and Sunday in the usual book — from the
+        diagrams that run on it.</span>
     </div>
 
     <div class="roads" id="we_roads"></div>
@@ -1676,7 +1678,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.20.1
+      works without an internet connection. Version 3.21.0
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -6152,7 +6154,7 @@ function kRanges(rows) {
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
-function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
+function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
@@ -6169,12 +6171,15 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
   const runOutTo = dayKey === "SA" || dayKey === "SU" ? RUN_OUT_TO_WEEKEND : RUN_OUT_TO;
-  const today = longDate(dayKey, dates[dayKey]);
+  /* titles: the base diagrams' week names a sheet by its day type -
+     "Tuesday to Thursday 12/26", as their own MAY template writes "Mon 05/26" */
+  const today = (titles && titles.today) || longDate(dayKey, dates[dayKey]);
   /* the day's own stops, and the night before's - by DATE, so Sunday's
      reports give Monday its arrivals although no Sunday tab is built */
   const F = hsDays ? dayFacts(hsDays[dates[dayKey]]) : null;
   const Fp = hsDays ? dayFacts(hsDays[dayBefore(dates[dayKey])]) : null;
-  const yday = Fp ? longOfDate(Fp.date) : prevKey ? longDate(prevKey, dates[prevKey]) : "";
+  const yday = Fp ? (titles && titles.yday) || longOfDate(Fp.date)
+    : prevKey ? longDate(prevKey, dates[prevKey]) : "";
   /* every departure of each diagram today, in order: a part of the day that
      comes back in and goes out again names the working it goes out on */
   const departures = new Map();
@@ -6481,7 +6486,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
 
 /* One worksheet per day the reports carry, named the way the real workbook
    names them - "Tue 18 08". */
-function sheetsFor(hsSecs, labels, dates, hsDays) {
+function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
   const days = DAY_ORDER.filter(d => d in labels);
   return days.map((d, i) => {
     const lbl = String(labels[d] || "");
@@ -6494,7 +6499,7 @@ function sheetsFor(hsSecs, labels, dates, hsDays) {
        Wednesday the night before Friday */
     const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays, titles) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -7545,6 +7550,12 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
    {name, bytes} (a base plus reissues); opts: allHeadcodes {road: bool},
    splitRamsgate. Returns {date, banner, stamp, diagrams, books, merge,
    updated}; throws a message for the drop zone when the input is not usable. */
+/* A day's prints are dated that day, From and Until alike; base diagrams
+   run over periods. */
+function isBasePrints(all){
+  return Array.from(all.values()).some(function(v){
+    return v.until && v.date && v.until !== v.date; });
+}
 /* dd/mm/yyyy <-> a UTC midnight, for walking the base diagrams' dates */
 function dmyMs(s){
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
@@ -7607,8 +7618,7 @@ function run(input, unzipFn, zipFn, opts){
      the timetable runs - out of the diagrams that run on it; and the day
      before's, where the base diagrams cover it, give the 395 sheet its PM
      arrivals. */
-  const isBase = Array.from(all.values()).some(function(v){
-    return v.until && v.date && v.until !== v.date; });
+  const isBase = isBasePrints(all);
   let diags, dateStr = null, base = null, prevDiags = null;
   if (isBase){
     const ms = Array.from(all.values()).map(function(v){ return dmyMs(v.date); })
@@ -7723,7 +7733,7 @@ function run(input, unzipFn, zipFn, opts){
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles);
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);
@@ -7773,7 +7783,113 @@ function run(input, unzipFn, zipFn, opts){
             : null,
           updated: updated};
 }
-root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams,
+/* ============ the base diagrams, a week at a time ============
+   Dropped on the weekend panel, the base diagrams build a WEEK: one book per
+   road - Mainline, Ramsgate, Metro, High Speed - with a sheet per DAY TYPE,
+   named the way the depot's own base template names them ("MAY MONDAY").
+   A day type is a run of days that work the same diagrams after the same
+   night: Tuesday to Thursday are one, but Monday is not one of them, because
+   its PM arrivals are Sunday night's. In the usual book that is Monday,
+   Tuesday to Thursday, Friday, Saturday and Sunday. Each is built by run()
+   for its first day, exactly as that single day would be, and the sheets are
+   gathered by road - so a week cannot build differently from its days. The
+   week is the one holding opts.forDate, or the first full week the
+   timetable runs. A day's own prints are handed straight to run(). */
+const DAY_MS = 86400000;
+const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+function runWeek(input, unzipFn, zipFn, opts){
+  const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
+  const all = mergeDocs(inputs, unzipFn).merged;
+  if (!all.size || !isBasePrints(all)) return run(input, unzipFn, zipFn, opts);
+  const froms = Array.from(all.values()).map(function(v){ return dmyMs(v.date); })
+    .filter(function(x){ return x !== null; });
+  const ends = Array.from(all.values()).map(function(v){ return dmyMs(v.until); })
+    .filter(function(x){ return x !== null; });
+  const first = Math.min.apply(null, froms), last = ends.length ? Math.max.apply(null, ends) : null;
+  const dow = ms => new Date(ms).getUTCDay();
+  const pick = opts && opts.forDate && dmyMs(opts.forDate) !== null ? dmyMs(opts.forDate) : null;
+  const monday = pick !== null ? pick - ((dow(pick) + 6) % 7) * DAY_MS
+                               : first + ((8 - dow(first)) % 7) * DAY_MS;
+  // which printings run on a day, as one comparable string
+  const ids = new Map(); let n = 0;
+  for (const v of all.values()) ids.set(v, n++);
+  const sig = ms => Array.from(runningOn(all, ms).values())
+    .map(function(v){ return ids.get(v); }).sort(function(a, b){ return a - b; }).join(",");
+  const groups = [];
+  for (let i = 0; i < 7; i++){
+    const ms = monday + i * DAY_MS;
+    const today = sig(ms);
+    if (!today) continue;                         // nothing runs that day
+    const key = today + "|" + sig(ms - DAY_MS);
+    const g = groups[groups.length - 1];
+    if (g && g.key === key && g.last === ms - DAY_MS) { g.last = ms; g.days.push(ms); }
+    else groups.push({key, first: ms, last: ms, days: [ms]});
+  }
+  if (!groups.length)
+    throw new Error("None of these base diagrams runs in the week of " + msDmy(monday) +
+      " — they run from " + msDmy(first) + (last !== null ? " to " + msDmy(last) : "") +
+      ". Pick a date in that period.");
+  const tt = MON3[new Date(first).getUTCMonth()];
+  const mmyy = String(new Date(first).getUTCMonth() + 1).padStart(2, "0") + "/" +
+               String(new Date(first).getUTCFullYear() % 100).padStart(2, "0");
+  const short = ms => DAY_FULL[dow(ms)].slice(0, 3).toUpperCase();
+  for (const g of groups){
+    g.type = g.days.length === 1 ? DAY_FULL[dow(g.first)].toUpperCase()
+                                 : short(g.first) + "-" + short(g.last);
+    g.tab = (tt + " " + g.type).slice(0, 31);
+    g.title = (g.days.length === 1 ? DAY_FULL[dow(g.first)]
+               : DAY_FULL[dow(g.first)] + " to " + DAY_FULL[dow(g.last)]) + " " + mmyy;
+    g.res = run(input, unzipFn, zipFn, Object.assign({}, opts, {
+      forDate: msDmy(g.first),
+      titles: {today: g.title, yday: DAY_FULL[dow(g.first - DAY_MS)] + " " + mmyy}}));
+  }
+  const weekStamp = "BASE_WC_" + dateBits(msDmy(monday)).stamp.replace(/^[A-Z]{3}_/, "");
+  // gather each road's sheets across the day types, in the first build's order
+  // the usual order of the books: the day type that built the most of them
+  const roads = groups.map(function(g){ return g.res.books.map(function(b){ return b.road; }); })
+    .sort(function(a, b){ return b.length - a.length; })[0].slice();
+  for (const g of groups) for (const b of g.res.books)
+    if (roads.indexOf(b.road) === -1) roads.push(b.road);
+  const books = roads.map(function(road){
+    const parts = groups.map(function(g){
+      return {g, b: g.res.books.find(function(x){ return x.road === road; })}; })
+      .filter(function(p){ return p.b && !p.b.skipped; });
+    const any = groups.map(function(g){ return g.res.books.find(function(x){ return x.road === road; }); })
+      .find(Boolean);
+    if (!parts.length) return {label: any.label, road, skipped: true};
+    const sheets = [];
+    for (const {g, b} of parts){
+      if (b.sheets && b.kind === "metro")
+        for (const sh of b.sheets) sheets.push({name: (sh.name + " " + g.type).slice(0, 31), layout: sh.layout});
+      else if (b.sheets)
+        for (const sh of b.sheets) sheets.push({name: g.tab, layout: sh.layout});
+      else sheets.push({name: g.tab, layout: b.layout});
+    }
+    const b0 = parts[0].b;
+    const name = b0.name.replace(parts[0].g.res.stamp, weekStamp);
+    const items = [];
+    for (const {g, b} of parts)
+      for (const l of b.report.split("\n")) if (l.startsWith("- ")) items.push("- " + g.tab + ": " + l.slice(2));
+    const entries = parts.reduce(function(a, p){ return a + p.b.entries; }, 0);
+    return {label: b0.label, road, name, kind: b0.kind || "week", sheets,
+            xlsx: sheets.length ? SHEETS_XLSX.writeWorkbook(sheets, zipFn) : null,
+            reportName: name.replace(/\.xlsx$/, ".report.txt"),
+            report: name + ": " + plural(entries, "entry", "entries") + " over " +
+              plural(parts.length, "day type") + "\n\nReview items:\n" +
+              items.map(function(l){ return l + "\n"; }).join(""),
+            entries, sections: parts[0].b.sections, reviews: items.length};
+  });
+  const g0 = groups[0].res;
+  return {date: msDmy(monday), banner: "THE WEEK OF " + dateBits(msDmy(monday)).banner,
+          stamp: weekStamp, diagrams: groups.reduce(function(a, g){ return a + g.res.diagrams; }, 0),
+          books, merge: g0.merge, updated: g0.updated,
+          base: {from: msDmy(first), until: last !== null ? msDmy(last) : null,
+                 date: msDmy(monday), week: msDmy(monday),
+                 types: groups.map(function(g){ return g.tab; })}};
+}
+
+root.SheetsEngine = {run, runWeek, PROFILES, docxParagraphs, parseDiagrams,
                     looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};
@@ -15958,7 +16074,8 @@ const MSG = {
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
   weBase: b => "Built from the base diagrams (" + b.from + (b.until ? " to " + b.until : "") +
-    ") for " + b.date + " — choose another date under Base diagrams to build that day.",
+    "), the week of " + b.week + ", a sheet per day type: " + (b.types || []).join(", ") +
+    ". Choose a date in another week under Base diagrams to build that week.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
@@ -17216,8 +17333,8 @@ const panels = {};
          drawn by the same code the weekday panel uses, so they get the same
          picker over their sheets rather than one berthing page. */
       const panes = [
-        b.kind === "metro" || b.kind === "hs"
-          ? [b.kind === "metro" ? "Sheet" : "Allocations",
+        b.sheets
+          ? [b.kind === "metro" ? "Sheet" : b.kind === "hs" ? "Allocations" : "Sheets",
              () => metroPane(b.sheets, b.kind === "metro" ? "Location" : "Day")]
           : ["Sheet", () => X.previewHtml(b.layout)],
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
@@ -17245,7 +17362,9 @@ const panels = {};
     const allHeadcodes = {};
     for (const road of Object.keys(weHc))
       allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
-    const res = SheetsEngine.run(loadedDocs,
+    /* a day's prints build that day; base diagrams build a week of them,
+       a sheet per day type - runWeek tells the two apart */
+    const res = SheetsEngine.runWeek(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
       { allHeadcodes, splitRamsgate: true, hsPrev, forDate });

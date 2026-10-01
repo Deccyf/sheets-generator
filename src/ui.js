@@ -78,7 +78,8 @@ const MSG = {
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
   weBase: b => "Built from the base diagrams (" + b.from + (b.until ? " to " + b.until : "") +
-    ") for " + b.date + " — choose another date under Base diagrams to build that day.",
+    "), the week of " + b.week + ", a sheet per day type: " + (b.types || []).join(", ") +
+    ". Choose a date in another week under Base diagrams to build that week.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
@@ -1336,8 +1337,8 @@ const panels = {};
          drawn by the same code the weekday panel uses, so they get the same
          picker over their sheets rather than one berthing page. */
       const panes = [
-        b.kind === "metro" || b.kind === "hs"
-          ? [b.kind === "metro" ? "Sheet" : "Allocations",
+        b.sheets
+          ? [b.kind === "metro" ? "Sheet" : b.kind === "hs" ? "Allocations" : "Sheets",
              () => metroPane(b.sheets, b.kind === "metro" ? "Location" : "Day")]
           : ["Sheet", () => X.previewHtml(b.layout)],
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
@@ -1365,7 +1366,9 @@ const panels = {};
     const allHeadcodes = {};
     for (const road of Object.keys(weHc))
       allHeadcodes[road] = !!(weHc[road] && weHc[road].checked);
-    const res = SheetsEngine.run(loadedDocs,
+    /* a day's prints build that day; base diagrams build a week of them,
+       a sheet per day type - runWeek tells the two apart */
+    const res = SheetsEngine.runWeek(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
       { allHeadcodes, splitRamsgate: true, hsPrev, forDate });

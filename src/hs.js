@@ -483,7 +483,7 @@ function kRanges(rows) {
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
-function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
+function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
@@ -500,12 +500,15 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
   const secs = hsSecs[dayKey];
   const prev = prevKey ? hsSecs[prevKey] : null;
   const runOutTo = dayKey === "SA" || dayKey === "SU" ? RUN_OUT_TO_WEEKEND : RUN_OUT_TO;
-  const today = longDate(dayKey, dates[dayKey]);
+  /* titles: the base diagrams' week names a sheet by its day type -
+     "Tuesday to Thursday 12/26", as their own MAY template writes "Mon 05/26" */
+  const today = (titles && titles.today) || longDate(dayKey, dates[dayKey]);
   /* the day's own stops, and the night before's - by DATE, so Sunday's
      reports give Monday its arrivals although no Sunday tab is built */
   const F = hsDays ? dayFacts(hsDays[dates[dayKey]]) : null;
   const Fp = hsDays ? dayFacts(hsDays[dayBefore(dates[dayKey])]) : null;
-  const yday = Fp ? longOfDate(Fp.date) : prevKey ? longDate(prevKey, dates[prevKey]) : "";
+  const yday = Fp ? (titles && titles.yday) || longOfDate(Fp.date)
+    : prevKey ? longDate(prevKey, dates[prevKey]) : "";
   /* every departure of each diagram today, in order: a part of the day that
      comes back in and goes out again names the working it goes out on */
   const departures = new Map();
@@ -812,7 +815,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays) {
 
 /* One worksheet per day the reports carry, named the way the real workbook
    names them - "Tue 18 08". */
-function sheetsFor(hsSecs, labels, dates, hsDays) {
+function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
   const days = DAY_ORDER.filter(d => d in labels);
   return days.map((d, i) => {
     const lbl = String(labels[d] || "");
@@ -825,7 +828,7 @@ function sheetsFor(hsSecs, labels, dates, hsDays) {
        Wednesday the night before Friday */
     const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays, titles) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,

@@ -1026,6 +1026,12 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
    {name, bytes} (a base plus reissues); opts: allHeadcodes {road: bool},
    splitRamsgate. Returns {date, banner, stamp, diagrams, books, merge,
    updated}; throws a message for the drop zone when the input is not usable. */
+/* A day's prints are dated that day, From and Until alike; base diagrams
+   run over periods. */
+function isBasePrints(all){
+  return Array.from(all.values()).some(function(v){
+    return v.until && v.date && v.until !== v.date; });
+}
 /* dd/mm/yyyy <-> a UTC midnight, for walking the base diagrams' dates */
 function dmyMs(s){
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
@@ -1088,8 +1094,7 @@ function run(input, unzipFn, zipFn, opts){
      the timetable runs - out of the diagrams that run on it; and the day
      before's, where the base diagrams cover it, give the 395 sheet its PM
      arrivals. */
-  const isBase = Array.from(all.values()).some(function(v){
-    return v.until && v.date && v.until !== v.date; });
+  const isBase = isBasePrints(all);
   let diags, dateStr = null, base = null, prevDiags = null;
   if (isBase){
     const ms = Array.from(all.values()).map(function(v){ return dmyMs(v.date); })
@@ -1204,7 +1209,7 @@ function run(input, unzipFn, zipFn, opts){
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles);
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);
@@ -1254,7 +1259,113 @@ function run(input, unzipFn, zipFn, opts){
             : null,
           updated: updated};
 }
-root.SheetsEngine = {run, PROFILES, docxParagraphs, parseDiagrams,
+/* ============ the base diagrams, a week at a time ============
+   Dropped on the weekend panel, the base diagrams build a WEEK: one book per
+   road - Mainline, Ramsgate, Metro, High Speed - with a sheet per DAY TYPE,
+   named the way the depot's own base template names them ("MAY MONDAY").
+   A day type is a run of days that work the same diagrams after the same
+   night: Tuesday to Thursday are one, but Monday is not one of them, because
+   its PM arrivals are Sunday night's. In the usual book that is Monday,
+   Tuesday to Thursday, Friday, Saturday and Sunday. Each is built by run()
+   for its first day, exactly as that single day would be, and the sheets are
+   gathered by road - so a week cannot build differently from its days. The
+   week is the one holding opts.forDate, or the first full week the
+   timetable runs. A day's own prints are handed straight to run(). */
+const DAY_MS = 86400000;
+const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+function runWeek(input, unzipFn, zipFn, opts){
+  const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
+  const all = mergeDocs(inputs, unzipFn).merged;
+  if (!all.size || !isBasePrints(all)) return run(input, unzipFn, zipFn, opts);
+  const froms = Array.from(all.values()).map(function(v){ return dmyMs(v.date); })
+    .filter(function(x){ return x !== null; });
+  const ends = Array.from(all.values()).map(function(v){ return dmyMs(v.until); })
+    .filter(function(x){ return x !== null; });
+  const first = Math.min.apply(null, froms), last = ends.length ? Math.max.apply(null, ends) : null;
+  const dow = ms => new Date(ms).getUTCDay();
+  const pick = opts && opts.forDate && dmyMs(opts.forDate) !== null ? dmyMs(opts.forDate) : null;
+  const monday = pick !== null ? pick - ((dow(pick) + 6) % 7) * DAY_MS
+                               : first + ((8 - dow(first)) % 7) * DAY_MS;
+  // which printings run on a day, as one comparable string
+  const ids = new Map(); let n = 0;
+  for (const v of all.values()) ids.set(v, n++);
+  const sig = ms => Array.from(runningOn(all, ms).values())
+    .map(function(v){ return ids.get(v); }).sort(function(a, b){ return a - b; }).join(",");
+  const groups = [];
+  for (let i = 0; i < 7; i++){
+    const ms = monday + i * DAY_MS;
+    const today = sig(ms);
+    if (!today) continue;                         // nothing runs that day
+    const key = today + "|" + sig(ms - DAY_MS);
+    const g = groups[groups.length - 1];
+    if (g && g.key === key && g.last === ms - DAY_MS) { g.last = ms; g.days.push(ms); }
+    else groups.push({key, first: ms, last: ms, days: [ms]});
+  }
+  if (!groups.length)
+    throw new Error("None of these base diagrams runs in the week of " + msDmy(monday) +
+      " — they run from " + msDmy(first) + (last !== null ? " to " + msDmy(last) : "") +
+      ". Pick a date in that period.");
+  const tt = MON3[new Date(first).getUTCMonth()];
+  const mmyy = String(new Date(first).getUTCMonth() + 1).padStart(2, "0") + "/" +
+               String(new Date(first).getUTCFullYear() % 100).padStart(2, "0");
+  const short = ms => DAY_FULL[dow(ms)].slice(0, 3).toUpperCase();
+  for (const g of groups){
+    g.type = g.days.length === 1 ? DAY_FULL[dow(g.first)].toUpperCase()
+                                 : short(g.first) + "-" + short(g.last);
+    g.tab = (tt + " " + g.type).slice(0, 31);
+    g.title = (g.days.length === 1 ? DAY_FULL[dow(g.first)]
+               : DAY_FULL[dow(g.first)] + " to " + DAY_FULL[dow(g.last)]) + " " + mmyy;
+    g.res = run(input, unzipFn, zipFn, Object.assign({}, opts, {
+      forDate: msDmy(g.first),
+      titles: {today: g.title, yday: DAY_FULL[dow(g.first - DAY_MS)] + " " + mmyy}}));
+  }
+  const weekStamp = "BASE_WC_" + dateBits(msDmy(monday)).stamp.replace(/^[A-Z]{3}_/, "");
+  // gather each road's sheets across the day types, in the first build's order
+  // the usual order of the books: the day type that built the most of them
+  const roads = groups.map(function(g){ return g.res.books.map(function(b){ return b.road; }); })
+    .sort(function(a, b){ return b.length - a.length; })[0].slice();
+  for (const g of groups) for (const b of g.res.books)
+    if (roads.indexOf(b.road) === -1) roads.push(b.road);
+  const books = roads.map(function(road){
+    const parts = groups.map(function(g){
+      return {g, b: g.res.books.find(function(x){ return x.road === road; })}; })
+      .filter(function(p){ return p.b && !p.b.skipped; });
+    const any = groups.map(function(g){ return g.res.books.find(function(x){ return x.road === road; }); })
+      .find(Boolean);
+    if (!parts.length) return {label: any.label, road, skipped: true};
+    const sheets = [];
+    for (const {g, b} of parts){
+      if (b.sheets && b.kind === "metro")
+        for (const sh of b.sheets) sheets.push({name: (sh.name + " " + g.type).slice(0, 31), layout: sh.layout});
+      else if (b.sheets)
+        for (const sh of b.sheets) sheets.push({name: g.tab, layout: sh.layout});
+      else sheets.push({name: g.tab, layout: b.layout});
+    }
+    const b0 = parts[0].b;
+    const name = b0.name.replace(parts[0].g.res.stamp, weekStamp);
+    const items = [];
+    for (const {g, b} of parts)
+      for (const l of b.report.split("\n")) if (l.startsWith("- ")) items.push("- " + g.tab + ": " + l.slice(2));
+    const entries = parts.reduce(function(a, p){ return a + p.b.entries; }, 0);
+    return {label: b0.label, road, name, kind: b0.kind || "week", sheets,
+            xlsx: sheets.length ? SHEETS_XLSX.writeWorkbook(sheets, zipFn) : null,
+            reportName: name.replace(/\.xlsx$/, ".report.txt"),
+            report: name + ": " + plural(entries, "entry", "entries") + " over " +
+              plural(parts.length, "day type") + "\n\nReview items:\n" +
+              items.map(function(l){ return l + "\n"; }).join(""),
+            entries, sections: parts[0].b.sections, reviews: items.length};
+  });
+  const g0 = groups[0].res;
+  return {date: msDmy(monday), banner: "THE WEEK OF " + dateBits(msDmy(monday)).banner,
+          stamp: weekStamp, diagrams: groups.reduce(function(a, g){ return a + g.res.diagrams; }, 0),
+          books, merge: g0.merge, updated: g0.updated,
+          base: {from: msDmy(first), until: last !== null ? msDmy(last) : null,
+                 date: msDmy(monday), week: msDmy(monday),
+                 types: groups.map(function(g){ return g.tab; })}};
+}
+
+root.SheetsEngine = {run, runWeek, PROFILES, docxParagraphs, parseDiagrams,
                     looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};

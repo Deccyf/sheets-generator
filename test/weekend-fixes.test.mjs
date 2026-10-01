@@ -677,3 +677,41 @@ test("the base diagrams for a timetable build any day of it, from the diagrams t
   // a day's own prints are untouched by any of it
   assert.equal(run([docx(PRINTS_LINES, "prints.docx")]).base, null);
 });
+
+test("the base diagrams build a week of books, a sheet per day type", () => {
+  /* Every road gets one book for the week, a sheet per day type, named the
+     way the depot's own base template names its tabs ("MAY MONDAY"). A day
+     type is the days that run the same diagrams after the same night - so
+     Tuesday to Thursday are one, but Monday stands alone: its arrivals are
+     Sunday night's. */
+  const D = (days, hc) => ["Diagram:\tAZ\t601\t" + days, "Fleet:\t395/0",
+    "From:\t13/12/2026\tUntil:\t15/05/2027",
+    "\t\tAshfrd DS\t\t06+00\t5R" + hc + "\t\t0.82\t",
+    "\t\tAshford I\t06+10\t06.20\t1J" + hc + "\t\t20.00\t",
+    "\t\tMgate\t07.30\t07+40\t5J" + hc + "\t\t60.00\t",
+    "\t\tRam Depot\t08+00\t\t\t\t\t"];
+  const lines = [...D("FSX", "01"), ...D("FO", "41"), ...D("SO", "51"), ...D("Su", "61")];
+  const week = forDate => N.SheetsEngine.runWeek([text(lines, "base diagrams.txt")], zip.un, zip.z,
+                                                  { forDate, splitRamsgate: true });
+  const res = week(null);
+  // the first full week of a timetable that starts on a Sunday
+  assert.equal(res.base.week, "14/12/2026");
+  assert.deepEqual(Array.from(res.base.types),
+    ["DEC MONDAY", "DEC TUE-THU", "DEC FRIDAY", "DEC SATURDAY", "DEC SUNDAY"]);
+  const hs = res.books.find(b => b.road === "High Speed");
+  assert.equal(hs.name, "HS_SHEETS_BASE_WC_14_DEC.xlsx");
+  assert.deepEqual(Array.from(hs.sheets, s => s.name), Array.from(res.base.types), "a tab per day type");
+  // Monday's arrivals are Sunday night's, out of the same base diagrams
+  const mon = hs.sheets.find(s => s.name === "DEC MONDAY").layout.cells.map(c => String(c.v));
+  assert.ok(mon.includes("RAMSGATE PM ARRIVALS Sunday 12/26"), mon.filter(v => /ARRIVALS/.test(v)).join(" | "));
+  assert.ok(mon.includes("5J61"), "Sunday's working in");
+  const tue = hs.sheets.find(s => s.name === "DEC TUE-THU").layout.cells.map(c => String(c.v));
+  assert.ok(tue.includes("ASHFORD UNIT ALLOCATIONS Tuesday to Thursday 12/26"));
+  assert.ok(tue.includes("5J01"), "a weekday night's working in");
+  assert.ok(hs.xlsx && hs.xlsx.length > 1000, "and a workbook to save");
+  // another week, chosen by any date in it
+  assert.equal(week("17/02/2027").base.week, "15/02/2027");
+  // a day's own prints are built as that day, as before
+  const day = N.SheetsEngine.runWeek([docx(PRINTS_LINES, "prints.docx")], zip.un, zip.z, {});
+  assert.equal(day.base, null);
+});

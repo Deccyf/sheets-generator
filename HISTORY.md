@@ -140,6 +140,29 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.21.0 — 1 October 2026 — the base diagrams build a week, a sheet per day type
+
+**Drop the base diagrams and every book comes out for a week**, a sheet
+per day type, the way the depot's own base template is laid out ("MAY
+MONDAY" … "MAY SUNDAY"): Mainline, Ramsgate and Metro each a workbook
+with a sheet (Metro: a sheet per location) per day type, and the High
+Speed allocations workbook with a tab per day type. The planner asked for
+one sheet per day type - Monday to Thursday, Friday, Saturday, Sunday -
+and that is what a day type is, with one correction: Monday stands apart
+from Tuesday to Thursday, because a sheet carries the night before's
+arrivals and Monday's are Sunday night's. So a day type is a run of days
+that work the same diagrams after the same night - in the usual book
+Monday, Tuesday to Thursday, Friday, Saturday and Sunday; a book with
+Mondays-only diagrams or a different Friday splits where its codes do.
+
+Each day type is built exactly as its first day would be on its own and
+the sheets are gathered by road, so a week cannot build differently from
+its days. Tabs are "DEC MONDAY", "DEC TUE-THU" and so on (the month the
+timetable starts), and the 395 sheets head their blocks "Tuesday to
+Thursday 12/26", as the template writes "Mon 05/26". The week is the
+first full one the timetable runs; the picker - now "Week of" - builds
+the week holding any date chosen. A day's own prints still build that day.
+
 ## 3.20.1 — 1 October 2026 — two days pasted at once
 
 **A second pair of paste boxes** on the weekday panel, for the other day's

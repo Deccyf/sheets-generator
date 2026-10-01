@@ -183,8 +183,15 @@ source.
    `opts.forDate`, or the first day anything runs - out of the diagrams that
    run on it (`runningOn`: in period, on the day, the later-starting
    printing where two do), and the day before's, where the timetable covers
-   it, gives the 395 sheet its PM arrivals. The weekend panel shows a
-   **Base diagrams** date picker whenever the prints are of this kind.
+   it, gives the 395 sheet its PM arrivals. The weekend panel builds a
+   **week** from them (`runWeek`): every book - Mainline, Ramsgate, Metro,
+   High Speed - with a sheet per day type, named the way the depot's own
+   base template names its tabs ("DEC MONDAY", "DEC TUE-THU"). A day type
+   is a run of days working the same diagrams after the same night, so
+   Monday stands apart from Tuesday-Thursday (its arrivals are Sunday
+   night's); each is built by `run` for its first day and the sheets are
+   gathered by road. The week is the first full one the timetable runs, or
+   the one holding the date in the **Base diagrams** picker.
 3. **Reissue merge** (`mergeDocs`). Files named *reissue* are overlaid on the
    base document diagram by diagram, same-date check enforced; replaced and
    added diagrams go on the Review tab. `buildUpdatedDocx` splices the
