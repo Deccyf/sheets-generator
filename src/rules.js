@@ -183,7 +183,8 @@ const SHEETS_RULES = (() => {
              "and those still running after it, whether or not they leave a " +
              "depot block — 22 / 24 on a Friday, where AZ606 and AZ608 go out " +
              "only in the afternoon and AZ622 is stabled all day. OFFERED, AM " +
-             "and PM, SPARE, STOPPED and STABLED are yours to fill in; either " +
+             "and PM, SPARE and STABLED are yours to fill in, and STOPPED " +
+             "counts the stopped units table below; either " +
              "OFFERED figure fewer than its REQUIRED turns red — the number, " +
              "not the box. A TBC is left as it is. The date, time and version " +
              "are left for the sender." },
@@ -195,7 +196,8 @@ const SHEETS_RULES = (() => {
         { p: "Under Ashford's block, a row clear of its last allocation, " +
              "the STOPPED UNITS table: a red bar over four lines, each in two " +
              "halves, for the units stopped that day — each picked off the " +
-             "fleet list. Where Ashford has no work that day it sits under " +
+             "fleet list. TOTAL STOPPED, up in the service table, counts them " +
+             "as they go in. Where Ashford has no work that day it sits under " +
              "the first block there is." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [

@@ -256,7 +256,10 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
     const rc = (byRow.get(r) || []).sort(function(a,b){ return a.c-b.c; });
     for (const c of rc){
       const ref = colName(c.c) + c.r;
-      if (c.f) sd += '<c r="' + ref + '" s="' + c.s + '"><f>' + esc(c.f) + '</f></c>';
+      /* a formula, with the figure it comes to now where the layout knows
+         it - what a viewer that does not recalculate shows */
+      if (c.f) sd += '<c r="' + ref + '" s="' + c.s + '"><f>' + esc(c.f) + '</f>' +
+        (c.num && c.v !== "" && Number.isFinite(+c.v) ? '<v>' + esc(c.v) + '</v>' : '') + '</c>';
       else if (c.v === undefined || c.v === null || c.v === "")
         sd += '<c r="' + ref + '" s="' + c.s + '"/>';
       /* A number written as inline text is invisible to cellIs rules - the

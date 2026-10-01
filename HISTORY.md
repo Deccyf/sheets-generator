@@ -140,6 +140,20 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.27.0 — 1 October 2026 — TOTAL STOPPED counts the stopped units
+
+TOTAL STOPPED, in the service table, is now a formula that counts the
+units written in the STOPPED UNITS table under Ashford:
+`=COUNTA(I…:I…,O…:O…)` over the first cell of each half, which is where a
+merged cell keeps its value. It shows 0 as built and goes up as each unit
+is picked. Opened in a spreadsheet app with the six units from the
+planner's 02/10 example typed in, it reads 6.
+
+The workbook writer now saves a formula with the figure it comes to when
+the layout knows it (`<f>` with `<v>`), so a viewer that does not
+recalculate shows 0 rather than nothing. Excel recalculates on opening
+anyway, because the book is set to calculate in full on load.
+
 ## 3.26.0 — 1 October 2026 — SERVICE TRAINS REQUIRED, AM and PM
 
 The planner's sheet now gives REQUIRED as an AM and a PM figure, "22 / 24",

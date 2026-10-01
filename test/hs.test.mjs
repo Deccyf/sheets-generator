@@ -784,7 +784,8 @@ test("REQUIRED is the day's diagrams AM and PM, OFFERED goes red under it, and s
   assert.equal(fmt(cell(L, R.am).xf), "0&quot; /&quot;", "the AM figure shows as 22 /");
   assert.match(fmt(cell(L, R.pm).xf), /^&quot; &quot;0;/, "and the PM one beside it");
   for (const ref of [O.am, O.pm]) assert.equal(cell(L, ref).v, "", "OFFERED is the planner's");
-  for (const k of ["spare", "stopped", "stabled"]) assert.equal(cell(L, SKIN.service[k]).v, "", k);
+  for (const k of ["spare", "stabled"]) assert.equal(cell(L, SKIN.service[k]).v, "", k);
+  assert.match(cell(L, SKIN.service.stopped).f, /^COUNTA\(/, "STOPPED counts its table (below)");
   // with no stops to read, by the first move off a depot, and every diagram for the PM
   const bare = H.sheetsFor(r.hsSecs, r.labels, r.dates).find(s => s.name === "Mon 03 08").layout;
   const onSheet = new Set(bare.cells.filter(c => c.c === 9 && /^AZ\d+$/.test(c.v)).map(c => c.v)).size;
@@ -853,4 +854,14 @@ test("STOPPED UNITS sits under Ashford's block: a red bar over four lines of two
     "each half takes a unit off the fleet list");
   const next = L.cells.filter(c => / UNIT ALLOCATIONS /.test(c.v) && c.r > top).map(c => c.r)[0];
   assert.equal(next, top + 4 + 2, "the next block a row clear of the table");
+  /* TOTAL STOPPED, in the service table, counts the units written in it */
+  const f = "COUNTA(I" + (top + 1) + ":I" + (top + 4) + ",O" + (top + 1) + ":O" + (top + 4) + ")";
+  const total = at(+SKIN.service.stopped.slice(1), SKIN.service.stopped[0]);
+  assert.equal(total.f, f, "a count of both halves");
+  assert.equal(total.v, "0", "nought as built");
+  const { r } = await week("03/08/26");
+  const bytes = H.writeHsBook(r.hsSecs, r.labels, r.dates, z => N.fflate.zipSync(z), r.hsDays);
+  const xml = new TextDecoder().decode(N.fflate.unzipSync(bytes)["xl/worksheets/sheet1.xml"]);
+  assert.match(xml, new RegExp('<c r="' + SKIN.service.stopped + '" s="\\d+"><f>' +
+    f.replace(/[()]/g, "\\$&") + "</f><v>0</v></c>"), "saved as a formula, with its figure");
 });

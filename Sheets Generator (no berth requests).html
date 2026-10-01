@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.26.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.27.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1053,7 +1053,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.26.0
+      works without an internet connection. Version 3.27.0
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2241,7 +2241,8 @@ const SHEETS_RULES = (() => {
              "and those still running after it, whether or not they leave a " +
              "depot block — 22 / 24 on a Friday, where AZ606 and AZ608 go out " +
              "only in the afternoon and AZ622 is stabled all day. OFFERED, AM " +
-             "and PM, SPARE, STOPPED and STABLED are yours to fill in; either " +
+             "and PM, SPARE and STABLED are yours to fill in, and STOPPED " +
+             "counts the stopped units table below; either " +
              "OFFERED figure fewer than its REQUIRED turns red — the number, " +
              "not the box. A TBC is left as it is. The date, time and version " +
              "are left for the sender." },
@@ -2253,7 +2254,8 @@ const SHEETS_RULES = (() => {
         { p: "Under Ashford's block, a row clear of its last allocation, " +
              "the STOPPED UNITS table: a red bar over four lines, each in two " +
              "halves, for the units stopped that day — each picked off the " +
-             "fleet list. Where Ashford has no work that day it sits under " +
+             "fleet list. TOTAL STOPPED, up in the service table, counts them " +
+             "as they go in. Where Ashford has no work that day it sits under " +
              "the first block there is." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
@@ -3704,7 +3706,10 @@ function buildSheetXml(cells, merges, rowHeights, maxRow, opts){
     const rc = (byRow.get(r) || []).sort(function(a,b){ return a.c-b.c; });
     for (const c of rc){
       const ref = colName(c.c) + c.r;
-      if (c.f) sd += '<c r="' + ref + '" s="' + c.s + '"><f>' + esc(c.f) + '</f></c>';
+      /* a formula, with the figure it comes to now where the layout knows
+         it - what a viewer that does not recalculate shows */
+      if (c.f) sd += '<c r="' + ref + '" s="' + c.s + '"><f>' + esc(c.f) + '</f>' +
+        (c.num && c.v !== "" && Number.isFinite(+c.v) ? '<v>' + esc(c.v) + '</v>' : '') + '</c>';
       else if (c.v === undefined || c.v === null || c.v === "")
         sd += '<c r="' + ref + '" s="' + c.s + '"/>';
       /* A number written as inline text is invisible to cellIs rules - the
@@ -5835,6 +5840,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     }
     stoppedRanges.push(L(a, top + 1) + ":" + L(a, top + STOPPED.lines),
                        L(m + 1, top + 1) + ":" + L(m + 1, top + STOPPED.lines));
+    /* TOTAL STOPPED counts the units written in it: each half's own cell,
+       the first of its merge, as they are picked. Nought as built. */
+    const ref = /^([A-Z])(\d+)$/.exec(SKIN.service.stopped);
+    const total = cells.find(x => x.r === +ref[2] && x.c === COL(ref[1]));
+    if (total) Object.assign(total, { f: "COUNTA(" + stoppedRanges.join(",") + ")", v: "0", num: true });
     return top + STOPPED.lines;
   };
 

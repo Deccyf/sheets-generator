@@ -638,6 +638,11 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     }
     stoppedRanges.push(L(a, top + 1) + ":" + L(a, top + STOPPED.lines),
                        L(m + 1, top + 1) + ":" + L(m + 1, top + STOPPED.lines));
+    /* TOTAL STOPPED counts the units written in it: each half's own cell,
+       the first of its merge, as they are picked. Nought as built. */
+    const ref = /^([A-Z])(\d+)$/.exec(SKIN.service.stopped);
+    const total = cells.find(x => x.r === +ref[2] && x.c === COL(ref[1]));
+    if (total) Object.assign(total, { f: "COUNTA(" + stoppedRanges.join(",") + ")", v: "0", num: true });
     return top + STOPPED.lines;
   };
 
