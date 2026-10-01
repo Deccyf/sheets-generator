@@ -12,7 +12,7 @@
   text-transform:uppercase; color:var(--chalk); font-weight:600;
   margin:38px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--rule);
 }
-.secn{margin:0 0 14px; color:#3C464D; font-size:14px; max-width:74ch}
+.secn{margin:0 0 14px; color:#3C464D; font-size:14px}
 .secn .aside{display:block; margin-top:6px; color:var(--chalk); font-size:13px}
 
 /* ---------- depot settings ---------- */
@@ -150,7 +150,7 @@ details.more .tw{border:0; border-top:1px solid var(--rule)}
 .btn:focus-visible{outline:3px solid var(--signal); outline-offset:2px}
 
 footer{margin:56px 0 0; padding-top:18px; border-top:1px solid var(--rule)}
-footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px; max-width:78ch}
+footer .small{font-size:12px; color:var(--chalk); margin:0 0 6px}
 
 @media print{
   .berth, .actions, .fleetbar, #setup, .status, .jump,
@@ -199,7 +199,7 @@ table.rep td.place{border-bottom:1px solid var(--rule); cursor:help;
 .jump a:focus-visible{outline:2px solid var(--steel); outline-offset:2px}
 
 /* ---------- the method, behind a fold ---------- */
-details.how{margin:0 0 16px; max-width:74ch}
+details.how{margin:0 0 16px}
 details.how>summary{
   cursor:pointer; font-size:13px; color:var(--chalk);
   padding:3px 0; width:fit-content;
@@ -221,9 +221,12 @@ details.setup>summary{
 details.setup>summary b{font-family:var(--mono); font-size:15px}
 details.setup>summary:hover{background:var(--apron)}
 details.setup>summary:focus-visible{outline:3px solid var(--steel); outline-offset:-3px}
-details.setup .secn{margin:0 16px 14px; max-width:74ch}
+details.setup .secn{margin:0 16px 14px}
 details.setup[open]>summary{border-bottom:1px solid var(--rule); margin-bottom:14px}
 details.setup .depots{padding:0 16px}
 
 /* the line above a working, saying what it is for */
-.more .morenote{margin:10px 0 12px; font-size:13.5px; color:#3C464D; max-width:74ch}
+.more .morenote{margin:10px 14px 12px; font-size:13.5px; color:#3C464D}
+
+/* the how-to's paragraphs run the full width, like the rest of this page */
+.howto-body p{max-width:none}

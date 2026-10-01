@@ -55,19 +55,22 @@ function read(files){
     }
   }
   if (!got.length){
-    say(bad.length ? bad[0] : "Nothing in those files reads as the diagram prints.", "err");
+    say(bad.length ? bad[0] : "Nothing in those files looks like diagram prints — drop the Word " +
+        "documents the plan is published as.", "err");
     return;
   }
   ALL = got;
   const mon = F.referenceMonday(ALL);
   if (mon == null){
-    say("Those prints carry no From/Until dates, so a week cannot be measured.", "err");
+    say("Those prints have no From/Until dates, so the week they cover can't be " +
+        "worked out.", "err");
     return;
   }
   const stab = ALL.filter(d => d.stabled).length;
   say(ALL.length + " diagrams read (" + stab + " standing still all day) · week of " +
       new Date(mon).toLocaleDateString("en-GB", {day:"2-digit",month:"short",year:"numeric"}) +
-      (bad.length ? " · " + bad.length + " file(s) skipped" : ""), "go");
+      (bad.length ? " · " + bad.length + " file" + (bad.length === 1 ? "" : "s") +
+       " skipped, not diagram prints" : ""), "go");
   if (bad.length) console.warn(bad.join("\n"));
   $("startover").hidden = false;
   drawSetup();
@@ -171,7 +174,7 @@ function drawSetup(){
       const wins = (c.windows || def.via[0].windows).map(w =>
         ({name: w.name, by: w.by}));
       card.appendChild(el("label", null,
-        "Off this network — hand over at " + def.via[0].label + " by"));
+        "Not on this network — handed over at " + def.via[0].label + " by"));
       const box2 = el("div", "wins");
       wins.forEach((w, i) => {
         const lab = el("label");
@@ -196,7 +199,7 @@ function drawSetup(){
     }
     if (c.derived && !(cfg[k] && cfg[k].home))
       card.appendChild(el("p", "derived",
-        "Worked out from the prints, not told to the tool — check it."));
+        "Guessed from the prints — check it."));
     box.appendChild(card);
   }
   $("setup").hidden = false;
@@ -280,10 +283,11 @@ function fleetCard(k, rep){
   const over = (rep.a.miles.rows || []).filter(r => r.over);
   if (over.length){
     const w = el("p", "cardwarn");
-    w.innerHTML = "The plan needs more diagrams than the fleet has units — " +
-      over.map(r => "<b>" + r.sub + "</b> needs " + r.units + " of " + r.owned).join(", ") +
-      ". Either the size is wrong, or the prints label more than one sub-fleet " +
-      "that way. Both are set under Fleets &amp; depots.";
+    w.innerHTML = "The plan needs more units than the fleet owns — " +
+      over.map(r => "<b>" + r.sub + "</b> needs " + r.units + " but owns " + r.owned)
+        .join(", ") +
+      ". Either the units owned is set too low, or the prints give more than one " +
+      "sub-fleet that label. Both are set under Fleets &amp; depots.";
     art.appendChild(w);
   }
 
@@ -296,6 +300,10 @@ function fleetCard(k, rep){
      mileage is the exception and says so on itself: a unit's clock does not
      care which book it was working, so that one stays a whole week. */
   const daybar = el("div", "daytabs");
+  /* A book with nothing in it says so once, above the questions, rather
+     than leaving every tab to read as nought. */
+  const empty = el("p", "cardwarn");
+  empty.hidden = true;
   daybar.setAttribute("role", "tablist");
   daybar.setAttribute("aria-label", "Which book");
   const dayBtns = [];
@@ -327,6 +335,12 @@ function fleetCard(k, rep){
     dayBtns.forEach(b => b.setAttribute("aria-selected",
       b.dataset.gid === id ? "true" : "false"));
     meta.innerHTML = metaFor(r);
+    const g = r.a.group;
+    empty.hidden = r.a.work.length + r.a.still.length > 0;
+    empty.textContent = "None of the prints dropped has a " +
+      (g ? g.label.replace(/ – /, "–") : "") + " diagram for this fleet, so " +
+      "this book's tabs are empty. Was that book left out? Mileage and Days " +
+      "back to depot still cover the whole week.";
     drawQuestions(r);
   };
   art.showGroup = showGroup;
@@ -349,6 +363,7 @@ function fleetCard(k, rep){
     daybar.appendChild(b);
   }
   panel.appendChild(daybar);
+  panel.appendChild(empty);
   art.appendChild(panel);
   showGroup(gid);
 
@@ -376,9 +391,9 @@ let CURRENT_GROUP = "mtt";
    one day of this book, and how many diagrams the book holds. */
 function metaFor(r){
   const g = r.a.group;
-  return "<b>" + r.a.day.length + "</b> diagrams on a " +
+  return "<b>" + r.a.day.length + "</b> diagrams out on a " +
     LONG[F.dayName(r.a.refMs)] + " · <b>" + r.a.week.length + "</b> in the " +
-    (g ? g.label.replace(/ – /, "–") : "week") + " book · home <b>" +
+    (g ? g.label.replace(/ – /, "–") : "week") + " book · home depot <b>" +
     r.cfg.home + "</b> · week of " +
     new Date(r.monday).toLocaleDateString("en-GB",
       {day: "numeric", month: "long", year: "numeric"});
@@ -546,7 +561,7 @@ function saveAll(){
   if (!sheets.length) return;
   const bytes = FLEET_XLSX.writeWorkbook(sheets, f => fflate.zipSync(f, {level: 6}));
   download("DIAGRAMS_ALL_" + stamp(F.referenceMonday(ALL)) + ".xlsx", bytes);
-  say("Saved every fleet.", "go");
+  say("Saved every fleet in one workbook.", "go");
 }
 
 /* ---- starting again ----

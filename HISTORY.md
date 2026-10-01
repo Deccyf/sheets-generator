@@ -4,6 +4,40 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## Diagram analyser 1.8.1 — 1 October 2026 — the analyser in plain words
+
+The analyser is worded like the berthing sheets' tabs. The page opens on
+four numbered steps — *the prints*, *the fleets*, *the day*, *what you get* —
+and the how-to is now a reference that names each card tab exactly as the
+card does, with what it answers, where its "What it answers" used to ask
+five questions that matched none of the tab names.
+
+Each tab's headline, method and column names were rewritten for sense as
+well as length, and four of them were saying something that wasn't so:
+
+- **The book, not a Monday.** The attendable stands and the restricted
+  units said "on a Monday" whichever book was picked; the partings said
+  "over the week" when they were the book's. Each now names the book it is
+  counting — *in the Saturday book*, *Monday to Thursday* — and the
+  restricted units ask about the book's own night (a Saturday night on the
+  Saturday card), not always a Monday's.
+- **"One diagram away" was one day away.** 1.8.0 made the count days, not
+  diagrams, and the label never followed. It reads *Home within a day*.
+- **"Yes, every night carries over"** was the answer whenever *any* night
+  did. It now says yes, no, or on how many of the seven nights a restricted
+  unit has to be moved.
+- **"Save every fleet (.zip)"** saves one workbook, not a zip, and says so.
+
+Other changes: the start and end columns read *Started from / Start time*
+and *Ends at / End time*, where "Left at" could be a place or a time; the
+mileage columns read *per unit in traffic* and *per unit owned*, matching
+the method; a run of nights standing about reads `waits Sun–Fri` rather
+than six steps; a place with no way back no longer says "already there";
+the Days back method no longer quotes a 375-only example on every fleet's
+card. A book with no diagrams for a fleet says so once above its tabs
+rather than leaving every tab at nought, and the analyser's paragraphs use
+the card's full width.
+
 ## Diagram analyser 1.8.0 — 8 September 2026 — a diagram is not a day
 
 **"Days back to depot" counted a day for every diagram.** A unit that took
