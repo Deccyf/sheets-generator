@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.2</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.3</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -716,27 +716,30 @@
   <section class="platform" id="wkPanel" role="tabpanel" aria-labelledby="mode_wk">
     <h2 class="vh">Weekday books from the planning reports</h2>
     <ul class="whatfor needs">
-      <li><b>Both reports</b> The Diagram Summary and the Diagram Detail, for
-        the same date. A Monday pair builds the Monday books.</li>
-      <li><b>Genius or Integrale</b> From Genius as .pdf or .csv, or
-        Integrale&rsquo;s two CSV exports.</li>
-      <li><b>Two days at once</b> Both days&rsquo; pairs together: each
-        weekday gets its own sheets, and the High Speed sheet takes its PM
-        arrivals from the day before.</li>
+      <li><b>What to drop</b> The Diagram Summary and Diagram Detail for the
+        day you&rsquo;re building — from Genius (PDF or CSV), or
+        Integrale&rsquo;s two CSV exports. Both at once, or one then the
+        other.</li>
+      <li><b>What you get</b> A book for each fleet — Mainline, Ramsgate,
+        Metro and High Speed — for that day. The stock requirements form is
+        under Options once the books are built.</li>
+      <li><b>High Speed PM arrivals</b> Drop the day before&rsquo;s Summary and
+        Detail as well — four files in all — and the High Speed sheet fills
+        them in. For a Monday, use Sunday&rsquo;s pair.</li>
     </ul>
 
-    <p class="mustdo"><b>Before you export</b>In Genius, <code>File › Session
-      Settings</code>, tick <strong>“Show diagram sections on the diagram
-      summary report”</strong>. Without it the Summary carries only the
-      morning positions, afternoon formations print the wrong way round, and
-      it cannot be corrected later. The Review tab says if this happened.</p>
+    <p class="mustdo"><b>Before you export</b>In Genius, go to <code>File ›
+      Session Settings</code> and tick <strong>“Show diagram sections on the
+      diagram summary report”</strong> before running the Summary. Without it,
+      afternoon formations come out the wrong way round and can&rsquo;t be
+      fixed afterwards. The Review tab warns you if it was missed.</p>
 
     <button class="berth" id="berth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the Diagram Summary &amp; Diagram Detail here</strong>
-          <span>.pdf or .csv · both for the same date · or click to choose</span>
+          <span>PDF or CSV · both for the same day, one at a time is fine · add the day before&rsquo;s pair for the High Speed PM arrivals · or click to choose</span>
         </span>
       </span>
     </button>
@@ -749,14 +752,13 @@
     </p>
 
     <div class="pastebox" id="pastebox" hidden>
-      <p class="paste-hint">Open each CSV in Notepad or Excel, select all,
-        copy, and paste it into its box — both reports, for the same date.
-        Integrale calls the second one <b>Diagrams</b>. PDFs cannot be pasted;
-        drop those as files. <b>One at a time is fine</b>: paste one and drop
-        the other. Can&rsquo;t paste at all? Drag the selected rows, or the CSV
-        file itself, straight into the box. A whole report is kept by the page
-        rather than shown in its box, which says what it holds — a Detail
-        written out in full is enough to run the browser out of memory.</p>
+      <p class="paste-hint">Open each CSV in Notepad or Excel, press
+        <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into its box. Integrale
+        calls the Detail <b>Diagrams</b>. PDFs can&rsquo;t be pasted — drop
+        those as files. You can paste one report and drop the other.
+        Can&rsquo;t paste at all? Drag the rows, or the CSV file, into the box.
+        A whole report isn&rsquo;t shown in its box — the box just says what
+        it holds — so the browser doesn&rsquo;t run out of memory.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary <em>one line per diagram</em></span>
@@ -769,22 +771,20 @@
             placeholder="Paste the Diagram Detail here"></textarea>
         </label>
       </div>
-      <p class="paste-hint"><b>Two days?</b> Paste the other day&rsquo;s pair below
-        as well — the same as dropping four files. Each weekday gets its own
-        sheets, and the High Speed sheet takes its PM arrivals from the day
-        before: paste today&rsquo;s with tomorrow&rsquo;s, and tomorrow&rsquo;s
-        sheet has tonight&rsquo;s arrivals. A Saturday or Sunday pair only lends
-        its arrivals to the Monday.</p>
+      <p class="paste-hint"><b>High Speed PM arrivals:</b> paste the day
+        before&rsquo;s Summary and Detail here — the same as dropping four
+        files. For a Monday, paste Sunday&rsquo;s. Two weekdays pasted
+        together each get their own sheets.</p>
       <div class="paste-pair">
         <label class="paste-fld">
-          <span>Diagram Summary <em>second day — optional</em></span>
+          <span>Diagram Summary <em>the day before — optional</em></span>
           <textarea id="paste_sum2" rows="4" spellcheck="false" wrap="off"
-            placeholder="The other day's Diagram Summary"></textarea>
+            placeholder="The day before's Diagram Summary"></textarea>
         </label>
         <label class="paste-fld">
-          <span>Diagram Detail <em>second day — optional</em></span>
+          <span>Diagram Detail <em>the day before — optional</em></span>
           <textarea id="paste_det2" rows="4" spellcheck="false" wrap="off"
-            placeholder="The other day's Diagram Detail"></textarea>
+            placeholder="The day before's Diagram Detail"></textarea>
         </label>
       </div>
       <div class="paste-acts">
@@ -1185,7 +1185,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.2
+      works without an internet connection. Version 3.31.3
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>

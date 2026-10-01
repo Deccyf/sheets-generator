@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.3 — 1 October 2026 — the weekday tab in plain words
+
+The weekday tab is worded like the other two. *What to drop*: the Diagram
+Summary and Detail for the day being built, from Genius (PDF or CSV) or
+Integrale's two CSV exports, both at once or one then the other. *What you
+get*: a book for each fleet for that day, with the stock requirements form
+under Options. *High Speed PM arrivals*: drop the day before's pair too,
+four files in all, and Sunday's for a Monday. The Genius setting note says
+where to find it and what goes wrong without it. The drop zone and the
+paste hints are shortened to match, and the second pair of paste boxes is
+labelled as the day before's.
+
 ## 3.31.2 — 1 October 2026 — the weekend tab in plain words
 
 The weekend tab is worded the way the base tab now is. *What to drop*: the
