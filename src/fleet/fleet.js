@@ -24,30 +24,11 @@
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /* ---- day codes ---------------------------------------------------------
-   A code names the days a diagram runs. "FSX" is the Monday-to-Thursday
-   book (Fridays and Saturdays excepted; Sunday has its own). Otherwise it
-   is day letters with "O" for Only - MO, WThO, MTWO. "Th" has to be read
-   before "T" or Thursday becomes Tuesday followed by a stray H.          */
-function daysOf(code){
-  const c = (code || "").trim();
-  if (c === "FSX") return ["Mon", "Tue", "Wed", "Thu"];
-  if (/^F(O)?$/.test(c)) return ["Fri"];
-  if (/^S(O)?$/.test(c)) return ["Sat"];
-  if (/^Su/.test(c)) return ["Sun"];
-  const body = c.replace(/O$/, "");
-  const out = [];
-  let i = 0;
-  while (i < body.length){
-    if (body.startsWith("Th", i)){ out.push("Thu"); i += 2; continue; }
-    const ch = body[i++];
-    if (ch === "M") out.push("Mon");
-    else if (ch === "T") out.push("Tue");
-    else if (ch === "W") out.push("Wed");
-    else if (ch === "F") out.push("Fri");
-    else if (ch === "S") out.push("Sat");
-  }
-  return out;
-}
+   A code names the days a diagram runs - "FSX", "MO", "WThO". Read by the
+   shared prints reader (src/prints-read.js), because the berthing sheets
+   now build a day's books from the base diagrams too, and two readings of
+   the same code would be two answers.                                    */
+const daysOf = root.SHEETS_PRINTS.daysOf;
 /* Spelt out, for a heading. "MO" on its own is ambiguous to a reader who
    has the other MO in mind, so it is never printed bare. */
 function daysLabel(code){

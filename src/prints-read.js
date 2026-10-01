@@ -351,6 +351,35 @@
   }
 
 
+  /* ========================= day codes ========================= */
+  /* A code names the days a diagram runs. "FSX" is the Monday-to-Thursday
+     book (Fridays and Saturdays excepted; Sunday has its own). Otherwise it
+     is day letters with "O" for Only - MO, WThO, MTWO. "Th" has to be read
+     before "T" or Thursday becomes Tuesday followed by a stray H. Read here
+     because both tools need it: the fleet analysis measures the base
+     diagrams on a date, and the berthing sheets build a day's books from
+     them for a timetable change. */
+  function daysOf(code){
+    const c = (code || "").trim();
+    if (c === "FSX") return ["Mon", "Tue", "Wed", "Thu"];
+    if (/^F(O)?$/.test(c)) return ["Fri"];
+    if (/^S(O)?$/.test(c)) return ["Sat"];
+    if (/^Su/.test(c)) return ["Sun"];
+    const body = c.replace(/O$/, "");
+    const out = [];
+    let i = 0;
+    while (i < body.length){
+      if (body.startsWith("Th", i)){ out.push("Thu"); i += 2; continue; }
+      const ch = body[i++];
+      if (ch === "M") out.push("Mon");
+      else if (ch === "T") out.push("Tue");
+      else if (ch === "W") out.push("Wed");
+      else if (ch === "F") out.push("Fri");
+      else if (ch === "S") out.push("Sat");
+    }
+    return out;
+  }
+
 root.SHEETS_PRINTS = {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
-                      looksLikePrints, printsFromCsv, csvParse};
+                      looksLikePrints, printsFromCsv, csvParse, daysOf};
 })(typeof globalThis !== "undefined" ? globalThis : this);

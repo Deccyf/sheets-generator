@@ -635,3 +635,45 @@ test("the weekend 395 sheet is filled from the print's stops and formations, as 
   const bare = build(null).books.find(b => b.road === "High Speed");
   assert.match(bare.report, /PM arrivals: empty — drop the Diagram Summary and Diagram Detail for 02\/08\/26/);
 });
+
+test("the base diagrams for a timetable build any day of it, from the diagrams that run that day", () => {
+  /* A base print carries a number once per day code and period - here AZ601
+     Mondays to Thursdays (FSX) and again on Saturdays (SO), over a period,
+     and a reissue for one engineering week. The books are built for a date,
+     from what runs on it; the day before, where the timetable covers it,
+     gives the 395 sheet its PM arrivals out of the same document. */
+  const D = (days, from, until) => ["Diagram:\tAZ\t601\t" + days, "Fleet:\t395/0",
+    "From:\t" + from + "\tUntil:\t" + until];
+  const day = hc => [
+    "\t\tAshfrd DS\t\t06+00\t5R" + hc + "\t\t0.82\t",
+    "\t\tAshford I\t06+10\t06.20\t1J" + hc + "\t\t20.00\t",
+    "\t\tMgate\t07.30\t07+40\t5J" + hc + "\t\t60.00\t",
+    "\t\tRam Depot\t08+00\t\t\t\t\t"];
+  const lines = [...D("FSX", "13/12/2026", "15/05/2027"), ...day("01"),
+                 ...D("SO", "13/12/2026", "15/05/2027"), ...day("51"),
+                 // an engineering week: Mondays to Thursdays differ 11-14/01
+                 ...D("FSX", "11/01/2027", "14/01/2027"), ...day("71")];
+  const build = forDate => N.SheetsEngine.run([text(lines, "base diagrams.txt")], zip.un, zip.z, { forDate });
+  const hsCells = res => {
+    const hs = res.books.find(b => b.road === "High Speed");
+    return hs.sheets[0].layout.cells.map(c => String(c.v));
+  };
+  // no date: the first day the timetable runs anything - Monday 14/12
+  const first = build(null);
+  assert.deepEqual(norm(first.base), { from: "13/12/2026", until: "15/05/2027", date: "14/12/2026" });
+  assert.ok(hsCells(first).includes("5R01 AFK"), "the Monday-to-Thursday diagram");
+  // a Saturday is the SO one
+  assert.ok(hsCells(build("19/12/2026")).includes("5R51 AFK"), "the Saturday diagram");
+  // the engineering week's printing wins inside its week, not outside it
+  assert.ok(hsCells(build("12/01/2027")).includes("5R71 AFK"));
+  assert.ok(hsCells(build("19/01/2027")).includes("5R01 AFK"));
+  // Tuesday's arrivals are Monday night's, out of the same base diagrams
+  const tue = hsCells(build("15/12/2026"));
+  assert.ok(tue.includes("RAMSGATE PM ARRIVALS Monday 14/12/26"), tue.filter(v => /ARRIVALS/.test(v)).join(" | "));
+  assert.ok(tue.includes("5J01"), "the working it came in on");
+  // a day nothing runs, and a date outside the period, say so
+  assert.throws(() => build("13/12/2026"), /runs on a Sunday/);
+  assert.throws(() => build("20/05/2027"), /outside these base diagrams/);
+  // a day's own prints are untouched by any of it
+  assert.equal(run([docx(PRINTS_LINES, "prints.docx")]).base, null);
+});

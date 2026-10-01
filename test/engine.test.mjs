@@ -56,11 +56,17 @@ test("parseDiagrams is unchanged, but for the mileage the legacy read past", () 
      weekend book came out with no mileage at all - and the Metro book's
      MILES column and the 395 sheet's MG are made of exactly that figure.
      Everything else about a row still has to match, so the field is dropped
-     here and pinned on its own in weekend-fixes.test.mjs. */
+     here and pinned on its own in weekend-fixes.test.mjs. Two more since,
+     on the diagram rather than the row: `until` and `days`, the period and
+     day code a base diagram print carries, which the weekend books are now
+     built from for a timetable change - pinned there too. */
   const drop = m => {
     const out = new Map();
-    for (const [k, v] of m)
-      out.set(k, { ...v, rows: v.rows.map(r => { const c = { ...r }; delete c.ml; return c; }) });
+    for (const [k, v] of m) {
+      const d = { ...v, rows: v.rows.map(r => { const c = { ...r }; delete c.ml; return c; }) };
+      delete d.until; delete d.days;
+      out.set(k, d);
+    }
     return out;
   };
   assert.deepEqual(norm(drop(N.SheetsEngine.parseDiagrams(PRINTS_LINES))),

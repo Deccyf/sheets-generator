@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.19.1</b> · 30 September 2026</span>
+      <span class="ver">Version <b>3.20.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -805,7 +805,9 @@
       Drop reissued prints too, together or in a later drop, and the reissued
       diagrams replace their originals before anything is built. For the High
       Speed sheet's PM arrivals, drop the day before's Diagram Summary and
-      Detail with the prints — Friday's for Saturday, Saturday's for Sunday.</p>
+      Detail with the prints — Friday's for Saturday, Saturday's for Sunday.
+      The <strong>base diagrams</strong> for a timetable change go here too:
+      pick the date and the books are built from the diagrams that run on it.</p>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
@@ -868,6 +870,14 @@
       <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Ticking a book puts one on every line of it and
         rebuilds it — save again afterwards.</span>
+    </div>
+
+    <div class="opts-row" id="we_baserow" hidden>
+      <span class="opts-label">Base diagrams</span>
+      <label>Build for <input type="date" id="we_basedate" autocomplete="off"></label>
+      <span class="opts-hint" id="we_basehint">These are the base diagrams for a
+        timetable, not one day&rsquo;s prints: the books are built for the date
+        chosen, from the diagrams that run on it.</span>
     </div>
 
     <div class="roads" id="we_roads"></div>
@@ -1020,8 +1030,8 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.19.1
-      &middot; 30 September 2026. If something looks wrong, check you have the
+      works without an internet connection. Version 3.20.0
+      &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
   </footer>
@@ -3148,8 +3158,37 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_RULES = SHEETS_RULES;
   }
 
 
+  /* ========================= day codes ========================= */
+  /* A code names the days a diagram runs. "FSX" is the Monday-to-Thursday
+     book (Fridays and Saturdays excepted; Sunday has its own). Otherwise it
+     is day letters with "O" for Only - MO, WThO, MTWO. "Th" has to be read
+     before "T" or Thursday becomes Tuesday followed by a stray H. Read here
+     because both tools need it: the fleet analysis measures the base
+     diagrams on a date, and the berthing sheets build a day's books from
+     them for a timetable change. */
+  function daysOf(code){
+    const c = (code || "").trim();
+    if (c === "FSX") return ["Mon", "Tue", "Wed", "Thu"];
+    if (/^F(O)?$/.test(c)) return ["Fri"];
+    if (/^S(O)?$/.test(c)) return ["Sat"];
+    if (/^Su/.test(c)) return ["Sun"];
+    const body = c.replace(/O$/, "");
+    const out = [];
+    let i = 0;
+    while (i < body.length){
+      if (body.startsWith("Th", i)){ out.push("Thu"); i += 2; continue; }
+      const ch = body[i++];
+      if (ch === "M") out.push("Mon");
+      else if (ch === "T") out.push("Tue");
+      else if (ch === "W") out.push("Wed");
+      else if (ch === "F") out.push("Fri");
+      else if (ch === "S") out.push("Sat");
+    }
+    return out;
+  }
+
 root.SHEETS_PRINTS = {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
-                      looksLikePrints, printsFromCsv, csvParse};
+                      looksLikePrints, printsFromCsv, csvParse, daysOf};
 })(typeof globalThis !== "undefined" ? globalThis : this);
 </script>
 <script>
@@ -5953,13 +5992,16 @@ const ATT = ["ATTACH","ATTTT"], DET = ["DETACH","DETTT"];
 /* The prints reader lives in src/prints-read.js: the berthing sheets and
    the fleet analysis both open the same files, so they share one reader. */
 const {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
-       looksLikePrints, printsFromCsv} = SHEETS_PRINTS;
+       looksLikePrints, printsFromCsv, daysOf} = SHEETS_PRINTS;
 const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"));
 
 /* The prints' lines as diagrams: "CODE|NUM" -> {code, num, rows, fleet,
-   date}, in document order. A "Diagram:" line that cannot be read is
-   reported on warn (when one is given) and the rows under it skipped, not
-   folded into the diagram before it. */
+   date, until, days}, in document order. A "Diagram:" line that cannot be
+   read is reported on warn (when one is given) and the rows under it
+   skipped, not folded into the diagram before it. The base diagrams print a
+   number once per day code and period - AZ 602 FSX, AZ 602 SO - so a
+   number seen again is kept as "CODE|NUM#2", not written over; run()
+   decides which of them a day's books are built from. */
 function parseDiagrams(lines, warn){
   const diags = new Map();
   let cur = null;
@@ -5971,8 +6013,9 @@ function parseDiagrams(lines, warn){
       const m = /Diagram:\t(\w+)\t(\d+)(?:\t(\w+))?/.exec(ln);
       if (m){
         cur = m[1] + "|" + parseInt(m[2],10);
+        for (let n = 2; diags.has(cur); n++) cur = m[1] + "|" + parseInt(m[2],10) + "#" + n;
         diags.set(cur, {code:m[1], num:parseInt(m[2],10),
-                        rows:[], fleet:null, date:null});
+                        rows:[], fleet:null, date:null, until:null, days:m[3] || ""});
       } else {
         cur = null;
         if (warn) warn.push(["unread", "a Diagram: line could not be read — “" +
@@ -5989,6 +6032,8 @@ function parseDiagrams(lines, warn){
     } else if (ln.indexOf("From:") !== -1){
       const m = /From:\t(\d{2}\/\d{2}\/\d{4})/.exec(ln);
       if (m) d.date = m[1];
+      const u = /Until:\t(\d{2}\/\d{2}\/\d{4})/.exec(ln);
+      if (u) d.until = u[1];
     } else if (ln.startsWith("\t\t")){
       const g = ln.split("\t"); while (g.length < 9) g.push("");
       const pick = i => (g[i] || "").trim();
@@ -6482,8 +6527,7 @@ function generate(diags, prof, stabling, warn){
     }
     order.splice(at, 0, name);
   }
-  // meta: every diagram's rows and stops, for the 395 sheet's day
-  return {out: out, order: order, meta: meta};
+  return {out: out, order: order};
 }
 const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 const DAYS = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
@@ -6855,15 +6899,103 @@ function buildUpdatedDocx(base, reissues, unzipFn, zipFn){
    {name, bytes} (a base plus reissues); opts: allHeadcodes {road: bool},
    splitRamsgate. Returns {date, banner, stamp, diagrams, books, merge,
    updated}; throws a message for the drop zone when the input is not usable. */
+/* dd/mm/yyyy <-> a UTC midnight, for walking the base diagrams' dates */
+function dmyMs(s){
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
+  return m ? Date.UTC(+m[3], +m[2] - 1, +m[1]) : null;
+}
+function msDmy(ms){
+  const d = new Date(ms);
+  return String(d.getUTCDate()).padStart(2, "0") + "/" +
+         String(d.getUTCMonth() + 1).padStart(2, "0") + "/" + d.getUTCFullYear();
+}
+const WEEKDAY3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/* The base diagrams that run on a date: in their period, on a day their
+   code names. Where two printings of one number both do - an engineering
+   period's reissue inside the base period - the one starting later is the
+   more particular and wins. */
+function runningOn(all, ms){
+  const day = WEEKDAY3[new Date(ms).getUTCDay()];
+  const out = new Map(), from = new Map();
+  for (const [k, v] of all){
+    const a = dmyMs(v.date), b = dmyMs(v.until);
+    if (a !== null && ms < a) continue;
+    if (b !== null && ms > b) continue;
+    if (v.days && daysOf(v.days).indexOf(day) === -1) continue;
+    const key = k.replace(/#\d+$/, "");
+    if (out.has(key) && (from.get(key) || 0) > (a || 0)) continue;
+    out.set(key, v); from.set(key, a || 0);
+  }
+  return out;
+}
+/* Each 395 diagram's stops as the print lists them, with the formation it
+   writes against each departure, leading unit first - what the allocations
+   sheet reads a day from (SHEETS_HS.dayFromPrint). */
+function printStops(diagMap, fleets){
+  const out = [];
+  for (const v of diagMap.values()){
+    if (!Object.prototype.hasOwnProperty.call(fleets, v.fleet || "")) continue;
+    const stops = stopsOf(v.rows);
+    if (!stops.length) continue;
+    out.push({ diag: v.code + dnum(v.num), stops: stops.map(function(x){
+      const f = x.dep_idx !== null ? fmtParse(v.rows[x.dep_idx].fm) : new Map();
+      return { loc: x.loc, arr: x.arr, dep: x.dep, hcIn: x.hc_in, hcOut: x.hc_out,
+               form: Array.from(f).sort(function(p, q){ return p[1] - q[1]; })
+                 .map(function(p){ return v.code + dnum(p[0]); }) };
+    }) });
+  }
+  return out;
+}
+
 function run(input, unzipFn, zipFn, opts){
   const allHeadcodes = (opts && opts.allHeadcodes) || {};
   const inputs = Array.isArray(input) ? input : [{name: "prints.docx", bytes: input}];
   const mg = mergeDocs(inputs, unzipFn);
-  const diags = mg.merged;
-  if (diags.size === 0)
+  const all = mg.merged;
+  if (all.size === 0)
     throw new Error("No diagrams found in that file. Check it's the weekend diagram prints.");
-  let dateStr = null;
-  for (const v of diags.values()) if (v.date){ dateStr = v.date; break; }
+  /* A day's prints are dated that day, From and Until alike. The BASE
+     diagrams for a timetable are not: each runs over a period, on the days
+     its code names, and a number is printed once per code and period. From
+     those the books are built for one date - opts.forDate, or the first day
+     the timetable runs - out of the diagrams that run on it; and the day
+     before's, where the base diagrams cover it, give the 395 sheet its PM
+     arrivals. */
+  const isBase = Array.from(all.values()).some(function(v){
+    return v.until && v.date && v.until !== v.date; });
+  let diags, dateStr = null, base = null, prevDiags = null;
+  if (isBase){
+    const ms = Array.from(all.values()).map(function(v){ return dmyMs(v.date); })
+      .filter(function(x){ return x !== null; });
+    const ends = Array.from(all.values()).map(function(v){ return dmyMs(v.until); })
+      .filter(function(x){ return x !== null; });
+    const first = Math.min.apply(null, ms), last = ends.length ? Math.max.apply(null, ends) : null;
+    let want = opts && opts.forDate && dmyMs(opts.forDate) !== null ? dmyMs(opts.forDate) : null;
+    // no date asked for: the first day of the period anything runs on
+    if (want === null){
+      want = first;
+      for (let i = 0; i < 14 && !runningOn(all, first + i * 86400000).size; i++)
+        want = first + (i + 1) * 86400000;
+    }
+    diags = runningOn(all, want);
+    if (diags.size === 0){
+      const outside = want < first || (last !== null && want > last);
+      throw new Error(outside
+        ? msDmy(want) + " is outside these base diagrams — they run from " + msDmy(first) +
+          (last !== null ? " to " + msDmy(last) : "") + ". Pick a date in that period."
+        : "None of these base diagrams runs on a " +
+          ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(want).getUTCDay()] +
+          " — there is nothing to build for " + msDmy(want) + ". Pick another day.");
+    }
+    dateStr = msDmy(want);
+    prevDiags = runningOn(all, want - 86400000);
+    base = {from: msDmy(first), until: last !== null ? msDmy(last) : null, date: dateStr};
+  } else {
+    // a day's prints: one of each, the later printing kept, as it always was
+    diags = new Map();
+    for (const [k, v] of all) diags.set(k.replace(/#\d+$/, ""), v);
+    for (const v of diags.values()) if (v.date){ dateStr = v.date; break; }
+  }
   if (!dateStr) throw new Error("No date found in the prints — can't name the sheets.");
   const {stamp, banner} = dateBits(dateStr);
   let updated = null;
@@ -6929,19 +7061,14 @@ function run(input, unzipFn, zipFn, opts){
          with the print (opts.hsPrev). */
       let hsDays;
       if (!isMetro){
-        const mine = [];
-        for (const m of gen.meta.values()){
-          if (!Object.prototype.hasOwnProperty.call(prof.fleets, m.fleet || "")) continue;
-          mine.push({ diag: m.code + dnum(m.num), stops: m.stops.map(function(x){
-            const f = x.dep_idx !== null ? fmtParse(m.rows[x.dep_idx].fm) : new Map();
-            return { loc: x.loc, arr: x.arr, dep: x.dep, hcIn: x.hc_in, hcOut: x.hc_out,
-                     form: Array.from(f).sort(function(p, q){ return p[1] - q[1]; })
-                       .map(function(p){ return m.code + dnum(p[0]); }) };
-          }) });
-        }
         hsDays = Object.assign({}, (opts && opts.hsPrev) || {});
-        hsDays[dates[dk]] = SHEETS_HS.dayFromPrint(dates[dk], mine);
+        hsDays[dates[dk]] = SHEETS_HS.dayFromPrint(dates[dk], printStops(diags, prof.fleets));
         const prevDay = SHEETS_HS.dayBefore(dates[dk]);
+        // base diagrams: the day before is in the same document, where it runs
+        if (!hsDays[prevDay] && prevDiags){
+          const prev = printStops(prevDiags, prof.fleets);
+          if (prev.length) hsDays[prevDay] = SHEETS_HS.dayFromPrint(prevDay, prev);
+        }
         if (!hsDays[prevDay])
           warn.push(["merge", "PM arrivals: empty — drop the Diagram Summary and " +
             "Diagram Detail for " + prevDay + " with the print and last night's " +
@@ -6993,7 +7120,7 @@ function run(input, unzipFn, zipFn, opts){
                   sectionCounts: Object.keys(part.secs).map(s => [s, part.secs[s].length])});
     }
   }
-  return {date: dateStr, banner, stamp, diagrams: diags.size, books,
+  return {date: dateStr, banner, stamp, diagrams: diags.size, books, base,
           merge: mg.reissues.length
             ? {replaced: mg.replaced, added: mg.added,
                reissueNames: mg.reissues.map(function(r){ return r.name; })}
@@ -10258,6 +10385,8 @@ const MSG = {
   zoneMixed: ["Mixed sources loaded", "drop a matching pair — both from Genius, or both from Integrale"],
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
+  weBase: b => "Built from the base diagrams (" + b.from + (b.until ? " to " + b.until : "") +
+    ") for " + b.date + " — choose another date under Base diagrams to build that day.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
@@ -11443,6 +11572,13 @@ const panels = {};
      the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
      for a Sunday. Everything else comes from the prints. */
   let hsPrev = null;
+  /* The base diagrams for a timetable carry every day of it: the date the
+     books are built for, chosen under "Base diagrams" (dd/mm/yyyy), or null
+     for the first day the timetable runs. */
+  let forDate = null;
+  const baseRow = $("#we_baserow"), baseDate = $("#we_basedate");
+  const isoOf = d => { const m = /^(\d\d)\/(\d\d)\/(\d{4})$/.exec(d || ""); return m ? m[3] + "-" + m[2] + "-" + m[1] : ""; };
+  const dmyOf = v => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : null; };
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
   const SPRITE_FOR = { Mainline: SPRITES.Mainline, "RAM SHEETS": SPRITES.Ramsgate,
                        Metro: SPRITES.Metro, "High Speed": SPRITES["High Speed"] };
@@ -11495,15 +11631,23 @@ const panels = {};
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true, hsPrev });
+      { allHeadcodes, splitRamsgate: true, hsPrev, forDate });
     built = res;
     render(res);
+    if (baseRow) {
+      baseRow.hidden = !res.base;
+      if (res.base) {
+        baseDate.min = isoOf(res.base.from);
+        baseDate.max = isoOf(res.base.until) || "";
+        baseDate.value = isoOf(res.base.date);
+      }
+    }
     const dlupd = $("#we_dlupd");
     if (dlupd) dlupd.hidden = !res.updated;
     const total = res.books.filter(b => !b.skipped).reduce((a, b) => a + b.entries, 0);
     say(MSG.weBuilt(res.banner, total,
       res.merge ? { replaced: res.merge.replaced.length, added: res.merge.added.length } : null,
-      loadedDocs.length), "go");
+      loadedDocs.length) + (res.base ? " " + MSG.weBase(res.base) : ""), "go");
   }
 
   /* One drop is one job. A file that cannot be read says so and the rest
@@ -11563,6 +11707,7 @@ const panels = {};
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
       }
+      forDate = null;       // new prints: their own first day, until one is chosen
       try { rebuildFromLoaded(); }
       catch (err) {
         loadedDocs = loadedDocs.filter(d => !docs.some(n => n.name === d.name));
@@ -11574,6 +11719,21 @@ const panels = {};
   }
   wireDrop($("#we_berth"), $("#we_file"), dropFiles);
   panels.weekend = { dropFiles };
+  /* another day from the same base diagrams */
+  if (baseDate) baseDate.addEventListener("change", () => {
+    const d = dmyOf(baseDate.value);
+    if (!d || !loadedDocs.length || d === forDate) return;
+    enqueue(async () => {
+      const was = forDate;
+      forDate = d;
+      try { rebuildFromLoaded(); }
+      catch (err) {
+        forDate = was;
+        say(err && err.message ? err.message : MSG.weUnreadable, "err");
+        if (built && built.base) baseDate.value = isoOf(built.base.date);
+      }
+    });
+  });
 
   /* ---- the prints pasted in as text ----
      A paste joins the pipeline one step in, as a document like any other;
@@ -11615,7 +11775,8 @@ const panels = {};
     say(MSG.savedUpdated(built.updated.name), "go");
   });
   $("#we_clearall").addEventListener("click", () => {
-    loadedDocs = []; built = null; hsPrev = null;
+    loadedDocs = []; built = null; hsPrev = null; forDate = null;
+    if (baseRow) baseRow.hidden = true;
     P.clearBoxes();
     roadsEl.textContent = "";
     P.showBars(false);

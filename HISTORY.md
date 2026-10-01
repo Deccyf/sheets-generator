@@ -140,6 +140,37 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.20.0 — 1 October 2026 — the books from the base diagrams, for a timetable change
+
+**The base diagrams build the books for any day of a timetable.** Drop the
+base diagram prints for a new timetable on the weekend panel and a **Base
+diagrams** date picker appears: the books - Mainline, Ramsgate, Metro and
+the 395 allocations sheet - are built for the date chosen, out of the
+diagrams that run on it. Base prints differ from a day's prints in two
+ways the reader had been ignoring: each diagram carries a day code (FSX,
+FO, SO, Su, MO, WThO…) and a From/Until period, and the same number is
+printed once per code and period. The reader wrote the later printing over
+the earlier, so a base book would have built every Monday from the Sunday
+diagrams. Now:
+
+- every printing is kept, with its day code and period;
+- a date's books are built from the printings that run on it - in their
+  period, on a day their code names; where two do, the one starting later
+  (an engineering week's inside the base period) wins;
+- no date chosen: the first day the timetable runs anything;
+- the 395 sheet's PM arrivals come from the day before out of the same base
+  diagrams, where the timetable covers it - a Tuesday's from Monday night;
+- a day nothing runs on, or a date outside the period, says which.
+
+Day codes are read by one function now, shared with the fleet analysis
+(`SHEETS_PRINTS.daysOf`), which had the reading already.
+
+**Two days of reports, one drop.** Not new, but asked: the weekday panel
+takes two days' Diagram Summary and Detail together and builds each
+weekday's tab with the day before's arrivals - Sunday's pair with Monday's
+gives Monday its Sunday-night arrivals although Sunday has no tab. The
+exports have to include the 395 fleet; the 21/09 pair seen had none.
+
 ## 3.19.1 — 30 September 2026 — UNIT NO for the stock controller, and the North Kent by name
 
 **UNIT NO is left blank on weekdays too.** The stock controller chooses the

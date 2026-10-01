@@ -77,6 +77,8 @@ const MSG = {
   zoneMixed: ["Mixed sources loaded", "drop a matching pair — both from Genius, or both from Integrale"],
   sentToWeekend: name => "“" + name + "” is weekend diagram prints — sent to the Weekend panel.",
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
+  weBase: b => "Built from the base diagrams (" + b.from + (b.until ? " to " + b.until : "") +
+    ") for " + b.date + " — choose another date under Base diagrams to build that day.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
@@ -1262,6 +1264,13 @@ const panels = {};
      the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
      for a Sunday. Everything else comes from the prints. */
   let hsPrev = null;
+  /* The base diagrams for a timetable carry every day of it: the date the
+     books are built for, chosen under "Base diagrams" (dd/mm/yyyy), or null
+     for the first day the timetable runs. */
+  let forDate = null;
+  const baseRow = $("#we_baserow"), baseDate = $("#we_basedate");
+  const isoOf = d => { const m = /^(\d\d)\/(\d\d)\/(\d{4})$/.exec(d || ""); return m ? m[3] + "-" + m[2] + "-" + m[1] : ""; };
+  const dmyOf = v => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : null; };
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
   const SPRITE_FOR = { Mainline: SPRITES.Mainline, "RAM SHEETS": SPRITES.Ramsgate,
                        Metro: SPRITES.Metro, "High Speed": SPRITES["High Speed"] };
@@ -1314,15 +1323,23 @@ const panels = {};
     const res = SheetsEngine.run(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true, hsPrev });
+      { allHeadcodes, splitRamsgate: true, hsPrev, forDate });
     built = res;
     render(res);
+    if (baseRow) {
+      baseRow.hidden = !res.base;
+      if (res.base) {
+        baseDate.min = isoOf(res.base.from);
+        baseDate.max = isoOf(res.base.until) || "";
+        baseDate.value = isoOf(res.base.date);
+      }
+    }
     const dlupd = $("#we_dlupd");
     if (dlupd) dlupd.hidden = !res.updated;
     const total = res.books.filter(b => !b.skipped).reduce((a, b) => a + b.entries, 0);
     say(MSG.weBuilt(res.banner, total,
       res.merge ? { replaced: res.merge.replaced.length, added: res.merge.added.length } : null,
-      loadedDocs.length), "go");
+      loadedDocs.length) + (res.base ? " " + MSG.weBase(res.base) : ""), "go");
   }
 
   /* One drop is one job. A file that cannot be read says so and the rest
@@ -1382,6 +1399,7 @@ const panels = {};
         const i = loadedDocs.findIndex(x => x.name === d.name);
         if (i >= 0) loadedDocs[i] = d; else loadedDocs.push(d);
       }
+      forDate = null;       // new prints: their own first day, until one is chosen
       try { rebuildFromLoaded(); }
       catch (err) {
         loadedDocs = loadedDocs.filter(d => !docs.some(n => n.name === d.name));
@@ -1393,6 +1411,21 @@ const panels = {};
   }
   wireDrop($("#we_berth"), $("#we_file"), dropFiles);
   panels.weekend = { dropFiles };
+  /* another day from the same base diagrams */
+  if (baseDate) baseDate.addEventListener("change", () => {
+    const d = dmyOf(baseDate.value);
+    if (!d || !loadedDocs.length || d === forDate) return;
+    enqueue(async () => {
+      const was = forDate;
+      forDate = d;
+      try { rebuildFromLoaded(); }
+      catch (err) {
+        forDate = was;
+        say(err && err.message ? err.message : MSG.weUnreadable, "err");
+        if (built && built.base) baseDate.value = isoOf(built.base.date);
+      }
+    });
+  });
 
   /* ---- the prints pasted in as text ----
      A paste joins the pipeline one step in, as a document like any other;
@@ -1434,7 +1467,8 @@ const panels = {};
     say(MSG.savedUpdated(built.updated.name), "go");
   });
   $("#we_clearall").addEventListener("click", () => {
-    loadedDocs = []; built = null; hsPrev = null;
+    loadedDocs = []; built = null; hsPrev = null; forDate = null;
+    if (baseRow) baseRow.hidden = true;
     P.clearBoxes();
     roadsEl.textContent = "";
     P.showBars(false);

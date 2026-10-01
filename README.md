@@ -171,9 +171,20 @@ source.
    a Word 97–2003 `.doc` (a small OLE reader walks the `WordDocument` stream
    and the piece table); anything else is text — UTF-8, UTF-16 with a BOM,
    or a CSV save whose commas are the columns.
-2. **Parsing diagrams** (`parseDiagrams`). `Diagram:\t<CODE>\t<NUM>\t…`
-   headers, `Fleet:` and `From:`, and the tab-indented itinerary rows. `#`
-   flags a berthing; `STABLD` marks the road a diagram starts in.
+2. **Parsing diagrams** (`parseDiagrams`). `Diagram:\t<CODE>\t<NUM>\t<DAYS>`
+   headers, `Fleet:` and `From:`/`Until:`, and the tab-indented itinerary
+   rows. `#` flags a berthing; `STABLD` marks the road a diagram starts in.
+   A number printed again (another day code or period) is kept, not
+   written over.
+   **Base diagrams.** A day's prints are dated that day, From and Until
+   alike; the base diagrams for a timetable run over periods, on the days
+   their codes name (`SHEETS_PRINTS.daysOf`, shared with the fleet
+   analysis: FSX, FO, SO, Su, MO, WThO…). From those `run` builds one date -
+   `opts.forDate`, or the first day anything runs - out of the diagrams that
+   run on it (`runningOn`: in period, on the day, the later-starting
+   printing where two do), and the day before's, where the timetable covers
+   it, gives the 395 sheet its PM arrivals. The weekend panel shows a
+   **Base diagrams** date picker whenever the prints are of this kind.
 3. **Reissue merge** (`mergeDocs`). Files named *reissue* are overlaid on the
    base document diagram by diagram, same-date check enforced; replaced and
    added diagrams go on the Review tab. `buildUpdatedDocx` splices the
