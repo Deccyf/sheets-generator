@@ -140,6 +140,12 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.29.2 — 1 October 2026 — the weekend tab is about the weekend
+
+The weekend tab's opening points no longer mention the base diagrams. They
+have their own tab, and anything that is base diagrams dropped on the
+weekend tab is sent there anyway.
+
 ## 3.29.1 — 1 October 2026 — five tabs on one line
 
 The new tab is labelled **Base diagrams**, and the tab strip is set a
