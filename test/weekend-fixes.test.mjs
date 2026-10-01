@@ -754,3 +754,37 @@ test("the base sheets note the modded-unit AZ1 diagrams and count AZ1 and AZ9 by
   const dhs = day.books.find(b => b.road === "High Speed");
   assert.ok(!dhs || dhs.skipped || !dhs.sheets.some(s => s.layout.cells.some(x => /^AZ1 & AZ9/.test(x.v))));
 });
+
+test("the base diagrams as a document per day code - FX, FO, SO, SUN - build the whole week", () => {
+  /* The base diagrams can come as four documents, one per day code, dropped
+     together. They are one timetable: pooled, each number kept once per
+     printing, the week comes out exactly as it does from one document. FX
+     is Monday to Thursday and SUN Sunday, however the book writes it. */
+  const D = (days, hc) => ["Diagram:\tAZ\t601\t" + days, "Fleet:\t395/0",
+    "From:\t13/12/2026\tUntil:\t15/05/2027",
+    "\t\tAshfrd DS\t\t06+00\t5R" + hc + "\t\t0.82\t",
+    "\t\tAshford I\t06+10\t06.20\t1J" + hc + "\t\t20.00\t",
+    "\t\tMgate\t07.30\t07+40\t5J" + hc + "\t\t60.00\t",
+    "\t\tRam Depot\t08+00\t\t\t\t\t"];
+  const parts = { FX: D("FX", "01"), FO: D("FO", "41"), SO: D("SO", "51"), SUN: D("SUN", "61") };
+  const four = Object.entries(parts).map(([k, l]) => text(l, "BASE " + k + ".txt"));
+  const one = [text([].concat(...Object.values(parts)), "BASE ALL.txt")];
+  const week = inputs => N.SheetsEngine.runWeek(inputs, zip.un, zip.z, { splitRamsgate: true });
+  assert.equal(N.SheetsEngine.printsKind(four, zip.un), "base", "read as base diagrams");
+  const a = week(four), b = week(one);
+  assert.deepEqual(Array.from(a.base.types),
+    ["DEC MONDAY", "DEC TUE-THU", "DEC FRIDAY", "DEC SATURDAY", "DEC SUNDAY"], "the whole week");
+  const cells = r => JSON.stringify(r.books.map(x => x.sheets
+    ? x.sheets.map(s => s.layout.cells.map(c => String(c.v)))
+    : x.skipped ? null : x.layout.cells.map(c => String(c.v))));
+  assert.equal(cells(a), cells(b), "the same books as from one document");
+  // each day type its own printing: Friday the FO one, Sunday the SUN one
+  const hs = a.books.find(x => x.road === "High Speed");
+  const on = name => hs.sheets.find(s => s.name === name).layout.cells.map(c => String(c.v));
+  assert.ok(on("DEC TUE-THU").includes("5R01 AFK") && on("DEC FRIDAY").includes("5R41 AFK") &&
+            on("DEC SUNDAY").includes("5R61 AFK"));
+  // a day's weekend prints are still one document at a time
+  assert.equal(N.SheetsEngine.printsKind([docx(PRINTS_LINES, "prints.docx")], zip.un), "day");
+  assert.throws(() => run([docx(PRINTS_LINES, "a prints.docx"), docx(PRINTS_LINES, "b prints.docx")]),
+    /More than one full prints document/);
+});

@@ -38,6 +38,20 @@ const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"))
 const MSG = {
   idle: "Nothing built yet — drop the Diagram Summary and Diagram Detail above.",
   weIdle: "Nothing built yet — drop the weekend prints above.",
+  bsIdle: "Nothing built yet — drop the base diagrams above.",
+  bsCleared: "Cleared — drop the base diagrams to start again.",
+  bsPasteEmpty: "Paste the base diagrams into the first box.",
+  sentToBase: names => "“" + names.join("”, “") + "” " + (names.length > 1 ? "are" : "is") +
+    " base diagrams for a timetable — sent to the Base diagrams tab.",
+  sentToWeekendDay: names => "“" + names.join("”, “") + "” " + (names.length > 1 ? "are" : "is") +
+    " a day’s weekend prints — sent to the Weekend tab.",
+  hsStateNone: "No reports in yet — the High Speed sheet’s PM arrivals stay empty until the day before’s pair is in.",
+  hsStateHalf: (got, want) => "The day before’s " + got + " is in ✓ — still needs its " + want + ".",
+  hsStateBoth: dates => "Diagram Summary and Detail for " + dates.join(", ") + " in ✓ — the High Speed sheet takes its PM arrivals from them.",
+  hsStateErr: e => "Those reports couldn’t be read for the arrivals: " + e,
+  hsNotReport: name => "“" + name + "” isn’t a Genius Diagram Summary or Detail saved as CSV — this box only takes the day before’s pair.",
+  hsPasteNot: "A day-before box doesn’t read as a Genius Diagram Summary or Detail — copy the whole CSV, as it comes.",
+  hsPasteRebuilt: "The day before’s reports are in, and the books were built again with the High Speed arrivals.",
   reading: "Reading the reports …",
   readingFiles: names => "Reading " + names.join(", ") + " …",
   writing: "Writing the books …",
@@ -350,7 +364,8 @@ function saveJson(key, obj) {
 
 /* the option boxes and the mode, restored on the next visit */
 const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq",
-                 "we_hc_main", "we_hc_metro", "we_hc_hs"];
+                 "we_hc_main", "we_hc_metro", "we_hc_hs",
+                 "bs_hc_main", "bs_hc_metro", "bs_hc_hs"];
 const savedOpts = loadJson(OPTS_LS_KEY);
 for (const id of OPT_IDS) {
   const el = document.getElementById(id);
@@ -797,6 +812,7 @@ function roadCard(spec) {
 /* ---------------- the mode switch ---------------- */
 const MODES = { wk: { tab: $("#mode_wk"), panel: $("#wkPanel") },
                 we: { tab: $("#mode_we"), panel: $("#wePanel") },
+                bs: { tab: $("#mode_bs"), panel: $("#bsPanel") },
                 sv: { tab: $("#mode_sv"), panel: $("#svPanel") },
                 br: { tab: $("#mode_br"), panel: $("#brPanel") } };
 function currentMode() {
@@ -1340,16 +1356,24 @@ const panels = {};
   else say(MSG.idle);
 })();
 
-/* ================= weekend panel: diagram prints ================= */
-(function weekend() {
+/* ================= the prints panels: a weekend, and the base diagrams =================
+   One panel, set up twice. The weekend tab takes a day's diagram prints
+   (and the day before's reports for the High Speed arrivals); the base
+   diagrams tab takes a timetable's base diagrams - one document, or one
+   per day code dropped together - and builds a week of them. Each sends
+   the other's along: base diagrams dropped on the weekend tab go to their
+   own tab, and a day's prints dropped there come back. */
+function printsPanel(K) {
+  const id = name => "#" + K.pre + name;
   const P = makePanel({
-    status: "#we_status", roads: "#we_roads", allbar: "#we_allbar", allnote: "#we_allnote",
-    optsRow: "#we_optsrow", pasteWrap: "#we_pastebox", pasteToggle: "#we_pastetoggle",
-    pasteSay: "#we_paste_say", pasteClear: "#we_paste_clear",
-    boxes: ["#we_paste_main", "#we_paste_re"],
+    status: id("status"), roads: id("roads"), allbar: id("allbar"), allnote: id("allnote"),
+    optsRow: id("optsrow"), pasteWrap: id("pastebox"), pasteToggle: id("pastetoggle"),
+    pasteSay: id("paste_say"), pasteClear: id("paste_clear"),
+    boxes: [id("paste_main"), id("paste_re"), id("paste_sum"), id("paste_det")],
   });
   const { say, enqueue, roadsEl } = P;
-  const [wePasteMain, wePasteRe] = P.boxes;
+  const wePasteMain = $(id("paste_main")), wePasteRe = $(id("paste_re"));
+  const wePasteSum = $(id("paste_sum")), wePasteDet = $(id("paste_det"));
   let built = null;
   let loadedDocs = [];
   /* The day before's Diagram Summary and Detail, dropped with the prints:
@@ -1359,11 +1383,37 @@ const panels = {};
      the two as they arrive, as text, until both are in. */
   let hsPrev = null;
   const prevPair = { sum: null, det: null };
+  /* where the day before's pair stands, under its own drop zone */
+  const hsState = $(id("hsstate"));
+  function showArrivals(err) {
+    if (!hsState) return;
+    const ds = hsPrev ? Object.keys(hsPrev) : [];
+    hsState.className = "zonesum" + (err ? " err" : ds.length ? " go" : "");
+    hsState.textContent = err ? MSG.hsStateErr(err)
+      : ds.length ? MSG.hsStateBoth(ds)
+      : prevPair.sum || prevPair.det ? MSG.hsStateHalf(prevPair.sum ? "Diagram Summary" : "Diagram Detail",
+                                                       prevPair.sum ? "Diagram Detail" : "Diagram Summary")
+      : MSG.hsStateNone;
+  }
+  /* the day before's reports in, one or both: kept, and once both are in,
+     read for the arrivals. Returns the error, if they would not read. */
+  async function takePrev(texts) {
+    for (const [kind, text] of texts) prevPair[kind] = text;
+    let err = null;
+    if (prevPair.sum && prevPair.det) {
+      try {
+        hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]);
+        if (!Object.keys(hsPrev).length) hsPrev = null;
+      } catch (e) { hsPrev = null; err = e && e.message ? e.message : String(e); }
+    }
+    showArrivals(err);
+    return err;
+  }
   /* The base diagrams for a timetable carry every day of it: the date the
      books are built for, chosen under "Base diagrams" (dd/mm/yyyy), or null
      for the first day the timetable runs. */
   let forDate = null;
-  const baseRow = $("#we_baserow"), baseDate = $("#we_basedate");
+  const baseRow = $(id("baserow")), baseDate = $(id("basedate"));
   const isoOf = d => { const m = /^(\d\d)\/(\d\d)\/(\d{4})$/.exec(d || ""); return m ? m[3] + "-" + m[2] + "-" + m[1] : ""; };
   const dmyOf = v => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(v || ""); return m ? m[3] + "/" + m[2] + "/" + m[1] : null; };
   const roadName = r => r === "RAM SHEETS" ? "Ramsgate" : r;
@@ -1409,8 +1459,8 @@ const panels = {};
     P.restoreFocus(state);
   }
 
-  const weHc = { Mainline: $("#we_hc_main"), Metro: $("#we_hc_metro"),
-                 "High Speed": $("#we_hc_hs") };
+  const weHc = { Mainline: $(id("hc_main")), Metro: $(id("hc_metro")),
+                 "High Speed": $(id("hc_hs")) };
   function rebuildFromLoaded() {
     const allHeadcodes = {};
     for (const road of Object.keys(weHc))
@@ -1431,7 +1481,7 @@ const panels = {};
         baseDate.value = isoOf(res.base.date);
       }
     }
-    const dlupd = $("#we_dlupd");
+    const dlupd = $(id("dlupd"));
     if (dlupd) dlupd.hidden = !res.updated;
     const total = res.books.filter(b => !b.skipped).reduce((a, b) => a + b.entries, 0);
     say(MSG.weBuilt(res.banner, total,
@@ -1443,7 +1493,7 @@ const panels = {};
      still build; one of the weekday reports dropped here is sent up. */
   function dropFiles(files) {
     if (!files.length) return;
-    switchMode("we");
+    switchMode(K.mode);
     enqueue(async () => {
       say(MSG.readingFiles(files.map(f => f.name)));
       const reads = await Promise.allSettled(files.map(f => new Promise((res, rej) => {
@@ -1476,31 +1526,23 @@ const panels = {};
       /* The Summary and the Detail are kept as they come - one drop or two,
          either first. Read from one drop alone, a Detail dropped after its
          Summary was a pair with no Summary, and failed. */
+      /* the base diagrams make their own arrivals, from the day before's
+         diagrams: the weekday reports dropped on that tab are the weekday
+         tab's */
       let kept = false;
-      if (weekday.length && weekday.every(d => d.genius) && (docs.length || loadedDocs.length)) {
-        for (const d of weekday) prevPair[d.kind] = decodeText(d.bytes);
+      if (!K.base && weekday.length && weekday.every(d => d.genius) &&
+          (docs.length || loadedDocs.length)) {
         kept = true;
-        if (prevPair.sum && prevPair.det) {
-          try {
-            hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]);
-            const ds = Object.keys(hsPrev);
-            if (ds.length) say(MSG.weArrivals(ds));
-            else hsPrev = null;
-          } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); }
-        } else {
-          const got = prevPair.sum ? "Diagram Summary" : "Diagram Detail";
-          say(MSG.weArrivalsHalf(got, prevPair.sum ? "Diagram Detail" : "Diagram Summary"));
-        }
+        const err = await takePrev(weekday.map(d => [d.kind, decodeText(d.bytes)]));
+        if (err) say(err, "err");
+        else if (hsPrev) say(MSG.weArrivals(Object.keys(hsPrev)));
+        else say(MSG.weArrivalsHalf(prevPair.sum ? "Diagram Summary" : "Diagram Detail",
+                                    prevPair.sum ? "Diagram Detail" : "Diagram Summary"));
       }
       if (weekday.length && !kept) {
         /* No prints yet, so they are the weekday panel's - but kept here too,
            so prints dropped next still get their arrivals from them */
-        for (const d of weekday) if (d.kind) prevPair[d.kind] = decodeText(d.bytes);
-        if (prevPair.sum && prevPair.det) {
-          try { hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]); }
-          catch (err) { hsPrev = null; }
-          if (hsPrev && !Object.keys(hsPrev).length) hsPrev = null;
-        }
+        if (!K.base) await takePrev(weekday.filter(d => d.kind).map(d => [d.kind, decodeText(d.bytes)]));
         say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
         switchMode("wk");
         panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
@@ -1509,6 +1551,15 @@ const panels = {};
         if (kept && hsPrev && loadedDocs.length) {
           try { rebuildFromLoaded(); } catch (err) { say(err && err.message ? err.message : MSG.weUnreadable, "err"); }
         }
+        return;
+      }
+      /* a day's prints are the weekend tab's, base diagrams the base tab's */
+      const kind = SheetsEngine.printsKind(docs, b => fflate.unzipSync(b));
+      const other = K.base ? (kind === "day" ? panels.weekend : null)
+                           : (kind === "base" ? panels.base : null);
+      if (other) {
+        say(K.base ? MSG.sentToWeekendDay(docs.map(d => d.name)) : MSG.sentToBase(docs.map(d => d.name)));
+        other.dropFiles(files.filter(f => docs.some(d => d.name === f.name)));
         return;
       }
       for (const d of docs) {
@@ -1525,8 +1576,31 @@ const panels = {};
       }
     });
   }
-  wireDrop($("#we_berth"), $("#we_file"), dropFiles);
-  panels.weekend = { dropFiles };
+  wireDrop($(id("berth")), $(id("file")), dropFiles);
+  panels[K.base ? "base" : "weekend"] = { dropFiles };
+  /* the High Speed arrivals' own drop zone: whatever comes in there is the
+     day before's reports, prints or no prints */
+  function dropArrivals(files) {
+    if (!files.length) return;
+    enqueue(async () => {
+      const got = [];
+      for (const f of files) {
+        let text = "";
+        try { text = decodeText(new Uint8Array(await f.arrayBuffer())); } catch (e) { text = ""; }
+        const kind = text && GENIUS.sniffGeniusCsv(text);
+        if (kind) got.push([kind, text]);
+        else say(MSG.hsNotReport(f.name), "err");
+      }
+      if (!got.length) return;
+      const err = await takePrev(got);
+      if (err) { say(err, "err"); return; }
+      if (hsPrev && loadedDocs.length) {
+        try { rebuildFromLoaded(); say(MSG.weArrivals(Object.keys(hsPrev)) + " " + MSG.rebuilt("with them"), "go"); }
+        catch (e) { say(e && e.message ? e.message : MSG.weUnreadable, "err"); }
+      } else say(hsState ? hsState.textContent : "");
+    });
+  }
+  if ($(id("hsberth"))) wireDrop($(id("hsberth")), $(id("hsfile")), dropArrivals);
   /* another day from the same base diagrams */
   if (baseDate) baseDate.addEventListener("change", () => {
     const d = dmyOf(baseDate.value);
@@ -1548,10 +1622,30 @@ const panels = {};
      the tabs are the structure, so the text is handed over as pasted. */
   const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
   const readsAsPrints = t => SHEETS_PRINTS.looksLikePrints(t) || !!SHEETS_PRINTS.printsFromCsv(t);
-  $("#we_paste_go").addEventListener("click", () => enqueue(async () => {
+  $(id("paste_go")).addEventListener("click", () => enqueue(async () => {
     const main = boxText(wePasteMain).replace(/^\uFEFF/, "");
     const re = boxText(wePasteRe).replace(/^\uFEFF/, "");
-    if (!main.trim()) { P.pSay(MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
+    /* the day before's reports, from their own two boxes, either way round */
+    const prev = [];
+    for (const el of [wePasteSum, wePasteDet]) {
+      const t = GENIUS.pastedCsv(boxText(el));
+      if (!t) continue;
+      const kind = GENIUS.sniffGeniusCsv(t);
+      if (!kind) { P.pSay(MSG.hsPasteNot, "err"); el.focus(); return; }
+      prev.push([kind, t]);
+    }
+    if (prev.length) {
+      const err = await takePrev(prev);
+      if (err) { P.pSay(err, "err"); return; }
+    }
+    if (!main.trim() && prev.length) {
+      if (loadedDocs.length) {
+        try { rebuildFromLoaded(); P.pSay(MSG.hsPasteRebuilt, "go"); }
+        catch (e) { P.pSay(MSG.wePasteFailed(e), "err"); }
+      } else P.pSay(hsState ? hsState.textContent : "", "go");
+      return;
+    }
+    if (!main.trim()) { P.pSay(K.base ? MSG.bsPasteEmpty : MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
     if (!readsAsPrints(main)) {
       const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);
       P.pSay(weekday ? MSG.wePasteWeekday : MSG.wePasteFlat, "err");
@@ -1577,31 +1671,34 @@ const panels = {};
       catch (e) { say(MSG.weRebuildFailed(e), "err"); }
     }));
   }
-  $("#we_dlupd").addEventListener("click", () => {
+  $(id("dlupd")).addEventListener("click", () => {
     if (!built || !built.updated) return;
     download(built.updated.name, built.updated.bytes, DOCX_MIME);
     say(MSG.savedUpdated(built.updated.name), "go");
   });
-  $("#we_clearall").addEventListener("click", () => {
+  $(id("clearall")).addEventListener("click", () => {
     loadedDocs = []; built = null; hsPrev = null; forDate = null;
     prevPair.sum = prevPair.det = null;
+    showArrivals();
     if (baseRow) baseRow.hidden = true;
     P.clearBoxes();
     roadsEl.textContent = "";
     P.showBars(false);
-    const dlupd = $("#we_dlupd");
+    const dlupd = $(id("dlupd"));
     if (dlupd) dlupd.hidden = true;
-    say(MSG.weCleared);
+    say(K.base ? MSG.bsCleared : MSG.weCleared);
   });
-  $("#we_dlall").addEventListener("click", () => {
+  $(id("dlall")).addEventListener("click", () => {
     if (!built) return;
     const live = built.books.filter(b => !b.skipped);
     const name = "SHEETS_" + built.stamp + ".zip";
     downloadZip(name, live.map(b => [b.name, b.xlsx]));
     say(MSG.savedZip(name, live.length), "go");
   });
-  say(MSG.weIdle);
-})();
+  say(K.base ? MSG.bsIdle : MSG.weIdle);
+}
+printsPanel({ pre: "we_", mode: "we", base: false });
+printsPanel({ pre: "bs_", mode: "bs", base: true });
 
 /* A text file as the depot's machines save it: UTF-8 with or without a
    BOM, UTF-16 from Notepad's "Unicode", or Windows-1252 from an older

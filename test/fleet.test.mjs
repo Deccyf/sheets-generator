@@ -42,6 +42,12 @@ test("day codes: FSX is the weekday book, and Th is read before T", () => {
   assert.deepEqual(arr(F.daysOf("ThO")), ["Thu"]);
   assert.deepEqual(arr(F.daysOf("TO")), ["Tue"]);
   assert.deepEqual(arr(F.daysOf("MWThO")), ["Mon", "Wed", "Thu"]);
+  // "excepted" codes are the working week without those days, and Sunday
+  // reads as Sunday however it is written
+  assert.deepEqual(arr(F.daysOf("FX")), ["Mon", "Tue", "Wed", "Thu"]);
+  assert.deepEqual(arr(F.daysOf("SX")), ["Mon", "Tue", "Wed", "Thu", "Fri"]);
+  assert.deepEqual(arr(F.daysOf("MX")), ["Tue", "Wed", "Thu", "Fri"]);
+  for (const c of ["SUN", "Sun", "Su", "SuO"]) assert.deepEqual(arr(F.daysOf(c)), ["Sun"], c);
   assert.deepEqual(arr(F.daysOf("Su")), ["Sun"]);
   assert.deepEqual(arr(F.daysOf("FO")), ["Fri"]);
   assert.deepEqual(arr(F.daysOf("SO")), ["Sat"]);

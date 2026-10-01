@@ -118,6 +118,23 @@ if (/No Diagram Summary|drop its/.test(weAfter) ||
   process.exitCode = 1;
 }
 console.log("weekend arrivals pair, one drop each:", weAfter);
+
+/* The base diagrams have their own tab. Four documents, one per day code,
+   dropped on the WEEKEND tab are sent there and build the whole week. */
+const BASE_CODES = ["FX", "FO", "SO", "SUN"];
+const baseFiles = BASE_CODES.map((k, i) => f("BASE " + k + ".txt", Buffer.from([
+  "Diagram:\tAZ\t601\t" + k, "Fleet:\t395/0", "From:\t13/12/2026\tUntil:\t15/05/2027",
+  "\t\tAshfrd DS\t\t06+00\t5R0" + i + "\t\t0.82\t", "\t\tAshford I\t06+10\t06.20\t1J0" + i + "\t\t20.00\t",
+  "\t\tMgate\t07.30\t07+40\t5J0" + i + "\t\t60.00\t", "\t\tRam Depot\t08+00\t\t\t\t\t"].join("\n"), "utf8")));
+await page.setInputFiles("#we_file", baseFiles);
+await page.waitForFunction(() =>
+  /Books built for THE WEEK OF/.test(document.querySelector("#bs_status").textContent), null, { timeout: 20000 });
+const baseTypes = await page.$$eval('#bs_roads .road[data-road="High Speed"] .pickbar select option', o => o.map(x => x.textContent));
+console.log("base tab, four day codes:", baseTypes.join(" / "));
+if (await page.$eval("#mode_bs", e => e.getAttribute("aria-selected")) !== "true" || baseTypes.length !== 5) {
+  console.error("FAIL: four day-code base documents should build a week on the Base diagrams tab");
+  process.exitCode = 1;
+}
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
 
 /* ---- the weekend prints pasted in instead of dropped ---- */
@@ -399,7 +416,7 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   await page.locator("#mode_br").click();            // remembered as the last tab used
   await page.goto(LITE_URL);
   const tabs = await page.locator(".mode").count();
-  if (tabs !== 3) throw new Error("the lite copy should have three tabs: " + tabs);
+  if (tabs !== 4) throw new Error("the lite copy should have four tabs: " + tabs);
   if (await page.locator("#mode_br").count()) throw new Error("the lite copy should have no berth-request tab");
   if (!(await page.locator("#wkPanel").isVisible())) throw new Error("the lite copy should open on the weekday tab");
   await page.setInputFiles("#file", [sumPdf, detPdf]);

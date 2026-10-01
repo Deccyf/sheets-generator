@@ -140,6 +140,40 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.29.0 — 1 October 2026 — the base diagrams' own tab, and the weekend's High Speed reports
+
+**Base diagrams · Timetable is a tab of its own.** It is the weekend tab's
+panel set up a second time: the same drop zone, paste boxes, books,
+options and saves, plus the Week of picker that used to be on the weekend
+tab. Each tab sends the other's prints along. Base diagrams dropped on the
+weekend tab, or on the weekday tab, land on the base tab and build there,
+and a day's weekend prints dropped on the base tab go back
+(`SheetsEngine.printsKind`).
+
+**Drop FX, FO, SO and SUN together and the whole week builds.** The engine
+used to refuse more than one full prints document. Base diagrams, which
+run over a period on the days their codes name, are now pooled into one
+timetable. A number printed in more than one is kept as `CODE|NUM#n`, as
+one document would keep it. The four documents build exactly the same
+books as the same diagrams in one document. A day's weekend prints are
+still one document at a time.
+
+**FX and SUN read as they should.** The day-code reader took FX as Friday
+only and SUN, in capitals, as Saturday. An "excepted" code is now the
+working week without those days (FX Monday to Thursday, MX Tuesday to
+Friday, SX Monday to Friday). Sunday reads as Sunday however it is written.
+The fleet analysis shares the reader, so it gains the same.
+
+**The weekend's High Speed PM arrivals have their own drop zone** under
+the prints: the day before's Diagram Summary and Detail CSVs, together or
+one at a time, before the prints or after. Anything dropped there is taken
+as those reports, never sent to the weekday tab. A line under it says what
+is in and what is still needed. The weekend paste panel has a box for each
+of them too.
+
+**Shortages & variations and Berth requests say they are for Mainline and
+Metro only**, in a note on each tab.
+
 ## 3.28.2 — 1 October 2026 — a review: bugs, errors, dead code
 
 A full review, with nothing broken found:

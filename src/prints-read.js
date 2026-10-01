@@ -364,7 +364,18 @@
     if (c === "FSX") return ["Mon", "Tue", "Wed", "Thu"];
     if (/^F(O)?$/.test(c)) return ["Fri"];
     if (/^S(O)?$/.test(c)) return ["Sat"];
-    if (/^Su/.test(c)) return ["Sun"];
+    // Sundays, however the book writes it - Su, Sun, SUN, SuO
+    if (/^su/i.test(c)) return ["Sun"];
+    /* "excepted": the days NOT run, out of the working week - FX is Monday
+       to Thursday, MX Tuesday to Friday, SX Monday to Friday. Read as it
+       was, FX came out Friday only. */
+    const ex = /^((?:Th|[MTWFS])+)X$/.exec(c);
+    if (ex){
+      const not = daysOf(ex[1] + "O");
+      const week = not.indexOf("Sat") >= 0
+        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] : ["Mon", "Tue", "Wed", "Thu", "Fri"];
+      return week.filter(function(d){ return not.indexOf(d) < 0; });
+    }
     const body = c.replace(/O$/, "");
     const out = [];
     let i = 0;

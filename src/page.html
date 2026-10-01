@@ -42,6 +42,7 @@
           <em>Diagram Summary</em> and <em>Diagram Detail</em> reports for the
           date, from Genius as PDFs or from Integrale as its two CSV exports.
           For the weekend: the diagram prints Word document, or the same text.
+          For a timetable change: the base diagrams, on their own tab.
           In Genius, a Control Cycle must exist before the reports can be run —
           one for each fleet you want a book for.
           <details class="hint">
@@ -182,6 +183,8 @@
       aria-selected="true" aria-controls="wkPanel">Weekday · Mon – Fri</button>
     <button type="button" class="mode" id="mode_we" role="tab"
       aria-selected="false" aria-controls="wePanel">Weekend · Sat &amp; Sun</button>
+    <button type="button" class="mode" id="mode_bs" role="tab"
+      aria-selected="false" aria-controls="bsPanel">Base diagrams · Timetable</button>
     <button type="button" class="mode" id="mode_sv" role="tab"
       aria-selected="false" aria-controls="svPanel">Shortages &amp; variations</button>
     <button type="button" class="mode" id="mode_br" role="tab"
@@ -319,10 +322,10 @@
       <li><b>Reissues</b> With the prints or in a later drop: the reissued
         diagrams replace their originals before anything is built.</li>
       <li><b>High Speed PM arrivals</b> The day before&rsquo;s Diagram Summary
-        and Detail — Friday&rsquo;s for Saturday, Saturday&rsquo;s for Sunday —
-        together or one at a time, before the prints or after.</li>
-      <li><b>Base diagrams</b> For a timetable change: every book is built
-        for a week of the timetable, a sheet per day type.</li>
+        and Detail CSVs — Friday&rsquo;s for Saturday, Saturday&rsquo;s for
+        Sunday — in the box under the prints, together or one at a time.</li>
+      <li><b>Base diagrams</b> For a timetable change, use the Base diagrams
+        tab.</li>
     </ul>
 
     <button class="berth" id="we_berth" type="button">
@@ -335,6 +338,18 @@
       </span>
     </button>
     <input type="file" id="we_file" accept=".docx,.doc,.txt,.csv,text/plain" multiple hidden>
+
+    <button class="berth berth-small" id="we_hsberth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>High Speed PM arrivals: drop the day before&rsquo;s Diagram Summary and Detail here</strong>
+          <span>.csv · Friday&rsquo;s for Saturday, Saturday&rsquo;s for Sunday · together or one at a time, before the prints or after · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="we_hsfile" accept=".csv,text/csv" multiple hidden>
+    <p class="zonesum" id="we_hsstate" role="status">No reports in yet — the High Speed sheet&rsquo;s PM arrivals stay empty until the day before&rsquo;s pair is in.</p>
 
     <p class="orpaste">
       <button type="button" class="linkish" id="we_pastetoggle"
@@ -361,9 +376,24 @@
             placeholder="Leave empty unless there is a reissue"></textarea>
         </label>
       </div>
+      <p class="paste-hint"><b>High Speed PM arrivals?</b> Paste the day
+        before&rsquo;s Diagram Summary and Detail here as well — Friday&rsquo;s
+        for Saturday, Saturday&rsquo;s for Sunday. Either way round works.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary <em>the day before — optional</em></span>
+          <textarea id="we_paste_sum" rows="4" spellcheck="false" wrap="off"
+            placeholder="The day before's Diagram Summary"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail <em>the day before — optional</em></span>
+          <textarea id="we_paste_det" rows="4" spellcheck="false" wrap="off"
+            placeholder="The day before's Diagram Detail"></textarea>
+        </label>
+      </div>
       <div class="paste-acts">
         <button type="button" class="btn" id="we_paste_go">Build the books from the pasted prints</button>
-        <button type="button" class="btn ghost" id="we_paste_clear">Clear both boxes</button>
+        <button type="button" class="btn ghost" id="we_paste_clear">Clear the boxes</button>
       </div>
       <p class="paste-say" id="we_paste_say" role="status"></p>
     </div>
@@ -388,17 +418,93 @@
         rebuilds it — save again afterwards.</span>
     </div>
 
-    <div class="opts-row" id="we_baserow" hidden>
-      <span class="opts-label">Base diagrams</span>
-      <label>Week of <input type="date" id="we_basedate" autocomplete="off"></label>
-      <span class="opts-hint" id="we_basehint">These are the base diagrams for a
-        timetable, not one day&rsquo;s prints: every book is built for the week
-        holding the date chosen, a sheet per day type — Monday, Tuesday to
-        Thursday, Friday, Saturday and Sunday in the usual book — from the
-        diagrams that run on it.</span>
-    </div>
 
     <div class="roads" id="we_roads"></div>
+  </section>
+
+  <section class="platform" id="bsPanel" role="tabpanel" aria-labelledby="mode_bs" hidden>
+    <h2 class="vh">A week of books from the base diagrams</h2>
+    <ul class="whatfor needs">
+      <li><b>Base diagrams</b> The base diagram prints for a timetable — one
+        document, or one per day code (FX, FO, SO, SUN) dropped together.</li>
+      <li><b>The whole week</b> Every book is built for a week of the
+        timetable, a sheet per day type: Monday, Tuesday to Thursday, Friday,
+        Saturday and Sunday.</li>
+      <li><b>High Speed PM arrivals</b> Taken from the day before&rsquo;s base
+        diagrams — nothing else to drop.</li>
+      <li><b>Another week</b> Once built, choose a date under Week of.</li>
+    </ul>
+
+    <button class="berth" id="bs_berth" type="button">
+      <span class="berth-inner">
+        <span class="buffer" aria-hidden="true"></span>
+        <span class="berth-txt">
+          <strong>Drop the base diagrams here</strong>
+          <span>.docx, .doc, .txt or .csv · every day code together (FX, FO, SO, SUN), or one document · reissues welcome · or click to choose</span>
+        </span>
+      </span>
+    </button>
+    <input type="file" id="bs_file" accept=".docx,.doc,.txt,.csv,text/plain" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="bs_pastetoggle"
+              aria-expanded="false" aria-controls="bs_pastebox">Can&rsquo;t get
+        the base diagrams onto this machine? Paste them instead</button>
+    </p>
+
+    <div class="pastebox" id="bs_pastebox" hidden>
+      <p class="paste-hint">In Word, press <b>Ctrl+A</b> then <b>Ctrl+C</b>
+        and paste into the first box — each day code&rsquo;s document one after
+        another is fine. The diagram lines keep their columns as tabs, so paste
+        as it comes. The second box is only for reissued diagrams.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Base diagrams <em>one document, or all of them in turn</em></span>
+          <textarea id="bs_paste_main" rows="6" spellcheck="false" wrap="off"
+            placeholder="Paste the base diagrams here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Reissued diagrams <em>optional</em></span>
+          <textarea id="bs_paste_re" rows="6" spellcheck="false" wrap="off"
+            placeholder="Leave empty unless there is a reissue"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="bs_paste_go">Build the week from the pasted diagrams</button>
+        <button type="button" class="btn ghost" id="bs_paste_clear">Clear the boxes</button>
+      </div>
+      <p class="paste-say" id="bs_paste_say" role="status"></p>
+    </div>
+
+    <div class="board">
+      <p class="status" id="bs_status" role="status"></p>
+      <div class="board-acts" id="bs_allbar" hidden>
+        <button class="btn light" id="bs_dlall" type="button">Save all books (.zip)</button>
+        <button class="btn light" id="bs_dlupd" type="button" hidden>Save updated diagrams (.docx)</button>
+        <button class="btn ghost light" id="bs_clearall" type="button">Start over</button>
+        <span class="note" id="bs_allnote"></span>
+      </div>
+    </div>
+
+    <div class="opts-row" id="bs_baserow" hidden>
+      <span class="opts-label">Week of</span>
+      <label><input type="date" id="bs_basedate" autocomplete="off"></label>
+      <span class="opts-hint" id="bs_basehint">The week holding the date chosen
+        is built, a sheet per day type, from the diagrams that run on each
+        day.</span>
+    </div>
+
+    <div class="opts-row" id="bs_optsrow" hidden>
+      <span class="opts-label">Options</span>
+      <label><input type="checkbox" id="bs_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
+      <label><input type="checkbox" id="bs_hc_metro" autocomplete="off"> Metro</label>
+      <label><input type="checkbox" id="bs_hc_hs" autocomplete="off"> High Speed</label>
+      <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
+        headcode as standard. Ticking a book puts one on every line of it and
+        rebuilds it — save again afterwards.</span>
+    </div>
+
+    <div class="roads" id="bs_roads"></div>
   </section>
 
   <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
@@ -412,6 +518,10 @@
       <li><b>Formations of three</b> Drop the Diagram Summary too when one
         needs placing.</li>
     </ul>
+
+    <p class="mustdo"><b>Mainline &amp; Metro only</b>This list is for the
+      Mainline and Metro fleets. It is not for the High Speed (Class 395)
+      fleet.</p>
 
     <button class="berth" id="svberth" type="button">
       <span class="berth-inner">
@@ -558,6 +668,10 @@
         Diagram Detail below, or the weekday books&rsquo; own pair is used
         where they are built.</li>
     </ul>
+
+    <p class="mustdo"><b>Mainline &amp; Metro only</b>Berth requests here are
+      for the Mainline and Metro fleets. They are not for the High Speed
+      (Class 395) fleet.</p>
 
     <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
       an experimental tool. It is a reference only, to help you make a

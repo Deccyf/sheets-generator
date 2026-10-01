@@ -179,12 +179,18 @@ source.
    **Base diagrams.** A day's prints are dated that day, From and Until
    alike; the base diagrams for a timetable run over periods, on the days
    their codes name (`SHEETS_PRINTS.daysOf`, shared with the fleet
-   analysis: FSX, FO, SO, Su, MO, WThO…). From those `run` builds one date -
+   analysis: FSX, FX, FO, SO, Su, SUN, MO, WThO… - an "excepted" code is
+   the working week without those days, so FX is Monday to Thursday). They
+   can come as one document or as one per day code, dropped together:
+   `mergeDocs` pools them into one timetable, keeping a number printed
+   again as `CODE|NUM#n` as one document would. From those `run` builds one date -
    `opts.forDate`, or the first day anything runs - out of the diagrams that
    run on it (`runningOn`: in period, on the day, the later-starting
    printing where two do), and the day before's, where the timetable covers
-   it, gives the 395 sheet its PM arrivals. The weekend panel builds a
-   **week** from them (`runWeek`): every book - Mainline, Ramsgate, Metro,
+   it, gives the 395 sheet its PM arrivals. The **Base diagrams** tab builds a
+   **week** from them (`runWeek`) - it is the weekend tab's panel set up a
+   second time (`printsPanel`), and each sends the other's prints along
+   (`SheetsEngine.printsKind`): every book - Mainline, Ramsgate, Metro,
    High Speed - with a sheet per day type, named the way the depot's own
    base template names its tabs ("DEC MONDAY", "DEC TUE-THU"). A day type
    is a run of days working the same diagrams after the same night, so

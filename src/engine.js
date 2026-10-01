@@ -915,9 +915,24 @@ function mergeDocs(inputs, unzipFn){
     bases = [parsedDocs[0]];
     reissues = parsedDocs.slice(1);
   }
-  if (bases.length > 1)
-    throw new Error("More than one full prints document was dropped — drop one " +
-                    "weekend prints file plus its reissue documents.");
+  /* The base diagrams for a timetable can come as a document per day code
+     - FX, FO, SO, SUN - and are still one timetable: pooled, a number seen
+     again is kept as CODE|NUM#n, the way one document keeps it, and run()
+     picks the printing each day runs. A day's weekend prints still come as
+     one document. */
+  if (bases.length > 1){
+    if (!bases.every(function(d){ return isBasePrints(d.diags); }))
+      throw new Error("More than one full prints document was dropped — drop one " +
+                      "weekend prints file plus its reissue documents.");
+    const pool = new Map();
+    for (const d of bases) for (const v of d.diags.values()){
+      let k = v.code + "|" + v.num;
+      for (let n = 2; pool.has(k); n++) k = v.code + "|" + v.num + "#" + n;
+      pool.set(k, v);
+    }
+    bases = [{name: bases.map(function(d){ return d.name; }).join(" + "),
+              bytes: null, diags: pool, pooled: bases.length}];
+  }
   const base = bases[0];
   function docDate(d){
     for (const v of d.diags.values()) if (v.date) return v.date;
@@ -1135,7 +1150,7 @@ function run(input, unzipFn, zipFn, opts){
   // read, and what the reissue merge did
   const mergeLines = mg.warn.slice();
   if (mg.reissues.length){
-    updated = buildUpdatedDocx(mg.base, mg.reissues, unzipFn, zipFn);
+    updated = mg.base.pooled ? null : buildUpdatedDocx(mg.base, mg.reissues, unzipFn, zipFn);
     mergeLines.push(["merge", "reissue merged: " +
       plural(mg.replaced.length, "diagram") + " replaced" +
       (mg.added.length ? ", " + mg.added.length + " added" : "") +
@@ -1145,7 +1160,10 @@ function run(input, unzipFn, zipFn, opts){
     if (mg.added.length)
       mergeLines.push(["merge", "added by reissue: " + mg.added.join(", ")]);
     if (!updated){
-      const why = !isDocxBytes(mg.base.bytes)
+      const why = mg.base.pooled
+        ? "the base diagrams came as " + mg.base.pooled + " documents, so there is " +
+          "no one document to splice the reissue into"
+        : !isDocxBytes(mg.base.bytes)
         ? "the base prints are not a Word document, so there is nothing to " +
           "splice the reissue into"
         : mg.reissues.some(function(r){ return !isDocxBytes(r.bytes); })
@@ -1366,7 +1384,23 @@ function runWeek(input, unzipFn, zipFn, opts){
                  types: groups.map(function(g){ return g.tab; })}};
 }
 
-root.SheetsEngine = {run, runWeek, PROFILES, docxParagraphs, parseDiagrams,
+/* What dropped prints are, before anything is built: "base" for the base
+   diagrams of a timetable (a period and day codes), "day" for a day's
+   prints, null for neither - so each tab can send the other's along. */
+function printsKind(inputs, unzipFn){
+  let any = false;
+  for (const f of inputs){
+    let diags;
+    try { diags = parseDiagrams(readPrints(f.bytes, unzipFn), null); }
+    catch (e) { continue; }
+    if (!diags.size) continue;
+    any = true;
+    if (isBasePrints(diags)) return "base";
+  }
+  return any ? "day" : null;
+}
+
+root.SheetsEngine = {run, runWeek, printsKind, PROFILES, docxParagraphs, parseDiagrams,
                     looksLikePrints, printsFromCsv,
                     previewHtml, resolveStation, codeFor, looksLikeStabling,
                     DEST_CODE, BERTH_CODE};
