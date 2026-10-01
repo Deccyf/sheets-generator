@@ -140,6 +140,13 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.23.1 — 1 October 2026 — stabled diagrams in the AZ1 / AZ9 count
+
+The planner wants the stabled diagrams counted too: a diagram that stands
+all day now counts in the AZ1 / AZ9 table where it stands, as a start and
+an end of the day there. They still get no line in the blocks above, as
+they run nothing.
+
 ## 3.23.0 — 1 October 2026 — modded-unit diagrams, and the AZ1 / AZ9 count
 
 **AZ1 diagrams are noted "Modded unit only"** - on the DIAGRAM cell, ahead

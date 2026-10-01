@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.23.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.23.1</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1678,7 +1678,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.23.0
+      works without an internet connection. Version 3.23.1
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2951,7 +2951,8 @@ const SHEETS_RULES = (() => {
         { p: "Built from the base diagrams for a timetable, each day type's " +
              "sheet also has a table under the blocks: how many AZ1 and how " +
              "many AZ9 diagrams start the day at each depot and station, and " +
-             "how many end it there, with the totals. And every AZ1 diagram " +
+             "how many end it there, with the totals — a diagram stabled all " +
+             "day counted where it stands. And every AZ1 diagram " +
              "carries the note “Modded unit only”, ahead of its route note." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
@@ -6557,8 +6558,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   if (titles && titles.base && F) {
     const tally = new Map();
     for (const [d, st] of F.S) {
+      /* a stabled diagram - standing all day - counts too: it starts and
+         ends the day where it stands */
       const k = SERIES.findIndex(x => x.re.test(d));
-      if (k < 0 || !st.some(x => x.dep != null)) continue;     // one that stands all day runs nothing
+      if (k < 0 || !st.length) continue;
       const ends = [place3(st[0].code), place3(st[st.length - 1].code)];
       ends.forEach((p, j) => {
         if (!tally.has(p)) tally.set(p, [0, 0, 0, 0]);

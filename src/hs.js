@@ -818,8 +818,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   if (titles && titles.base && F) {
     const tally = new Map();
     for (const [d, st] of F.S) {
+      /* a stabled diagram - standing all day - counts too: it starts and
+         ends the day where it stands */
       const k = SERIES.findIndex(x => x.re.test(d));
-      if (k < 0 || !st.some(x => x.dep != null)) continue;     // one that stands all day runs nothing
+      if (k < 0 || !st.length) continue;
       const ends = [place3(st[0].code), place3(st[st.length - 1].code)];
       ends.forEach((p, j) => {
         if (!tally.has(p)) tally.set(p, [0, 0, 0, 0]);

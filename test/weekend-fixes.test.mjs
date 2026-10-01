@@ -722,8 +722,11 @@ test("the base sheets note the modded-unit AZ1 diagrams and count AZ1 and AZ9 by
     "\t\t" + from + "\t\t06+" + String(num % 60).padStart(2, "0") + "\t5R" + String(num % 100).padStart(2, "0") + "\t\t0.82\t",
     "\t\tAshford I\t07+00\t07.10\t1J" + String(num % 100).padStart(2, "0") + "\t\t20.00\t",
     "\t\t" + to + "\t08+00\t\t\t\t\t"];
+  // and an AZ9 that stands all day at Faversham: it counts there, start and end
+  const stabled = ["Diagram:\tAZ\t902\tFSX", "Fleet:\t395/0", "From:\t13/12/2026\tUntil:\t15/05/2027",
+                   "\t\tFav Bk Rd\t\t\t\tSTABLD\t\t"];
   const lines = [...D(101, "Ashfrd DS", "Ram Depot"), ...D(102, "Ashfrd DS", "Ashfrd DS"),
-                 ...D(901, "Ram Depot", "Ashfrd DS"), ...D(601, "Ashfrd DS", "Ram Depot")];
+                 ...D(901, "Ram Depot", "Ashfrd DS"), ...D(601, "Ashfrd DS", "Ram Depot"), ...stabled];
   const res = N.SheetsEngine.runWeek([text(lines, "base diagrams.txt")], zip.un, zip.z, {});
   const hs = res.books.find(b => b.road === "High Speed");
   const L = hs.sheets[0].layout, COLS = "ABCDEFGHIJKLMNOPQRST";
@@ -741,8 +744,9 @@ test("the base sheets note the modded-unit AZ1 diagrams and count AZ1 and AZ9 by
                    ["LOCATION", "AZ1 START", "AZ1 ENDS", "AZ9 START", "AZ9 ENDS"]);
   const rows = {};
   for (let r = t + 2; v(r, "B"); r++) rows[v(r, "B")] = [3, 4, 5, 6].map(i => v(r, COLS[i - 1]));
-  assert.deepEqual(rows, { ASH: ["2", "1", "0", "1"], RAM: ["0", "1", "1", "0"],
-                           TOTAL: ["2", "2", "1", "1"] }, "AZ601 is in neither series");
+  assert.deepEqual(rows, { ASH: ["2", "1", "0", "1"], FAV: ["0", "0", "1", "1"],
+                           RAM: ["0", "1", "1", "0"], TOTAL: ["2", "2", "2", "2"] },
+    "AZ601 is in neither series; the stabled AZ902 counts at Faversham");
   // the note shows in the preview too, as Excel shows a comment
   assert.match(N.SHEETS_XLSX.previewHtml(L), /title="Modded unit only/);
   // and a day's own sheets have no such table
