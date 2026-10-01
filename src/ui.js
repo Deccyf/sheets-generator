@@ -191,6 +191,51 @@ const isTextBox = t => !!t && (t.tagName === "TEXTAREA" ||
     e.preventDefault();
   }));
 
+/* A report pasted into a box is held by the page, not written into it.
+   Chrome lays out every line a text box holds, and in a real, windowed
+   Chrome a 5 MB Diagram Detail pasted into one took the tab from 240 MB to
+   1.3 GB - 1.9 GB with the HTML copy Excel puts on the clipboard beside the
+   text - and on a work PC that was "Aw, Snap! Out of Memory" the moment it
+   went in. Held, the box shows one line saying what it has; the build reads
+   the report itself (boxText). Anything shorter - a note, a list of units -
+   is the browser's as before, undo and all. */
+const HOLD_FROM = 100000;                 // characters: a report, not a typed line
+const held = new WeakMap();               // box -> the report it stands for
+const boxText = el => (el ? (held.has(el) ? held.get(el) : el.value) : "");
+function setBox(el, text) {
+  text = String(text || "");
+  if (text.length < HOLD_FROM) { held.delete(el); el.value = text; }
+  else {
+    held.set(el, text);
+    let lines = 1;
+    for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n", i + 1)) lines++;
+    const head = text.slice(0, 4000);
+    const what = /Diagram Detail Report/i.test(head) ? "Diagram Detail"
+      : /DIAGRAM SUMMARY REPORT|Diagram Summary for:/i.test(head) ? "Diagram Summary" : "Report";
+    el.value = what + " pasted — " + lines.toLocaleString("en-GB") + " lines, " +
+      (text.length / 1048576).toFixed(1) + " MB — held ready to build, not shown here " +
+      "to keep the page light.\nPaste again to replace it; type in the box to empty it.";
+  }
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function holdPastes(el) {
+  if (!el) return;
+  el.addEventListener("paste", e => {
+    const t = e.clipboardData ? e.clipboardData.getData("text/plain") : "";
+    // a short paste into an ordinary box is the browser's
+    if (!held.has(el) && t.length < HOLD_FROM) return;
+    e.preventDefault();
+    setBox(el, t);
+  });
+  /* typing in a box that holds a report would edit only the line standing
+     in for it, so the box is emptied instead */
+  el.addEventListener("beforeinput", e => {
+    if (!held.has(el) || e.inputType === "insertFromPaste") return;
+    e.preventDefault();
+    setBox(el, "");
+  });
+}
+
 /* The file itself dropped straight into a paste box. after(name, err) is
    told what happened either way. */
 function wireBoxDrop(el, after) {
@@ -209,8 +254,7 @@ function wireBoxDrop(el, after) {
     const fr = new FileReader();
     fr.onerror = () => { if (after) after(f[0].name, fr.error || new Error("unreadable")); };
     fr.onload = () => {
-      el.value = String(fr.result || "");
-      el.dispatchEvent(new Event("input", { bubbles: true }));
+      setBox(el, fr.result);
       if (after) after(f[0].name, null);
     };
     fr.readAsText(f[0]);
@@ -849,16 +893,17 @@ function makePanel(ids) {
   });
   for (const el of boxes) {
     el.addEventListener("input", () => { markFilled(el); pSay(""); });
+    holdPastes(el);
     wireBoxDrop(el, (name, err) =>
       pSay(err ? MSG.boxReadFailed(name) : MSG.readIntoBox(name), err ? "err" : "go"));
   }
   const clearEl = $(ids.pasteClear);
   if (clearEl) clearEl.addEventListener("click", () => {
-    for (const el of boxes) { el.value = ""; markFilled(el); }
+    for (const el of boxes) { held.delete(el); el.value = ""; markFilled(el); }
     pSay(MSG.boxesCleared);
     if (boxes[0]) boxes[0].focus();
   });
-  const clearBoxes = () => { for (const el of boxes) { el.value = ""; markFilled(el); } pSay(""); };
+  const clearBoxes = () => { for (const el of boxes) { held.delete(el); el.value = ""; markFilled(el); } pSay(""); };
   return { say, enqueue, roadsEl, allbar, allnote, showBars, captureOpen,
            restoreFocus, pSay, boxes, clearBoxes };
 }
@@ -1199,7 +1244,7 @@ const panels = {};
      build differently. Which report a box holds is read off the text, not
      off which box it is. */
   function sniffPaste(el, label) {
-    const raw = el ? el.value : "";
+    const raw = boxText(el);
     const text = GENIUS.pastedCsv(raw);
     if (!text) return { empty: true, el, label };
     let kind = null, fmt = "csv";
@@ -1504,8 +1549,8 @@ const panels = {};
   const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
   const readsAsPrints = t => SHEETS_PRINTS.looksLikePrints(t) || !!SHEETS_PRINTS.printsFromCsv(t);
   $("#we_paste_go").addEventListener("click", () => enqueue(async () => {
-    const main = (wePasteMain ? wePasteMain.value : "").replace(/^﻿/, "");
-    const re = (wePasteRe ? wePasteRe.value : "").replace(/^﻿/, "");
+    const main = boxText(wePasteMain).replace(/^﻿/, "");
+    const re = boxText(wePasteRe).replace(/^﻿/, "");
     if (!main.trim()) { P.pSay(MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
     if (!readsAsPrints(main)) {
       const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);

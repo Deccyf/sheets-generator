@@ -140,6 +140,27 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.25.1 — 1 October 2026 — a pasted Diagram Detail no longer runs Chrome out of memory
+
+**Pasting the Diagram Detail into the weekday box crashed the tab** ("Aw,
+Snap! Error code: Out of Memory"). Chrome lays out every line a text box
+holds, and a Detail is three to six megabytes. In a real, windowed Chrome
+the 5 MB one for 18/09 took the tab from 240 MB to 1.3 GB the moment it
+went in, and to 1.9 GB with the HTML copy Excel puts on the clipboard
+beside the text. On a work PC that is out of memory, before Build is even
+pressed. Headless Chrome, which the tests use, lays out nothing and stayed
+under 400 MB, which is why nothing had caught it.
+
+A paste of a whole report (100,000 characters or more) is now held by the
+page and never written into the box. The box says what it holds, for
+example "Diagram Detail pasted — 14,054 lines, 4.9 MB", and the build reads
+the report itself. The same paste peaks at 413 MB (642 MB with Excel's
+HTML). Pasting again replaces it, typing in the box empties it, and Clear
+empties it. A file dragged into a box is held the same way. A short paste
+is still the browser's, undo and all. Both the weekday boxes, the second
+day's included, and the weekend prints boxes do this. The Genius CSV smoke
+test pastes a report-sized pair, builds from it, and types in a held box.
+
 ## 3.25.0 — 1 October 2026 — STOPPED UNITS under Ashford
 
 The planner's own sheet for 02/10 has a table under Ashford's block for

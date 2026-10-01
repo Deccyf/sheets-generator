@@ -135,6 +135,41 @@ console.log("files dragged into boxes :", await page.textContent("#status"));
 if (!await page.locator("#roads .road").count())
   throw new Error("files dragged into the boxes built no roads");
 
+/* ---- a report-sized paste is held, not written into the box ----
+   Chrome lays out everything a text box holds: a 5 MB Detail pasted into
+   one took a windowed Chrome from 240 MB to 1.3 GB and a work PC to "Out of
+   Memory". The page keeps the report and the box says what it has. Padded
+   past the hold line, these are the same two reports. */
+await page.reload();
+await page.locator("#pastetoggle").click();
+const pasteEv = (sel, text) => page.evaluate(([s, t]) => {
+  const el = document.querySelector(s);
+  el.focus();
+  const dt = new DataTransfer();
+  dt.setData("text/plain", t);
+  const ev = new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true });
+  el.dispatchEvent(ev);
+  return ev.defaultPrevented;
+}, [sel, text]);
+const pad = "\r\n".repeat(60000);
+const heldSum = await pasteEv("#paste_sum", geniusSummaryCsv() + pad);
+const heldDet = await pasteEv("#paste_det", geniusDetailCsv() + pad);
+const detBox = await page.$eval("#paste_det", e => e.value);
+console.log("big paste held           :", detBox.split("\n")[0].slice(0, 70));
+if (!heldSum || !heldDet || !/^Diagram Detail pasted — /.test(detBox) || detBox.length > 400)
+  throw new Error("a report-sized paste should be held, with one line in the box");
+if (await pasteEv("#paste_sum2", "a short note"))
+  throw new Error("a short paste is the browser's own");
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });
+console.log("built from held reports  :", (await page.textContent("#status")).slice(0, 60));
+await page.locator("#paste_det").focus();
+await page.keyboard.type("x");
+if (await page.$eval("#paste_det", e => e.value) !== "")
+  throw new Error("typing in a box that holds a report should empty it");
+console.log("typing in a held box     : empties it");
+
 /* ---- the printed book's memory: save, rebuild a changed plan, be told ----
    The books on screen are for MON 03/08. Saving stores their fingerprint;
    a re-export of the same date with GT101 gone - its Ashford pair now runs alone. (GT106 would be no test: its only move is an empty hop to a berth, which the books suppress.)
