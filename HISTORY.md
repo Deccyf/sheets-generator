@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.0 — 1 October 2026 — each book's card draws the trains it carries
+
+A book's card drew a fixed set of trains: Mainline 375, 376 and 377,
+Ramsgate 375 and 376, Metro 465, 466 and 707. So Ramsgate on 18/09, with
+two 377s on it, showed no 377, and showed a 376 it did not have. Each card
+now draws a train for each class its book's units belong to, in the
+masthead's order, and none for the others. Ramsgate on 18/09 shows a 375
+and a 377, and that day's Metro a 465 and a 707. The weekday books read it
+off their entries. The engine's books, for the weekend and the base week,
+carry it as `classes`, and a week's books gather it across the day types.
+A book that says nothing about its classes keeps its usual set.
+
 ## 3.30.0 — 1 October 2026 — berth requests turn the 395s away
 
 Berth requests are for the Mainline and Metro fleets only, at the

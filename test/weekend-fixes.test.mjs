@@ -788,3 +788,16 @@ test("the base diagrams as a document per day code - FX, FO, SO, SUN - build the
   assert.throws(() => run([docx(PRINTS_LINES, "a prints.docx"), docx(PRINTS_LINES, "b prints.docx")]),
     /More than one full prints document/);
 });
+
+test("each book says which classes it carries, so its card draws only those trains", () => {
+  /* The cards drew a fixed set per book - Ramsgate always 375 and 376 - so
+     a Ramsgate book with 377s on it showed no 377, and one with no 376s
+     showed one anyway. Each book now lists the classes of its own units. */
+  const res = N.SheetsEngine.runWeek([docx(PRINTS_LINES, "prints.docx")], zip.un, zip.z, {});
+  // GT501 is a 375/6 and GT502 a 377/5; GN601, a 465, is the Metro's
+  const main = res.books.find(b => b.road === "Mainline");
+  assert.deepEqual(Array.from(main.classes), ["375", "377"], "no 376 on these prints, so none drawn");
+  const metro = res.books.find(b => b.road === "Metro");
+  if (metro && !metro.skipped) assert.deepEqual(Array.from(metro.classes), ["465"]);
+  for (const b of res.books.filter(b => b.skipped)) assert.equal(b.classes, undefined, b.road + " has no units");
+});

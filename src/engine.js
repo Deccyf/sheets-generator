@@ -1236,7 +1236,7 @@ function run(input, unzipFn, zipFn, opts){
                   xlsx: sheets.length ? SHEETS_XLSX.writeWorkbook(sheets, zipFn) : null,
                   reportName: name.replace(/\.xlsx$/, ".report.txt"),
                   report: buildReport(name, n, nSecs, warn),
-                  entries: n, sections: nSecs, reviews: warn.length,
+                  entries: n, sections: nSecs, reviews: warn.length, classes: classesOf(secs),
                   sectionCounts: Object.keys(secs).map(s2 => [s2, secs[s2].length])});
       continue;
     }
@@ -1266,7 +1266,7 @@ function run(input, unzipFn, zipFn, opts){
       books.push({label: part.label, road: part.road, name, xlsx, layout,
                   reportName: name.replace(/\.xlsx$/, ".report.txt"),
                   report: buildReport(name, pn, nSecs, warn),
-                  entries: pn, sections: nSecs, reviews: warn.length,
+                  entries: pn, sections: nSecs, reviews: warn.length, classes: classesOf(part.secs),
                   sectionCounts: Object.keys(part.secs).map(s => [s, part.secs[s].length])});
     }
   }
@@ -1373,7 +1373,10 @@ function runWeek(input, unzipFn, zipFn, opts){
             report: name + ": " + plural(entries, "entry", "entries") + " over " +
               plural(parts.length, "day type") + "\n\nReview items:\n" +
               items.map(function(l){ return l + "\n"; }).join(""),
-            entries, sections: parts[0].b.sections, reviews: items.length};
+            entries, sections: parts[0].b.sections, reviews: items.length,
+            // every class any day type of the week carries
+            classes: Array.from(new Set([].concat.apply([], parts.map(function(p){
+              return p.b.classes || []; })))).sort()};
   });
   const g0 = groups[0].res;
   return {date: msDmy(monday), banner: "THE WEEK OF " + dateBits(msDmy(monday)).banner,
@@ -1382,6 +1385,19 @@ function runWeek(input, unzipFn, zipFn, opts){
           base: {from: msDmy(first), until: last !== null ? msDmy(last) : null,
                  date: msDmy(monday), week: msDmy(monday),
                  types: groups.map(function(g){ return g.tab; })}};
+}
+
+/* The classes a book's entries carry, for the trains on its card: a unit's
+   cls is "4 375", "4 375-9", "5 376" - the class is its three digits. */
+function classesOf(secs){
+  const out = new Set();
+  for (const list of Object.values(secs || {}))
+    // an entry here keeps its units as blocks; the weekday shape as units
+    for (const e of list || []) for (const u of e.blocks || e.units || []){
+      const m = /(\d{3})/.exec(String(u.cls || "").split(" ").pop());
+      if (m) out.add(m[1]);
+    }
+  return Array.from(out).sort();
 }
 
 /* What dropped prints are, before anything is built: "base" for the base

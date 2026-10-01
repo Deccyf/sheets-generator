@@ -559,7 +559,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.30.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1180,7 +1180,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.30.0
+      works without an internet connection. Version 3.31.0
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -7639,7 +7639,7 @@ function run(input, unzipFn, zipFn, opts){
                   xlsx: sheets.length ? SHEETS_XLSX.writeWorkbook(sheets, zipFn) : null,
                   reportName: name.replace(/\.xlsx$/, ".report.txt"),
                   report: buildReport(name, n, nSecs, warn),
-                  entries: n, sections: nSecs, reviews: warn.length,
+                  entries: n, sections: nSecs, reviews: warn.length, classes: classesOf(secs),
                   sectionCounts: Object.keys(secs).map(s2 => [s2, secs[s2].length])});
       continue;
     }
@@ -7669,7 +7669,7 @@ function run(input, unzipFn, zipFn, opts){
       books.push({label: part.label, road: part.road, name, xlsx, layout,
                   reportName: name.replace(/\.xlsx$/, ".report.txt"),
                   report: buildReport(name, pn, nSecs, warn),
-                  entries: pn, sections: nSecs, reviews: warn.length,
+                  entries: pn, sections: nSecs, reviews: warn.length, classes: classesOf(part.secs),
                   sectionCounts: Object.keys(part.secs).map(s => [s, part.secs[s].length])});
     }
   }
@@ -7776,7 +7776,10 @@ function runWeek(input, unzipFn, zipFn, opts){
             report: name + ": " + plural(entries, "entry", "entries") + " over " +
               plural(parts.length, "day type") + "\n\nReview items:\n" +
               items.map(function(l){ return l + "\n"; }).join(""),
-            entries, sections: parts[0].b.sections, reviews: items.length};
+            entries, sections: parts[0].b.sections, reviews: items.length,
+            // every class any day type of the week carries
+            classes: Array.from(new Set([].concat.apply([], parts.map(function(p){
+              return p.b.classes || []; })))).sort()};
   });
   const g0 = groups[0].res;
   return {date: msDmy(monday), banner: "THE WEEK OF " + dateBits(msDmy(monday)).banner,
@@ -7785,6 +7788,19 @@ function runWeek(input, unzipFn, zipFn, opts){
           base: {from: msDmy(first), until: last !== null ? msDmy(last) : null,
                  date: msDmy(monday), week: msDmy(monday),
                  types: groups.map(function(g){ return g.tab; })}};
+}
+
+/* The classes a book's entries carry, for the trains on its card: a unit's
+   cls is "4 375", "4 375-9", "5 376" - the class is its three digits. */
+function classesOf(secs){
+  const out = new Set();
+  for (const list of Object.values(secs || {}))
+    // an entry here keeps its units as blocks; the weekday shape as units
+    for (const e of list || []) for (const u of e.blocks || e.units || []){
+      const m = /(\d{3})/.exec(String(u.cls || "").split(" ").pop());
+      if (m) out.add(m[1]);
+    }
+  return Array.from(out).sort();
 }
 
 /* What dropped prints are, before anything is built: "base" for the base
@@ -11616,6 +11632,26 @@ if (lineupEl) {
 const SPRITES = { Mainline: ["375", "376", "377"], Ramsgate: ["375", "376"],
                   Metro: ["465", "466", "707"], "High Speed": ["395"] };
 const spritesOf = cls => (Array.isArray(cls) ? cls : [cls]).map(sprite).join("");
+/* A card draws the trains of the classes its book actually carries - the
+   Ramsgate book with 377s on it shows a 377 - in the lineup's order, and
+   none of the others. A book that says nothing of its classes keeps its
+   usual set. */
+const LINEUP_ORDER = FLEET_LINEUP.map(f => f[0]);
+const classOf = cls => { const m = /(\d{3})/.exec(String(cls || "").split(" ").pop()); return m ? m[1] : null; };
+function classesIn(secsByDay, pick) {
+  const out = new Set();
+  for (const m of Object.values(secsByDay || {}))
+    if (m && typeof m.forEach === "function")
+      m.forEach((list, sec) => {
+        if (!pick(sec)) return;
+        for (const e of list) for (const u of e.units || []) { const c = classOf(u.cls); if (c) out.add(c); }
+      });
+  return out;
+}
+const spritesFor = (classes, usual) => {
+  const have = LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
+  return have.length ? have : usual;
+};
 
 /* ---------------- a screenshot, enlarged ----------------
    The how-to fold's screenshots are small on the page. A click on one (or
@@ -12072,8 +12108,11 @@ const panels = {};
       panes.push(["Rules", () => rulesPane(b, res, secNames, b.kind === "berthing" ? null : b.kind)]);
       const unitHtml = "<b>" + entries + "</b> " + (entries === 1 ? "entry" : "entries") +
         " · " + plural(secNames.size, "section");
+      // the trains of the classes this book carries
+      const own = classesIn(b.secs(res), b.ram ? (s => s === "RAMSGATE")
+                                         : b.kind === "berthing" ? (s => s !== "RAMSGATE") : () => true);
       roadsEl.appendChild(roadCard({
-        i, road: b.road, fleetLabel: b.label, spriteCls: b.sprite, unitHtml,
+        i, road: b.road, fleetLabel: b.label, spriteCls: spritesFor(own, b.sprite), unitHtml,
         chips: reviewChips(review), panes, wide: b.wide,
         saves: [["Save book", () => {
           storePrinted(res);
@@ -12427,7 +12466,7 @@ function printsPanel(K) {
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
       roadsEl.appendChild(roadCard({
-        i, road, fleetLabel: b.label, spriteCls: SPRITE_FOR[b.road] || "375",
+        i, road, fleetLabel: b.label, spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
         unitHtml: "<b>" + b.entries + "</b> " + (b.entries === 1 ? "entry" : "entries") +
           " · " + plural(b.sections, "section"),
         chips: reviewChips(items), panes, wide: isWide(b.road),

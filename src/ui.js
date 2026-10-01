@@ -632,6 +632,26 @@ if (lineupEl) {
 const SPRITES = { Mainline: ["375", "376", "377"], Ramsgate: ["375", "376"],
                   Metro: ["465", "466", "707"], "High Speed": ["395"] };
 const spritesOf = cls => (Array.isArray(cls) ? cls : [cls]).map(sprite).join("");
+/* A card draws the trains of the classes its book actually carries - the
+   Ramsgate book with 377s on it shows a 377 - in the lineup's order, and
+   none of the others. A book that says nothing of its classes keeps its
+   usual set. */
+const LINEUP_ORDER = FLEET_LINEUP.map(f => f[0]);
+const classOf = cls => { const m = /(\d{3})/.exec(String(cls || "").split(" ").pop()); return m ? m[1] : null; };
+function classesIn(secsByDay, pick) {
+  const out = new Set();
+  for (const m of Object.values(secsByDay || {}))
+    if (m && typeof m.forEach === "function")
+      m.forEach((list, sec) => {
+        if (!pick(sec)) return;
+        for (const e of list) for (const u of e.units || []) { const c = classOf(u.cls); if (c) out.add(c); }
+      });
+  return out;
+}
+const spritesFor = (classes, usual) => {
+  const have = LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
+  return have.length ? have : usual;
+};
 
 /* ---------------- a screenshot, enlarged ----------------
    The how-to fold's screenshots are small on the page. A click on one (or
@@ -1088,8 +1108,11 @@ const panels = {};
       panes.push(["Rules", () => rulesPane(b, res, secNames, b.kind === "berthing" ? null : b.kind)]);
       const unitHtml = "<b>" + entries + "</b> " + (entries === 1 ? "entry" : "entries") +
         " · " + plural(secNames.size, "section");
+      // the trains of the classes this book carries
+      const own = classesIn(b.secs(res), b.ram ? (s => s === "RAMSGATE")
+                                         : b.kind === "berthing" ? (s => s !== "RAMSGATE") : () => true);
       roadsEl.appendChild(roadCard({
-        i, road: b.road, fleetLabel: b.label, spriteCls: b.sprite, unitHtml,
+        i, road: b.road, fleetLabel: b.label, spriteCls: spritesFor(own, b.sprite), unitHtml,
         chips: reviewChips(review), panes, wide: b.wide,
         saves: [["Save book", () => {
           storePrinted(res);
@@ -1443,7 +1466,7 @@ function printsPanel(K) {
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
       roadsEl.appendChild(roadCard({
-        i, road, fleetLabel: b.label, spriteCls: SPRITE_FOR[b.road] || "375",
+        i, road, fleetLabel: b.label, spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
         unitHtml: "<b>" + b.entries + "</b> " + (b.entries === 1 ? "entry" : "entries") +
           " · " + plural(b.sections, "section"),
         chips: reviewChips(items), panes, wide: isWide(b.road),
