@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.2 — 1 October 2026 — the weekend tab in plain words
+
+The weekend tab is worded the way the base tab now is. *What to drop*: the
+diagram prints for Saturday or Sunday, as the Word document or saved as
+text or CSV. *What you get*: a book for each fleet for that day.
+*Reissues*: drop them with the prints or afterwards; they replace the
+originals, and the updated prints can be saved as a Word document. *High
+Speed PM arrivals*: the day before's Diagram Summary and Detail CSVs in the
+second box, Friday's for a Saturday and Saturday's for a Sunday; without
+them the arrivals stay empty. The two drop zones, the line under the
+arrivals box and the paste hints are shortened to match.
+
 ## 3.31.1 — 1 October 2026 — the card's text follows its trains; the base tab in plain words
 
 **A card's fleet text names the classes its trains show**: "465 / 707" for

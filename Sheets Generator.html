@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.1</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.2</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -848,13 +848,17 @@
   <section class="platform" id="wePanel" role="tabpanel" aria-labelledby="mode_we" hidden>
     <h2 class="vh">Weekend books from the diagram prints</h2>
     <ul class="whatfor needs">
-      <li><b>Diagram prints</b> The weekend prints as the Word document
-        (.docx or .doc), or the same saved as text or as a CSV.</li>
-      <li><b>Reissues</b> With the prints or in a later drop: the reissued
-        diagrams replace their originals before anything is built.</li>
-      <li><b>High Speed PM arrivals</b> The day before&rsquo;s Diagram Summary
-        and Detail CSVs — Friday&rsquo;s for Saturday, Saturday&rsquo;s for
-        Sunday — in the box under the prints, together or one at a time.</li>
+      <li><b>What to drop</b> The diagram prints for Saturday or Sunday, as
+        the Word document (.docx or .doc), or saved as text or CSV.</li>
+      <li><b>What you get</b> A book for each fleet — Mainline, Ramsgate,
+        Metro and High Speed — for that day.</li>
+      <li><b>Reissues</b> Drop any reissued prints with the day&rsquo;s prints
+        or afterwards. The reissued diagrams replace the originals, and you
+        can save the updated prints as a Word document.</li>
+      <li><b>High Speed PM arrivals</b> Drop the day before&rsquo;s Diagram
+        Summary and Detail CSVs in the second box below — Friday&rsquo;s for a
+        Saturday, Saturday&rsquo;s for a Sunday. Without them the PM arrivals
+        stay empty.</li>
     </ul>
 
     <button class="berth" id="we_berth" type="button">
@@ -862,7 +866,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the weekend diagram prints here</strong>
-          <span>.docx, .doc, .txt or .csv · reissues welcome, together or afterwards · or click to choose</span>
+          <span>Word (.docx or .doc), text or CSV · reissued prints too, now or later · or click to choose</span>
         </span>
       </span>
     </button>
@@ -872,13 +876,13 @@
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
-          <strong>High Speed PM arrivals: drop the day before&rsquo;s Diagram Summary and Detail here</strong>
-          <span>.csv · Friday&rsquo;s for Saturday, Saturday&rsquo;s for Sunday · together or one at a time, before the prints or after · or click to choose</span>
+          <strong>High Speed PM arrivals — drop the day before&rsquo;s Diagram Summary and Detail here</strong>
+          <span>CSV · Friday&rsquo;s for a Saturday, Saturday&rsquo;s for a Sunday · both at once or one at a time, before or after the prints · or click to choose</span>
         </span>
       </span>
     </button>
     <input type="file" id="we_hsfile" accept=".csv,text/csv" multiple hidden>
-    <p class="zonesum" id="we_hsstate" role="status">No reports in yet — the High Speed sheet&rsquo;s PM arrivals stay empty until the day before&rsquo;s pair is in.</p>
+    <p class="zonesum" id="we_hsstate" role="status">Nothing dropped here yet — without the day before&rsquo;s Summary and Detail, the High Speed PM arrivals stay empty.</p>
 
     <p class="orpaste">
       <button type="button" class="linkish" id="we_pastetoggle"
@@ -887,12 +891,10 @@
     </p>
 
     <div class="pastebox" id="we_pastebox" hidden>
-      <p class="paste-hint">In Word, press <b>Ctrl+A</b> then <b>Ctrl+C</b>
-        and paste into the first box. The diagram lines keep their columns
-        as tabs, so paste as it comes — do not tidy it. A comma-separated
-        save from a spreadsheet is read too. Can&rsquo;t paste at all? Drag the
-        selection or the file straight into the box. The second box is only
-        for reissued prints.</p>
+      <p class="paste-hint">In Word, press <b>Ctrl+A</b> then <b>Ctrl+C</b>,
+        and paste into the first box exactly as it comes — don&rsquo;t tidy it.
+        The second box is only for reissued prints. Can&rsquo;t paste at all?
+        Drag the file, or the selection, straight into the box.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram prints <em>the whole weekend document</em></span>
@@ -905,9 +907,9 @@
             placeholder="Leave empty unless there is a reissue"></textarea>
         </label>
       </div>
-      <p class="paste-hint"><b>High Speed PM arrivals?</b> Paste the day
-        before&rsquo;s Diagram Summary and Detail here as well — Friday&rsquo;s
-        for Saturday, Saturday&rsquo;s for Sunday. Either way round works.</p>
+      <p class="paste-hint"><b>High Speed PM arrivals:</b> paste the day
+        before&rsquo;s Diagram Summary and Detail here — Friday&rsquo;s for a
+        Saturday, Saturday&rsquo;s for a Sunday. Either box for either one.</p>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary <em>the day before — optional</em></span>
@@ -1804,7 +1806,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.1
+      works without an internet connection. Version 3.31.2
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -16602,7 +16604,7 @@ const MSG = {
     " base diagrams for a timetable — sent to the Base diagrams tab.",
   sentToWeekendDay: names => "“" + names.join("”, “") + "” " + (names.length > 1 ? "are" : "is") +
     " a day’s weekend prints — sent to the Weekend tab.",
-  hsStateNone: "No reports in yet — the High Speed sheet’s PM arrivals stay empty until the day before’s pair is in.",
+  hsStateNone: "Nothing dropped here yet — without the day before’s Summary and Detail, the High Speed PM arrivals stay empty.",
   hsStateHalf: (got, want) => "The day before’s " + got + " is in ✓ — still needs its " + want + ".",
   hsStateBoth: dates => "Diagram Summary and Detail for " + dates.join(", ") + " in ✓ — the High Speed sheet takes its PM arrivals from them.",
   hsStateErr: e => "Those reports couldn’t be read for the arrivals: " + e,

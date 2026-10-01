@@ -45,7 +45,7 @@ const MSG = {
     " base diagrams for a timetable — sent to the Base diagrams tab.",
   sentToWeekendDay: names => "“" + names.join("”, “") + "” " + (names.length > 1 ? "are" : "is") +
     " a day’s weekend prints — sent to the Weekend tab.",
-  hsStateNone: "No reports in yet — the High Speed sheet’s PM arrivals stay empty until the day before’s pair is in.",
+  hsStateNone: "Nothing dropped here yet — without the day before’s Summary and Detail, the High Speed PM arrivals stay empty.",
   hsStateHalf: (got, want) => "The day before’s " + got + " is in ✓ — still needs its " + want + ".",
   hsStateBoth: dates => "Diagram Summary and Detail for " + dates.join(", ") + " in ✓ — the High Speed sheet takes its PM arrivals from them.",
   hsStateErr: e => "Those reports couldn’t be read for the arrivals: " + e,
