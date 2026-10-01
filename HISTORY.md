@@ -140,6 +140,12 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.23.3 — 1 October 2026 — stabled diagrams out of the AZ1 / AZ9 count
+
+Back as 3.23.0 had it, at the planner's word: the table counts only the
+diagrams that run - AZ1 START, AZ1 ENDS, AZ9 START, AZ9 ENDS - and a
+diagram stabled all day is not counted. The table is back to columns B to F.
+
 ## 3.23.2 — 1 October 2026 — stabled diagrams counted apart
 
 Counted in with the starts and ends, a stabled diagram made a place's

@@ -816,21 +816,17 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   /* The base diagrams' sheets add a count of the AZ1 and AZ9 diagrams: how
      many start the day at each depot and station, and how many end it there. */
   if (titles && titles.base && F) {
-    /* per place: for each series, the diagrams that start the day there and
-       end it there - those that run - and, apart, those stabled there all
-       day, which run nothing and so neither start nor end anywhere */
+    /* per place, for each series: the diagrams that start the day there and
+       those that end it there. Only those that run - a diagram stabled all
+       day is left out, as the planner wants it. */
     const tally = new Map();
-    const bump = (p, i) => {
-      if (!tally.has(p)) tally.set(p, [0, 0, 0, 0, 0, 0]);
-      tally.get(p)[i]++;
-    };
     for (const [d, st] of F.S) {
       const k = SERIES.findIndex(x => x.re.test(d));
-      if (k < 0 || !st.length) continue;
-      if (st.some(x => x.dep != null)) {
-        bump(place3(st[0].code), k * 3);
-        bump(place3(st[st.length - 1].code), k * 3 + 1);
-      } else bump(place3(st[0].code), k * 3 + 2);
+      if (k < 0 || !st.some(x => x.dep != null)) continue;
+      [place3(st[0].code), place3(st[st.length - 1].code)].forEach((p, j) => {
+        if (!tally.has(p)) tally.set(p, [0, 0, 0, 0]);
+        tally.get(p)[k * 2 + j]++;
+      });
     }
     if (tally.size) {
       const ORDER = ["ASH", "FAV", "MAR", "RAM", "SPX"];
@@ -838,28 +834,23 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         (ORDER.indexOf(a) < 0 ? 99 : ORDER.indexOf(a)) - (ORDER.indexOf(b) < 0 ? 99 : ORDER.indexOf(b)) ||
         (a < b ? -1 : a > b ? 1 : 0));
       const hd = Object.fromEntries(SKIN.header.map(([c, xf]) => [c, xf]));
-      // seven columns, B to H, ruled like the arrivals table: its left edge,
-      // its inner columns, and its right edge
-      const TCOLS = ["B", "C", "D", "E", "F", "G", "H"];
-      const like = j => j === 0 ? "B" : j === TCOLS.length - 1 ? "F" : "D";
-      TCOLS.forEach((c, j) => {
-        put(r, COL(c), SKIN.titles.ASHFORD[j === 0 ? "B" : j === TCOLS.length - 1 ? "F" : "C"],
-            j === 0 ? "AZ1 & AZ9 DIAGRAMS: START / END OF DAY, AND STABLED" : "");
+      const LEFT = ["B", "C", "D", "E", "F"];
+      for (const c of LEFT) {
+        put(r, COL(c), SKIN.titles.ASHFORD[c], c === "B" ? "AZ1 & AZ9 DIAGRAMS: START / END OF DAY" : "");
         cells[cells.length - 1].fc = "000000";
-      });
-      merges.push("B" + r + ":H" + r);
+      }
+      merges.push("B" + r + ":F" + r);
       r++;
-      const head = ["LOCATION", "AZ1 START", "AZ1 ENDS", "AZ1 STABLED",
-                    "AZ9 START", "AZ9 ENDS", "AZ9 STABLED"];
-      TCOLS.forEach((c, j) => put(r, COL(c), hd[like(j)], head[j]));
+      const head = ["LOCATION", "AZ1 START", "AZ1 ENDS", "AZ9 START", "AZ9 ENDS"];
+      LEFT.forEach((c, i) => put(r, COL(c), hd[c], head[i]));
       rowHeights.set(r, +SKIN.headerHt);
       r++;
       // in the sheet's own place codes, as its ENDS columns write them
       const rowsT = places.map(p => [p, ...tally.get(p)]);
-      rowsT.push(["TOTAL", ...[0, 1, 2, 3, 4, 5].map(i => places.reduce((a, p) => a + tally.get(p)[i], 0))]);
+      rowsT.push(["TOTAL", ...[0, 1, 2, 3].map(i => places.reduce((a, p) => a + tally.get(p)[i], 0))]);
       rowsT.forEach((vals, i) => {
-        TCOLS.forEach((c, j) => {
-          put(r, COL(c), ruled(SKIN.data[like(j)], runPos(i, rowsT.length)), vals[j], j > 0);
+        LEFT.forEach((c, j) => {
+          put(r, COL(c), ruled(SKIN.data[c], runPos(i, rowsT.length)), vals[j], j > 0);
           if (j === 0 && i < places.length) cells[cells.length - 1].fc = placeFc(places[i]);
         });
         r++;

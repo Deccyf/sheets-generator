@@ -268,9 +268,8 @@ const SHEETS_RULES = (() => {
         { p: "Built from the base diagrams for a timetable, each day type's " +
              "sheet also has a table under the blocks: how many AZ1 and how " +
              "many AZ9 diagrams start the day at each depot and station, and " +
-             "how many end it there, with the totals; and, apart, how many " +
-             "are stabled there all day, which run nothing and so neither " +
-             "start nor end anywhere. And every AZ1 diagram " +
+             "how many end it there, with the totals. A diagram stabled all " +
+             "day runs nothing and is not counted. And every AZ1 diagram " +
              "carries the note “Modded unit only”, ahead of its route note." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
              "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
