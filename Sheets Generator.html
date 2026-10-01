@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.3</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.4</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1043,26 +1043,27 @@
   <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
     <h2 class="vh">Shortages &amp; variations from the Operating Report</h2>
     <ul class="whatfor needs">
-      <li><b>Operating Report + Diagram Detail</b> Both for the same date, as
-        .pdf or .csv.</li>
-      <li><b>What comes back</b> Not a berthing book: the controller&rsquo;s
-        list of what is short, the wrong length or the wrong fleet, with
-        every service each one goes on to affect.</li>
-      <li><b>Formations of three</b> Drop the Diagram Summary too when one
-        needs placing.</li>
+      <li><b>What to drop</b> The Operating Report and the Diagram Detail for
+        the same day, as PDF or CSV.</li>
+      <li><b>What you get</b> Not a berthing book: the controller&rsquo;s list
+        of trains that are short, the wrong length or the wrong fleet, with
+        every later service each one affects — ready to copy or save.</li>
+      <li><b>The Diagram Summary</b> Optional. Add it so a 3-car in a train of
+        three or more units can be called <em>wrong end</em> or
+        <em>intermediate</em>. Without it, those are left on the Review list
+        for you to check.</li>
     </ul>
 
-    <p class="mustdo"><b>Mainline &amp; Metro only</b>This list is for the
-      Mainline and Metro fleets. It is not for the High Speed (Class 395)
-      fleet.</p>
+    <p class="mustdo"><b>Mainline &amp; Metro only</b>For the Mainline and
+      Metro fleets — not the High Speed (Class 395) fleet.</p>
 
     <button class="berth" id="svberth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the Operating Report &amp; Diagram Detail here</strong>
-          <span>.pdf or .csv · both for the same date · the Diagram Summary
-            too, if a formation of three needs placing · or click to choose</span>
+          <span>PDF or CSV · both for the same day · add the Diagram Summary
+            to place 3-cars in longer trains · or click to choose</span>
         </span>
       </span>
     </button>
@@ -1088,33 +1089,23 @@
         Arrival times on Ramsgate only</label>
       <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
         aria-controls="svoptshint">What each does</button>
-      <span class="opts-hint">Each one re-lays the list on screen, and the
-        copy and the save follow it.</span>
+      <span class="opts-hint">Each option changes the list on screen, and
+        what you copy or save.</span>
     </div>
     <div class="opts-hints" id="svoptshint" hidden>
-      <p><b>Lettered, for the Excel text box</b> — the depot's own hand, laid out for the Excel text
-        box it is pasted into: 20.19 cm wide, Calibri 11 bold. Every shortage,
-        swap or length case takes a letter of its own, in the order they
-        happen, and the whole run of fleet variations shares the last one, so
-        one letter names one train and the last names the fleet list. The
-        letter and bracket, then four spaces' worth, then the text; a blank
-        line before a <code>FOLLOWING</code>, which sits seven spaces in, the
-        first service straight after it; a service is one thing and never
-        breaks across two lines &mdash; one that will not fit goes whole onto
-        the next line, directly under the first service. In the fleet block
-        the letter stands against the first line only and every other line
-        starts where that one's text does. Copy carries the breaks and
-        indents over, so Excel does not decide its own.</p>
-      <p><b>Variations grouped by which way round</b> — the fleet block gathered by
-        the mismatch rather than by where the unit ends up: every
-        375/9-on-a-375-diagram together and every 375-on-a-375/9-diagram
-        together, each in diagram order. A working carrying one of each —
-        swapped with each other — keeps a block of its own between them.
-        Untick it and the block is grouped by the place the unit ends at, in
-        the order they turn up there.</p>
-      <p><b>Arrival times on Ramsgate only</b> — keeps <code>(ARR …)</code>
-        where the working ends at Ramsgate, station or depot, and drops it
-        everywhere else.</p>
+      <p><b>Lettered, for the Excel text box</b> — lays the list out for the
+        Excel text box it is pasted into (20.19 cm wide, Calibri 11 bold).
+        Each shortage, swap or length case gets its own letter, in time order,
+        and the fleet variations share the last letter. A service is never
+        split across two lines, and the line breaks and indents are kept when
+        you copy, so Excel doesn&rsquo;t rewrap it.</p>
+      <p><b>Variations grouped by which way round</b> — groups the fleet
+        variations by the kind of mismatch — all the 375/9s on 375 diagrams
+        together, then all the 375s on 375/9 diagrams — instead of by where
+        each unit ends up. A working with one of each, swapped with each
+        other, gets its own block between them.</p>
+      <p><b>Arrival times on Ramsgate only</b> — shows <code>(ARR …)</code>
+        only for workings that end at Ramsgate, station or depot.</p>
     </div>
 
     <pre class="svout" id="svout" hidden></pre>
@@ -1806,7 +1797,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.3
+      works without an internet connection. Version 3.31.4
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>

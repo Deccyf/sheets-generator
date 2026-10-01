@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.4 — 1 October 2026 — shortages and variations in plain words
+
+The shortages tab is worded like the others. *What to drop*: the Operating
+Report and the Diagram Detail for the same day. *What you get*: the
+controller's list of trains that are short, the wrong length or the wrong
+fleet, with every later service each one affects. *The Diagram Summary*:
+optional, and now saying what it is for, which "a formation of three needs
+placing" did not. With it, a 3-car in a train of three or more units can be
+called wrong end or intermediate; without it those go on the Review list.
+The Mainline & Metro note, the drop zone and the three options'
+explanations are shortened to match.
+
 ## 3.31.3 — 1 October 2026 — the weekday tab in plain words
 
 The weekday tab is worded like the other two. *What to drop*: the Diagram
