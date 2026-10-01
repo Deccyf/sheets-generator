@@ -140,6 +140,17 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.20.1 — 1 October 2026 — two days pasted at once
+
+**A second pair of paste boxes** on the weekday panel, for the other day's
+Diagram Summary and Detail - the same as dropping four files. Each weekday
+gets its sheets, and the High Speed sheet takes its PM arrivals from the
+day before: paste today's with tomorrow's and tomorrow's sheet has
+tonight's arrivals. Half a second day is refused by name, the same day in
+both pairs is refused, a source mixed between Genius and Integrale is
+refused, and the second pair may go in either box. The CSV browser smoke
+pastes two days and checks Tuesday's arrivals are Monday night's.
+
 ## 3.20.0 — 1 October 2026 — the books from the base diagrams, for a timetable change
 
 **The base diagrams build the books for any day of a timetable.** Drop the

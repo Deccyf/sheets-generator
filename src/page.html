@@ -237,9 +237,27 @@
             placeholder="Paste the Diagram Detail here"></textarea>
         </label>
       </div>
+      <p class="paste-hint"><b>Two days?</b> Paste the other day&rsquo;s pair below
+        as well — the same as dropping four files. Each weekday gets its own
+        sheets, and the High Speed sheet takes its PM arrivals from the day
+        before: paste today&rsquo;s with tomorrow&rsquo;s, and tomorrow&rsquo;s
+        sheet has tonight&rsquo;s arrivals. A Saturday or Sunday pair only lends
+        its arrivals to the Monday.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary <em>second day — optional</em></span>
+          <textarea id="paste_sum2" rows="4" spellcheck="false" wrap="off"
+            placeholder="The other day's Diagram Summary"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail <em>second day — optional</em></span>
+          <textarea id="paste_det2" rows="4" spellcheck="false" wrap="off"
+            placeholder="The other day's Diagram Detail"></textarea>
+        </label>
+      </div>
       <div class="paste-acts">
         <button type="button" class="btn" id="paste_go">Build the books from the pasted reports</button>
-        <button type="button" class="btn ghost" id="paste_clear">Clear both boxes</button>
+        <button type="button" class="btn ghost" id="paste_clear">Clear the boxes</button>
       </div>
       <p class="paste-say" id="paste_say" role="status"></p>
     </div>

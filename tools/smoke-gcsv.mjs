@@ -3,6 +3,7 @@ import { writeFileSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { geniusSummaryCsv, geniusDetailCsv } from "../test/helpers/synth.mjs";
+import { hsWeekCsv } from "../test/helpers/hs-synth.mjs";
 import { BUILT_URL, launch } from "./browser.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "sheets-gcsv-"));
@@ -171,6 +172,38 @@ await page.waitForFunction(() =>
 if (/plan has changed/.test(await page.textContent("#status")))
   throw new Error("an unchanged re-export must not claim the plan moved");
 console.log("unchanged re-export      : quiet, as it should be");
+
+/* ---- two days pasted at once: the second pair of boxes ----
+   The same as dropping four files. Each weekday gets its sheets, and the
+   High Speed sheet for the later day takes its PM arrivals from the
+   earlier one. Half a second day is refused, and so is the same day twice. */
+await page.reload();
+await page.locator("#pastetoggle").click();
+const [s1, d1] = hsWeekCsv("03/08/26"), [s2, d2] = hsWeekCsv("04/08/26");
+await put("#paste_sum", s1); await put("#paste_det", d1);
+await put("#paste_sum2", s2); await put("#paste_det2", "");
+await page.locator("#paste_go").click();
+await page.waitForFunction(() => /second day needs both/.test(document.querySelector("#paste_say").textContent),
+  null, { timeout: 10000 });
+console.log("half a second day        :", (await say()).trim());
+await put("#paste_sum2", s1); await put("#paste_det2", d1);
+await page.locator("#paste_go").click();
+await page.waitForFunction(() => /Both pairs are for 03\/08\/26/.test(document.querySelector("#paste_say").textContent),
+  null, { timeout: 10000 });
+console.log("the same day twice       :", (await say()).trim());
+await put("#paste_sum2", s2); await put("#paste_det2", d2);
+await page.locator("#paste_go").click();
+await page.waitForFunction(() =>
+  document.querySelector("#status").textContent.includes("TUE 04/08"), null, { timeout: 20000 });
+console.log("two days pasted          :", (await page.textContent("#status")).slice(0, 70));
+const tabs = await page.evaluate(() => {
+  const res = window.__lastWeekdayBuild;
+  return SHEETS_HS.sheetsFor(res.hsSecs, res.labels, res.dates, res.hsDays)
+    .map(s => s.name + " | " + s.layout.cells.filter(c => /^ASHFORD PM ARRIVALS/.test(c.v)).map(c => c.v).join(""));
+});
+console.log("High Speed tabs          :", tabs.join(" ; "));
+if (!tabs.some(t => /^Tue 04 08 \| ASHFORD PM ARRIVALS Monday 03\/08\/26$/.test(t)))
+  throw new Error("Tuesday's High Speed sheet should take Monday night's arrivals");
 
 await browser.close();
 console.log("GENIUS CSV SMOKE OK");

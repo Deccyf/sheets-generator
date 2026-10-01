@@ -107,6 +107,10 @@ const MSG = {
   pasteNeeds: want => "Still needs the " + want + " — paste it into the other box, or drop the file on the panel above. Either way round works.",
   pasteSwapped: "Read the boxes the other way round — the Summary was in the Detail box.",
   pasteUsedLoaded: used => "Built with the " + used + " already loaded.",
+  pasteSecondHalf: want => "The second day needs both reports — paste its " + want +
+    " too, or leave both of its boxes empty.",
+  pasteSameDay: d => "Both pairs are for " + d + " — the second boxes are for the other day.",
+  pasteTwoDays: (a, b) => "Built from two days' reports, " + a + " and " + b + ".",
   pastePartial: label => "The " + label + " box holds a report, but the copy starts part way through a line — select from the very top of the file, first line and all, and copy again.",
   pasteNotReport: label => "The " + label + " box does not read as one of the reports. Copy the whole file, first line and all — and paste a CSV export, not a PDF.",
   pasteUnreadable: e => "Couldn't read that: " + (e && e.message || e),
@@ -864,10 +868,10 @@ const panels = {};
     status: "#status", roads: "#roads", allbar: "#allbar", allnote: "#allnote",
     optsRow: "#optsrow", pasteWrap: "#pastebox", pasteToggle: "#pastetoggle",
     pasteSay: "#paste_say", pasteClear: "#paste_clear",
-    boxes: ["#paste_sum", "#paste_det"],
+    boxes: ["#paste_sum", "#paste_det", "#paste_sum2", "#paste_det2"],
   });
   const { say, enqueue, roadsEl } = P;
-  const [pasteSum, pasteDet] = P.boxes;
+  const [pasteSum, pasteDet, pasteSum2, pasteDet2] = P.boxes;
   const zoneStrong = document.querySelector("#berth .berth-txt strong");
   const zoneSub = document.querySelector("#berth .berth-txt span");
   const ZONE_DEFAULT = [zoneStrong.textContent, zoneSub.textContent];
@@ -1205,7 +1209,29 @@ const panels = {};
     const names = /Diagram Detail Report|DIAGRAM SUMMARY REPORT|Diagram Code|Diagram Summary for:/.test(text);
     return { err: names ? MSG.pastePartial(label) : MSG.pasteNotReport(label), el };
   }
+  /* the date a Genius export is for, off any of its lines */
+  const pasteDate = text => {
+    const m = /(?:Summary|Details) for:"?,"?\s*(\d\d\/\d\d\/\d\d)/.exec(text || "");
+    return m ? m[1] : null;
+  };
   async function buildFromPaste() {
+    /* a second day, optional, both of its reports or neither: the same as
+       a drop of four files - two of each kind in one go are two days */
+    const got2 = [sniffPaste(pasteSum2, "second day's Diagram Summary"),
+                  sniffPaste(pasteDet2, "second day's Diagram Detail")];
+    for (const g of got2)
+      if (g.err) { P.pSay(g.err, "err"); if (g.el) g.el.focus(); return; }
+    const filled2 = got2.filter(g => !g.empty);
+    if (filled2.length === 1) {
+      P.pSay(MSG.pasteSecondHalf(filled2[0].kind === "sum" ? "Diagram Detail" : "Diagram Summary"), "err");
+      const other = got2.find(g => g.empty);
+      if (other && other.el) other.el.focus();
+      return;
+    }
+    if (filled2.length === 2 && filled2[0].kind === filled2[1].kind) {
+      P.pSay(MSG.pasteSame(filled2[0].kind === "sum" ? "Summary" : "Detail"), "err");
+      return;
+    }
     const got = [sniffPaste(pasteSum, "Diagram Summary"),
                  sniffPaste(pasteDet, "Diagram Detail")];
     for (const g of got)
@@ -1229,13 +1255,32 @@ const panels = {};
       if (other && other.el) other.el.focus();
       return;
     }
+    const second = {};
+    for (const g of filled2) second[g.kind] = g;
+    if (filled2.length) {
+      // one source for all four, and two different days
+      const fams = new Set([...filled, ...filled2].map(g => family(g.fmt)));
+      if (fams.size > 1) { P.pSay(MSG.mixed("Genius", "Integrale"), "err"); return; }
+      const d1 = from.sum ? pasteDate(from.sum.text) : null, d2 = pasteDate(second.sum.text);
+      if ((d1 && d1 === d2) || (from.sum && from.sum.text === second.sum.text)) {
+        P.pSay(MSG.pasteSameDay(d2 || "the same date"), "err");
+        if (pasteSum2) pasteSum2.focus();
+        return;
+      }
+    }
     dropId++;
     for (const k of Object.keys(from))
       have[k] = { fmt: from[k].fmt, data: [from[k].text], drop: dropId };
+    for (const k of Object.keys(second))
+      if (have[k]) have[k].data.push(second[k].text);
     const swapped = !got[0].empty && got[0].kind !== "sum";
     const used = ["sum", "det"].filter(k => !from[k]);
-    P.pSay(swapped ? MSG.pasteSwapped : (used.length ? MSG.pasteUsedLoaded(NAME[used[0]]) : ""),
-           swapped || used.length ? "go" : "");
+    const two = filled2.length
+      ? MSG.pasteTwoDays(pasteDate(from.sum ? from.sum.text : "") || "the first day",
+                         pasteDate(second.sum.text) || "the second") : "";
+    P.pSay([swapped ? MSG.pasteSwapped : (used.length ? MSG.pasteUsedLoaded(NAME[used[0]]) : ""), two]
+             .filter(Boolean).join(" "),
+           swapped || used.length || two ? "go" : "");
     await drained();
   }
   $("#paste_go").addEventListener("click", () =>
