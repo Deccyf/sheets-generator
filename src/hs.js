@@ -422,6 +422,10 @@ const PREVIEW_W = (() => {
    off the fleet list. */
 const STOPPED = { title: "STOPPED UNITS", from: "I", split: "N", to: "S", lines: 4 };
 
+/* The sanding table, as the planner has it now: PRIORITY SANDING over
+   fifteen lines - half the 29 on their October tab, which the skin keeps. */
+const SANDING = { title: "PRIORITY SANDING", lines: 15 };
+
 /* The sanding table's miles, coloured as the planner gave them: up to 6,000
    green, 6,000 to 6,999 amber, 7,000 and over red - the mileage key's own
    three colours, dxf 0 (red), 1 (amber) and 2 (green) in the skin. */
@@ -609,8 +613,8 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
      list, and its miles, coloured by SANDING_BANDS. */
   const SD = SKIN.sanding, sc = COL(SD.col), sTop = SKIN.firstRow + SD.at;
   const sCols = [0, 1, 2, 3].map(i => String.fromCharCode(64 + sc + i));
-  const sFirst = sTop + 2, sLast = sFirst + SD.rows - 1;
-  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SD.text[0] : ""));
+  const sFirst = sTop + 2, sLast = sFirst + SANDING.lines - 1;
+  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
   merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
   sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
   for (let sr = sTop + 1; sr <= sLast; sr++) {
@@ -1046,7 +1050,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS, STOPPED,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS, SANDING, STOPPED,
          dayFromPrint, viaNorthKent, NORTH_KENT, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();

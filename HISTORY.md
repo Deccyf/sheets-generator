@@ -140,6 +140,16 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.28.0 — 1 October 2026 — PRIORITY SANDING, half the length
+
+The sanding table is now headed **PRIORITY SANDING** and has 15 lines
+instead of 29, at the planner's word. The whole table runs from row 10 to
+row 26, half its height, and ends level with the foot of Ashford's block.
+The drop-down, the miles colours and the box go with it. These are the
+planner's own changes rather than the workbook's, so they live in
+`SANDING` in `src/hs.js`, and the lifted skin still records the October
+tab as it is.
+
 ## 3.27.1 — 1 October 2026 — a note after a unit number
 
 The fleet list on the unit columns and in the STOPPED UNITS table now

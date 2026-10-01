@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.27.1</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.28.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1681,7 +1681,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.27.1
+      works without an internet connection. Version 3.28.0
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2874,8 +2874,8 @@ const SHEETS_RULES = (() => {
              "OFFERED figure fewer than its REQUIRED turns red — the number, " +
              "not the box. A TBC is left as it is. The date, time and version " +
              "are left for the sender." },
-        { p: "Off to the right, the SANDING table: a UNIT NO and its MILES on " +
-             "each of 29 lines. The unit is picked off the fleet list, and the " +
+        { p: "Off to the right, the PRIORITY SANDING table: a UNIT NO and its " +
+             "MILES on each of 15 lines. The unit is picked off the fleet list, and the " +
              "miles colour themselves as you type them — green up to 6,000, " +
              "amber from 6,000 to 6,999, red at 7,000 and over. An empty line " +
              "stays white." },
@@ -6255,6 +6255,10 @@ const PREVIEW_W = (() => {
    off the fleet list. */
 const STOPPED = { title: "STOPPED UNITS", from: "I", split: "N", to: "S", lines: 4 };
 
+/* The sanding table, as the planner has it now: PRIORITY SANDING over
+   fifteen lines - half the 29 on their October tab, which the skin keeps. */
+const SANDING = { title: "PRIORITY SANDING", lines: 15 };
+
 /* The sanding table's miles, coloured as the planner gave them: up to 6,000
    green, 6,000 to 6,999 amber, 7,000 and over red - the mileage key's own
    three colours, dxf 0 (red), 1 (amber) and 2 (green) in the skin. */
@@ -6442,8 +6446,8 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
      list, and its miles, coloured by SANDING_BANDS. */
   const SD = SKIN.sanding, sc = COL(SD.col), sTop = SKIN.firstRow + SD.at;
   const sCols = [0, 1, 2, 3].map(i => String.fromCharCode(64 + sc + i));
-  const sFirst = sTop + 2, sLast = sFirst + SD.rows - 1;
-  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SD.text[0] : ""));
+  const sFirst = sTop + 2, sLast = sFirst + SANDING.lines - 1;
+  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
   merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
   sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
   for (let sr = sTop + 1; sr <= sLast; sr++) {
@@ -6879,7 +6883,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS, STOPPED,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS, SANDING, STOPPED,
          dayFromPrint, viaNorthKent, NORTH_KENT, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();

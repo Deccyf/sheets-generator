@@ -303,7 +303,7 @@ REQUIRED filled in AM / PM from the day's diagrams that run (out before
 midday / still running after it: `MIDDAY`, `dayEnd`) and OFFERED figures
 that turn red under theirs, Done to Genius, the sent date, time and version -
 a STOPPED UNITS table under Ashford's block (four lines of two halves,
-`STOPPED`) that TOTAL STOPPED counts (a `COUNTA` formula), and its SANDING table (a unit off the fleet list, its miles green to 6,000,
+`STOPPED`) that TOTAL STOPPED counts (a `COUNTA` formula), and its PRIORITY SANDING table (15 lines, `SANDING`: a unit off the fleet list, its miles green to 6,000,
 amber to 6,999, red from 7,000: `SANDING_BANDS`), text in each depot's colour (and where a unit gets to
 in that place's - a recoloured copy of the record, made by the writer's
 `Recolour`), mileage colouring (High / Average / Low at 700 and

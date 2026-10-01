@@ -100,7 +100,7 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   assert.ok(wb.length >= 1, "the workbook loads in a real parser");
   assert.ok(wb[0].cells.length > 20, "with its cells intact: " + wb[0].cells.length);
   const vals = wb[0].cells.map(([, , rec]) => rec.v);
-  assert.ok(vals.includes("SERVICE TRAINS REQUIRED AM / PM") && vals.includes("SANDING") &&
+  assert.ok(vals.includes("SERVICE TRAINS REQUIRED AM / PM") && vals.includes("PRIORITY SANDING") &&
             vals.includes("Average"), "and the house text survives the round trip");
 
   /* The drop-downs their sheet keeps: the fleet roster on both UNIT columns
@@ -116,7 +116,7 @@ test("a worksheet per day, named the way their workbook names them", async () =>
      on the sanding table */
   assert.match(dv[1], /showErrorMessage="0" sqref="D\d+:D\d+ N\d+:N\d+ I\d+:I\d+ O\d+:O\d+"><formula1>"395001,/,
     "on both UNIT columns and the stopped table, any text taken");
-  assert.match(dv[1], /showErrorMessage="1" sqref="W12:W40"><formula1>"395001,/,
+  assert.match(dv[1], /showErrorMessage="1" sqref="W12:W26"><formula1>"395001,/,
     "and the sanding table's, off the list only");
 
   /* And the standing route notes, as classic comments on the DIAGRAM
@@ -804,15 +804,19 @@ test("REQUIRED is the day's diagrams AM and PM, OFFERED goes red under it, and s
   assert.equal(dxfs[SKIN.short.dxf], '<dxf><font><color rgb="FFFF0000"/></font></dxf>',
     "the number in red - no fill, so not the box");
 
-  // the sanding table: its title on the first block's heading row, then 29 rows
-  assert.equal(cell(L, "W10").v, "SANDING");
+  /* the sanding table: PRIORITY SANDING on the first block's heading row,
+     then fifteen lines - half the 29 of their October tab, as the planner
+     asked - and nothing of it below */
+  assert.equal(cell(L, "W10").v, "PRIORITY SANDING");
+  assert.equal(H.SANDING.lines, 15);
+  assert.ok(!L.cells.some(c => c.c >= 23 && c.c <= 26 && c.r > 26), "no sanding rows past 26");
   assert.equal(cell(L, "W11").v, "UNIT NO"); assert.equal(cell(L, "Y11").v, "MILES");
-  for (const m of ["W10:Z10", "W11:X11", "Y11:Z11", "W12:X12", "Y12:Z12", "W40:X40", "Y40:Z40"])
+  for (const m of ["W10:Z10", "W11:X11", "Y11:Z11", "W12:X12", "Y12:Z12", "W26:X26", "Y26:Z26"])
     assert.ok(L.merges.includes(m), m);
-  assert.ok(L.maxRow > 40 && L.opts.lastCol === "Z", "the sheet runs out to the table");
-  assert.match(L.opts.dataValidations, /showErrorMessage="1" sqref="W12:W40"><formula1>"395001,/,
+  assert.ok(L.maxRow > 26 && L.opts.lastCol === "Z", "the sheet runs out to the table");
+  assert.match(L.opts.dataValidations, /showErrorMessage="1" sqref="W12:W26"><formula1>"395001,/,
     "a unit off the fleet list");
-  const sand = /<conditionalFormatting sqref="Y12:Z40">([\s\S]*?)<\/conditionalFormatting>/.exec(cf);
+  const sand = /<conditionalFormatting sqref="Y12:Z26">([\s\S]*?)<\/conditionalFormatting>/.exec(cf);
   assert.ok(sand, "the miles are coloured");
   const rules = [...sand[1].matchAll(/dxfId="(\d)"[^>]*><formula>(.*?)<\/formula>/g)].map(m => [+m[1], m[2]]);
   assert.deepEqual(rules, [

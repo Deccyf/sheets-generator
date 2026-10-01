@@ -188,8 +188,8 @@ const SHEETS_RULES = (() => {
              "OFFERED figure fewer than its REQUIRED turns red — the number, " +
              "not the box. A TBC is left as it is. The date, time and version " +
              "are left for the sender." },
-        { p: "Off to the right, the SANDING table: a UNIT NO and its MILES on " +
-             "each of 29 lines. The unit is picked off the fleet list, and the " +
+        { p: "Off to the right, the PRIORITY SANDING table: a UNIT NO and its " +
+             "MILES on each of 15 lines. The unit is picked off the fleet list, and the " +
              "miles colour themselves as you type them — green up to 6,000, " +
              "amber from 6,000 to 6,999, red at 7,000 and over. An empty line " +
              "stays white." },
