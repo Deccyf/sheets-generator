@@ -367,6 +367,50 @@ function vmlXml(comments){
     '<v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>' +
     shapes + '</xml>';
 }
+/* A skin's style records with one thing changed: the font colour. The 395
+   sheet colours its text by depot and by where a unit ends up - each cell
+   names its record (xf) and a colour (fc, "RRGGBB") - and the record the
+   workbook needs is the skin's own with only the font's colour swapped: a
+   copy of the font and of the xf, added once per record and colour, so
+   every border, fill and size stays exactly as lifted. */
+function Recolour(stylesXml){
+  const fontsM = /<fonts count="\d+">([\s\S]*?)<\/fonts>/.exec(stylesXml);
+  const xfsM = /<cellXfs count="\d+">([\s\S]*?)<\/cellXfs>/.exec(stylesXml);
+  const fonts = fontsM ? fontsM[1].match(/<font>[\s\S]*?<\/font>|<font\/>/g) || [] : [];
+  const xfs = xfsM ? xfsM[1].match(/<xf [^>]*\/>|<xf [^>]*>[\s\S]*?<\/xf>/g) || [] : [];
+  const addFonts = [], addXfs = [], fontAt = new Map(), xfAt = new Map();
+  this.id = function(xf, fc){
+    if (!fc || !xfs[xf]) return xf;
+    const key = xf + "|" + fc;
+    if (xfAt.has(key)) return xfAt.get(key);
+    const x = xfs[xf];
+    const fid = +((/fontId="(\d+)"/.exec(x) || [0, 0])[1]);
+    const fkey = fid + "|" + fc;
+    if (!fontAt.has(fkey)){
+      let f = !fonts[fid] || fonts[fid] === "<font/>" ? "<font></font>" : fonts[fid];
+      const col = '<color rgb="FF' + fc + '"/>';
+      // a font's children keep their schema order: the colour sits before the name
+      f = /<color [^>]*\/>/.test(f) ? f.replace(/<color [^>]*\/>/, col)
+        : /<name /.test(f) ? f.replace(/<name /, col + "<name ")
+        : f.replace(/<\/font>$/, col + "</font>");
+      fontAt.set(fkey, fonts.length + addFonts.length);
+      addFonts.push(f);
+    }
+    let y = x.replace(/fontId="\d+"/, 'fontId="' + fontAt.get(fkey) + '"');
+    if (!/applyFont=/.test(y)) y = y.replace("<xf ", '<xf applyFont="1" ');
+    const id = xfs.length + addXfs.length;
+    addXfs.push(y); xfAt.set(key, id);
+    return id;
+  };
+  this.xml = function(){
+    if (!addXfs.length) return stylesXml;
+    return stylesXml
+      .replace(fontsM[0], '<fonts count="' + (fonts.length + addFonts.length) + '">' +
+                          fontsM[1] + addFonts.join("") + '</fonts>')
+      .replace(xfsM[0], '<cellXfs count="' + (xfs.length + addXfs.length) + '">' +
+                        xfsM[1] + addXfs.join("") + '</cellXfs>');
+  };
+}
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
    look + sides; the StyleBook indexes them across every sheet so the books
@@ -379,9 +423,10 @@ function writeWorkbook(sheets, zipFn){
   const raw = sheets.length && sheets[0].layout.opts &&
               sheets[0].layout.opts.stylesXml;
   const sb = raw ? null : new StyleBook();
+  const rc = raw ? new Recolour(raw) : null;
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells)
-      c.s = raw ? (c.xf || 0)
+      c.s = raw ? rc.id(c.xf || 0, c.fc)
                 : sb.style(c.look, sb.border(c.sides), c.text ? TEXT_FMT : 0);
     const o = s.layout.opts || {};
     // no look and no border: it dresses the empty grid, not the book
@@ -440,7 +485,7 @@ function writeWorkbook(sheets, zipFn){
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     relTags + '</Relationships>');
-  files["xl/styles.xml"] = enc.encode(raw || sb.xml());
+  files["xl/styles.xml"] = enc.encode(raw ? rc.xml() : sb.xml());
   return zipFn(files);
 }
 
@@ -553,7 +598,8 @@ function previewHtml(layout){
       if (xfCss && cell && cell.xf !== undefined && xfCss[cell.xf]) {
         // …and anything the workbook's own conditional formatting paints
         // over it when Excel opens the file
-        css = xfCss[cell.xf] + ";" + (cell.cfCss ? cell.cfCss + ";" : "");
+        css = xfCss[cell.xf] + ";" + (cell.fc ? "color:#" + cell.fc + ";" : "") +
+              (cell.cfCss ? cell.cfCss + ";" : "");
       } else {
         css = edge("top", s[2]) + edge("right", s[1]) +
               edge("bottom", s[3]) + edge("left", s[0]);

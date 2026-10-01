@@ -295,7 +295,9 @@ own words (DOWNS, UPS, SHED, C/END, L/END), from `DEPOT_ROAD` in
 `src/data.js`. The weekday **High Speed** book is the
 Class 395 Allocations Sheet: a worksheet per day, a block per depot, last
 night's arrivals beside today's allocations, in the sheet's own style
-records, drop-downs and mileage colouring (High / Average / Low at 700 and
+records, drop-downs, text in each depot's colour (and where a unit gets to
+in that place's - a recoloured copy of the record, made by the writer's
+`Recolour`), mileage colouring (High / Average / Low at 700 and
 400 miles), each table boxed in bold with thin rules inside, each depot's
 block split by its coloured AM/PM bar, WORKS
 against the morning rows outside Ashford, and N/M, M/O and each return's

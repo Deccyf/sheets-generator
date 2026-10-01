@@ -462,6 +462,18 @@ function mgBand(n) {
       : b.op === "between" ? n >= a && n <= +b.f[1] : false;
   }) || null;
 }
+/* The text colours, as the depot's own tabs keep them: each block's workings
+   - TRAIN ID, DIAGRAM, TIME, FP/RP, and last night's train and time - in
+   its depot's colour; and where a unit gets to - ENDS AM and its time, ENDS
+   PM with the train it comes in on and the time, and the working it goes
+   back out on from a return - in the colour of that place. Ashford green,
+   Faversham red, Ramsgate blue, Margate purple, St Pancras the workbook's
+   own orange (accent 2, darker 25%), anywhere else black. N/M M/O, MG and
+   the unit columns keep their own. */
+const DEPOT_FC = { ASHFORD: "00B050", FAVERSHAM: "FF0000", RAMSGATE: "0070C0", MARGATE: "7030A0" };
+const PLACE_FC = { ASH: "00B050", FAV: "FF0000", RAM: "0070C0", MAR: "7030A0", SPX: "C55A11" };
+const placeFc = p => { const k = String(p || "").trim(); return k ? PLACE_FC[k] || "000000" : null; };
+
 /* A row's place in its run of n - which decides the rules over and under
    it - and the style record for that place. A record with no run variants
    (the bars, the plain G) is its own for every place. */
@@ -709,6 +721,8 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
         put(r, COL(c), ruled(xf, leftAt()), val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
+        // last night's train and time in the depot's colour, typed-in ones too
+        if (c === "B" || c === "C") cells[cells.length - 1].fc = DEPOT_FC[depot];
       }
       /* WORKS against each morning allocation outside Ashford: what that
          unit forms next is filled in by hand, from what the stock
@@ -734,6 +748,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
           : c === "T" && /^[125][A-Z]\d\d$/.test(String(val)) ? SKIN.worksT
           : c === "H" && v && v.follows ? SKIN.laterH : xf;
         put(r, COL(c), ruled(mark, rightAt(i)), val, num);
+        const fc = !v ? null
+          : c === "H" || c === "I" || c === "L" || c === "M" ? DEPOT_FC[depot]
+          : c === "O" || c === "P" ? placeFc(v.endsAm)
+          : c === "Q" || c === "R" || c === "S" ? placeFc(v.endsPm)
+          : c === "T" && v.works ? placeFc(v.endsAm || v.endsPm) : null;
+        if (fc) cells[cells.length - 1].fc = fc;
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
            sheet on screen disagrees with the one in the workbook. Same

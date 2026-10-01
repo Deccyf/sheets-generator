@@ -700,3 +700,38 @@ test("the bar closes the morning run-out: 5R27 at 09 54 and a first move at 10 0
   // a Saturday runs out later: its 10 05 first move is still the morning
   assert.deepEqual(order("SA"), ["05+58", "10+05", "BAR", "09+54", "15+35"]);
 });
+
+test("the text is in each depot's colour, and where a unit gets to in that place's", async () => {
+  /* As the depot's own tabs keep it: a block's workings in its depot's
+     colour - Ashford green, Faversham red, Ramsgate blue, Margate purple -
+     and ENDS AM, ENDS PM and the working out of a return in the colour of
+     the place reached, St Pancras in the workbook's orange. N/M M/O, MG and
+     the unit columns keep their own. */
+  const { N, tab, sheets, r } = await week("03/08/26");
+  const t = tab("Mon 03 08");
+  const L = sheets.find(s => s.name === "Mon 03 08").layout;
+  const COLS = "ABCDEFGHIJKLMNOPQRST";
+  const fc = (row, c) => (L.cells.find(x => x.r === row && COLS[x.c - 1] === c) || {}).fc || null;
+  const am = t.row("AZ601", "06+00").r, pm = t.row("AZ601", "16+00").r, ram = t.row("AZ611", "05+00").r;
+  for (const c of "HILM") assert.equal(fc(am, c), "00B050", "Ashford's own, " + c);
+  for (const c of "HILM") assert.equal(fc(ram, c), "0070C0", "Ramsgate's own, " + c);
+  assert.equal(t.at(am, "O"), "ASH"); assert.equal(fc(am, "O"), "00B050"); assert.equal(fc(am, "P"), "00B050");
+  assert.equal(t.at(am, "T"), "5R30"); assert.equal(fc(am, "T"), "00B050", "back out of Ashford");
+  assert.equal(t.at(pm, "Q"), "RAM");
+  for (const c of "QRS") assert.equal(fc(pm, c), "0070C0", "ends at Ramsgate, " + c);
+  assert.equal(t.at(ram, "O"), "SPX"); assert.equal(fc(ram, "O"), "C55A11", "St Pancras orange");
+  assert.equal(t.at(ram, "Q"), "ASH"); assert.equal(fc(ram, "Q"), "00B050");
+  for (const c of "JKN") assert.equal(fc(am, c), null, c + " keeps its own");
+  // the saved book carries them: a copy of each record with its font recoloured
+  const bytes = N.SHEETS_HS.writeHsBook(r.hsSecs, r.labels, r.dates, f => N.fflate.zipSync(f), r.hsDays);
+  const files = N.fflate.unzipSync(bytes);
+  const styles = new TextDecoder().decode(files["xl/styles.xml"]);
+  for (const c of ["FF0070C0", "FFC55A11", "FF00B050"]) assert.ok(styles.includes('<color rgb="' + c + '"/>'), c);
+  const xfN = +/<cellXfs count="(\d+)"/.exec(styles)[1];
+  assert.equal((styles.match(/<cellXfs[\s\S]*?<\/cellXfs>/)[0].match(/<xf /g) || []).length, xfN, "the count is right");
+  const sheet = new TextDecoder().decode(files["xl/worksheets/sheet1.xml"]);
+  const used = [...sheet.matchAll(/ s="(\d+)"/g)].map(m => +m[1]);
+  assert.ok(used.every(s => s < xfN), "every cell names a record that is there");
+  const wb = await normalizeWorkbook(legacy(), bytes);
+  assert.ok(wb.length >= 1 && wb[0].cells.length > 20, "and a real parser reads it");
+});

@@ -140,6 +140,25 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.22.0 — 1 October 2026 — the 395 sheet in its depots' colours
+
+**The text is coloured the way the depot's own tabs colour it.** Each
+block's workings - TRAIN ID, DIAGRAM, TIME, FP/RP, and last night's train
+and time - in its depot's colour: Ashford green, Faversham red, Ramsgate
+blue, Margate purple. Where a unit gets to - ENDS AM and its time, ENDS PM
+with the train it comes in on and the time, and the working it goes back
+out on from a return - in the colour of that place: so a Ramsgate unit
+ending at Ashford reads green on the right of a blue row, as on their
+01/10 tab. St Pancras is the workbook's own orange (accent 2, darker 25%,
+C55A11); anywhere else black. N/M M/O, MG and both unit columns keep
+their own.
+
+Done without touching the skin: each cell names its colour, and the
+workbook writer adds a copy of the cell's lifted record with only the
+font's colour changed (`Recolour` in `src/xlsx.js`), once per record and
+colour, so every border, fill and yellow mark stays exactly theirs. The
+preview paints the same colour.
+
 ## 3.21.0 — 1 October 2026 — the base diagrams build a week, a sheet per day type
 
 **Drop the base diagrams and every book comes out for a week**, a sheet

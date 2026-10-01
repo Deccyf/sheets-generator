@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.21.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.22.0</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1050,7 +1050,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.21.0
+      works without an internet connection. Version 3.22.0
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2297,6 +2297,14 @@ const SHEETS_RULES = (() => {
              "in the order they got in — at Ramsgate too, where their sheet " +
              "asks for each arrival on the line of the diagram its unit is " +
              "given, which follows from the units the stock controller chooses." },
+        { p: "The text is coloured the way the depot's own tabs colour it. " +
+             "Each block's workings — TRAIN ID, DIAGRAM, TIME and FP/RP, and " +
+             "last night's train and time — are in its depot's colour: Ashford " +
+             "green, Faversham red, Ramsgate blue, Margate purple. Where a unit " +
+             "gets to — ENDS AM and its time, ENDS PM with its train and time, " +
+             "and the working it goes back out on — is in the colour of that " +
+             "place, St Pancras orange and anywhere else black. N/M M/O, MG and " +
+             "the unit columns keep their own." },
         { p: "Between the two tables, outside Ashford, every morning " +
              "allocation has WORKS written against it: what that unit forms " +
              "next is for you to fill in, from what you can see and the " +
@@ -3775,6 +3783,50 @@ function vmlXml(comments){
     '<v:path gradientshapeok="t" o:connecttype="rect"/></v:shapetype>' +
     shapes + '</xml>';
 }
+/* A skin's style records with one thing changed: the font colour. The 395
+   sheet colours its text by depot and by where a unit ends up - each cell
+   names its record (xf) and a colour (fc, "RRGGBB") - and the record the
+   workbook needs is the skin's own with only the font's colour swapped: a
+   copy of the font and of the xf, added once per record and colour, so
+   every border, fill and size stays exactly as lifted. */
+function Recolour(stylesXml){
+  const fontsM = /<fonts count="\d+">([\s\S]*?)<\/fonts>/.exec(stylesXml);
+  const xfsM = /<cellXfs count="\d+">([\s\S]*?)<\/cellXfs>/.exec(stylesXml);
+  const fonts = fontsM ? fontsM[1].match(/<font>[\s\S]*?<\/font>|<font\/>/g) || [] : [];
+  const xfs = xfsM ? xfsM[1].match(/<xf [^>]*\/>|<xf [^>]*>[\s\S]*?<\/xf>/g) || [] : [];
+  const addFonts = [], addXfs = [], fontAt = new Map(), xfAt = new Map();
+  this.id = function(xf, fc){
+    if (!fc || !xfs[xf]) return xf;
+    const key = xf + "|" + fc;
+    if (xfAt.has(key)) return xfAt.get(key);
+    const x = xfs[xf];
+    const fid = +((/fontId="(\d+)"/.exec(x) || [0, 0])[1]);
+    const fkey = fid + "|" + fc;
+    if (!fontAt.has(fkey)){
+      let f = !fonts[fid] || fonts[fid] === "<font/>" ? "<font></font>" : fonts[fid];
+      const col = '<color rgb="FF' + fc + '"/>';
+      // a font's children keep their schema order: the colour sits before the name
+      f = /<color [^>]*\/>/.test(f) ? f.replace(/<color [^>]*\/>/, col)
+        : /<name /.test(f) ? f.replace(/<name /, col + "<name ")
+        : f.replace(/<\/font>$/, col + "</font>");
+      fontAt.set(fkey, fonts.length + addFonts.length);
+      addFonts.push(f);
+    }
+    let y = x.replace(/fontId="\d+"/, 'fontId="' + fontAt.get(fkey) + '"');
+    if (!/applyFont=/.test(y)) y = y.replace("<xf ", '<xf applyFont="1" ');
+    const id = xfs.length + addXfs.length;
+    addXfs.push(y); xfAt.set(key, id);
+    return id;
+  };
+  this.xml = function(){
+    if (!addXfs.length) return stylesXml;
+    return stylesXml
+      .replace(fontsM[0], '<fonts count="' + (fonts.length + addFonts.length) + '">' +
+                          fontsM[1] + addFonts.join("") + '</fonts>')
+      .replace(xfsM[0], '<cellXfs count="' + (xfs.length + addXfs.length) + '">' +
+                        xfsM[1] + addXfs.join("") + '</cellXfs>');
+  };
+}
 /* Multi-sheet workbook: shared styles, one worksheet part per sheet.
    sheets: [{name, layout:{cells, merges, rowHeights, maxRow}}]. Cells carry
    look + sides; the StyleBook indexes them across every sheet so the books
@@ -3787,9 +3839,10 @@ function writeWorkbook(sheets, zipFn){
   const raw = sheets.length && sheets[0].layout.opts &&
               sheets[0].layout.opts.stylesXml;
   const sb = raw ? null : new StyleBook();
+  const rc = raw ? new Recolour(raw) : null;
   const parts = sheets.map(function(s){
     for (const c of s.layout.cells)
-      c.s = raw ? (c.xf || 0)
+      c.s = raw ? rc.id(c.xf || 0, c.fc)
                 : sb.style(c.look, sb.border(c.sides), c.text ? TEXT_FMT : 0);
     const o = s.layout.opts || {};
     // no look and no border: it dresses the empty grid, not the book
@@ -3848,7 +3901,7 @@ function writeWorkbook(sheets, zipFn){
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     relTags + '</Relationships>');
-  files["xl/styles.xml"] = enc.encode(raw || sb.xml());
+  files["xl/styles.xml"] = enc.encode(raw ? rc.xml() : sb.xml());
   return zipFn(files);
 }
 
@@ -3961,7 +4014,8 @@ function previewHtml(layout){
       if (xfCss && cell && cell.xf !== undefined && xfCss[cell.xf]) {
         // …and anything the workbook's own conditional formatting paints
         // over it when Excel opens the file
-        css = xfCss[cell.xf] + ";" + (cell.cfCss ? cell.cfCss + ";" : "");
+        css = xfCss[cell.xf] + ";" + (cell.fc ? "color:#" + cell.fc + ";" : "") +
+              (cell.cfCss ? cell.cfCss + ";" : "");
       } else {
         css = edge("top", s[2]) + edge("right", s[1]) +
               edge("bottom", s[3]) + edge("left", s[0]);
@@ -5505,6 +5559,18 @@ function mgBand(n) {
       : b.op === "between" ? n >= a && n <= +b.f[1] : false;
   }) || null;
 }
+/* The text colours, as the depot's own tabs keep them: each block's workings
+   - TRAIN ID, DIAGRAM, TIME, FP/RP, and last night's train and time - in
+   its depot's colour; and where a unit gets to - ENDS AM and its time, ENDS
+   PM with the train it comes in on and the time, and the working it goes
+   back out on from a return - in the colour of that place. Ashford green,
+   Faversham red, Ramsgate blue, Margate purple, St Pancras the workbook's
+   own orange (accent 2, darker 25%), anywhere else black. N/M M/O, MG and
+   the unit columns keep their own. */
+const DEPOT_FC = { ASHFORD: "00B050", FAVERSHAM: "FF0000", RAMSGATE: "0070C0", MARGATE: "7030A0" };
+const PLACE_FC = { ASH: "00B050", FAV: "FF0000", RAM: "0070C0", MAR: "7030A0", SPX: "C55A11" };
+const placeFc = p => { const k = String(p || "").trim(); return k ? PLACE_FC[k] || "000000" : null; };
+
 /* A row's place in its run of n - which decides the rules over and under
    it - and the style record for that place. A record with no run variants
    (the bars, the plain G) is its own for every place. */
@@ -5752,6 +5818,8 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         // UNIT NUMBER and 6 OR 12 CAR are numbers on their sheet too
         put(r, COL(c), ruled(xf, leftAt()), val,
             (c === "D" || c === "E") && /^\d+$/.test(String(val)));
+        // last night's train and time in the depot's colour, typed-in ones too
+        if (c === "B" || c === "C") cells[cells.length - 1].fc = DEPOT_FC[depot];
       }
       /* WORKS against each morning allocation outside Ashford: what that
          unit forms next is filled in by hand, from what the stock
@@ -5777,6 +5845,12 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
           : c === "T" && /^[125][A-Z]\d\d$/.test(String(val)) ? SKIN.worksT
           : c === "H" && v && v.follows ? SKIN.laterH : xf;
         put(r, COL(c), ruled(mark, rightAt(i)), val, num);
+        const fc = !v ? null
+          : c === "H" || c === "I" || c === "L" || c === "M" ? DEPOT_FC[depot]
+          : c === "O" || c === "P" ? placeFc(v.endsAm)
+          : c === "Q" || c === "R" || c === "S" ? placeFc(v.endsPm)
+          : c === "T" && v.works ? placeFc(v.endsAm || v.endsPm) : null;
+        if (fc) cells[cells.length - 1].fc = fc;
         /* Excel paints the mileage rules over the cell when the book opens.
            The preview has to do it itself, or MG shows its base fill and the
            sheet on screen disagrees with the one in the workbook. Same

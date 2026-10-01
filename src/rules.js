@@ -242,6 +242,14 @@ const SHEETS_RULES = (() => {
              "in the order they got in — at Ramsgate too, where their sheet " +
              "asks for each arrival on the line of the diagram its unit is " +
              "given, which follows from the units the stock controller chooses." },
+        { p: "The text is coloured the way the depot's own tabs colour it. " +
+             "Each block's workings — TRAIN ID, DIAGRAM, TIME and FP/RP, and " +
+             "last night's train and time — are in its depot's colour: Ashford " +
+             "green, Faversham red, Ramsgate blue, Margate purple. Where a unit " +
+             "gets to — ENDS AM and its time, ENDS PM with its train and time, " +
+             "and the working it goes back out on — is in the colour of that " +
+             "place, St Pancras orange and anywhere else black. N/M M/O, MG and " +
+             "the unit columns keep their own." },
         { p: "Between the two tables, outside Ashford, every morning " +
              "allocation has WORKS written against it: what that unit forms " +
              "next is for you to fill in, from what you can see and the " +
