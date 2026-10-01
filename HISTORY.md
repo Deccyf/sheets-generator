@@ -140,6 +140,16 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.23.2 — 1 October 2026 — stabled diagrams counted apart
+
+Counted in with the starts and ends, a stabled diagram made a place's
+figures read as more work than ran - and asked "how do 4 start at Ramsgate
+and 6 finish there?", the answer had to untangle them. The table now keeps
+them apart: AZ1 START, AZ1 ENDS, AZ1 STABLED, AZ9 START, AZ9 ENDS, AZ9
+STABLED. START and ENDS are the diagrams that run, so each series' two
+totals always agree; STABLED is those standing all day where they stand.
+The table runs from column B to H to take the two extra columns.
+
 ## 3.23.1 — 1 October 2026 — stabled diagrams in the AZ1 / AZ9 count
 
 The planner wants the stabled diagrams counted too: a diagram that stands
