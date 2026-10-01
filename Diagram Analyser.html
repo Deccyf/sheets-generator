@@ -164,7 +164,8 @@
     grid-template-columns:repeat(auto-fit, minmax(210px, 1fr))}
   .needs > li{border-left:3px solid var(--rail); padding:2px 0 2px 12px;
     font-size:13.5px; line-height:1.5; color:#3C464D}
-  .needs > li > b{display:block; margin-bottom:2px; font-family:var(--mono);
+  /* the point's label is its first <b>; bold inside the text is <strong> */
+  .needs > li > b:first-child{display:block; margin-bottom:2px; font-family:var(--mono);
     font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--steel)}
   .whatfor-lead{margin:0 0 10px; font-size:14px; color:#3C464D}
 

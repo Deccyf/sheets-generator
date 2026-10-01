@@ -140,6 +140,22 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.1 — 1 October 2026 — the card's text follows its trains; the base tab in plain words
+
+**A card's fleet text names the classes its trains show**: "465 / 707" for
+a day's Metro with no 466s, where it read "465 / 466 / 707" whatever ran.
+The weekday Ramsgate card keeps its note after the classes ("375 / 377 ·
+cut from the mainline day").
+
+**The Base diagrams tab says what to do in plain words.** *What to drop*:
+all four day files at once, FX (Monday to Thursday), FO (Friday), SO
+(Saturday) and SUN, or one file that has them all. *What you get*: a book
+for each fleet covering one week, with a sheet for each day type. *High
+Speed PM arrivals*: filled in from the day before's base diagrams, with no
+Genius reports needed. *Which week*: the first full week of the timetable,
+or any other picked under Week of once the books are built. Bold inside a
+point no longer takes the label's style.
+
 ## 3.31.0 — 1 October 2026 — each book's card draws the trains it carries
 
 A book's card drew a fixed set of trains: Mainline 375, 376 and 377,

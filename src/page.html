@@ -423,14 +423,17 @@
   <section class="platform" id="bsPanel" role="tabpanel" aria-labelledby="mode_bs" hidden>
     <h2 class="vh">A week of books from the base diagrams</h2>
     <ul class="whatfor needs">
-      <li><b>Base diagrams</b> The base diagram prints for a timetable — one
-        document, or one per day code (FX, FO, SO, SUN) dropped together.</li>
-      <li><b>The whole week</b> Every book is built for a week of the
-        timetable, a sheet per day type: Monday, Tuesday to Thursday, Friday,
-        Saturday and Sunday.</li>
-      <li><b>High Speed PM arrivals</b> Taken from the day before&rsquo;s base
-        diagrams — nothing else to drop.</li>
-      <li><b>Another week</b> Once built, choose a date under Week of.</li>
+      <li><b>What to drop</b> The base diagram prints for the timetable: all
+        four day files at once — FX (Monday to Thursday), FO (Friday), SO
+        (Saturday) and SUN — or one file that has them all.</li>
+      <li><b>What you get</b> A book for each fleet — Mainline, Ramsgate,
+        Metro and High Speed — covering one week, with a sheet for Monday,
+        Tuesday to Thursday, Friday, Saturday and Sunday.</li>
+      <li><b>High Speed PM arrivals</b> Filled in for you from the day
+        before&rsquo;s base diagrams. No Genius reports are needed.</li>
+      <li><b>Which week</b> The first full week of the timetable. For another,
+        pick any date in it under <strong>Week of</strong>, which appears once the
+        books are built.</li>
     </ul>
 
     <button class="berth" id="bs_berth" type="button">
@@ -438,7 +441,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the base diagrams here</strong>
-          <span>.docx, .doc, .txt or .csv · every day code together (FX, FO, SO, SUN), or one document · reissues welcome · or click to choose</span>
+          <span>Word (.docx or .doc), text or CSV · all four day files at once, or one combined file · reissues welcome · or click to choose</span>
         </span>
       </span>
     </button>
@@ -487,9 +490,8 @@
     <div class="opts-row" id="bs_baserow" hidden>
       <span class="opts-label">Week of</span>
       <label><input type="date" id="bs_basedate" autocomplete="off"></label>
-      <span class="opts-hint" id="bs_basehint">The week holding the date chosen
-        is built, a sheet per day type, from the diagrams that run on each
-        day.</span>
+      <span class="opts-hint" id="bs_basehint">Pick any date and the whole week
+        holding it is built again.</span>
     </div>
 
     <div class="opts-row" id="bs_optsrow" hidden>

@@ -648,9 +648,16 @@ function classesIn(secsByDay, pick) {
       });
   return out;
 }
+const classList = classes => LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
 const spritesFor = (classes, usual) => {
-  const have = LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
+  const have = classList(classes);
   return have.length ? have : usual;
+};
+/* …and the text beside the book's name says the same classes - "465 / 707"
+   on a day with no 466s. Ramsgate's weekday card keeps its note after them. */
+const fleetText = (classes, usual, note) => {
+  const have = classList(classes);
+  return have.length ? have.join(" / ") + (note ? " · " + note : "") : usual;
 };
 
 /* ---------------- a screenshot, enlarged ----------------
@@ -1112,7 +1119,8 @@ const panels = {};
       const own = classesIn(b.secs(res), b.ram ? (s => s === "RAMSGATE")
                                          : b.kind === "berthing" ? (s => s !== "RAMSGATE") : () => true);
       roadsEl.appendChild(roadCard({
-        i, road: b.road, fleetLabel: b.label, spriteCls: spritesFor(own, b.sprite), unitHtml,
+        i, road: b.road, fleetLabel: fleetText(own, b.label, b.ram ? b.label : ""),
+        spriteCls: spritesFor(own, b.sprite), unitHtml,
         chips: reviewChips(review), panes, wide: b.wide,
         saves: [["Save book", () => {
           storePrinted(res);
@@ -1466,7 +1474,8 @@ function printsPanel(K) {
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
       roadsEl.appendChild(roadCard({
-        i, road, fleetLabel: b.label, spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
+        i, road, fleetLabel: fleetText(b.classes, b.label),
+        spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
         unitHtml: "<b>" + b.entries + "</b> " + (b.entries === 1 ? "entry" : "entries") +
           " · " + plural(b.sections, "section"),
         chips: reviewChips(items), panes, wide: isWide(b.road),

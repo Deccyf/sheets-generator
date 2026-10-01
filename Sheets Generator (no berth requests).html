@@ -164,7 +164,8 @@
     grid-template-columns:repeat(auto-fit, minmax(210px, 1fr))}
   .needs > li{border-left:3px solid var(--rail); padding:2px 0 2px 12px;
     font-size:13.5px; line-height:1.5; color:#3C464D}
-  .needs > li > b{display:block; margin-bottom:2px; font-family:var(--mono);
+  /* the point's label is its first <b>; bold inside the text is <strong> */
+  .needs > li > b:first-child{display:block; margin-bottom:2px; font-family:var(--mono);
     font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--steel)}
   .whatfor-lead{margin:0 0 10px; font-size:14px; color:#3C464D}
 
@@ -559,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.1</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -944,14 +945,17 @@
   <section class="platform" id="bsPanel" role="tabpanel" aria-labelledby="mode_bs" hidden>
     <h2 class="vh">A week of books from the base diagrams</h2>
     <ul class="whatfor needs">
-      <li><b>Base diagrams</b> The base diagram prints for a timetable — one
-        document, or one per day code (FX, FO, SO, SUN) dropped together.</li>
-      <li><b>The whole week</b> Every book is built for a week of the
-        timetable, a sheet per day type: Monday, Tuesday to Thursday, Friday,
-        Saturday and Sunday.</li>
-      <li><b>High Speed PM arrivals</b> Taken from the day before&rsquo;s base
-        diagrams — nothing else to drop.</li>
-      <li><b>Another week</b> Once built, choose a date under Week of.</li>
+      <li><b>What to drop</b> The base diagram prints for the timetable: all
+        four day files at once — FX (Monday to Thursday), FO (Friday), SO
+        (Saturday) and SUN — or one file that has them all.</li>
+      <li><b>What you get</b> A book for each fleet — Mainline, Ramsgate,
+        Metro and High Speed — covering one week, with a sheet for Monday,
+        Tuesday to Thursday, Friday, Saturday and Sunday.</li>
+      <li><b>High Speed PM arrivals</b> Filled in for you from the day
+        before&rsquo;s base diagrams. No Genius reports are needed.</li>
+      <li><b>Which week</b> The first full week of the timetable. For another,
+        pick any date in it under <strong>Week of</strong>, which appears once the
+        books are built.</li>
     </ul>
 
     <button class="berth" id="bs_berth" type="button">
@@ -959,7 +963,7 @@
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the base diagrams here</strong>
-          <span>.docx, .doc, .txt or .csv · every day code together (FX, FO, SO, SUN), or one document · reissues welcome · or click to choose</span>
+          <span>Word (.docx or .doc), text or CSV · all four day files at once, or one combined file · reissues welcome · or click to choose</span>
         </span>
       </span>
     </button>
@@ -1008,9 +1012,8 @@
     <div class="opts-row" id="bs_baserow" hidden>
       <span class="opts-label">Week of</span>
       <label><input type="date" id="bs_basedate" autocomplete="off"></label>
-      <span class="opts-hint" id="bs_basehint">The week holding the date chosen
-        is built, a sheet per day type, from the diagrams that run on each
-        day.</span>
+      <span class="opts-hint" id="bs_basehint">Pick any date and the whole week
+        holding it is built again.</span>
     </div>
 
     <div class="opts-row" id="bs_optsrow" hidden>
@@ -1180,7 +1183,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.0
+      works without an internet connection. Version 3.31.1
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11648,9 +11651,16 @@ function classesIn(secsByDay, pick) {
       });
   return out;
 }
+const classList = classes => LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
 const spritesFor = (classes, usual) => {
-  const have = LINEUP_ORDER.filter(c => classes && (classes.has ? classes.has(c) : classes.includes(c)));
+  const have = classList(classes);
   return have.length ? have : usual;
+};
+/* …and the text beside the book's name says the same classes - "465 / 707"
+   on a day with no 466s. Ramsgate's weekday card keeps its note after them. */
+const fleetText = (classes, usual, note) => {
+  const have = classList(classes);
+  return have.length ? have.join(" / ") + (note ? " · " + note : "") : usual;
 };
 
 /* ---------------- a screenshot, enlarged ----------------
@@ -12112,7 +12122,8 @@ const panels = {};
       const own = classesIn(b.secs(res), b.ram ? (s => s === "RAMSGATE")
                                          : b.kind === "berthing" ? (s => s !== "RAMSGATE") : () => true);
       roadsEl.appendChild(roadCard({
-        i, road: b.road, fleetLabel: b.label, spriteCls: spritesFor(own, b.sprite), unitHtml,
+        i, road: b.road, fleetLabel: fleetText(own, b.label, b.ram ? b.label : ""),
+        spriteCls: spritesFor(own, b.sprite), unitHtml,
         chips: reviewChips(review), panes, wide: b.wide,
         saves: [["Save book", () => {
           storePrinted(res);
@@ -12466,7 +12477,8 @@ function printsPanel(K) {
         ["Review" + (items.length ? " (" + items.length + ")" : ""), () => reviewPane(items)],
       ];
       roadsEl.appendChild(roadCard({
-        i, road, fleetLabel: b.label, spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
+        i, road, fleetLabel: fleetText(b.classes, b.label),
+        spriteCls: spritesFor(b.classes, SPRITE_FOR[b.road] || "375"),
         unitHtml: "<b>" + b.entries + "</b> " + (b.entries === 1 ? "entry" : "entries") +
           " · " + plural(b.sections, "section"),
         chips: reviewChips(items), panes, wide: isWide(b.road),
