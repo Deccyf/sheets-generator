@@ -178,12 +178,15 @@ const SHEETS_RULES = (() => {
              "09:54 comes before a first move at 10:05." },
         { p: "Along the top, as the depot's October tabs have it: the " +
              "service-trains table, “Done to Genius”, and the date, time and " +
-             "version it was sent. SERVICE TRAINS REQUIRED is filled in — " +
-             "every diagram that runs that day, whether or not it leaves a " +
-             "depot block (their 02/10 tab has 25, AZ601 to AZ625). OFFERED, " +
-             "SPARE, STOPPED and STABLED are yours to fill in; an OFFERED " +
-             "figure fewer than REQUIRED turns red — the number, not the box. " +
-             "The date, time and version are left for the sender." },
+             "version it was sent. SERVICE TRAINS REQUIRED is filled in, AM / " +
+             "PM: of the diagrams that run that day, those out before midday " +
+             "and those still running after it, whether or not they leave a " +
+             "depot block — 22 / 24 on a Friday, where AZ606 and AZ608 go out " +
+             "only in the afternoon and AZ622 is stabled all day. OFFERED, AM " +
+             "and PM, SPARE, STOPPED and STABLED are yours to fill in; either " +
+             "OFFERED figure fewer than its REQUIRED turns red — the number, " +
+             "not the box. A TBC is left as it is. The date, time and version " +
+             "are left for the sender." },
         { p: "Off to the right, the SANDING table: a UNIT NO and its MILES on " +
              "each of 29 lines. The unit is picked off the fleet list, and the " +
              "miles colour themselves as you type them — green up to 6,000, " +

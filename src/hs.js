@@ -387,6 +387,25 @@ const LONG_STAND = 90;
    line at 14:00 put 10:05 above it. */
 const RUN_OUT_TO = 9 * 60 + 45;
 const RUN_OUT_TO_WEEKEND = 12 * 60;
+/* REQUIRED's AM is the diagrams out before midday; its PM, those running after */
+const MIDDAY = 12 * 60;
+/* A diagram that moves. A stabled one has a single stop - and on the
+   reports a nominal departure from it (AZ622 on 18/09: 00 01), which made
+   it look like a morning run-out. */
+const moves = st => st.length > 1 && st.slice(0, -1).some(x => x.dep != null);
+/* When a diagram's day ends, in minutes on from its morning. The reports
+   carry a time past midnight on (00 58 is 1498); the prints write it as the
+   clock reads (58), so each is carried past the one before. */
+function dayEnd(st) {
+  let prev = null;
+  for (const s of st) for (const t of [s.arr, s.dep]) {
+    if (t == null) continue;
+    let v = t;
+    if (prev !== null) while (v < prev - 60) v += 1440;
+    prev = prev === null ? v : Math.max(prev, v);
+  }
+  return prev;
+}
 
 /* Per-column widths for the on-screen preview, A to Z: the workbook's own
    <cols>, which the saved file carries verbatim, and Excel's 8.43 for the
@@ -554,24 +573,37 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   }
   for (const l of departures.values()) l.sort((a, b) => a.time - b.time);
 
-  /* SERVICE TRAINS REQUIRED: the day's diagrams that run. Every one in the
-     day's reports counts, whether or not it leaves a depot - their 02/10
-     sheet has 25 for AZ601-AZ625 with AZ622 in none of its tables. A build
-     with no stops to read (a PDF) counts the diagrams on the sheet. */
-  const required = F ? [...F.S.values()].filter(st => st.some(x => x.dep != null)).length
-    : departures.size;
+  /* SERVICE TRAINS REQUIRED, AM and PM: of the day's diagrams that run,
+     those out before midday, and those still running after it - whether or
+     not they leave a depot block. Their Friday 02/10 reads 22 / 24: 25
+     diagrams, AZ606 and AZ608 out only in the afternoon, AZ622 stabled all
+     day; the reports for Friday 18/09 give the same. A build with no stops
+     to read (a PDF) goes by each diagram's first move off a depot, and
+     counts every diagram on the sheet for the PM. */
+  const req = { am: 0, pm: 0 };
+  if (F) for (const st of F.S.values()) {
+    if (!moves(st)) continue;
+    const first = st.find(x => x.dep != null);
+    if (first.dep % 1440 < MIDDAY) req.am++;
+    if (dayEnd(st) >= MIDDAY) req.pm++;
+  } else for (const l of departures.values()) {
+    if (l[0].time % 1440 < MIDDAY) req.am++;
+    req.pm++;
+  }
   /* the top, above the first block, exactly as the workbook has it: the
      service-trains table, Done to Genius, the sent date, time and version */
+  const R = SKIN.service.required, some = req.am + req.pm > 0;
   for (const [lr, c, xf, v] of SKIN.legend) {
-    const isReq = c + lr === SKIN.service.required && required > 0;
-    put(lr, COL(c), xf, isReq ? required : v, isReq);
+    const half = c + lr === R.am ? "am" : c + lr === R.pm ? "pm" : null;
+    put(lr, COL(c), xf, half && some ? req[half] : v, !!(half && some));
+    // the preview has no number formats: the AM figure's says "22 /"
+    if (half === "am" && some) cells[cells.length - 1].disp = req.am + " /";
   }
   for (const [lr, h] of Object.entries(SKIN.legendHts)) rowHeights.set(+lr, +h);
   merges.push(...SKIN.legendMerges);
-  /* OFFERED is the planner's to fill in. Fewer than REQUIRED and the figure
-     goes red - the number, not the box. */
-  const cellAbs = ref => ref.replace(/^([A-Z]+)(\d+)$/, "$$$1$$$2");
-  const off = cellAbs(SKIN.service.offered), req = cellAbs(SKIN.service.required);
+  /* OFFERED, AM and PM, is the planner's to fill in. Either figure fewer
+     than its REQUIRED and that figure goes red - the number, not the box. */
+  const O = SKIN.service.offered;
 
   /* The sanding table, off to the right of the blocks: a unit off the fleet
      list, and its miles, coloured by SANDING_BANDS. */
@@ -894,7 +926,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     const tally = new Map();
     for (const [d, st] of F.S) {
       const k = SERIES.findIndex(x => x.re.test(d));
-      if (k < 0 || !st.some(x => x.dep != null)) continue;
+      if (k < 0 || !moves(st)) continue;
       [place3(st[0].code), place3(st[st.length - 1].code)].forEach((p, j) => {
         if (!tally.has(p)) tally.set(p, [0, 0, 0, 0]);
         tally.get(p)[k * 2 + j]++;
@@ -939,9 +971,10 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   for (const [fr, h] of Object.entries(SKIN.footerHts)) rowHeights.set(+fr + base, +h);
   r = Math.max(base + SKIN.footerBottom + 1, sLast + 1);
 
-  condFmt.push('<conditionalFormatting sqref="' + SKIN.service.offered + '">' +
+  // relative to the AM cell, so the PM one tests the PM pair
+  condFmt.push('<conditionalFormatting sqref="' + O.am + ":" + O.pm + '">' +
     '<cfRule type="expression" dxfId="' + SKIN.short.dxf + '" priority="' + pri++ + '">' +
-    '<formula>AND(ISNUMBER(' + off + '),ISNUMBER(' + req + '),' + off + '&lt;' + req + ')</formula>' +
+    '<formula>AND(ISNUMBER(' + O.am + '),ISNUMBER(' + R.am + '),' + O.am + '&lt;' + R.am + ')</formula>' +
     '</cfRule></conditionalFormatting>');
   /* the miles: Y and Z both test Y, so the merged pair colours as one, and
      an empty cell - which Excel reads as 0 - stays white */

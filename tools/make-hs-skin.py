@@ -154,6 +154,20 @@ for r in range(1, first_row):
         if (cell[0], cell[1]) in clear_top: cell[3] = ""
     legend += got
 legend_merges = merges_in(1, first_row - 1)
+# REQUIRED and OFFERED each carry an AM and a PM figure - "22 / 24" on the
+# planner's own sheet - so the merged figure cell beside each is split in
+# two: AM in its first column, PM in its second, each a number of its own
+# that a rule can compare. Their number formats make the pair read "22 / 24".
+split_at = {}
+for k in ("required", "offered"):
+    am = service[k]
+    col, r = re.match(r'([A-Z])(\d+)$', am).groups()
+    pm = chr(ord(col) + 1) + r
+    m = next(mm for mm in legend_merges if mm.startswith(am + ":"))
+    assert m == am + ":" + pm, "the %s figure is not two cells merged: %r" % (k, m)
+    legend_merges.remove(m)
+    service[k] = {"am": am, "pm": pm}
+    split_at[(int(r), col)], split_at[(int(r), chr(ord(col) + 1))] = "am", "pm"
 # The notes, the CET key and the mileage key under them: from NOTE down to
 # the key's last word. The RULED SHAPE is template; much of the text is the
 # day's (the COMMENTS box names units and restrictions), so only the
@@ -386,6 +400,24 @@ def restyle(xf_new, sides, fill=None):
     if 'applyBorder="1"' not in y: y = y.replace("<xf ", '<xf applyBorder="1" ', 1)
     if y not in out_xfs: out_xfs.append(y)
     return out_xfs.index(y)
+# the AM and PM figures: "22 /" set right in the first cell, " 24" left in
+# the second - a typed TBC too - so the two read as one "22 / 24"
+FMT = {"am": '0&quot; /&quot;',
+       "pm": '&quot; &quot;0;&quot; &quot;-0;&quot; &quot;0;&quot; &quot;@'}
+for half in ("am", "pm"):
+    fid = str(max([199] + [int(a) for a, _ in n_used]) + 1)
+    n_used.append((fid, FMT[half]))
+    FMT[half] = fid
+def realign(xf_new, horizontal, fmt):
+    y = re.sub(r'numFmtId="\d+"', 'numFmtId="%s"' % fmt, out_xfs[xf_new])
+    if 'applyNumberFormat="1"' not in y: y = y.replace("<xf ", '<xf applyNumberFormat="1" ', 1)
+    y = re.sub(r'horizontal="\w+"', 'horizontal="%s"' % horizontal, y)
+    if y not in out_xfs: out_xfs.append(y)
+    return out_xfs.index(y)
+split_xf = {(r, c): realign(newid[x], "right" if split_at[(r, c)] == "am" else "left",
+                            FMT[split_at[(r, c)]])
+            for r, c, x, v in legend if (r, c) in split_at}
+assert len(split_xf) == 4, split_xf
 bar_base, line_base = newid[sanding["head"][SC[0]]], newid[sanding["mid"][SC[0]]]
 BOX = {"top": "medium", "bottom": "medium"}
 DOWN = {"first": {"top": "medium", "bottom": "thin"}, "mid": {"top": "thin", "bottom": "thin"},
@@ -650,13 +682,13 @@ skin = {
   # the October tab's widths: UNIT NO wider, MG and FP/RP narrower
   "colsXml": re.search(r'<cols>.*?</cols>', tsheet, re.S).group(0),
   "tabColor": "FFFFFF00",
-  "legend": [[r, c, newid[x], v] for r, c, x, v in legend],
+  "legend": [[r, c, split_xf.get((r, c), newid[x]), v] for r, c, x, v in legend],
   "legendHts": {str(r): thts[r] for r in range(1, first_row) if r in thts},
   "legendMerges": legend_merges,
   # the first block's title row; everything above it is the legend
   "firstRow": first_row,
-  # the service table's figures: REQUIRED is filled in, OFFERED is red
-  # when it is fewer (dxf "short")
+  # the service table's figures: REQUIRED's AM and PM are filled in, and
+  # each OFFERED figure is red when it is fewer (dxf "short")
   "service": service, "short": {"dxf": len(mg_bands), "css": "color:#FF0000"},
   # rows footerTop..footerBottom, re-anchored under the last block
   "footer": [[r, c, newid[x], v] for r, c, x, v in footer],

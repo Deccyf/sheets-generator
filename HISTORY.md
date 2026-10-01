@@ -140,6 +140,33 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.26.0 — 1 October 2026 — SERVICE TRAINS REQUIRED, AM and PM
+
+The planner's sheet now gives REQUIRED as an AM and a PM figure, "22 / 24",
+and so does this one. Of the day's diagrams that run, **AM** is those out
+before midday and **PM** those still running after it, whether or not they
+leave a depot block. On the reports for Friday 18/09, the same diagrams as
+the planner's Friday 02/10, that gives their 22 / 24: AZ606 and AZ608 go
+out only in the afternoon, and AZ622 is stabled all day. The rows above the
+AM/PM bars give 21, because AZ625's 10:05 sits under Ashford's bar. A PDF
+build, with no stops to read, goes by each diagram's first move off a
+depot.
+
+REQUIRED's and OFFERED's figure cells are each split into an AM cell and a
+PM cell, so each half is a number of its own. Their number formats make the
+pair read "22 / 24" (`0" /"` set right, then the PM set left, with a typed
+TBC kept as it is), and the preview shows it the same way. The figures are
+black. Either OFFERED figure fewer than its REQUIRED turns red, the number
+and not the box, as the planner chose over keeping their red AM key. The
+rule is relative, so N4 tests N3.
+
+Two things found on the way. A stabled diagram, a single stop that the
+reports give a nominal 00:01 departure, looked like a morning run-out.
+Diagrams now count only if they move (`moves`), here and in the base
+sheets' AZ1 / AZ9 table. And a print writes an arrival after midnight as
+the clock reads (00:58 = 58), which put the end of a diagram's day in the
+morning, so `dayEnd` carries each time past the one before.
+
 ## 3.25.1 — 1 October 2026 — a pasted Diagram Detail no longer runs Chrome out of memory
 
 **Pasting the Diagram Detail into the weekday box crashed the tab** ("Aw,

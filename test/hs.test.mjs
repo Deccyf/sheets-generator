@@ -748,33 +748,52 @@ test("the text is in each depot's colour, and where a unit gets to in that place
   assert.ok(wb.length >= 1 && wb[0].cells.length > 20, "and a real parser reads it");
 });
 
-test("REQUIRED is the day's diagrams, OFFERED goes red under it, and sanding takes a unit and colours its miles", async () => {
-  /* Their October tab: SERVICE TRAINS REQUIRED is the day's diagrams - 25
-     on 02/10, AZ601-AZ625, though AZ622 is in none of its tables - and the
-     planner types OFFERED, which goes red (the figure, not the box) when it
-     is fewer. The sanding table beside the blocks takes a unit off the fleet
-     list and its miles: up to 6,000 green, 6,000-6,999 amber, 7,000 red. */
+test("REQUIRED is the day's diagrams AM and PM, OFFERED goes red under it, and sanding takes a unit and colours its miles", async () => {
+  /* Their sheet: SERVICE TRAINS REQUIRED AM / PM reads "22 / 24" for Friday
+     02/10 - of the day's 25 diagrams, those out before midday and those
+     still running after it; AZ622 is stabled all day and in none of its
+     tables. The planner types OFFERED, AM and PM, and either figure goes
+     red (the number, not the box) when it is fewer than its REQUIRED. The
+     sanding table beside the blocks takes a unit off the fleet list and its
+     miles: up to 6,000 green, 6,000-6,999 amber, 7,000 red. */
   const { N, sheets, r } = await week("03/08/26");
   const H = N.SHEETS_HS, SKIN = N.SHEETS_HS_SKIN;
   const L = sheets.find(s => s.name === "Mon 03 08").layout;
   const cell = (lay, ref) => { const m = /^([A-Z])(\d+)$/.exec(ref);
     return lay.cells.find(x => x.r === +m[2] && x.c === m[1].charCodeAt(0) - 64) || {}; };
+  const R = SKIN.service.required, O = SKIN.service.offered;
+  assert.deepEqual({ ...R }, { am: "M3", pm: "N3" }, "an AM cell and a PM cell");
+  assert.ok(!SKIN.legendMerges.includes("M3:N3") && !SKIN.legendMerges.includes("M4:N4"),
+    "no longer merged into one");
   const day = r.hsDays["03/08/26"];
-  const running = [...day.stops.values()].filter(st => st.some(s => s.dep != null)).length;
-  assert.ok(running > 0);
-  assert.equal(cell(L, SKIN.service.required).v, String(running), "every diagram that runs");
-  assert.equal(cell(L, SKIN.service.required).num, true, "as a number, for the rule to compare");
-  assert.equal(cell(L, SKIN.service.offered).v, "", "OFFERED is the planner's");
+  let am = 0, pm = 0;
+  for (const st of day.stops.values()) {
+    const f = st.find(s => s.dep != null);
+    if (!f) continue;
+    const z = st[st.length - 1], end = z.arr != null ? z.arr : z.dep;
+    if (f.dep % 1440 < 720) am++;
+    if (end >= 720 || f.dep >= 720) pm++;
+  }
+  assert.ok(am > 0 && pm > 0);
+  assert.equal(cell(L, R.am).v, String(am), "AM: out before midday");
+  assert.equal(cell(L, R.pm).v, String(pm), "PM: still running after it");
+  assert.ok(cell(L, R.am).num && cell(L, R.pm).num, "numbers, for the rule to compare");
+  assert.equal(cell(L, R.am).disp, am + " /", "the preview reads it as the sheet does: 22 / 24");
+  const xfs = SKIN.stylesXml.match(/<cellXfs[\s\S]*<\/cellXfs>/)[0].match(/<xf [^>]*?(?:\/>|>[\s\S]*?<\/xf>)/g);
+  const fmt = id => new RegExp('numFmtId="' + /numFmtId="(\d+)"/.exec(xfs[id])[1] + '" formatCode="([^"]*)"').exec(SKIN.stylesXml)[1];
+  assert.equal(fmt(cell(L, R.am).xf), "0&quot; /&quot;", "the AM figure shows as 22 /");
+  assert.match(fmt(cell(L, R.pm).xf), /^&quot; &quot;0;/, "and the PM one beside it");
+  for (const ref of [O.am, O.pm]) assert.equal(cell(L, ref).v, "", "OFFERED is the planner's");
   for (const k of ["spare", "stopped", "stabled"]) assert.equal(cell(L, SKIN.service[k]).v, "", k);
-  // with no stops to read, the diagrams on the sheet
+  // with no stops to read, by the first move off a depot, and every diagram for the PM
   const bare = H.sheetsFor(r.hsSecs, r.labels, r.dates).find(s => s.name === "Mon 03 08").layout;
   const onSheet = new Set(bare.cells.filter(c => c.c === 9 && /^AZ\d+$/.test(c.v)).map(c => c.v)).size;
-  assert.equal(cell(bare, SKIN.service.required).v, String(onSheet));
+  assert.equal(cell(bare, R.pm).v, String(onSheet));
 
   const cf = L.opts.condFmt.join("");
-  assert.ok(cf.includes('<conditionalFormatting sqref="M4"><cfRule type="expression" dxfId="' +
-    SKIN.short.dxf + '"') && cf.includes("AND(ISNUMBER($M$4),ISNUMBER($M$3),$M$4&lt;$M$3)"),
-    "OFFERED red when fewer than REQUIRED, and only when both are figures");
+  assert.ok(cf.includes('<conditionalFormatting sqref="M4:N4"><cfRule type="expression" dxfId="' +
+    SKIN.short.dxf + '"') && cf.includes("AND(ISNUMBER(M4),ISNUMBER(M3),M4&lt;M3)"),
+    "each OFFERED figure red when fewer than its REQUIRED - relative, so N4 tests N3 - and only when both are figures");
   const dxfs = /<dxfs count="4">([\s\S]*)<\/dxfs>/.exec(SKIN.stylesXml)[1].match(/<dxf>[\s\S]*?<\/dxf>/g);
   assert.equal(dxfs[SKIN.short.dxf], '<dxf><font><color rgb="FFFF0000"/></font></dxf>',
     "the number in red - no fill, so not the box");

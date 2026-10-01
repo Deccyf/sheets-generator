@@ -630,7 +630,10 @@ function previewHtml(layout){
       h += "<td" + (sp ? ' colspan="' + sp[0] + '" rowspan="' + sp[1] + '"' : "") +
            (note ? ' title="' + esc(note) + '"' : "") +
            ' style="' + css + '">' +
-           esc(cell && (cell.v || cell.v === 0) ? cell.v : "") + "</td>";
+           /* a cell can say how its number format shows it - "22 /" for the
+              395 sheet's 22 - since the preview has no number formats */
+           esc(cell && cell.disp != null ? cell.disp
+               : cell && (cell.v || cell.v === 0) ? cell.v : "") + "</td>";
     }
     h += "</tr>";
   }
