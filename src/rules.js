@@ -296,9 +296,12 @@ const SHEETS_RULES = (() => {
              "day runs nothing and is not counted. And every AZ1 diagram " +
              "carries the note “Modded unit only”, ahead of its route note." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
-             "on both unit columns and the sanding table's, 6 or 12, the CET " +
-             "mark, and FP/RP. Click " +
-             "a cell and the arrow is there." },
+             "on both unit columns, the stopped units and the sanding table's, " +
+             "6 or 12, the CET mark, and FP/RP. Click a cell and the arrow is " +
+             "there. On the unit columns and the stopped units the list only " +
+             "offers — type a note after a unit (395001 wheel flats) and it is " +
+             "taken, and still counted in TOTAL STOPPED. The sanding table " +
+             "takes units off the list only." },
         { note: "The DIAGRAM cells carry the route note as a comment, the " +
           "way the hand-kept workbook does — hover over one to read it. “not " +
           "over high level” goes on a line that never goes by the North " +

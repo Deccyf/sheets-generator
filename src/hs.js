@@ -541,7 +541,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
-  const dvRanges = { cet: [], fprp: [], cars: [], unit: [] };
+  const dvRanges = { cet: [], fprp: [], cars: [], unit: [], sand: [] };
   /* Every cell names the skin's exact style record (xf), which both the
      saved file and the on-screen preview draw it with. */
   const put = (r, c, xf, v, num) => {
@@ -990,16 +990,21 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
       ')</formula></cfRule>').join("") +
     '</conditionalFormatting>');
 
-  // and the stopped and sanding tables' units, off the same fleet list
-  dvRanges.unit.push(...stoppedRanges, sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  /* and the stopped and sanding tables' units, off the same fleet list.
+     On the unit columns and the stopped units the list only offers: the
+     planner writes a note after a unit ("395001 wheel flats"), and a strict
+     list refused it. The sanding table keeps to the list. */
+  dvRanges.unit.push(...stoppedRanges);
+  dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  const LOOSE = new Set(["unit"]);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
-                  ["fprp", SKIN.dv.fprp], ["unit", rosterList()]]
+                  ["fprp", SKIN.dv.fprp], ["unit", rosterList()], ["sand", rosterList()]]
     .filter(([k]) => dvRanges[k].length);
   const dataValidations = dvDefs.length
     ? '<dataValidations count="' + dvDefs.length + '">' +
       dvDefs.map(([k, list]) =>
         '<dataValidation type="list" allowBlank="1" showInputMessage="1"' +
-        ' showErrorMessage="1" sqref="' + dvRanges[k].join(" ") + '">' +
+        ' showErrorMessage="' + (LOOSE.has(k) ? 0 : 1) + '" sqref="' + dvRanges[k].join(" ") + '">' +
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";

@@ -140,6 +140,16 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.27.1 — 1 October 2026 — a note after a unit number
+
+The fleet list on the unit columns and in the STOPPED UNITS table now
+offers units without insisting on them. It was strict, so Excel refused
+"395001 wheel flats" with a validation error. The arrow and the list are
+still there, and anything typed is taken (`showErrorMessage="0"`).
+TOTAL STOPPED counts any cell with something in it, so a unit with a note
+after it still counts once. The sanding table's unit column keeps to the
+list. It is now a drop-down of its own.
+
 ## 3.27.0 — 1 October 2026 — TOTAL STOPPED counts the stopped units
 
 TOTAL STOPPED, in the service table, is now a formula that counts the

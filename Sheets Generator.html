@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.27.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.27.1</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1681,7 +1681,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.27.0
+      works without an internet connection. Version 3.27.1
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2982,9 +2982,12 @@ const SHEETS_RULES = (() => {
              "day runs nothing and is not counted. And every AZ1 diagram " +
              "carries the note “Modded unit only”, ahead of its route note." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
-             "on both unit columns and the sanding table's, 6 or 12, the CET " +
-             "mark, and FP/RP. Click " +
-             "a cell and the arrow is there." },
+             "on both unit columns, the stopped units and the sanding table's, " +
+             "6 or 12, the CET mark, and FP/RP. Click a cell and the arrow is " +
+             "there. On the unit columns and the stopped units the list only " +
+             "offers — type a note after a unit (395001 wheel flats) and it is " +
+             "taken, and still counted in TOTAL STOPPED. The sanding table " +
+             "takes units off the list only." },
         { note: "The DIAGRAM cells carry the route note as a comment, the " +
           "way the hand-kept workbook does — hover over one to read it. “not " +
           "over high level” goes on a line that never goes by the North " +
@@ -6371,7 +6374,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
-  const dvRanges = { cet: [], fprp: [], cars: [], unit: [] };
+  const dvRanges = { cet: [], fprp: [], cars: [], unit: [], sand: [] };
   /* Every cell names the skin's exact style record (xf), which both the
      saved file and the on-screen preview draw it with. */
   const put = (r, c, xf, v, num) => {
@@ -6820,16 +6823,21 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
       ')</formula></cfRule>').join("") +
     '</conditionalFormatting>');
 
-  // and the stopped and sanding tables' units, off the same fleet list
-  dvRanges.unit.push(...stoppedRanges, sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  /* and the stopped and sanding tables' units, off the same fleet list.
+     On the unit columns and the stopped units the list only offers: the
+     planner writes a note after a unit ("395001 wheel flats"), and a strict
+     list refused it. The sanding table keeps to the list. */
+  dvRanges.unit.push(...stoppedRanges);
+  dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  const LOOSE = new Set(["unit"]);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
-                  ["fprp", SKIN.dv.fprp], ["unit", rosterList()]]
+                  ["fprp", SKIN.dv.fprp], ["unit", rosterList()], ["sand", rosterList()]]
     .filter(([k]) => dvRanges[k].length);
   const dataValidations = dvDefs.length
     ? '<dataValidations count="' + dvDefs.length + '">' +
       dvDefs.map(([k, list]) =>
         '<dataValidation type="list" allowBlank="1" showInputMessage="1"' +
-        ' showErrorMessage="1" sqref="' + dvRanges[k].join(" ") + '">' +
+        ' showErrorMessage="' + (LOOSE.has(k) ? 0 : 1) + '" sqref="' + dvRanges[k].join(" ") + '">' +
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";

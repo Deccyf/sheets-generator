@@ -106,13 +106,18 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   /* The drop-downs their sheet keeps: the fleet roster on both UNIT columns
      (built at runtime from first+count, so no unit numbers ride in the
      skin), 6/12, the CET mark, and FP/RP. */
-  const dv = /<dataValidations count="4">([\s\S]*?)<\/dataValidations>/.exec(xml);
-  assert.ok(dv, "four drop-down lists saved");
+  const dv = /<dataValidations count="5">([\s\S]*?)<\/dataValidations>/.exec(xml);
+  assert.ok(dv, "five drop-down lists saved");
   for (const list of ['"6,12"', '"YES,N"', '"FP,RP"'])
     assert.ok(dv[1].includes("<formula1>" + list + "</formula1>"), list);
   assert.match(dv[1], /<formula1>"395001,(?:39500\d,)+/, "the fleet roster");
-  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+ I\d+:I\d+ O\d+:O\d+ W12:W40"/,
-    "on both UNIT columns, and the stopped and sanding tables'");
+  /* on both UNIT columns and the stopped units, offered but not enforced -
+     a unit with a note after it is the planner's to write - and kept to
+     on the sanding table */
+  assert.match(dv[1], /showErrorMessage="0" sqref="D\d+:D\d+ N\d+:N\d+ I\d+:I\d+ O\d+:O\d+"><formula1>"395001,/,
+    "on both UNIT columns and the stopped table, any text taken");
+  assert.match(dv[1], /showErrorMessage="1" sqref="W12:W40"><formula1>"395001,/,
+    "and the sanding table's, off the list only");
 
   /* And the standing route notes, as classic comments on the DIAGRAM
      cells - the same knowledge their workbook keeps there, carried by
@@ -805,7 +810,7 @@ test("REQUIRED is the day's diagrams AM and PM, OFFERED goes red under it, and s
   for (const m of ["W10:Z10", "W11:X11", "Y11:Z11", "W12:X12", "Y12:Z12", "W40:X40", "Y40:Z40"])
     assert.ok(L.merges.includes(m), m);
   assert.ok(L.maxRow > 40 && L.opts.lastCol === "Z", "the sheet runs out to the table");
-  assert.match(L.opts.dataValidations, /sqref="[^"]* W12:W40"><formula1>"395001,/,
+  assert.match(L.opts.dataValidations, /showErrorMessage="1" sqref="W12:W40"><formula1>"395001,/,
     "a unit off the fleet list");
   const sand = /<conditionalFormatting sqref="Y12:Z40">([\s\S]*?)<\/conditionalFormatting>/.exec(cf);
   assert.ok(sand, "the miles are coloured");
