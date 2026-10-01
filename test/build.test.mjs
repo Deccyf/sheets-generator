@@ -67,8 +67,12 @@ test("the built file is self-contained and lean", () => {
      bold rule with thin ones inside, as the depot's are, so each data
      record ships in the four places a row can have in its run (~15 KB of
      skin, trimmed back from ~21 KB by writing it without the indentation). */
-  assert.ok(html.length < 1150 * 1024,
-    "under 1150 KB (was 1.2 MB); this build is " +
+  /* 1200 KB at 3.24.0: the October template - the service-trains table,
+     Done to Genius and the sanding table - brings its own records (~9 KB of
+     skin, less the ~1 KB of theme-font and unused fill markup it no longer
+     carries). */
+  assert.ok(html.length < 1200 * 1024,
+    "under 1200 KB; this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

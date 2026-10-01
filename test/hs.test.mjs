@@ -54,16 +54,19 @@ test("a worksheet per day, named the way their workbook names them", async () =>
     assert.match(o.colsXml, /^<cols>/, "their column widths, verbatim");
     assert.equal(o.noPageSetup, true, "no pageSetup, like their tab");
     /* These prints carry no mileage, so there is no MG rule: Excel reads
-       an empty cell as 0, and a rule over blanks paints them all green. */
-    assert.equal(o.condFmt.length, 0, "no MG figures, no MG colours");
+       an empty cell as 0, and a rule over blanks paints them all green.
+       The two rules every sheet has are the planner's: OFFERED red under
+       REQUIRED, and the sanding miles. */
+    assert.ok(!o.condFmt.some(c => /sqref="K/.test(c)), "no MG figures, no MG colours");
+    assert.equal(o.condFmt.length, 2, "OFFERED and the sanding miles");
   }
   /* …and the saved workbook really carries all of it. */
   const bytes = H.writeHsBook(r.hsSecs, r.labels, r.dates,
                               f => N.fflate.zipSync(f, { level: 6 }));
   const files = N.fflate.unzipSync(bytes);
   const styles = new TextDecoder().decode(files["xl/styles.xml"]);
-  assert.ok(styles.includes("FF00B050") && styles.includes("<dxfs count=\"3\">"),
-    "their styles and the three mileage dxfs are in the saved file");
+  assert.ok(styles.includes("FF00B050") && styles.includes("<dxfs count=\"4\">"),
+    "their styles, the three mileage dxfs and the red figure are in the saved file");
   /* No theme colours. The workbook painted its greys as theme-0-with-tint,
      and a generated book has no theme part to resolve them against - Excel
      drew every such fill as a dotted haze. The skin ships pure rgb, resolved
@@ -93,12 +96,12 @@ test("a worksheet per day, named the way their workbook names them", async () =>
      styleSheet nested a second unclosed <borders>, and Excel repaired the
      file by throwing the styles part away. ExcelJS would have refused it
      the same way Excel did. */
-  const wb = await normalizeWorkbook(legacy(), bytes);
+  const wb = await normalizeWorkbook(legacy(), bytes, { ncol: 26 });
   assert.ok(wb.length >= 1, "the workbook loads in a real parser");
   assert.ok(wb[0].cells.length > 20, "with its cells intact: " + wb[0].cells.length);
   const vals = wb[0].cells.map(([, , rec]) => rec.v);
-  assert.ok(vals.includes("INT CLEAN") && vals.includes("Mileage Guide"),
-    "and the legend text survives the round trip");
+  assert.ok(vals.includes("SERVICE TRAINS REQUIRED AM / PM") && vals.includes("SANDING") &&
+            vals.includes("Average"), "and the house text survives the round trip");
 
   /* The drop-downs their sheet keeps: the fleet roster on both UNIT columns
      (built at runtime from first+count, so no unit numbers ride in the
@@ -108,7 +111,8 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   for (const list of ['"6,12"', '"YES,N"', '"FP,RP"'])
     assert.ok(dv[1].includes("<formula1>" + list + "</formula1>"), list);
   assert.match(dv[1], /<formula1>"395001,(?:39500\d,)+/, "the fleet roster");
-  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+/, "on both UNIT columns");
+  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+ W12:W40"/,
+    "on both UNIT columns, and the sanding table's");
 
   /* And the standing route notes, as classic comments on the DIAGRAM
      cells - the same knowledge their workbook keeps there, carried by
@@ -249,12 +253,16 @@ test("each depot block is arrivals on the left, allocations on the right", async
   const at = new Map();
   for (const c of sh.layout.cells) at.set(c.r + "," + c.c, c.v);
 
-  // the legend block sits above everything, exactly as the workbook has it
-  assert.equal(at.get("2,7"), "INT CLEAN");
-  assert.equal(at.get("3,7"), "EXT CLEAN");
-  assert.equal(at.get("2,8"), "Mileage Guide");
-  assert.equal(at.get("2,19"), "Date Sent");
-  assert.equal(at.get("3,19"), "", "the sent date is the sender's to fill in");
+  /* the top sits above everything, exactly as their October tab has it:
+     the service-trains table, Done to Genius, the sent date and time */
+  assert.equal(at.get("3,8"), "SERVICE TRAINS REQUIRED AM / PM");
+  assert.equal(at.get("4,8"), "SERVICE TRAINS OFFERED AM / PM");
+  assert.equal(at.get("7,8"), "TOTAL STABLED");
+  assert.equal(at.get("4,2"), "Done to Genius");
+  assert.equal(at.get("4,19"), "Date Sent");
+  assert.equal(at.get("5,19"), "", "the sent date is the sender's to fill in");
+  assert.equal(at.get("4,13"), "", "OFFERED is the planner's to fill in");
+  assert.equal(at.get("8,19"), "", "and the version");
 
   // find a block heading and check the pair, and the header row under it
   let head = null;
@@ -636,9 +644,11 @@ test("the MG column reads High, Average and Low, as the key above it does", () =
     assert.equal(H.mgBand(n).band, band, n + " miles");
   assert.deepEqual(Array.from(SKIN.mg, b => b.band), ["High", "Average", "Low"],
     "High first, so Excel's priority settles 700 the same way");
-  const words = Array.from(SKIN.legend, l => l[3]);
-  for (const w of ["Mileage Guide", "High", "Average", "Low"]) assert.ok(words.includes(w), w);
-  assert.ok(!words.some(w => /500 Miles/.test(w)), "the old two-colour key is gone");
+  // the key sits under the notes now, a swatch = a word on each line
+  const words = Array.from(SKIN.footer, l => l[3]);
+  for (const w of ["High", "Average", "Low"]) assert.ok(words.includes(w), w);
+  assert.ok(!words.concat(Array.from(SKIN.legend, l => l[3])).some(w => /500 Miles/.test(w)),
+    "the old two-colour key is gone");
   // the CET key's second line: YES under each of its three day counts
   const yes = Array.from(SKIN.footer).filter(f => f[3] === "YES").map(f => f[1]);
   assert.deepEqual(yes, ["D", "E", "F"], "YES in each of the three coloured cells");
@@ -685,7 +695,8 @@ test("the bar closes the morning run-out: 5R27 at 09 54 and a first move at 10 0
   const order = key => {
     const lay = H.layoutDay(key, { [key]: "02/10/26" }, day(key), null);
     const out = [];
-    for (let r = 9; r < lay.maxRow; r++) {
+    // from under the title and the column headings
+    for (let r = SKIN.firstRow + 2; r < lay.maxRow; r++) {
       const at = c => (lay.cells.find(x => x.r === r && x.c === c) || {});
       if (at(8).xf === SKIN.bars.ASHFORD.H) out.push("BAR");
       else if (at(9).v) out.push(at(12).v);
@@ -734,4 +745,56 @@ test("the text is in each depot's colour, and where a unit gets to in that place
   assert.ok(used.every(s => s < xfN), "every cell names a record that is there");
   const wb = await normalizeWorkbook(legacy(), bytes);
   assert.ok(wb.length >= 1 && wb[0].cells.length > 20, "and a real parser reads it");
+});
+
+test("REQUIRED is the day's diagrams, OFFERED goes red under it, and sanding takes a unit and colours its miles", async () => {
+  /* Their October tab: SERVICE TRAINS REQUIRED is the day's diagrams - 25
+     on 02/10, AZ601-AZ625, though AZ622 is in none of its tables - and the
+     planner types OFFERED, which goes red (the figure, not the box) when it
+     is fewer. The sanding table beside the blocks takes a unit off the fleet
+     list and its miles: up to 6,000 green, 6,000-6,999 amber, 7,000 red. */
+  const { N, sheets, r } = await week("03/08/26");
+  const H = N.SHEETS_HS, SKIN = N.SHEETS_HS_SKIN;
+  const L = sheets.find(s => s.name === "Mon 03 08").layout;
+  const cell = (lay, ref) => { const m = /^([A-Z])(\d+)$/.exec(ref);
+    return lay.cells.find(x => x.r === +m[2] && x.c === m[1].charCodeAt(0) - 64) || {}; };
+  const day = r.hsDays["03/08/26"];
+  const running = [...day.stops.values()].filter(st => st.some(s => s.dep != null)).length;
+  assert.ok(running > 0);
+  assert.equal(cell(L, SKIN.service.required).v, String(running), "every diagram that runs");
+  assert.equal(cell(L, SKIN.service.required).num, true, "as a number, for the rule to compare");
+  assert.equal(cell(L, SKIN.service.offered).v, "", "OFFERED is the planner's");
+  for (const k of ["spare", "stopped", "stabled"]) assert.equal(cell(L, SKIN.service[k]).v, "", k);
+  // with no stops to read, the diagrams on the sheet
+  const bare = H.sheetsFor(r.hsSecs, r.labels, r.dates).find(s => s.name === "Mon 03 08").layout;
+  const onSheet = new Set(bare.cells.filter(c => c.c === 9 && /^AZ\d+$/.test(c.v)).map(c => c.v)).size;
+  assert.equal(cell(bare, SKIN.service.required).v, String(onSheet));
+
+  const cf = L.opts.condFmt.join("");
+  assert.ok(cf.includes('<conditionalFormatting sqref="M4"><cfRule type="expression" dxfId="' +
+    SKIN.short.dxf + '"') && cf.includes("AND(ISNUMBER($M$4),ISNUMBER($M$3),$M$4&lt;$M$3)"),
+    "OFFERED red when fewer than REQUIRED, and only when both are figures");
+  const dxfs = /<dxfs count="4">([\s\S]*)<\/dxfs>/.exec(SKIN.stylesXml)[1].match(/<dxf>[\s\S]*?<\/dxf>/g);
+  assert.equal(dxfs[SKIN.short.dxf], '<dxf><font><color rgb="FFFF0000"/></font></dxf>',
+    "the number in red - no fill, so not the box");
+
+  // the sanding table: its title on the first block's heading row, then 29 rows
+  assert.equal(cell(L, "W10").v, "SANDING");
+  assert.equal(cell(L, "W11").v, "UNIT NO"); assert.equal(cell(L, "Y11").v, "MILES");
+  for (const m of ["W10:Z10", "W11:X11", "Y11:Z11", "W12:X12", "Y12:Z12", "W40:X40", "Y40:Z40"])
+    assert.ok(L.merges.includes(m), m);
+  assert.ok(L.maxRow > 40 && L.opts.lastCol === "Z", "the sheet runs out to the table");
+  assert.match(L.opts.dataValidations, /sqref="[^"]* W12:W40"><formula1>"395001,/,
+    "a unit off the fleet list");
+  const sand = /<conditionalFormatting sqref="Y12:Z40">([\s\S]*?)<\/conditionalFormatting>/.exec(cf);
+  assert.ok(sand, "the miles are coloured");
+  const rules = [...sand[1].matchAll(/dxfId="(\d)"[^>]*><formula>(.*?)<\/formula>/g)].map(m => [+m[1], m[2]]);
+  assert.deepEqual(rules, [
+    [0, "AND(ISNUMBER($Y12),$Y12&gt;=7000)"],
+    [1, "AND(ISNUMBER($Y12),$Y12&gt;=6000,$Y12&lt;7000)"],
+    [2, "AND(ISNUMBER($Y12),$Y12&lt;6000)"]], "red, amber, green - and an empty cell left white");
+  assert.deepEqual(Array.from(SKIN.mg, b => b.band), ["High", "Average", "Low"],
+    "dxf 0, 1, 2 are the key's red, amber and green");
+  for (const [n, dxf] of [[0, 2], [5999, 2], [6000, 1], [6999, 1], [6999.5, 1], [7000, 0], [9100, 0]])
+    assert.equal(H.SANDING_BANDS.find(b => b.at(n)).dxf, dxf, n + " miles");
 });

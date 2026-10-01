@@ -388,10 +388,24 @@ const LONG_STAND = 90;
 const RUN_OUT_TO = 9 * 60 + 45;
 const RUN_OUT_TO_WEEKEND = 12 * 60;
 
-/* Rough per-column widths for the on-screen preview only - the saved file
-   carries the workbook's own <cols> verbatim from the skin. */
-const PREVIEW_W = [8.4, 8.6, 8.4, 8.6, 8.1, 8.1, 8.4, 8.6, 8.1, 6.4, 5.6,
-                   7.1, 6.3, 7.3, 8.3, 7.7, 7.9, 7.7, 8.4, 8.4];
+/* Per-column widths for the on-screen preview, A to Z: the workbook's own
+   <cols>, which the saved file carries verbatim, and Excel's 8.43 for the
+   columns it leaves alone - the sanding table, W to Z, among them. */
+const PREVIEW_W = (() => {
+  const w = new Array(26).fill(8.43);
+  for (const m of SKIN.colsXml.matchAll(/<col min="(\d+)" max="(\d+)" width="([\d.]+)"/g))
+    for (let i = +m[1]; i <= +m[2] && i <= w.length; i++) w[i - 1] = +m[3];
+  return w;
+})();
+
+/* The sanding table's miles, coloured as the planner gave them: up to 6,000
+   green, 6,000 to 6,999 amber, 7,000 and over red - the mileage key's own
+   three colours, dxf 0 (red), 1 (amber) and 2 (green) in the skin. */
+const SANDING_BANDS = [
+  { dxf: 0, f: (c) => c + ">=7000", at: n => n >= 7000 },
+  { dxf: 1, f: (c) => c + ">=6000," + c + "<7000", at: n => n >= 6000 && n < 7000 },
+  { dxf: 2, f: (c) => c + "<6000", at: n => n < 6000 },
+];
 
 /* Yesterday's arrivals into this depot, read off the day before's own
    entries: one row per unit whose PM berth is here, off its last stint of
@@ -535,12 +549,41 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   }
   for (const l of departures.values()) l.sort((a, b) => a.time - b.time);
 
-  // the legend block, rows 1-6, exactly as the workbook has it
-  for (const [lr, c, xf, v] of SKIN.legend) put(lr, COL(c), xf, v);
+  /* SERVICE TRAINS REQUIRED: the day's diagrams that run. Every one in the
+     day's reports counts, whether or not it leaves a depot - their 02/10
+     sheet has 25 for AZ601-AZ625 with AZ622 in none of its tables. A build
+     with no stops to read (a PDF) counts the diagrams on the sheet. */
+  const required = F ? [...F.S.values()].filter(st => st.some(x => x.dep != null)).length
+    : departures.size;
+  /* the top, above the first block, exactly as the workbook has it: the
+     service-trains table, Done to Genius, the sent date, time and version */
+  for (const [lr, c, xf, v] of SKIN.legend) {
+    const isReq = c + lr === SKIN.service.required && required > 0;
+    put(lr, COL(c), xf, isReq ? required : v, isReq);
+  }
   for (const [lr, h] of Object.entries(SKIN.legendHts)) rowHeights.set(+lr, +h);
   merges.push(...SKIN.legendMerges);
+  /* OFFERED is the planner's to fill in. Fewer than REQUIRED and the figure
+     goes red - the number, not the box. */
+  const cellAbs = ref => ref.replace(/^([A-Z]+)(\d+)$/, "$$$1$$$2");
+  const off = cellAbs(SKIN.service.offered), req = cellAbs(SKIN.service.required);
 
-  let r = 7;
+  /* The sanding table, off to the right of the blocks: a unit off the fleet
+     list, and its miles, coloured by SANDING_BANDS. */
+  const SD = SKIN.sanding, sc = COL(SD.col), sTop = SKIN.firstRow + SD.at;
+  const sCols = [0, 1, 2, 3].map(i => String.fromCharCode(64 + sc + i));
+  const sFirst = sTop + 2, sLast = sFirst + SD.rows - 1;
+  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SD.text[0] : ""));
+  merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
+  sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
+  for (let sr = sTop + 1; sr <= sLast; sr++) {
+    if (sr > sTop + 1)
+      sCols.forEach((c, i) => put(sr, sc + i,
+        (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
+    merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
+  }
+
+  let r = SKIN.firstRow;
   let pri = 1;
   let blocks = 0;
   for (const depot of DEPOTS) {
@@ -859,13 +902,29 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     }
   }
 
-  // the standing house notes, re-anchored under the last block
-  const base = r + 1 - 60;
+  // the standing house notes and the mileage key, re-anchored under the last block
+  const base = r + 1 - SKIN.footerTop;
   for (const [fr, c, xf, v] of SKIN.footer) put(fr + base, COL(c), xf, v);
   for (const m of SKIN.footerMerges)
     merges.push(m.replace(/(\d+)/g, d => String(+d + base)));
-  r = base + 67;
+  for (const [fr, h] of Object.entries(SKIN.footerHts)) rowHeights.set(+fr + base, +h);
+  r = Math.max(base + SKIN.footerBottom + 1, sLast + 1);
 
+  condFmt.push('<conditionalFormatting sqref="' + SKIN.service.offered + '">' +
+    '<cfRule type="expression" dxfId="' + SKIN.short.dxf + '" priority="' + pri++ + '">' +
+    '<formula>AND(ISNUMBER(' + off + '),ISNUMBER(' + req + '),' + off + '&lt;' + req + ')</formula>' +
+    '</cfRule></conditionalFormatting>');
+  /* the miles: Y and Z both test Y, so the merged pair colours as one, and
+     an empty cell - which Excel reads as 0 - stays white */
+  const my = "$" + sCols[2] + sFirst;
+  condFmt.push('<conditionalFormatting sqref="' + sCols[2] + sFirst + ":" + sCols[3] + sLast + '">' +
+    SANDING_BANDS.map(b => '<cfRule type="expression" dxfId="' + b.dxf + '" priority="' + pri++ + '">' +
+      '<formula>AND(ISNUMBER(' + my + '),' + b.f(my).replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+      ')</formula></cfRule>').join("") +
+    '</conditionalFormatting>');
+
+  // and the sanding table's units, off the same fleet list
+  dvRanges.unit.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
                   ["fprp", SKIN.dv.fprp], ["unit", rosterList()]]
     .filter(([k]) => dvRanges[k].length);
@@ -882,7 +941,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
                    // the same records again, as CSS, for the preview
                    xfCss: SKIN.xfCss, previewFont: "calibri",
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
-                   lastCol: "T", noPageSetup: true, widths: PREVIEW_W } };
+                   lastCol: sCols[3], noPageSetup: true, widths: PREVIEW_W } };
 }
 
 /* One worksheet per day the reports carry, named the way the real workbook
@@ -915,7 +974,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS,
          dayFromPrint, viaNorthKent, NORTH_KENT, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();

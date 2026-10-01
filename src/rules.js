@@ -176,6 +176,19 @@ const SHEETS_RULES = (() => {
              "colour, green Ashford, pink Faversham, purple Margate, blue " +
              "Ramsgate; everything else below it, in time order, so 5R27 at " +
              "09:54 comes before a first move at 10:05." },
+        { p: "Along the top, as the depot's October tabs have it: the " +
+             "service-trains table, “Done to Genius”, and the date, time and " +
+             "version it was sent. SERVICE TRAINS REQUIRED is filled in — " +
+             "every diagram that runs that day, whether or not it leaves a " +
+             "depot block (their 02/10 tab has 25, AZ601 to AZ625). OFFERED, " +
+             "SPARE, STOPPED and STABLED are yours to fill in; an OFFERED " +
+             "figure fewer than REQUIRED turns red — the number, not the box. " +
+             "The date, time and version are left for the sender." },
+        { p: "Off to the right, the SANDING table: a UNIT NO and its MILES on " +
+             "each of 29 lines. The unit is picked off the fleet list, and the " +
+             "miles colour themselves as you type them — green up to 6,000, " +
+             "amber from 6,000 to 6,999, red at 7,000 and over. An empty line " +
+             "stays white." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +
@@ -199,7 +212,7 @@ const SHEETS_RULES = (() => {
            "stays out has no second row, so the row it does have carries the " +
            "rest of its day, and a diagram's figures always add up to the " +
            "day it runs. It is written as a number, so the sheet's " +
-           "own colouring works on it — the Mileage Guide at the top: Low, " +
+           "own colouring works on it — the key under the notes: Low, " +
            "green, under 400 miles; Average, amber, 400 to 700; High, red, " +
            "700 and over. A report saved as a PDF carries no mileage and " +
            "the column stays empty and uncoloured."],
@@ -272,7 +285,8 @@ const SHEETS_RULES = (() => {
              "day runs nothing and is not counted. And every AZ1 diagram " +
              "carries the note “Modded unit only”, ahead of its route note." },
         { p: "The drop-downs are on the cells that had them: the fleet list " +
-             "on both unit columns, 6 or 12, the CET mark, and FP/RP. Click " +
+             "on both unit columns and the sanding table's, 6 or 12, the CET " +
+             "mark, and FP/RP. Click " +
              "a cell and the arrow is there." },
         { note: "The DIAGRAM cells carry the route note as a comment, the " +
           "way the hand-kept workbook does — hover over one to read it. “not " +

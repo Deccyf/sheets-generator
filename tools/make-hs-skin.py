@@ -12,7 +12,7 @@ import re, json, sys, zipfile
 # The default below is only where it sat on the machine this was written on;
 # it is not expected to exist anywhere else, and the error says so.
 DEFAULT = ("/root/.claude/uploads/a92fd59d-eda0-5a2d-858d-3481c8939b31/"
-           "571b1f3c-01_10_2026__Allocations_Sheet.xlsx")
+           "f2137f8e-Live_Allocations_Sheet.xlsx")
 src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
 try:
     Z = zipfile.ZipFile(src)
@@ -29,32 +29,37 @@ def unesc(t):
         t = t.replace(a, b)
     return t
 st = Z.read('xl/styles.xml').decode()
-# Two daily tabs, found by NAME. The part number does not track tab order -
+# Three daily tabs, found by NAME. The part number does not track tab order -
 # "Tue 18 08" was sheet131 in the August workbook and is sheet44 in the
 # October one - and pointed at the wrong part the whole thing still runs and
 # produces a complete, well-formed, leak-clean skin of somebody else's day.
-#   BASE_TAB   - the body of the sheet: titles, headings, data rows, the
-#                closing strip and the house notes. Its rows are where this
-#                script expects them (7, 8, 9, 27, 60-66) and the checks
-#                below fail by name if they are not.
-#   LEGEND_TAB - the key along the top and the mileage rule. The workbook
-#                changed its mileage key in September from "< 500 / > 500
-#                Miles" to High / Average / Low, so the key comes from a tab
-#                that has the new one.
+#   BASE_TAB   - the body of the sheet: titles, headings, data rows and the
+#                closing strip. Its rows are where this script expects them
+#                (7, 8, 9, 27) and the checks below fail by name if they
+#                are not.
+#   LEGEND_TAB - the mileage rule's colours. The workbook changed its key in
+#                September from "< 500 / > 500 Miles" to High / Average /
+#                Low, so they come from a tab that has the new one.
+#   TEMPLATE_TAB - the October layout: the service-trains table, "Done to
+#                Genius" and the sent date/time/version along the top; the
+#                sanding table off to the right; the notes and, under them
+#                now, the mileage key. It replaced the CLEAN / mileage legend
+#                that sat along the top, and is found by its labels.
 # A tab that is only in one of them (Faversham's block is not on 18/08, and
 # 01/10 has no Margate block) is named where it is taken, below.
-BASE_TAB, LEGEND_TAB = "Tue 18 08", "Thur 01 10"
+BASE_TAB, LEGEND_TAB, TEMPLATE_TAB = "Tue 18 08", "Thur 01 10", "Fri 02 10"
 wb = Z.read('xl/workbook.xml').decode()
 wb_rels = Z.read('xl/_rels/workbook.xml.rels').decode()
 rid_target = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"', wb_rels))
 PART = {}
 for m in re.finditer(r'<sheet name="([^"]+)"[^>]*r:id="([^"]+)"', wb):
     PART[unesc(m.group(1))] = "xl/" + rid_target[m.group(2)].lstrip("/").replace("xl/", "")
-for t in (BASE_TAB, LEGEND_TAB):
+for t in (BASE_TAB, LEGEND_TAB, TEMPLATE_TAB):
     assert t in PART, "no tab called %r in this workbook" % t
 SHEET_PART = PART[BASE_TAB]
 sheet = Z.read(SHEET_PART).decode()
 lsheet = Z.read(PART[LEGEND_TAB]).decode()
+tsheet = Z.read(PART[TEMPLATE_TAB]).decode()
 ss = [unesc("".join(re.findall(r'<t[^>]*>(.*?)</t>', x, re.S)))
       for x in re.findall(r'<si>(.*?)</si>', Z.read('xl/sharedStrings.xml').decode(), re.S)]
 
@@ -71,12 +76,19 @@ dxfs    = re.findall(r'<dxf>.*?</dxf>',
                      re.search(r'<dxfs[^>]*>.*?</dxfs>', st, re.S).group(0), re.S)
 
 def rows_of(sx):
-    return dict(re.findall(r'<row [^>]*r="(\d+)"[^>]*>(.*?)</row>', sx, re.S))
+    # an empty row is written self-closed, <row r="2" .../>, and a pattern
+    # that wants a </row> runs on through it and files the NEXT row's cells
+    # under its number
+    out = {}
+    for m in re.finditer(r'<row ([^>]*?)(?:/>|>(.*?)</row>)', sx, re.S):
+        out[re.search(r'\br="(\d+)"', m.group(1)).group(1)] = m.group(2) or ""
+    return out
 def hts_of(sx):
     return {int(m.group(1)): m.group(2) for m in
             re.finditer(r'<row r="(\d+)"[^>]*?ht="([\d.]+)"', sx)}
-ROWS = {BASE_TAB: rows_of(sheet), LEGEND_TAB: rows_of(lsheet)}
-hts, lhts = hts_of(sheet), hts_of(lsheet)
+ROWS = {BASE_TAB: rows_of(sheet), LEGEND_TAB: rows_of(lsheet),
+        TEMPLATE_TAB: rows_of(tsheet)}
+hts, thts = hts_of(sheet), hts_of(tsheet)
 def cells(r, tab=BASE_TAB):
     out = {}
     for cm in re.finditer(r'<c r="([A-Z]+)\d+"([^>]*?)(?:/>|>(.*?)</c>)',
@@ -98,36 +110,98 @@ def take(r, keep_values, clear=(), tab=BASE_TAB):
         got.append([r, col, x, "" if (not keep_values or col in clear) else v])
     return got
 
-# rows 1-6: the legend. The right-hand value column carries what belongs to
-# the day the sheet was SENT - the date, the time, and the workbook version -
-# so rows 3, 5 and 6 have their S/T values dropped. Row 6 was missed: the
-# version sits there, not on 3 or 5, so every generated sheet was stamped
-# with the operator's own "VERSION 1". The allow-list at the bottom is what
-# stops the next one of these going unnoticed.
+# ---- the top of the sheet, off the October template ----
+# Everything above the first block: the service-trains table, "Done to
+# Genius", and the sent date / time / version. The first block's title row
+# is found by its text, and the sheet starts there.
+def col_n(c):
+    n = 0
+    for ch in c: n = n * 26 + ord(ch) - 64
+    return n
+first_row = next(r for r in range(1, 30)
+                 if cells(r, TEMPLATE_TAB).get("B", (0, ""))[1].startswith("ASHFORD PM ARRIVALS"))
+t_merges = re.findall(r'<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"', tsheet)
+def merges_in(lo, hi, last="T"):
+    return [a + b + ":" + c + d for a, b, c, d in t_merges
+            if lo <= int(b) and int(d) <= hi and col_n(c) <= col_n(last)]
+# The service table: a label merged across H:L and its figure beside it.
+# Every figure belongs to the day the sheet was sent, so all are cleared;
+# the one the sheet fills is REQUIRED - the day's diagrams - and the planner
+# types the rest. The date and time under their labels, and "VERSION n",
+# are the sending day's too.
+SERVICE = {"SERVICE TRAINS REQUIRED AM / PM": "required",
+           "SERVICE TRAINS OFFERED AM / PM": "offered",
+           "SERVICE SPARE TRAINS": "spare", "TOTAL STOPPED": "stopped",
+           "TOTAL STABLED": "stabled"}
+service, clear_top = {}, set()
+for r in range(1, first_row):
+    got = cells(r, TEMPLATE_TAB)
+    for col, (x, v) in got.items():
+        if v in SERVICE:
+            end = next(c for a, b, c, d in t_merges if a == col and int(b) == r)
+            vc = chr(ord(end) + 1)
+            service[SERVICE[v]] = vc + str(r)
+            clear_top.add((r, vc))
+        elif v in ("Date Sent", "Time Sent"):
+            clear_top.add((r + 1, col))
+        elif v.upper().startswith("VERSION"):
+            clear_top.add((r, col))
+assert sorted(service) == sorted(SERVICE.values()), "service table reads %r" % service
 legend = []
-for r in range(1, 7):
-    legend += take(r, True, clear=("S", "T") if r in (3, 5, 6) else (),
-                   tab=LEGEND_TAB)
-# its merges, off the tab itself: the September key is three rows of
-# swatch = word where the old one was two, so a fixed list would be wrong
-legend_merges = [m for m in re.findall(r'<mergeCell ref="([A-Z]+\d+:[A-Z]+\d+)"', lsheet)
-                 if all(int(n) <= 6 for n in re.findall(r'\d+', m))]
-# rows 60-66: the notes footer. The RULED SHAPE is template; much of the
-# text is operational (the COMMENTS box named three units and a date, which
-# is what the leak check below caught). Keep only the standing house notes.
-# Row 66 is the CET key's second line - YES under each of the three day
-# counts, in the same three colours. It was blanked with the COMMENTS text
-# and the key came out as three coloured cells with nothing in them.
-KEEP = {(60, "B"), (60, "H"), (61, "B"), (62, "B"), (63, "B"),
-        (65, "B"), (65, "D"), (65, "E"), (65, "F"),
-        (66, "D"), (66, "E"), (66, "F")}
-footer = []
-for r in range(60, 67):
-    got = take(r, True)
+for r in range(1, first_row):
+    got = take(r, True, tab=TEMPLATE_TAB)
     for cell in got:
-        if (cell[0], cell[1]) not in KEEP:
-            cell[3] = ""
-    footer += got
+        if (cell[0], cell[1]) in clear_top: cell[3] = ""
+    legend += got
+legend_merges = merges_in(1, first_row - 1)
+# The notes, the CET key and the mileage key under them: from NOTE down to
+# the key's last word. The RULED SHAPE is template; much of the text is the
+# day's (the COMMENTS box names units and restrictions), so only the
+# standing house notes keep their words.
+note_row = next(r for r in range(first_row + 2, 200)
+                if cells(r, TEMPLATE_TAB).get("B", (0, ""))[1] == "NOTE")
+key_end = next(r for r in range(note_row, note_row + 20)
+               if cells(r, TEMPLATE_TAB).get("D", (0, ""))[1] == "Low")
+FOOTER_TEXT = {"NOTE", "COMMENTS", "FP AT ASHFORD IS STOPS END",
+               "FP AT RAMSGATE IS MARGATE END",
+               "Ramsgate arrivals. Units to be shown on the same line as their "
+               "allocated diagram.",
+               "CET LEGEND", "5 DAYS +", "4 DAYS", "3 DAYS", "YES",
+               "=", "High", "Average", "Low"}
+footer, dropped = [], 0
+for r in range(note_row, key_end + 1):
+    for cell in take(r, True, tab=TEMPLATE_TAB):
+        if cell[3] and cell[3] not in FOOTER_TEXT:
+            cell[3] = ""; dropped += 1
+        footer.append(cell)
+footer_merges = merges_in(note_row, key_end)
+# the CET key's YES row and the mileage key both have to have come across
+assert [v for _, c, _, v in footer if c == "D" and v in ("High", "Average", "Low")] \
+    == ["High", "Average", "Low"], "the mileage key is not under the notes"
+assert sum(1 for *_, v in footer if v == "YES") == 3, "the CET key has lost its YES row"
+# ---- the sanding table, off to the right ----
+# SANDING over UNIT NO and MILES, each merged across two columns, then a
+# ruled run of rows to fill in: a unit off the fleet list, and its miles.
+sand_at = next((r, c) for r in range(1, first_row + 6)
+               for c, (x, v) in cells(r, TEMPLATE_TAB).items() if v == "SANDING")
+SC = [chr(ord(sand_at[1]) + i) for i in range(4)]
+def sand_row(r):
+    got = cells(r, TEMPLATE_TAB)
+    return {c: got[c][0] for c in SC if c in got}
+sand_head = cells(sand_at[0] + 1, TEMPLATE_TAB)
+assert sand_head[SC[0]][1] == "UNIT NO" and sand_head[SC[2]][1] == "MILES", \
+    "the row under SANDING is not UNIT NO / MILES"
+s0 = sand_at[0] + 2
+sand_last = s0
+while len(sand_row(sand_last + 1)) == 4: sand_last += 1
+sanding = {"col": SC[0], "at": sand_at[0] - first_row, "rows": sand_last - s0 + 1,
+           "title": sand_row(sand_at[0]), "head": sand_row(sand_at[0] + 1),
+           "first": sand_row(s0), "mid": sand_row(s0 + 1), "last": sand_row(sand_last),
+           "text": [cells(sand_at[0], TEMPLATE_TAB)[SC[0]][1], sand_head[SC[0]][1],
+                    sand_head[SC[2]][1]]}
+assert sanding["rows"] > 10 and all(len(sanding[k]) == 4 for k in
+    ("title", "head", "first", "mid", "last")), "sanding table: %r" % sanding
+for k in ("title", "head", "first", "mid", "last"): used.update(sanding[k].values())
 # archetypes
 header = [[c, x, v] for c, (x, v) in cells(8).items() if len(c) == 1 and c <= "T"]
 data   = {c: x for c, (x, v) in cells(9).items() if len(c) == 1 and c <= "T"}
@@ -295,13 +369,17 @@ row_rules[wg] = {"first": wg, "mid": newid[works_g["mid"]], "last": newid[works_
 # legend tab's own rule on the MG column, never picked by number: the file
 # has hundreds of dxfs and any edit to the workbook renumbers them, with
 # nothing to notice - the book would come out plausible and the wrong colour.
-mg_rule = re.search(r'<conditionalFormatting sqref="K[^"]*">(.*?)</conditionalFormatting>',
-                    lsheet, re.S)
+# The three rules sit in one block on some tabs and in a block apiece on
+# others (the October ones), so every block on the column is read and the
+# first rule of each band kept.
+mg_rule = re.findall(r'<conditionalFormatting sqref="K[^"]*">(.*?)</conditionalFormatting>',
+                     lsheet, re.S)
 assert mg_rule, "no conditional formatting on the MG column"
 BAND = {"greaterThan": "High", "between": "Average", "lessThan": "Low"}
 mg_bands = []
 for cr in re.finditer(r'<cfRule type="cellIs" dxfId="(\d+)" priority="\d+" '
-                      r'operator="(\w+)">(.*?)</cfRule>', mg_rule.group(1), re.S):
+                      r'operator="(\w+)">(.*?)</cfRule>', "".join(mg_rule), re.S):
+    if any(b["band"] == BAND[cr.group(2)] for b in mg_bands): continue
     mg_bands.append({"band": BAND[cr.group(2)], "op": cr.group(2),
                      "f": re.findall(r'<formula>([\d.]+)</formula>', cr.group(3)),
                      "dxf": int(cr.group(1))})
@@ -319,9 +397,9 @@ MG_AT = {"High": ("greaterThanOrEqual", ["700"]),
          "Low": ("lessThan", ["400"])}
 for b in mg_bands:
     b["op"], b["f"] = MG_AT[b["band"]]
-# and the key has to say the same three words beside its swatches
-key_words = [v for _, c, _, v in legend if c == "M" and v]
-assert key_words == ["High", "Average", "Low"], "legend key reads %r" % key_words
+# and the key, under the notes now, has to say the same three words
+key_words = [v for _, c, _, v in footer if c == "D" and v in BAND.values()]
+assert key_words == ["High", "Average", "Low"], "mileage key reads %r" % key_words
 
 # ---- theme colours -> plain rgb ----
 # The workbook leans on its Office theme: the grey between the tables is
@@ -358,7 +436,18 @@ f_used = [untheme(x) for x in f_used]
 l_used = [untheme(x) for x in l_used]
 b_used = [untheme(x) for x in b_used]
 dxfs = [untheme(x) for x in dxfs]
+# A font's <family> and <scheme> only steer Excel to the THEME's fonts, and a
+# generated book has no theme; its <name> is what it is set in. A solid
+# fill's bgColor is never drawn. Neither does anything here but take up
+# room in every build (~2 KB).
+f_used = [re.sub(r'<(?:family|scheme) val="[^"]*"/>', '', x) for x in f_used]
+l_used = [x.replace('<bgColor indexed="64"/>', '') if 'patternType="solid"' in x else x
+          for x in l_used]
 
+# One rule of the planner's own, after the three bands: the trains OFFERED
+# figure in red - the number, not the box - when it is fewer than REQUIRED.
+# The workbook has no such rule to lift, so it is written here.
+SHORT_DXF = '<dxf><font><color rgb="FFFF0000"/></font></dxf>'
 styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
   + ('<numFmts count="%d">' % len(n_used) +
@@ -370,7 +459,8 @@ styles = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
   + '<cellXfs count="%d">' % len(out_xfs) + "".join(out_xfs) + '</cellXfs>'
   + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
-  + '<dxfs count="%d">' % len(mg_bands) + "".join(dxfs[b["dxf"]] for b in mg_bands) + '</dxfs>'
+  + '<dxfs count="%d">' % (len(mg_bands) + 1)
+  + "".join(dxfs[b["dxf"]] for b in mg_bands) + SHORT_DXF + '</dxfs>'
   + '</styleSheet>')
 
 # ---- the drop-downs ----
@@ -520,14 +610,23 @@ skin = {
   # dxf i in the styleSheet is band i here
   "mg": [{"band": b["band"], "op": b["op"], "f": b["f"], "css": c}
          for b, c in zip(mg_bands, mg_css)],
-  "colsXml": re.search(r'<cols>.*?</cols>', sheet, re.S).group(0),
+  # the October tab's widths: UNIT NO wider, MG and FP/RP narrower
+  "colsXml": re.search(r'<cols>.*?</cols>', tsheet, re.S).group(0),
   "tabColor": "FFFFFF00",
   "legend": [[r, c, newid[x], v] for r, c, x, v in legend],
-  "legendHts": {str(r): lhts[r] for r in range(1, 7) if r in lhts},
+  "legendHts": {str(r): thts[r] for r in range(1, first_row) if r in thts},
   "legendMerges": legend_merges,
+  # the first block's title row; everything above it is the legend
+  "firstRow": first_row,
+  # the service table's figures: REQUIRED is filled in, OFFERED is red
+  # when it is fewer (dxf "short")
+  "service": service, "short": {"dxf": len(mg_bands), "css": "color:#FF0000"},
+  # rows footerTop..footerBottom, re-anchored under the last block
   "footer": [[r, c, newid[x], v] for r, c, x, v in footer],
-  "footerMerges": ["B60:F60","H60:T60","B61:F61","H61:T66","B62:F62",
-                    "B63:F64","B65:C66"],
+  "footerTop": note_row, "footerBottom": key_end,
+  "footerMerges": footer_merges,
+  "footerHts": {str(r): thts[r] for r in range(note_row, key_end + 1) if r in thts},
+  "sanding": {k: (remap(v) if isinstance(v, dict) else v) for k, v in sanding.items()},
   "titles": {d: remap(m) for d, m in titles.items()},
   "header": [[c, newid[x], v] for c, x, v in header],
   "headerHt": hts.get(8, "24.75"),
@@ -565,15 +664,19 @@ js = ("/* SHEETS_HS_SKIN - the Class 395 Allocations Sheet's own dress, lifted\n
 # the text is allow-listed instead - anything new in the workbook's template
 # rows fails the build by name and has to be looked at.
 HOUSE_TEXT = {
-    # the legend, rows 1-6
-    # "\xa0" is the non-breaking spacer in the mileage key: [ ] = < 500
-    "INT CLEAN", "EXT CLEAN", "Mileage Guide", "=", " ", "\xa0",
-    "High", "Average", "Low", "Date Sent", "Time Sent",
-    # the column headings, row 8
+    # the top: the service table, Done to Genius, the sent date and time
+    "SERVICE TRAINS REQUIRED AM / PM", "SERVICE TRAINS OFFERED AM / PM",
+    "SERVICE SPARE TRAINS", "TOTAL STOPPED", "TOTAL STABLED",
+    "Done to Genius", "Date Sent", "Time Sent",
+    # the sanding table
+    "SANDING", "MILES",
+    # the mileage key, under the notes
+    "=", "High", "Average", "Low",
+    # the column headings
     "TRAIN ID", "ARRIVAL TIME", "UNIT NUMBER", "6 OR 12 CAR", "CET DUE",
     "DIAGRAM", "N/M\r\nM/O", "MG", "TIME", "FP/RP", "UNIT NO",
     "ENDS AM", "ENDS PM", "ARRIVES", "WORKS",
-    # the standing notes, rows 60-66
+    # the standing notes and the CET key
     "NOTE", "COMMENTS", "FP AT ASHFORD IS STOPS END",
     "FP AT RAMSGATE IS MARGATE END",
     "Ramsgate arrivals. Units to be shown on the same line as their "
@@ -581,7 +684,7 @@ HOUSE_TEXT = {
     "CET LEGEND", "5 DAYS +", "4 DAYS", "3 DAYS", "YES",
 }
 shipped = ({v for _, _, _, v in legend if v} | {v for _, _, _, v in footer if v}
-           | {v for _, _, v in header if v})
+           | {v for _, _, v in header if v} | set(sanding["text"]))
 strangers = sorted(shipped - HOUSE_TEXT)
 if strangers:
     raise SystemExit("NOT KNOWN HOUSE TEXT (add to HOUSE_TEXT if it really is "

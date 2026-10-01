@@ -140,6 +140,44 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.24.0 — 1 October 2026 — the October layout: service trains and sanding
+
+The 395 sheet now matches the layout on the depot's live workbook from
+Friday 02/10.
+
+**Along the top**, where the CLEAN and mileage key used to be: the
+service-trains table (SERVICE TRAINS REQUIRED and OFFERED AM / PM, SPARE,
+TOTAL STOPPED, TOTAL STABLED), the yellow **Done to Genius** box, and the
+sent date, time and version. **REQUIRED fills itself in**: every diagram
+that runs that day, off the day's own reports, prints or base diagrams,
+whether or not it leaves a depot block. Their 02/10 tab has 25 (AZ601 to
+AZ625) with AZ622 in none of its tables; built from the reports, Friday
+18/09 comes out at 25 the same way, with 24 on the sheet. A PDF-fed build,
+which has no stops to read, counts the diagrams on the sheet. **OFFERED is
+the planner's**, and a figure fewer than REQUIRED turns red. Only the number
+changes colour, not the box. That is a new conditional format (a red-font
+dxf after the three mileage bands), and it only fires when both are figures.
+
+**The SANDING table**, columns W to Z beside the blocks, ruled as theirs is:
+29 lines of UNIT NO and MILES. The unit is picked off the fleet list (the
+same drop-down as the unit columns). The miles colour themselves as they
+are typed: green up to 6,000, amber from 6,000 to 6,999, red at 7,000 and
+over, in the mileage key's own three colours. Y and Z both test Y, so the
+merged pair colours as one, and an empty line stays white.
+
+**The mileage key sits under the notes**, a swatch = a word per line, as
+on their tab. The columns take that tab's widths (UNIT NO wider, MG and
+FP/RP narrower).
+
+Lifted from the live workbook (`tools/make-hs-skin.py` now reads three
+tabs: the body, the key's colours and the October layout, found by their
+labels). Two fixes there: an empty row written self-closed (`<row .../>`)
+no longer runs on into the next row's cells, and the mileage rules are read
+whether a tab keeps them in one block or one apiece, as the October tabs
+do. A font's theme family and scheme and a solid fill's unused background
+are left out of the styles. A generated book has no theme for them to point
+at, and they cost a kilobyte in every build.
+
 ## 3.23.3 — 1 October 2026 — stabled diagrams out of the AZ1 / AZ9 count
 
 Back as 3.23.0 had it, at the planner's word: the table counts only the
