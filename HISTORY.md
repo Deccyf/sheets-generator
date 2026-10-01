@@ -140,6 +140,30 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.28.2 — 1 October 2026 — a review: bugs, errors, dead code
+
+A full review, with nothing broken found:
+
+- **In the browser**, every real report and print sent so far went through
+  every tab: five weekday pairs, two days at once, a weekend print with
+  Friday's pair, the base diagrams and a change of week, the Operating
+  Report as CSV and as PDF, and the berth-request plans for Mainline, Metro
+  and the 395s. Every book was saved, alone and as a zip, and every option
+  ticked and unticked. Wrong files were tried too: a PDF that isn't a Genius
+  report, a workbook, a print dropped on the weekday tab. None of it raised
+  an error, and each wrong file got its own message.
+- **ESLint** found no errors in the tool's own code. Its warnings were
+  leftovers, now gone: `suggestedOf` in the berth road, which nothing
+  called; an unused style lookup in the 395 disposition road; three unused
+  variables; an unused import (`PRINT_ROAD` in the engine); and two
+  figures the fleet analysis worked out but never showed (`perOwned`,
+  `startDay`). An invisible byte-order mark typed into two patterns is now
+  written as `\uFEFF`.
+- **Speed.** A weekday build with a 6 MB Detail takes 0.9 s, a weekend
+  print 0.2 s and a base week 0.2 s. A third of the weekday build goes on
+  reading the Detail CSV, a third on the berth logic and a fifth on freeing
+  memory, with no single hot spot, so nothing was rewritten.
+
 ## 3.28.1 — 1 October 2026 — the page uses its width
 
 What each tab needs was one dense paragraph squeezed into the left-hand

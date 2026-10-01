@@ -302,7 +302,7 @@ function buildLegs(byDiag) {
 
 function buildOccurrences(byDiag, legsByDiag) {
   const occs=[], byDiagOcc=new Map(); let oid=0;
-  for (const [diag,rows] of byDiag) {
+  for (const [diag] of byDiag) {
     const legs=legsByDiag.get(diag)||[];
     let current=null, lastHc=null;
     for (const leg of legs) {

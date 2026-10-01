@@ -8,7 +8,6 @@ const F = FLEET;
 const gp = F.groupOf;
 
 const n0 = x => Math.round(x).toLocaleString("en-GB");
-const one = x => (Math.round(x * 10) / 10).toLocaleString("en-GB");
 const pct = (a, b) => b ? Math.round(a * 100 / b) + "%" : "—";
 /* Times are rolled past midnight inside the tool so the order of a day
    stays right - see roll() in fleet.js - but 25:26 is not how anybody reads

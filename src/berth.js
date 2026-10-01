@@ -2148,10 +2148,6 @@ function factsOf(r) {
   }
   return bits.join(" · ") + tail;
 }
-function suggestedOf(r) {
-  const s = r.suggest || { action: "", notes: [] };
-  return s.action + (s.notes.length ? " (" + s.notes.join("; ") + ")" : "");
-}
 /* Why: what the plan had where the suggestion differs, the reasons the
    suggestion carries, and where the unit is today. */
 function whyOf(r) {

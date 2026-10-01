@@ -600,9 +600,7 @@ function mileage(all, fleet, monday, sizes){
       const idle = ds.filter(d => d.stabled).length;
       return {day: DAYS[i], diagrams: ds.length, idle, miles,
               // what a unit IN TRAFFIC covers that day
-              perUnit: ds.length ? miles / ds.length : 0,
-              // …and what a unit ON THE BOOKS accrues, spares and all
-              perOwned: owned ? miles / owned : null};
+              perUnit: ds.length ? miles / ds.length : 0};
     });
     const weeklyPerUnit = perDay.reduce((t, x) => t + x.perUnit, 0);
     const weeklyTotal = perDay.reduce((t, x) => t + x.miles, 0);
@@ -666,7 +664,6 @@ function analyse(all, fleet, cfg){
   const atRepair = l => repairGroups.has(groupOf(l));
   const inHome = l => groupOf(l) === c.home;
   const atHome = inHome;
-  const roads = depotSet(c.repair, "roads");
 
   /* The reference day, for the one headline count that is genuinely a single
      day's ("101 diagrams on a Monday"). On a day group it is the first day
@@ -971,7 +968,6 @@ function daysHome(all, fleet, monday, target){
       days: best,
       worst: got.length ? Math.max.apply(null, got) : null,
       path: pick ? pick.r.path : null,
-      startDay: pick ? DAYS[pick.day] : null,
       stuck: pick && pick.r.path.length > 0 && pick.r.path[0].key === null,
       never: got.length === 0,
     };

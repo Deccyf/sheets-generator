@@ -372,7 +372,7 @@ const shortDate = d => d ? String(d.getUTCDate()).padStart(2, "0") + "/" + Strin
 function rows(res) {
   if (!SKIN) throw new Error("the High Speed sheet's dress is not in this build");
   const out = [];
-  const S = SKIN, xfOf = (r, c) => { const h = S.head.find(x => x[0] === r && x[1] === c); return h ? h[2] : 0; };
+  const S = SKIN;
   const V = S.variants, L = S.lastVariants;
   const heads = new Map();
   for (const [r, c, xf, v] of S.head) { if (!heads.has(r)) heads.set(r, new Map()); heads.get(r).set(c, { v, xf }); }

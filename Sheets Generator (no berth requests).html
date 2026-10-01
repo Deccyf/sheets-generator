@@ -559,7 +559,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.28.1</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.28.2</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1072,7 +1072,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.28.1
+      works without an internet connection. Version 3.28.2
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -3366,7 +3366,7 @@ function visitCode(loc) {
    the cutoff the unit keeps until PM_STAY, or failing that the first. */
 function amPm(visits, flags) {
   const berthV = [];
-  for (const [loc, arr, dep, final, via] of visits) {
+  for (const [loc, arr, dep, final] of visits) {
     if (NON_BERTH_VISIT.has(loc)) continue;
     const [code] = visitCode(loc);
     if (final) berthV.push([code, arr, null, true, loc]);
@@ -6291,7 +6291,7 @@ if (typeof globalThis !== "undefined") globalThis.SHEETS_HS = SHEETS_HS;
 "use strict";
 (function (root) {
 const { DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
-        TRANSIT, STATIONS, MANUAL_LOC, PRINT_ROAD, MINOR_SPUR_PRINTS,
+        TRANSIT, STATIONS, MANUAL_LOC, MINOR_SPUR_PRINTS,
         routeRule } = SHEETS_DATA;
 const END_MARKERS = SHEETS_DATA.END_MARKERS_PRINTS;
 const PROFILES = SHEETS_DATA.PROFILES;
@@ -9956,7 +9956,7 @@ function buildLegs(byDiag) {
 
 function buildOccurrences(byDiag, legsByDiag) {
   const occs=[], byDiagOcc=new Map(); let oid=0;
-  for (const [diag,rows] of byDiag) {
+  for (const [diag] of byDiag) {
     const legs=legsByDiag.get(diag)||[];
     let current=null, lastHc=null;
     for (const leg of legs) {
@@ -11993,7 +11993,7 @@ const panels = {};
     }
     if (!nm.endsWith(".pdf")) { say(MSG.notThisPanel, "err"); return; }
     const u8 = new Uint8Array(await file.arrayBuffer());
-    let txt = null;
+    let txt;
     try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(file.name), "err"); return; }
     let kind = null;
     if (/DIAGRAM SUMMARY REPORT/i.test(txt)) kind = "sum";
@@ -12380,8 +12380,8 @@ const panels = {};
   const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
   const readsAsPrints = t => SHEETS_PRINTS.looksLikePrints(t) || !!SHEETS_PRINTS.printsFromCsv(t);
   $("#we_paste_go").addEventListener("click", () => enqueue(async () => {
-    const main = boxText(wePasteMain).replace(/^﻿/, "");
-    const re = boxText(wePasteRe).replace(/^﻿/, "");
+    const main = boxText(wePasteMain).replace(/^\uFEFF/, "");
+    const re = boxText(wePasteRe).replace(/^\uFEFF/, "");
     if (!main.trim()) { P.pSay(MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
     if (!readsAsPrints(main)) {
       const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);

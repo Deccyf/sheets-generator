@@ -1162,7 +1162,7 @@ const panels = {};
     }
     if (!nm.endsWith(".pdf")) { say(MSG.notThisPanel, "err"); return; }
     const u8 = new Uint8Array(await file.arrayBuffer());
-    let txt = null;
+    let txt;
     try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(file.name), "err"); return; }
     let kind = null;
     if (/DIAGRAM SUMMARY REPORT/i.test(txt)) kind = "sum";
@@ -1549,8 +1549,8 @@ const panels = {};
   const asDoc = (name, text) => ({ name, bytes: new TextEncoder().encode(text) });
   const readsAsPrints = t => SHEETS_PRINTS.looksLikePrints(t) || !!SHEETS_PRINTS.printsFromCsv(t);
   $("#we_paste_go").addEventListener("click", () => enqueue(async () => {
-    const main = boxText(wePasteMain).replace(/^﻿/, "");
-    const re = boxText(wePasteRe).replace(/^﻿/, "");
+    const main = boxText(wePasteMain).replace(/^\uFEFF/, "");
+    const re = boxText(wePasteRe).replace(/^\uFEFF/, "");
     if (!main.trim()) { P.pSay(MSG.wePasteEmpty, "err"); if (wePasteMain) wePasteMain.focus(); return; }
     if (!readsAsPrints(main)) {
       const weekday = GENIUS.sniffGeniusCsv(main) || GENIUS.sniffIntegrale(main);

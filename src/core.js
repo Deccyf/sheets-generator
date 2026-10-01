@@ -88,7 +88,7 @@ function visitCode(loc) {
    the cutoff the unit keeps until PM_STAY, or failing that the first. */
 function amPm(visits, flags) {
   const berthV = [];
-  for (const [loc, arr, dep, final, via] of visits) {
+  for (const [loc, arr, dep, final] of visits) {
     if (NON_BERTH_VISIT.has(loc)) continue;
     const [code] = visitCode(loc);
     if (final) berthV.push([code, arr, null, true, loc]);
