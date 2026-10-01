@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.28.1 — 1 October 2026 — the page uses its width
+
+What each tab needs was one dense paragraph squeezed into the left-hand
+half of the panel, about 62 characters wide, with the rest of the row left
+empty. Each tab now opens with a row of short labelled points across the
+full width: prints, reissues, PM arrivals and base diagrams on the weekend
+tab, for example. Each point keeps a readable line inside its own column,
+and they stack to one column on a phone. The wording is the same, split
+where it already broke. The Always double-check card, the small print and
+the paste-box hints run the full width too, like the warning notes beside
+them.
+
 ## 3.28.0 — 1 October 2026 — PRIORITY SANDING, half the length
 
 The sanding table is now headed **PRIORITY SANDING** and has 15 lines

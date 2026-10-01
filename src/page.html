@@ -190,10 +190,15 @@
 
   <section class="platform" id="wkPanel" role="tabpanel" aria-labelledby="mode_wk">
     <h2 class="vh">Weekday books from the planning reports</h2>
-    <p class="whatfor">Needs <strong>both</strong> reports for the date — the
-      Diagram Summary and the Diagram Detail — from Genius (.pdf or .csv) or
-      from Integrale (its two CSV exports). A Monday pair builds the Monday
-      books.</p>
+    <ul class="whatfor needs">
+      <li><b>Both reports</b> The Diagram Summary and the Diagram Detail, for
+        the same date. A Monday pair builds the Monday books.</li>
+      <li><b>Genius or Integrale</b> From Genius as .pdf or .csv, or
+        Integrale&rsquo;s two CSV exports.</li>
+      <li><b>Two days at once</b> Both days&rsquo; pairs together: each
+        weekday gets its own sheets, and the High Speed sheet takes its PM
+        arrivals from the day before.</li>
+    </ul>
 
     <p class="mustdo"><b>Before you export</b>In Genius, <code>File › Session
       Settings</code>, tick <strong>“Show diagram sections on the diagram
@@ -308,15 +313,17 @@
 
   <section class="platform" id="wePanel" role="tabpanel" aria-labelledby="mode_we" hidden>
     <h2 class="vh">Weekend books from the diagram prints</h2>
-    <p class="whatfor">Needs the weekend <strong>diagram prints</strong> — the
-      Word document (.docx or .doc), or the same saved as text or as a CSV.
-      Drop reissued prints too, together or in a later drop, and the reissued
-      diagrams replace their originals before anything is built. For the High
-      Speed sheet's PM arrivals, drop the day before's Diagram Summary and
-      Detail with the prints — Friday's for Saturday, Saturday's for Sunday —
-      together or one at a time, before the prints or after.
-      The <strong>base diagrams</strong> for a timetable change go here too:
-      every book is built for a week of the timetable, a sheet per day type.</p>
+    <ul class="whatfor needs">
+      <li><b>Diagram prints</b> The weekend prints as the Word document
+        (.docx or .doc), or the same saved as text or as a CSV.</li>
+      <li><b>Reissues</b> With the prints or in a later drop: the reissued
+        diagrams replace their originals before anything is built.</li>
+      <li><b>High Speed PM arrivals</b> The day before&rsquo;s Diagram Summary
+        and Detail — Friday&rsquo;s for Saturday, Saturday&rsquo;s for Sunday —
+        together or one at a time, before the prints or after.</li>
+      <li><b>Base diagrams</b> For a timetable change: every book is built
+        for a week of the timetable, a sheet per day type.</li>
+    </ul>
 
     <button class="berth" id="we_berth" type="button">
       <span class="berth-inner">
@@ -396,12 +403,15 @@
 
   <section class="platform" id="svPanel" role="tabpanel" aria-labelledby="mode_sv" hidden>
     <h2 class="vh">Shortages &amp; variations from the Operating Report</h2>
-    <p class="whatfor">Needs the <strong>Operating Report</strong> and the
-      <strong>Diagram Detail</strong> for the date — .pdf or .csv. Not a
-      berthing book: the controller&rsquo;s list of what is short, the wrong
-      length or the wrong fleet, with every service each one goes on to
-      affect. Drop the <strong>Diagram Summary</strong> too when a formation
-      of three needs placing.</p>
+    <ul class="whatfor needs">
+      <li><b>Operating Report + Diagram Detail</b> Both for the same date, as
+        .pdf or .csv.</li>
+      <li><b>What comes back</b> Not a berthing book: the controller&rsquo;s
+        list of what is short, the wrong length or the wrong fleet, with
+        every service each one goes on to affect.</li>
+      <li><b>Formations of three</b> Drop the Diagram Summary too when one
+        needs placing.</li>
+    </ul>
 
     <button class="berth" id="svberth" type="button">
       <span class="berth-inner">
@@ -535,12 +545,19 @@
 
   <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
     <h2 class="vh">Berth requests from the maintenance plan</h2>
-    <p class="whatfor"><strong>Stuck on finding berth requests for your
-      Telex?</strong> Paste the maintenance tab out of the workbook below and
-      this suggests a berth request for every unit that needs one, in the
-      depot&rsquo;s own words. For the defects, paste the End of Days,
-      Restrictions and Performance Defects out of <strong>Equinox or
-      EMS</strong> into the defects box, as they come.</p>
+    <p class="whatfor-lead"><strong>Stuck on finding berth requests for your
+      Telex?</strong> This suggests one for every unit that needs it, in the
+      depot&rsquo;s own words.</p>
+    <ul class="whatfor needs">
+      <li><b>The plan</b> Paste the maintenance tab out of the workbook into
+        the box below.</li>
+      <li><b>The defects</b> Paste the End of Days, Restrictions and
+        Performance Defects out of <strong>Equinox or EMS</strong> into the
+        defects box, as they come.</li>
+      <li><b>The reports</b> Drop the Allocation Summary, Diagram Summary and
+        Diagram Detail below, or the weekday books&rsquo; own pair is used
+        where they are built.</li>
+    </ul>
 
     <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
       an experimental tool. It is a reference only, to help you make a
