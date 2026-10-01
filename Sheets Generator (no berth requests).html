@@ -550,7 +550,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.24.0</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.24.1</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -823,7 +823,8 @@
       Drop reissued prints too, together or in a later drop, and the reissued
       diagrams replace their originals before anything is built. For the High
       Speed sheet's PM arrivals, drop the day before's Diagram Summary and
-      Detail with the prints — Friday's for Saturday, Saturday's for Sunday.
+      Detail with the prints — Friday's for Saturday, Saturday's for Sunday —
+      together or one at a time, before the prints or after.
       The <strong>base diagrams</strong> for a timetable change go here too:
       every book is built for a week of the timetable, a sheet per day type.</p>
 
@@ -1050,7 +1051,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.24.0
+      works without an internet connection. Version 3.24.1
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2331,8 +2332,9 @@ const SHEETS_RULES = (() => {
              "headcode: a passenger C, F or T, any T, an empty F between St " +
              "Pancras and Faversham, and anything to or from Strood, Rochester " +
              "or Gillingham. Drop " +
-             "the day before's Diagram Summary and Detail with the print and " +
-             "last night's arrivals fill in, units and all." },
+             "the day before's Diagram Summary and Detail with the print — " +
+             "together or one at a time, before it or after — and last " +
+             "night's arrivals fill in, units and all." },
         { p: "Built from the base diagrams for a timetable, each day type's " +
              "sheet also has a table under the blocks: how many AZ1 and how " +
              "many AZ9 diagrams start the day at each depot and station, and " +
@@ -10772,6 +10774,8 @@ const MSG = {
     ". Choose a date in another week under Base diagrams to build that week.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
+  weArrivalsHalf: (got, want) => "The day before's " + got + " is kept for the High Speed sheet's PM " +
+    "arrivals — drop its " + want + " too.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
   notAReport: name => "“" + name + "” isn't a report this reads — it takes the Diagram Summary and Diagrams CSVs from Integrale, or the Diagram Summary and Detail reports from Genius saved as CSV.",
   notThisPanel: "This panel takes the Diagram Summary and Diagram Detail reports (.pdf or .csv). Weekend prints go on the Weekend panel.",
@@ -11998,8 +12002,10 @@ const panels = {};
   /* The day before's Diagram Summary and Detail, dropped with the prints:
      the High Speed allocations sheet takes last night's arrivals from them,
      the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
-     for a Sunday. Everything else comes from the prints. */
+     for a Sunday. Everything else comes from the prints. prevPair holds
+     the two as they arrive, as text, until both are in. */
   let hsPrev = null;
+  const prevPair = { sum: null, det: null };
   /* The base diagrams for a timetable carry every day of it: the date the
      books are built for, chosen under "Base diagrams" (dd/mm/yyyy), or null
      for the first day the timetable runs. */
@@ -12105,7 +12111,8 @@ const panels = {};
         try { txt = decodeText(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
         if (txt && !SHEETS_PRINTS.looksLikePrints(txt) && !SHEETS_PRINTS.printsFromCsv(txt) &&
             (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
-          d.genius = !!GENIUS.sniffGeniusCsv(txt);
+          d.kind = GENIUS.sniffGeniusCsv(txt);
+          d.genius = !!d.kind;
           weekday.push(d);
         }
       }
@@ -12113,16 +12120,34 @@ const panels = {};
       /* With prints - in this drop or already loaded - the reports are the
          day before's, for the High Speed arrivals. On their own they are
          the weekday panel's, as they always were. */
+      /* The Summary and the Detail are kept as they come - one drop or two,
+         either first. Read from one drop alone, a Detail dropped after its
+         Summary was a pair with no Summary, and failed. */
       let kept = false;
       if (weekday.length && weekday.every(d => d.genius) && (docs.length || loadedDocs.length)) {
-        try {
-          hsPrev = await GENIUS.hsDaysFrom(weekday.map(d => decodeText(d.bytes)));
-          const ds = Object.keys(hsPrev);
-          if (ds.length) { say(MSG.weArrivals(ds)); kept = true; }
-          else hsPrev = null;
-        } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); kept = true; }
+        for (const d of weekday) prevPair[d.kind] = decodeText(d.bytes);
+        kept = true;
+        if (prevPair.sum && prevPair.det) {
+          try {
+            hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]);
+            const ds = Object.keys(hsPrev);
+            if (ds.length) say(MSG.weArrivals(ds));
+            else hsPrev = null;
+          } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); }
+        } else {
+          const got = prevPair.sum ? "Diagram Summary" : "Diagram Detail";
+          say(MSG.weArrivalsHalf(got, prevPair.sum ? "Diagram Detail" : "Diagram Summary"));
+        }
       }
       if (weekday.length && !kept) {
+        /* No prints yet, so they are the weekday panel's - but kept here too,
+           so prints dropped next still get their arrivals from them */
+        for (const d of weekday) if (d.kind) prevPair[d.kind] = decodeText(d.bytes);
+        if (prevPair.sum && prevPair.det) {
+          try { hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]); }
+          catch (err) { hsPrev = null; }
+          if (hsPrev && !Object.keys(hsPrev).length) hsPrev = null;
+        }
         say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
         switchMode("wk");
         panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
@@ -12206,6 +12231,7 @@ const panels = {};
   });
   $("#we_clearall").addEventListener("click", () => {
     loadedDocs = []; built = null; hsPrev = null; forDate = null;
+    prevPair.sum = prevPair.det = null;
     if (baseRow) baseRow.hidden = true;
     P.clearBoxes();
     roadsEl.textContent = "";

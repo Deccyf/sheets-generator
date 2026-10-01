@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { loadSandbox } from "../test/helpers/sandbox.mjs";
 import { makePdf, makeDocx, SUMMARY_LINES, DETAIL_LINES, PRINTS_LINES,
          REISSUE_LINES } from "../test/helpers/synth.mjs";
+import { hsWeekCsv } from "../test/helpers/hs-synth.mjs";
 import { BUILT, BUILT_URL, LITE_URL, launch } from "./browser.mjs";
 
 const ctx = loadSandbox(BUILT);
@@ -98,6 +99,25 @@ for (const [road, what] of [["Metro", "Location"], ["High Speed", "Day"]]) {
   if (!opts || !ok) throw new Error("weekend " + road + " card did not render its document");
 
 }
+/* The day before's Summary and Detail for the High Speed arrivals, dropped
+   one at a time after the prints: the first is held, and the second makes
+   the pair. Read a drop at a time, the Detail alone failed with "No
+   Diagram Summary rows found". */
+const [hsSum, hsDet] = hsWeekCsv("03/08/26");
+await page.setInputFiles("#we_file", [f("udiagsum.csv", Buffer.from(hsSum, "utf8"))]);
+await page.waitForFunction(() =>
+  /drop its Diagram Detail too/.test(document.querySelector("#we_status").textContent), null, { timeout: 20000 });
+await page.setInputFiles("#we_file", [f("diagdet2.csv", Buffer.from(hsDet, "utf8"))]);
+// with the pair in, the prints' books are built again with it
+await page.waitForFunction(() =>
+  /Books built/.test(document.querySelector("#we_status").textContent), null, { timeout: 20000 });
+const weAfter = await page.textContent("#we_status");
+if (/No Diagram Summary|drop its/.test(weAfter) ||
+    await page.$eval("#mode_we", e => e.getAttribute("aria-selected")) !== "true") {
+  console.error("FAIL: the Detail dropped after its Summary did not make a pair: " + weAfter);
+  process.exitCode = 1;
+}
+console.log("weekend arrivals pair, one drop each:", weAfter);
 console.log("lineup sprites:", await page.locator("#lineup svg").count());
 
 /* ---- the weekend prints pasted in instead of dropped ---- */

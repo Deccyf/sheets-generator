@@ -140,6 +140,23 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.24.1 — 1 October 2026 — the Detail dropped on its own, on the weekend panel
+
+**Dropping the Diagram Detail stopped the weekend build.** The day before's
+Summary and Detail, for the 395 sheet's PM arrivals, were read only from
+the drop they came in. Drop the print, then the Summary, then the Detail,
+and the Detail was read as a pair on its own: "No Diagram Summary rows
+found", with no arrivals. The panel now keeps each report as it comes, says
+which one it is still waiting for, and builds the arrivals once it has
+both, in either order. Reports dropped before the print are kept for it too.
+They still go to the weekday panel, but the print dropped next gets its
+arrivals from them, where it had been building without. The browser smoke
+test drops the pair one file at a time. On the old code that check fails.
+
+Checked on the way: the weekday panel and its paste boxes take the same
+reports in every order and combination, CSV or copied out of Excel. The
+6 MB Detail reads in under a second, as in 3.23.3.
+
 ## 3.24.0 — 1 October 2026 — the October layout: service trains and sanding
 
 The 395 sheet now matches the layout on the depot's live workbook from

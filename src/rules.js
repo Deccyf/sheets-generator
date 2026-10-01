@@ -276,8 +276,9 @@ const SHEETS_RULES = (() => {
              "headcode: a passenger C, F or T, any T, an empty F between St " +
              "Pancras and Faversham, and anything to or from Strood, Rochester " +
              "or Gillingham. Drop " +
-             "the day before's Diagram Summary and Detail with the print and " +
-             "last night's arrivals fill in, units and all." },
+             "the day before's Diagram Summary and Detail with the print — " +
+             "together or one at a time, before it or after — and last " +
+             "night's arrivals fill in, units and all." },
         { p: "Built from the base diagrams for a timetable, each day type's " +
              "sheet also has a table under the blocks: how many AZ1 and how " +
              "many AZ9 diagrams start the day at each depot and station, and " +

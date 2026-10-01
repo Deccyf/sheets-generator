@@ -82,6 +82,8 @@ const MSG = {
     ". Choose a date in another week under Base diagrams to build that week.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
+  weArrivalsHalf: (got, want) => "The day before's " + got + " is kept for the High Speed sheet's PM " +
+    "arrivals — drop its " + want + " too.",
   notASheetInput: "This panel doesn't read spreadsheets. Drop the Diagram Summary and Diagram Detail reports (.pdf or .csv) instead.",
   notAReport: name => "“" + name + "” isn't a report this reads — it takes the Diagram Summary and Diagrams CSVs from Integrale, or the Diagram Summary and Detail reports from Genius saved as CSV.",
   notThisPanel: "This panel takes the Diagram Summary and Diagram Detail reports (.pdf or .csv). Weekend prints go on the Weekend panel.",
@@ -1308,8 +1310,10 @@ const panels = {};
   /* The day before's Diagram Summary and Detail, dropped with the prints:
      the High Speed allocations sheet takes last night's arrivals from them,
      the way the weekday sheet does - a Friday's for a Saturday, a Saturday's
-     for a Sunday. Everything else comes from the prints. */
+     for a Sunday. Everything else comes from the prints. prevPair holds
+     the two as they arrive, as text, until both are in. */
   let hsPrev = null;
+  const prevPair = { sum: null, det: null };
   /* The base diagrams for a timetable carry every day of it: the date the
      books are built for, chosen under "Base diagrams" (dd/mm/yyyy), or null
      for the first day the timetable runs. */
@@ -1415,7 +1419,8 @@ const panels = {};
         try { txt = decodeText(d.bytes.slice(0, 65536)); } catch (e) { txt = ""; }
         if (txt && !SHEETS_PRINTS.looksLikePrints(txt) && !SHEETS_PRINTS.printsFromCsv(txt) &&
             (GENIUS.sniffGeniusCsv(txt) || GENIUS.sniffIntegrale(txt))) {
-          d.genius = !!GENIUS.sniffGeniusCsv(txt);
+          d.kind = GENIUS.sniffGeniusCsv(txt);
+          d.genius = !!d.kind;
           weekday.push(d);
         }
       }
@@ -1423,16 +1428,34 @@ const panels = {};
       /* With prints - in this drop or already loaded - the reports are the
          day before's, for the High Speed arrivals. On their own they are
          the weekday panel's, as they always were. */
+      /* The Summary and the Detail are kept as they come - one drop or two,
+         either first. Read from one drop alone, a Detail dropped after its
+         Summary was a pair with no Summary, and failed. */
       let kept = false;
       if (weekday.length && weekday.every(d => d.genius) && (docs.length || loadedDocs.length)) {
-        try {
-          hsPrev = await GENIUS.hsDaysFrom(weekday.map(d => decodeText(d.bytes)));
-          const ds = Object.keys(hsPrev);
-          if (ds.length) { say(MSG.weArrivals(ds)); kept = true; }
-          else hsPrev = null;
-        } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); kept = true; }
+        for (const d of weekday) prevPair[d.kind] = decodeText(d.bytes);
+        kept = true;
+        if (prevPair.sum && prevPair.det) {
+          try {
+            hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]);
+            const ds = Object.keys(hsPrev);
+            if (ds.length) say(MSG.weArrivals(ds));
+            else hsPrev = null;
+          } catch (err) { hsPrev = null; say(err && err.message ? err.message : String(err), "err"); }
+        } else {
+          const got = prevPair.sum ? "Diagram Summary" : "Diagram Detail";
+          say(MSG.weArrivalsHalf(got, prevPair.sum ? "Diagram Detail" : "Diagram Summary"));
+        }
       }
       if (weekday.length && !kept) {
+        /* No prints yet, so they are the weekday panel's - but kept here too,
+           so prints dropped next still get their arrivals from them */
+        for (const d of weekday) if (d.kind) prevPair[d.kind] = decodeText(d.bytes);
+        if (prevPair.sum && prevPair.det) {
+          try { hsPrev = await GENIUS.hsDaysFrom([prevPair.sum, prevPair.det]); }
+          catch (err) { hsPrev = null; }
+          if (hsPrev && !Object.keys(hsPrev).length) hsPrev = null;
+        }
         say(MSG.sentToWeekday(weekday.map(d => d.name).join(", ")));
         switchMode("wk");
         panels.weekday.dropFiles(files.filter(f => weekday.some(d => d.name === f.name)));
@@ -1516,6 +1539,7 @@ const panels = {};
   });
   $("#we_clearall").addEventListener("click", () => {
     loadedDocs = []; built = null; hsPrev = null; forDate = null;
+    prevPair.sum = prevPair.det = null;
     if (baseRow) baseRow.hidden = true;
     P.clearBoxes();
     roadsEl.textContent = "";
