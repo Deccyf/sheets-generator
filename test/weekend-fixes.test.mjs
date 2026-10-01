@@ -715,3 +715,38 @@ test("the base diagrams build a week of books, a sheet per day type", () => {
   const day = N.SheetsEngine.runWeek([docx(PRINTS_LINES, "prints.docx")], zip.un, zip.z, {});
   assert.equal(day.base, null);
 });
+
+test("the base sheets note the modded-unit AZ1 diagrams and count AZ1 and AZ9 by where they start and end", () => {
+  const D = (num, from, to) => ["Diagram:\tAZ\t" + num + "\tFSX", "Fleet:\t395/0",
+    "From:\t13/12/2026\tUntil:\t15/05/2027",
+    "\t\t" + from + "\t\t06+" + String(num % 60).padStart(2, "0") + "\t5R" + String(num % 100).padStart(2, "0") + "\t\t0.82\t",
+    "\t\tAshford I\t07+00\t07.10\t1J" + String(num % 100).padStart(2, "0") + "\t\t20.00\t",
+    "\t\t" + to + "\t08+00\t\t\t\t\t"];
+  const lines = [...D(101, "Ashfrd DS", "Ram Depot"), ...D(102, "Ashfrd DS", "Ashfrd DS"),
+                 ...D(901, "Ram Depot", "Ashfrd DS"), ...D(601, "Ashfrd DS", "Ram Depot")];
+  const res = N.SheetsEngine.runWeek([text(lines, "base diagrams.txt")], zip.un, zip.z, {});
+  const hs = res.books.find(b => b.road === "High Speed");
+  const L = hs.sheets[0].layout, COLS = "ABCDEFGHIJKLMNOPQRST";
+  const v = (r, c) => String((L.cells.find(x => x.r === r && COLS[x.c - 1] === c) || {}).v || "");
+  const rowOf = d => L.cells.find(x => x.c === 9 && x.v === d).r;
+  const note = d => (L.comments.find(x => x.ref === "I" + rowOf(d)) || {}).text || "";
+  // the AZ1 diagrams are the modded units', first on the note; the others are not
+  assert.match(note("AZ101"), /^Modded unit only/);
+  assert.match(note("AZ102"), /^Modded unit only/);
+  assert.doesNotMatch(note("AZ901"), /Modded/);
+  assert.doesNotMatch(note("AZ601"), /Modded/);
+  // the table: where each series starts the day, and where it ends it
+  const t = L.cells.find(x => /^AZ1 & AZ9 DIAGRAMS/.test(x.v)).r;
+  assert.deepEqual([2, 3, 4, 5, 6].map(i => v(t + 1, COLS[i - 1])),
+                   ["LOCATION", "AZ1 START", "AZ1 ENDS", "AZ9 START", "AZ9 ENDS"]);
+  const rows = {};
+  for (let r = t + 2; v(r, "B"); r++) rows[v(r, "B")] = [3, 4, 5, 6].map(i => v(r, COLS[i - 1]));
+  assert.deepEqual(rows, { ASH: ["2", "1", "0", "1"], RAM: ["0", "1", "1", "0"],
+                           TOTAL: ["2", "2", "1", "1"] }, "AZ601 is in neither series");
+  // the note shows in the preview too, as Excel shows a comment
+  assert.match(N.SHEETS_XLSX.previewHtml(L), /title="Modded unit only/);
+  // and a day's own sheets have no such table
+  const day = N.SheetsEngine.runWeek([docx(PRINTS_LINES, "prints.docx")], zip.un, zip.z, {});
+  const dhs = day.books.find(b => b.road === "High Speed");
+  assert.ok(!dhs || dhs.skipped || !dhs.sheets.some(s => s.layout.cells.some(x => /^AZ1 & AZ9/.test(x.v))));
+});

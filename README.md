@@ -191,7 +191,10 @@ source.
    Monday stands apart from Tuesday-Thursday (its arrivals are Sunday
    night's); each is built by `run` for its first day and the sheets are
    gathered by road. The week is the first full one the timetable runs, or
-   the one holding the date in the **Base diagrams** picker.
+   the one holding the date in the **Base diagrams** picker. The 395 base sheets add
+   a table of the AZ1 and AZ9 diagrams by where they start and end the day,
+   and note every AZ1 diagram "Modded unit only" (`MODDED`, `SERIES` in
+   `src/hs.js`).
 3. **Reissue merge** (`mergeDocs`). Files named *reissue* are overlaid on the
    base document diagram by diagram, same-date check enforced; replaced and
    added diagrams go on the Review tab. `buildUpdatedDocx` splices the

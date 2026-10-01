@@ -140,6 +140,22 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.23.0 — 1 October 2026 — modded-unit diagrams, and the AZ1 / AZ9 count
+
+**AZ1 diagrams are noted "Modded unit only"** - on the DIAGRAM cell, ahead
+of any route note, the way the depot's own sheets keep their notes.
+
+**A count of the AZ1 and AZ9 diagrams on the base sheets.** Under the depot
+blocks of each day type's 395 sheet built from the base diagrams: for each
+depot and station, in the sheet's own codes (ASH, FAV, MAR, RAM, SPX…), how
+many AZ1 and how many AZ9 diagrams start the day there and how many end it
+there, with a total row. A diagram that stands all day is not counted, as
+it runs nothing. A day's own prints and reports carry no such table.
+
+**Notes show in the preview.** A cell's note - the route notes and now the
+modded-unit one - was only ever seen once the saved book was open. The
+preview marks it as Excel does, a red corner, and shows it on hover.
+
 ## 3.22.0 — 1 October 2026 — the 395 sheet in its depots' colours
 
 **The text is coloured the way the depot's own tabs colour it.** Each

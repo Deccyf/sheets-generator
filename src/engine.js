@@ -1318,7 +1318,8 @@ function runWeek(input, unzipFn, zipFn, opts){
                : DAY_FULL[dow(g.first)] + " to " + DAY_FULL[dow(g.last)]) + " " + mmyy;
     g.res = run(input, unzipFn, zipFn, Object.assign({}, opts, {
       forDate: msDmy(g.first),
-      titles: {today: g.title, yday: DAY_FULL[dow(g.first - DAY_MS)] + " " + mmyy}}));
+      // base: the sheet carries the AZ1 / AZ9 count as well
+      titles: {today: g.title, yday: DAY_FULL[dow(g.first - DAY_MS)] + " " + mmyy, base: true}}));
   }
   const weekStamp = "BASE_WC_" + dateBits(msDmy(monday)).stamp.replace(/^[A-Z]{3}_/, "");
   // gather each road's sheets across the day types, in the first build's order

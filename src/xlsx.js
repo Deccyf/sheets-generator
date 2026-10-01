@@ -509,6 +509,12 @@ function previewHtml(layout){
     : PREVIEW_PX;
   const at = new Map();
   for (const c of layout.cells) at.set(c.r + "," + c.c, c);
+  /* A cell's note - the 395 sheet's route notes, "Modded unit only" - is a
+     comment in the saved book, which Excel marks with a red corner and shows
+     on hover. The preview does the same, or the note is only ever seen once
+     the book is open. */
+  const notes = new Map((layout.comments || []).map(function(n){ return [n.ref, n.text]; }));
+  const letters = function(n){ let s = ""; while (n > 0){ s = String.fromCharCode(65 + (n - 1) % 26) + s; n = Math.floor((n - 1) / 26); } return s; };
   const spans = new Map(), covered = new Set();
   for (const m of layout.merges){
     const p = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(m);
@@ -619,7 +625,10 @@ function previewHtml(layout){
       }
       /* 0 is a value some documents print (the stock form's SEAT LOSS
          cells carry a literal 0), not an empty cell */
+      const note = notes.get(letters(c) + r);
+      if (note) css += ";background-image:linear-gradient(225deg,#C00000 5px,transparent 5px)";
       h += "<td" + (sp ? ' colspan="' + sp[0] + '" rowspan="' + sp[1] + '"' : "") +
+           (note ? ' title="' + esc(note) + '"' : "") +
            ' style="' + css + '">' +
            esc(cell && (cell.v || cell.v === 0) ? cell.v : "") + "</td>";
     }

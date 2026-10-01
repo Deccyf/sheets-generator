@@ -470,6 +470,10 @@ function mgBand(n) {
    Faversham red, Ramsgate blue, Margate purple, St Pancras the workbook's
    own orange (accent 2, darker 25%), anywhere else black. N/M M/O, MG and
    the unit columns keep their own. */
+/* AZ1 diagrams are for the modded units only; the base sheets count the AZ1
+   and AZ9 series by where they start and end the day */
+const MODDED = /^AZ1\d\d$/;
+const SERIES = [{ name: "AZ1", re: /^AZ1\d\d$/ }, { name: "AZ9", re: /^AZ9\d\d$/ }];
 const DEPOT_FC = { ASHFORD: "00B050", FAVERSHAM: "FF0000", RAMSGATE: "0070C0", MARGATE: "7030A0" };
 const PLACE_FC = { ASH: "00B050", FAV: "FF0000", RAM: "0070C0", MAR: "7030A0", SPX: "C55A11" };
 const placeFc = p => { const k = String(p || "").trim(); return k ? PLACE_FC[k] || "000000" : null; };
@@ -770,15 +774,17 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
          is also what their "avoids North Kent" means. The standing lookup
          by headcode is only for a build with no stops to read (a PDF), and
          there a stint with no Ebbsfleet-Gravesend leg gets the note too. */
+      /* and the AZ1 diagrams are for the modded units only, first */
+      const texts = v && MODDED.test(v.diag) ? ["Modded unit only"] : [];
       if (v && v.note != null) {
-        if (v.note) comments.push({ ref: "I" + r, text: v.note });
+        if (v.note) texts.push(v.note);
       } else if (v) {
         const std = SKIN.hcNotes[v.id.split(" ")[0]] || [];
-        const notes = v.hl === undefined ? std
+        texts.push(...(v.hl === undefined ? std
           : std.filter(t => !/high level/i.test(t))
-               .concat(v.hl ? [] : ["Not over high level"]);
-        if (notes.length) comments.push({ ref: "I" + r, text: notes.join("\n") });
+               .concat(v.hl ? [] : ["Not over high level"])));
       }
+      if (texts.length) comments.push({ ref: "I" + r, text: texts.join("\n") });
       r++; li++;
     }
     /* Their sheet colours the MG column by the mileage key above it - High,
@@ -805,6 +811,50 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     // the ruled strip that closes a block, then a clear row
     for (const [c, xf] of Object.entries(SKIN.gapRow)) put(r, COL(c), xf, "");
     r += 2;
+  }
+
+  /* The base diagrams' sheets add a count of the AZ1 and AZ9 diagrams: how
+     many start the day at each depot and station, and how many end it there. */
+  if (titles && titles.base && F) {
+    const tally = new Map();
+    for (const [d, st] of F.S) {
+      const k = SERIES.findIndex(x => x.re.test(d));
+      if (k < 0 || !st.some(x => x.dep != null)) continue;     // one that stands all day runs nothing
+      const ends = [place3(st[0].code), place3(st[st.length - 1].code)];
+      ends.forEach((p, j) => {
+        if (!tally.has(p)) tally.set(p, [0, 0, 0, 0]);
+        tally.get(p)[k * 2 + j]++;
+      });
+    }
+    if (tally.size) {
+      const ORDER = ["ASH", "FAV", "MAR", "RAM", "SPX"];
+      const places = [...tally.keys()].sort((a, b) =>
+        (ORDER.indexOf(a) < 0 ? 99 : ORDER.indexOf(a)) - (ORDER.indexOf(b) < 0 ? 99 : ORDER.indexOf(b)) ||
+        (a < b ? -1 : a > b ? 1 : 0));
+      const hd = Object.fromEntries(SKIN.header.map(([c, xf]) => [c, xf]));
+      const LEFT = ["B", "C", "D", "E", "F"];
+      for (const c of LEFT) {
+        put(r, COL(c), SKIN.titles.ASHFORD[c], c === "B" ? "AZ1 & AZ9 DIAGRAMS: START / END OF DAY" : "");
+        cells[cells.length - 1].fc = "000000";
+      }
+      merges.push("B" + r + ":F" + r);
+      r++;
+      const head = ["LOCATION", "AZ1 START", "AZ1 ENDS", "AZ9 START", "AZ9 ENDS"];
+      LEFT.forEach((c, i) => put(r, COL(c), hd[c], head[i]));
+      rowHeights.set(r, +SKIN.headerHt);
+      r++;
+      // in the sheet's own place codes, as its ENDS columns write them
+      const rowsT = places.map(p => [p, ...tally.get(p)]);
+      rowsT.push(["TOTAL", ...[0, 1, 2, 3].map(i => places.reduce((a, p) => a + tally.get(p)[i], 0))]);
+      rowsT.forEach((vals, i) => {
+        LEFT.forEach((c, j) => {
+          put(r, COL(c), ruled(SKIN.data[c], runPos(i, rowsT.length)), vals[j], j > 0);
+          if (j === 0 && i < places.length) cells[cells.length - 1].fc = placeFc(places[i]);
+        });
+        r++;
+      });
+      r += 2;
+    }
   }
 
   // the standing house notes, re-anchored under the last block
