@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.4</b> · 1 October 2026</span>
+      <span class="ver">Version <b>3.31.5</b> · 1 October 2026</span>
     </div>
   </header>
 
@@ -1176,7 +1176,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.4
+      works without an internet connection. Version 3.31.5
       &middot; 1 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -12774,7 +12774,7 @@ function decodeText(u8) {
   let q = Promise.resolve();
   const enqueue = job => (q = q.then(job).catch(e => say("Those reports could not be read: " + (e && e.message || e), "err")));
   const chips = $("#brfiles");
-  const ZONE_IDLE = "No reports dropped yet — the weekday books' own pair is used, where they are built.";
+  const ZONE_IDLE = "No reports dropped yet — if you've built the weekday books, their reports are used.";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
     if (/ALLOCATION SUMMARY/i.test(txt)) {

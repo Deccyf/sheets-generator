@@ -140,6 +140,18 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.5 — 1 October 2026 — berth requests in plain words
+
+The berth requests tab is worded like the others, as four numbered steps.
+*The reports*: tonight's Allocation Summary and tomorrow's Diagram Summary
+and Detail, or the weekday books' reports if they are already built. *The
+plan*: the Maintenance Plan tab out of the Mainline Stock Control Document or
+the Metro Stock Telex. *The defects*: optional, out of Equinox or EMS as they
+come. *What you get*: a suggested request on each line, to copy back or save.
+The Mainline & Metro note and the experimental warning are shorter, the four
+boxes say what goes in them, and the "day hasn't run yet" tick says what it
+changes rather than how.
+
 ## 3.31.4 — 1 October 2026 — shortages and variations in plain words
 
 The shortages tab is worded like the others. *What to drop*: the Operating

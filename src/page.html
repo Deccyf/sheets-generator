@@ -648,44 +648,47 @@
 
   <section class="platform" id="brPanel" role="tabpanel" aria-labelledby="mode_br" hidden>
     <h2 class="vh">Berth requests from the maintenance plan</h2>
-    <p class="whatfor-lead"><strong>Stuck on finding berth requests for your
-      Telex?</strong> This suggests one for every unit that needs it, in the
-      depot&rsquo;s own words.</p>
+    <p class="whatfor-lead"><strong>Berth requests for your Telex.</strong>
+      For every unit on the maintenance plan that needs one, this suggests a
+      request in the depot&rsquo;s own words.</p>
     <ul class="whatfor needs">
-      <li><b>The plan</b> Paste the maintenance tab out of the workbook into
-        the box below.</li>
-      <li><b>The defects</b> Paste the End of Days, Restrictions and
-        Performance Defects out of <strong>Equinox or EMS</strong> into the
+      <li><b>1 · The reports</b> Drop tonight&rsquo;s Allocation Summary and
+        tomorrow&rsquo;s Diagram Summary and Detail below. Already built the
+        weekday books? Their reports are used.</li>
+      <li><b>2 · The plan</b> Copy the Maintenance Plan tab out of the
+        Mainline Stock Control Document, or the Metro Stock Telex, and paste
+        it into the plan box.</li>
+      <li><b>3 · The defects</b> Optional: paste the End of Days, Restrictions
+        and Performance Defects out of <strong>Equinox or EMS</strong> into the
         defects box, as they come.</li>
-      <li><b>The reports</b> Drop the Allocation Summary, Diagram Summary and
-        Diagram Detail below, or the weekday books&rsquo; own pair is used
-        where they are built.</li>
+      <li><b>4 · What you get</b> Press <strong>Read the plan</strong>: each
+        line gets a suggested request. Copy the plan back into the workbook,
+        or save it as Excel or text.</li>
     </ul>
 
-    <p class="mustdo"><b>Mainline &amp; Metro only</b>Berth requests here are
-      for the Mainline and Metro fleets. They are not for the High Speed
-      (Class 395) fleet.</p>
+    <p class="mustdo"><b>Mainline &amp; Metro only</b>For the Mainline and
+      Metro fleets — not the High Speed (Class 395) fleet.</p>
 
-    <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>This is
-      an experimental tool. It is a reference only, to help you make a
-      decision on berth requests, so please double-check all of its work
-      against the reports before anything goes on the Telex.</p>
+    <p class="mustdo brwarn"><b>Do not use this to build your Telex</b>It is
+      experimental: use it as a reference when deciding berth requests, and
+      check everything against the reports before anything goes on the
+      Telex.</p>
 
     <button class="berth berth-small" id="brberth" type="button">
       <span class="berth-inner">
         <span class="buffer" aria-hidden="true"></span>
         <span class="berth-txt">
           <strong>Drop the Allocation Summary, Diagram Summary and Diagram Detail here</strong>
-          <span>.pdf or .csv &middot; the Allocation Summary says where each
-            unit is tonight &middot; the Diagram Summary and Detail for tomorrow
-            build the sheets the requests are named from &middot; today's, or
-            both days, and the weekend prints (.docx) are read too &middot;
-            or click to choose</span>
+          <span>PDF or CSV &middot; the Allocation Summary for where each unit
+            is tonight &middot; tomorrow&rsquo;s Diagram Summary and Detail for
+            the workings the requests name (today&rsquo;s too, if you have them)
+            &middot; weekend prints (.docx) work too &middot; or click to
+            choose</span>
         </span>
       </span>
     </button>
     <input type="file" id="brfile" accept=".pdf,.csv,.docx,.doc" multiple hidden>
-    <p class="zonesum" id="brberthtxt">No reports dropped yet — the weekday books&rsquo; own pair is used, where they are built.</p>
+    <p class="zonesum" id="brberthtxt">No reports dropped yet — if you&rsquo;ve built the weekday books, their reports are used.</p>
     <div class="brfiles" id="brfiles" hidden role="group" aria-label="Reports dropped on this tab"></div>
 
     <details class="svrules brhow" id="brhow">
@@ -730,24 +733,24 @@
 
     <div class="brgrid">
       <label class="brfield">
-        <span class="opts-label">The plan, pasted from the workbook</span>
+        <span class="opts-label">Maintenance plan — paste the tab from the workbook</span>
         <textarea id="brplan" rows="9" spellcheck="false"
           placeholder="Exams&#10;Unit Nr&#9;Exam&#9;&#9;Where&#9;Action&#10;375605&#9;A&#9;SAT AM 19/09&#9;RE&#9;STOPPED RE&#10;…"></textarea>
       </label>
       <label class="brfield">
-        <span class="opts-label">Out of service — ignore these</span>
+        <span class="opts-label">Out of service — units to ignore</span>
         <textarea id="brignore" rows="3" spellcheck="false"
           placeholder="376036 375924 …"></textarea>
       </label>
     </div>
     <div class="brgrid">
       <label class="brfield">
-        <span class="opts-label">Defects — the End of Days, Restrictions and Performance Defects out of Equinox or EMS, pasted as they come</span>
+        <span class="opts-label">Defects (optional) — End of Days, Restrictions and Performance Defects from Equinox or EMS, pasted as they come</span>
         <textarea id="brdefects" rows="6" spellcheck="false"
           placeholder="Date Occurred&#9;Days O/S&#9;Asset No&#9;Coach No&#9;Catalogue No.&#9;Stock Description&#9;Repair Location&#9;Diagram End Location&#9;Arrival Date&#9;System Code&#9;Fault Description&#9;Facility Failure&#9;Report&#9;Priority&#9;Target Due Date&#10;06/07/2026 15:48:00&#9;75&#9;375625&#9;67875&#9;&#9;&#9;+ AMAT&#9;RAMSGTD&#9;17/09/2026 19:54:00&#9;HA&#9;UMD8968 No Cab Air Con - Requires HVAC&#9;No&#9;WR0472231&#9;2. Restriction MO&#9;30/09/2026 00:00:00"></textarea>
       </label>
       <label class="brfield">
-        <span class="opts-label">MSE attending — no request for these</span>
+        <span class="opts-label">MSE attending — units to leave without a request</span>
         <textarea id="brmse" rows="3" spellcheck="false"
           placeholder="376020 375821 …"></textarea>
         <span class="note" id="brmsehint">The units the export flags MSE are listed here once the plan is read.</span>
@@ -757,8 +760,9 @@
       <label><input type="checkbox" id="brkeep" autocomplete="off">
         Keep trains together &mdash; split a formation only where nothing else gets it home</label>
       <label><input type="checkbox" id="brdaytorun" autocomplete="off">
-        A day still to run &mdash; every unit is where its first working starts, ask before it
-        goes out <span class="note">(ticked for you when the reports are for today or a day to come)</span></label>
+        The day hasn&rsquo;t run yet &mdash; take each unit as at the start of its first
+        working, so the request is made before it goes out <span class="note">(ticked
+        for you when the reports are for today or later)</span></label>
     </div>
     <div class="bracts">
       <label class="brkind">Workbook

@@ -324,7 +324,7 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   if (!(await page.locator("#brout table.brtable").count())) throw new Error("and back to the plan");
   /* the blurb and the warning box are on the tab */
   const lead = await page.textContent("#brPanel");
-  if (!/Stuck on finding berth requests for your\s+Telex/.test(lead)) throw new Error("the tab should say what it is for");
+  if (!/Berth requests for your\s+Telex\./.test(lead)) throw new Error("the tab should say what it is for");
   if (!/Equinox or EMS/.test(lead)) throw new Error("and where the defects come from");
   if (!/Do not use this to build your Telex/i.test(await page.textContent("#brPanel .brwarn"))) throw new Error("the warning box");
   /* the defects export pasted on its own is a plan: 375601's defect comes

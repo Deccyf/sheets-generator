@@ -1778,7 +1778,7 @@ function decodeText(u8) {
   let q = Promise.resolve();
   const enqueue = job => (q = q.then(job).catch(e => say("Those reports could not be read: " + (e && e.message || e), "err")));
   const chips = $("#brfiles");
-  const ZONE_IDLE = "No reports dropped yet — the weekday books' own pair is used, where they are built.";
+  const ZONE_IDLE = "No reports dropped yet — if you've built the weekday books, their reports are used.";
   /* what a dropped report is, for its chip: the kind and the date it is for */
   const labelOf = txt => {
     if (/ALLOCATION SUMMARY/i.test(txt)) {
