@@ -301,7 +301,8 @@ night's arrivals beside today's allocations, in the sheet's own style
 records, drop-downs, the October tab's top - the service-trains table with
 REQUIRED filled in from the day's diagrams that run and an OFFERED figure
 that turns red under it, Done to Genius, the sent date, time and version -
-and its SANDING table (a unit off the fleet list, its miles green to 6,000,
+a STOPPED UNITS table under Ashford's block (four lines of two halves,
+`STOPPED`), and its SANDING table (a unit off the fleet list, its miles green to 6,000,
 amber to 6,999, red from 7,000: `SANDING_BANDS`), text in each depot's colour (and where a unit gets to
 in that place's - a recoloured copy of the record, made by the writer's
 `Recolour`), mileage colouring (High / Average / Low at 700 and

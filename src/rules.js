@@ -189,6 +189,11 @@ const SHEETS_RULES = (() => {
              "miles colour themselves as you type them — green up to 6,000, " +
              "amber from 6,000 to 6,999, red at 7,000 and over. An empty line " +
              "stays white." },
+        { p: "Under Ashford's block, a row clear of its last allocation, " +
+             "the STOPPED UNITS table: a red bar over four lines, each in two " +
+             "halves, for the units stopped that day — each picked off the " +
+             "fleet list. Where Ashford has no work that day it sits under " +
+             "the first block there is." },
         { p: "Reading an allocation from left to right:" },
         { table: { head: ["Column", "What it holds"], rows: [
           ["TRAIN ID", "The headcode, and where THAT working goes — 5J03 AFK " +

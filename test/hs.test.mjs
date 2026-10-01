@@ -111,8 +111,8 @@ test("a worksheet per day, named the way their workbook names them", async () =>
   for (const list of ['"6,12"', '"YES,N"', '"FP,RP"'])
     assert.ok(dv[1].includes("<formula1>" + list + "</formula1>"), list);
   assert.match(dv[1], /<formula1>"395001,(?:39500\d,)+/, "the fleet roster");
-  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+ W12:W40"/,
-    "on both UNIT columns, and the sanding table's");
+  assert.match(dv[1], /sqref="D\d+:D\d+ N\d+:N\d+ I\d+:I\d+ O\d+:O\d+ W12:W40"/,
+    "on both UNIT columns, and the stopped and sanding tables'");
 
   /* And the standing route notes, as classic comments on the DIAGRAM
      cells - the same knowledge their workbook keeps there, carried by
@@ -698,6 +698,7 @@ test("the bar closes the morning run-out: 5R27 at 09 54 and a first move at 10 0
     // from under the title and the column headings
     for (let r = SKIN.firstRow + 2; r < lay.maxRow; r++) {
       const at = c => (lay.cells.find(x => x.r === r && x.c === c) || {});
+      if (at(9).v === H.STOPPED.title) break;      // the block is over
       if (at(8).xf === SKIN.bars.ASHFORD.H) out.push("BAR");
       else if (at(9).v) out.push(at(12).v);
     }
@@ -797,4 +798,40 @@ test("REQUIRED is the day's diagrams, OFFERED goes red under it, and sanding tak
     "dxf 0, 1, 2 are the key's red, amber and green");
   for (const [n, dxf] of [[0, 2], [5999, 2], [6000, 1], [6999, 1], [6999.5, 1], [7000, 0], [9100, 0]])
     assert.equal(H.SANDING_BANDS.find(b => b.at(n)).dxf, dxf, n + " miles");
+});
+
+test("STOPPED UNITS sits under Ashford's block: a red bar over four lines of two halves", async () => {
+  /* As the planner's own sheet has it from 02/10: a row clear of Ashford's
+     last allocation, STOPPED UNITS on red across I to S, then four lines
+     split I:N and O:S, each half a unit off the fleet list - and the next
+     depot's block a row clear of the table. */
+  const { N, sheets } = await week("03/08/26");
+  const H = N.SHEETS_HS, SKIN = N.SHEETS_HS_SKIN;
+  const L = sheets.find(s => s.name === "Mon 03 08").layout;
+  const at = (r, c) => L.cells.find(x => x.r === r && x.c === c.charCodeAt(0) - 64) || {};
+  const titles = L.cells.filter(c => c.v === H.STOPPED.title);
+  assert.equal(titles.length, 1, "one table, under the first block only");
+  const top = titles[0].r;
+  assert.equal(titles[0].c, 9, "from column I");
+  // Ashford's last allocation two rows above, nothing written between
+  let lastAsh = 0;
+  for (const c of L.cells) if (c.c === 9 && /^AZ\d+$/.test(c.v) && c.r < top) lastAsh = Math.max(lastAsh, c.r);
+  assert.equal(top, lastAsh + 2, "a row clear of the last allocation");
+  assert.ok(/background:#FF0000/.test(SKIN.xfCss[at(top, "I").xf]), "on red");
+  assert.ok(/font-weight:700/.test(SKIN.xfCss[at(top, "I").xf]), "in bold");
+  assert.ok(L.merges.includes("I" + top + ":S" + top), "the bar across I to S");
+  for (let i = 1; i <= 4; i++) {
+    assert.ok(L.merges.includes("I" + (top + i) + ":N" + (top + i)) &&
+              L.merges.includes("O" + (top + i) + ":S" + (top + i)), "line " + i + " in two halves");
+    assert.equal(at(top + i, "I").v, "", "for the planner to fill in");
+  }
+  const rule = (r, c, side) => ((SKIN.xfCss[at(r, c).xf] || "").match(new RegExp("border-" + side + ":(\\d)px")) || [])[1] || "0";
+  assert.equal(rule(top + 1, "I", "left"), "2", "bold down the outside");
+  assert.equal(rule(top + 4, "S", "bottom"), "2", "and along the bottom");
+  assert.equal(rule(top + 2, "K", "bottom"), "1", "thin between the lines");
+  assert.equal(rule(top + 2, "N", "right"), "1", "and between the halves");
+  assert.match(L.opts.dataValidations, new RegExp("I" + (top + 1) + ":I" + (top + 4) + " O" + (top + 1) + ":O" + (top + 4)),
+    "each half takes a unit off the fleet list");
+  const next = L.cells.filter(c => / UNIT ALLOCATIONS /.test(c.v) && c.r > top).map(c => c.r)[0];
+  assert.equal(next, top + 4 + 2, "the next block a row clear of the table");
 });

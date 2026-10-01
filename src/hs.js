@@ -398,6 +398,11 @@ const PREVIEW_W = (() => {
   return w;
 })();
 
+/* STOPPED UNITS, under Ashford's block as on the planner's own sheet: a red
+   bar over four lines of two halves, I to N and O to S, each half a unit
+   off the fleet list. */
+const STOPPED = { title: "STOPPED UNITS", from: "I", split: "N", to: "S", lines: 4 };
+
 /* The sanding table's miles, coloured as the planner gave them: up to 6,000
    green, 6,000 to 6,999 amber, 7,000 and over red - the mileage key's own
    three colours, dxf 0 (red), 1 (amber) and 2 (green) in the skin. */
@@ -582,6 +587,27 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
     merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
   }
+
+  /* the stopped units' table, its title on row top: returns its last row */
+  const stoppedRanges = [];
+  const stoppedTable = top => {
+    const T = SKIN.stopped, a = COL(STOPPED.from), m = COL(STOPPED.split), z = COL(STOPPED.to);
+    const L = (c, rr) => String.fromCharCode(64 + c) + rr;
+    for (let c = a; c <= z; c++)
+      put(top, c, c === a ? T.title.L : c === z ? T.title.R : T.title.M, c === a ? STOPPED.title : "");
+    merges.push(L(a, top) + ":" + L(z, top));
+    for (let i = 0; i < STOPPED.lines; i++) {
+      const rr = top + 1 + i;
+      const line = T.rows[i === 0 ? "first" : i === STOPPED.lines - 1 ? "last" : "mid"];
+      for (let c = a; c <= z; c++)
+        put(rr, c, line[c === a ? "edgeL" : c === z ? "edgeR" : c === m ? "splitL"
+                       : c === m + 1 ? "splitR" : "inner"], "");
+      merges.push(L(a, rr) + ":" + L(m, rr), L(m + 1, rr) + ":" + L(z, rr));
+    }
+    stoppedRanges.push(L(a, top + 1) + ":" + L(a, top + STOPPED.lines),
+                       L(m + 1, top + 1) + ":" + L(m + 1, top + STOPPED.lines));
+    return top + STOPPED.lines;
+  };
 
   let r = SKIN.firstRow;
   let pri = 1;
@@ -853,6 +879,9 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
     }
     // the ruled strip that closes a block, then a clear row
     for (const [c, xf] of Object.entries(SKIN.gapRow)) put(r, COL(c), xf, "");
+    /* and under the first block - Ashford's, whenever Ashford has work -
+       the stopped units, a row clear of its last allocation */
+    if (blocks === 1) r = stoppedTable(r + 1);
     r += 2;
   }
 
@@ -923,8 +952,8 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
       ')</formula></cfRule>').join("") +
     '</conditionalFormatting>');
 
-  // and the sanding table's units, off the same fleet list
-  dvRanges.unit.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  // and the stopped and sanding tables' units, off the same fleet list
+  dvRanges.unit.push(...stoppedRanges, sCols[0] + sFirst + ":" + sCols[0] + sLast);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
                   ["fprp", SKIN.dv.fprp], ["unit", rosterList()]]
     .filter(([k]) => dvRanges[k].length);
@@ -974,7 +1003,7 @@ function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
-return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS,
+return { writeHsBook, sheetsFor, layoutDay, endsCode, arrivalsInto, arrivalsFrom, DEPOTS, mgBand, SANDING_BANDS, STOPPED,
          dayFromPrint, viaNorthKent, NORTH_KENT, PRINT_CODE, dayBefore,
          dayFacts, arrivalEnd, multipleMark, reverses, departureEnds, arrivalEnds, SIDES };
 })();

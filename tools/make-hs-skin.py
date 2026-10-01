@@ -363,6 +363,43 @@ wg = newid[works_g["first"]]
 row_rules[wg] = {"first": wg, "mid": newid[works_g["mid"]], "last": newid[works_g["last"]],
                  "only": with_rules(wg, "keep", "medium")}
 
+# ---- the STOPPED UNITS table ----
+# Under Ashford's block on the planner's sheet from 02/10 - not on any of the
+# workbook's tabs yet, so made here: STOPPED UNITS on a red bar, then lines
+# of two halves for the units stopped that day. A bold rule round the
+# outside and thin ones inside, as every table on the sheet is ruled. The
+# records are the sanding table's own - Calibri 11, centred; the bar off
+# its bold heading - with only the fill and the rules set. Down, a line is
+# the first, a middle one or the last; across, a cell is on the outside
+# edge, inside a half, or either side of the rule between the halves.
+RED_FILL = '<fill><patternFill patternType="solid"><fgColor rgb="FFFF0000"/></patternFill></fill>'
+def restyle(xf_new, sides, fill=None):
+    x = out_xfs[xf_new]
+    bd = ("<border>" + "".join(RULE[sides.get(sd)].format(sd)
+                                for sd in ("left", "right", "top", "bottom")) + "<diagonal/></border>")
+    if bd not in b_used: b_used.append(bd)
+    y = re.sub(r'borderId="\d+"', 'borderId="%d"' % b_used.index(bd), x)
+    if fill:
+        if fill not in l_used: l_used.append(fill)
+        y = re.sub(r'fillId="\d+"', 'fillId="%d"' % l_used.index(fill), y)
+        if 'applyFill="1"' not in y: y = y.replace("<xf ", '<xf applyFill="1" ', 1)
+    if 'applyBorder="1"' not in y: y = y.replace("<xf ", '<xf applyBorder="1" ', 1)
+    if y not in out_xfs: out_xfs.append(y)
+    return out_xfs.index(y)
+bar_base, line_base = newid[sanding["head"][SC[0]]], newid[sanding["mid"][SC[0]]]
+BOX = {"top": "medium", "bottom": "medium"}
+DOWN = {"first": {"top": "medium", "bottom": "thin"}, "mid": {"top": "thin", "bottom": "thin"},
+        "last": {"top": "thin", "bottom": "medium"}}
+ACROSS = {"edgeL": {"left": "medium"}, "inner": {}, "splitL": {"right": "thin"},
+          "splitR": {"left": "thin"}, "edgeR": {"right": "medium"}}
+stopped = {
+    "title": {"L": restyle(bar_base, dict(BOX, left="medium"), RED_FILL),
+              "M": restyle(bar_base, BOX, RED_FILL),
+              "R": restyle(bar_base, dict(BOX, right="medium"), RED_FILL)},
+    "rows": {pos: {col: restyle(line_base, dict(ACROSS[col], **DOWN[pos])) for col in ACROSS}
+             for pos in DOWN},
+}
+
 # ---- the mileage bands ----
 # Three since late August: High, Average and Low, red, amber and green,
 # where it had been two either side of 500. The dxfs are read off the
@@ -627,6 +664,8 @@ skin = {
   "footerMerges": footer_merges,
   "footerHts": {str(r): thts[r] for r in range(note_row, key_end + 1) if r in thts},
   "sanding": {k: (remap(v) if isinstance(v, dict) else v) for k, v in sanding.items()},
+  # made here, not lifted: their bar L / M / R, and each line's cells
+  "stopped": stopped,
   "titles": {d: remap(m) for d, m in titles.items()},
   "header": [[c, newid[x], v] for c, x, v in header],
   "headerHt": hts.get(8, "24.75"),

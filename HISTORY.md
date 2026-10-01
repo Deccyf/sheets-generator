@@ -140,6 +140,22 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.25.0 — 1 October 2026 — STOPPED UNITS under Ashford
+
+The planner's own sheet for 02/10 has a table under Ashford's block for
+the units stopped that day, and the 395 sheet now has it too, laid out as
+theirs is. It sits a row clear of Ashford's last allocation: STOPPED UNITS
+in bold on a red bar across I to S, then four lines in two halves (I:N and
+O:S), with a bold rule round the outside and thin ones inside. Each half
+takes a unit off the fleet list, the same drop-down as the unit columns.
+The next depot's block follows a row clear of it. Where Ashford has no
+work that day, it goes under the first block there is.
+
+The table is on none of the workbook's tabs yet, so the lifter makes its
+records instead of lifting them: the sanding table's own (Calibri 11,
+centred; the bar off its bold heading) with only the red fill and the rules
+set.
+
 ## 3.24.1 — 1 October 2026 — the Detail dropped on its own, on the weekend panel
 
 **Dropping the Diagram Detail stopped the weekend build.** The day before's
