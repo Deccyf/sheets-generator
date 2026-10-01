@@ -140,6 +140,13 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.29.1 — 1 October 2026 — five tabs on one line
+
+The new tab is labelled **Base diagrams**, and the tab strip is set a
+little tighter, so all five tabs sit on one line from 1,100 pixels wide. At
+3.29.0 Berth requests wrapped onto a second row. The base tab's build
+message now points at the **Week of** picker by its own name.
+
 ## 3.29.0 — 1 October 2026 — the base diagrams' own tab, and the weekend's High Speed reports
 
 **Base diagrams · Timetable is a tab of its own.** It is the weekend tab's

@@ -93,7 +93,7 @@ const MSG = {
   sentToWeekday: name => "“" + name + "” is one of the weekday Diagram reports — sent to the Weekday panel.",
   weBase: b => "Built from the base diagrams (" + b.from + (b.until ? " to " + b.until : "") +
     "), the week of " + b.week + ", a sheet per day type: " + (b.types || []).join(", ") +
-    ". Choose a date in another week under Base diagrams to build that week.",
+    ". Choose a date in another week under Week of to build that week.",
   weArrivals: dates => "Diagram Summary and Detail for " + dates.join(", ") + " kept for the High Speed " +
     "sheet's PM arrivals — the prints build everything else.",
   weArrivalsHalf: (got, want) => "The day before's " + got + " is kept for the High Speed sheet's PM " +
