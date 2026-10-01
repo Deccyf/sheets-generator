@@ -3,28 +3,35 @@
 Two single-file, offline browser tools for a Southeastern depot:
 
 - **`Sheets Generator.html`** — builds the unit **berthing books** (the
-  SHEETS) from the planning paperwork: on weekdays the Genius *Diagram
-  Summary* and *Diagram Detail* reports (PDF or CSV) or the Integrale CSV
-  exports; on weekends the diagram prints Word document. Out come the
-  Mainline, Ramsgate, Metro and High Speed books as Excel workbooks, previewed
-  on screen exactly as they print, with a Review tab of everything the rules
-  had to decide for themselves — and, on request, the Kent Coast stock
-  requirements form. Two further tabs read the same reports and write no
-  book: **Shortages & variations**, the controller's list of what is short
-  or the wrong length, and **Berth requests**, which fills in the night's
-  Telex against the day's diagrams.
+  SHEETS) from the planning paperwork, on five tabs:
+  - **Weekday** — the Genius *Diagram Summary* and *Diagram Detail* reports
+    (PDF or CSV) or the Integrale CSV exports for a date;
+  - **Weekend** — the diagram prints Word document, plus the day before's
+    Summary and Detail for the High Speed sheet's PM arrivals;
+  - **Base diagrams** — the base prints for a timetable change (FX, FO, SO
+    and SUN, dropped together), built into a whole week of books.
+
+  Out come the Mainline, Ramsgate, Metro and High Speed books as Excel
+  workbooks, previewed on screen exactly as they print, with a Review tab of
+  everything the rules had to decide for themselves — and, on request, the
+  Kent Coast stock requirements form. The last two tabs read the reports and
+  write no book, and both are for the Mainline and Metro fleets only:
+  **Shortages & variations**, the controller's list of what is short or the
+  wrong length, and **Berth requests**, which suggests the night's Telex
+  requests against the day's diagrams.
 - **`Sheets Generator (no berth requests).html`** — the same page with the
   experimental *Berth requests* tab left out: its tab, its panel and its
   module are cut at build time and nothing else differs, so the copy handed
   to people who should not meet a feature still being proved carries the
   same version stamp as the full one.
 - **`Diagram Analyser.html`** — reads the same diagram prints and answers
-  maintenance planning's questions: arrivals home, what stands still long
-  enough to be worked on, what can carry a restricted unit, mileage per
-  unit, how long a unit takes to get back to its depot.
+  maintenance planning's questions, a card per fleet: arrivals home, what
+  stands still long enough to be worked on, what can carry a restricted
+  unit, where units come apart, mileage per unit, how long a unit takes to
+  get back to its depot.
 
-Nothing leaves the machine: no server, no upload, no network access. Both
-files are committed, built, and handed round as they are.
+Nothing leaves the machine: no server, no upload, no network access. All
+three files are committed, built, and handed round as they are.
 
 **Using the tool:** read **[HOW TO USE.md](HOW%20TO%20USE.md)** (also
 generated as `HOW TO USE.docx` for circulating). This README is the
@@ -62,7 +69,7 @@ them, in a fixed order, into the two HTML files.
 | `HOW TO USE.md` → `HOW TO USE.docx` | The user guide; the Word file is generated from the Markdown by `tools/make-guide-docx.mjs` on every build (needs the `docx` package from `npm ci`). |
 | `BERTHING SHEET RULES.html` | The rulebook for circulating, generated on every build by `tools/make-rules-doc.mjs` from the built file's own tables — nothing on it is typed out separately. |
 | `HISTORY.md` | Release history and the reasoning behind past changes. |
-| `src/page.html`, `src/styles.css` | The page shell (all four panels, the how-to fold, the ES5 capability probe, the `{{CSS}}` / `{{SCRIPTS}}` / `{{VERSION}}` / `{{RELEASED}}` placeholders) and all styling. The analyser reuses `styles.css` for its base look and adds `src/fleet/fleet.css`. |
+| `src/page.html`, `src/styles.css` | The page shell (all five panels, each opening on its numbered steps; the how-to fold; the ES5 capability probe, the `{{CSS}}` / `{{SCRIPTS}}` / `{{VERSION}}` / `{{RELEASED}}` placeholders) and all styling. The analyser reuses `styles.css` for its base look and adds `src/fleet/fleet.css`. |
 | `src/data.js` — `SHEETS_DATA` | Every reference table for every engine: berths, destination codes, section orders, fleet profiles, the station table, end-marker rules, the place names. Corrections belong here. |
 | `src/rules.js` — `SHEETS_RULES` | Local unit-order corrections (key grammar, merge, storage round-trip) and `explain()` / `explainHtml()`, which turn a build's rules into plain English for the Rules tab and the printed handout. |
 | `src/prints-read.js` — `SHEETS_PRINTS` | Opening a set of diagram prints whatever they arrive as: `.docx`, legacy `.doc` (OLE compound file and Word piece table, by hand), plain text, UTF-16 text, or a CSV save. Also owns `csvParse`. Both tools read the prints through this one module. |
@@ -72,15 +79,15 @@ them, in a fixed order, into the two HTML files.
 | `src/stockreq.js` — `SHEETS_STOCKREQ` | The Kent Coast stock requirements form: the depot's blank workbook, its styleSheet carried verbatim, filled from the day's plan. |
 | `src/metro.js` — `SHEETS_METRO` | The Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns. |
 | `src/hs-skin.js`, `src/hs.js` — `SHEETS_HS_SKIN`, `SHEETS_HS` | The Class 395 Allocations Sheet: the depot's own style records (generated from their workbook by `tools/make-hs-skin.py`, not in the repo) and the sheet built with them. |
-| `src/engine.js` — `SheetsEngine` | The weekend pipeline: diagram parsing, generation, reissue merge, the updated-prints splice, the report. |
+| `src/engine.js` — `SheetsEngine` | The weekend pipeline: diagram parsing, generation, reissue merge, the updated-prints splice, the report; and the base diagrams' week (`runWeek`), with several day files pooled into one timetable (`mergeDocs`), what kind of prints a file is (`printsKind`), and the classes each book carries. |
 | `src/genius.js` — `GENIUS` | The weekday pipeline: PDF text extraction, Summary/Detail parsing for the Genius PDF and CSV exports and the Integrale CSVs, and the house rulebook applied to whichever arrives. |
 | `src/shortage.js` — `SHEETS_SHORTAGE` | The shortages and variations list: the GENIUS Operating Report read, its legs stitched into workings so a variation can be traced through every diagram that shares one, a shortage tracked as one continuous deficit however many diagrams it passes through, and the controller’s written list out — lettered and laid out for the Excel text box it is pasted into, measured in Calibri 11 bold so no service breaks across a line. Not a berthing sheet, and it keeps its own place-code table on purpose - it names roads where the books name stations. |
-| `src/berth.js` — `SHEETS_BERTH` | Berth requests: the maintenance plan pasted from the Telex workbook, read line by line against the weekday reports the books were built from — where each unit is today, where it ends tonight, whether it calls where the plan wants it, whether its diagram splits — and the depot's rules applied to that for a suggested action beside the planner's own: a hold, a changeover, or a berth request naming a working that ends where the unit is wanted and the swap that gets it there, with the notice written out. Reads the defects export (Equinox or EMS) pasted as it comes, and a day's reports dropped on the tab itself, a Saturday included. Carries the standing fleet moves, the road a unit lands on, and each control document's own dress (`PLAN_SKINS`). Hands a Class 395 disposition statement on to `berth-hs.js`. An experimental reference, and the tab says so. |
+| `src/berth.js` — `SHEETS_BERTH` | Berth requests: the maintenance plan pasted from the Telex workbook, read line by line against the weekday reports the books were built from — where each unit is today, where it ends tonight, whether it calls where the plan wants it, whether its diagram splits — and the depot's rules applied to that for a suggested action beside the planner's own: a hold, a changeover, or a berth request naming a working that ends where the unit is wanted and the swap that gets it there, with the notice written out. Reads the defects export (Equinox or EMS) pasted as it comes, and a day's reports dropped on the tab itself, a Saturday included. Carries the standing fleet moves, the road a unit lands on, and each control document's own dress (`PLAN_SKINS`). A Class 395 disposition statement is turned away while `HS_DISPOSITION` is off — the tab is for the Mainline and Metro fleets — and handed on to `berth-hs.js` when it is on. An experimental reference, and the tab says so. |
 | `src/hs-disp-skin.js`, `src/berth-hs.js` — `SHEETS_HS_DISP_SKIN`, `SHEETS_BERTH_HS` | The High Speed side of the same road: the Class 395 **Disposition Statement**'s own style records (generated from the operator's workbook by `tools/make-hs-disp-skin.py`, not in the repo) and the road that reads that sheet, takes the day's AZ diagrams off the Detail, and fills the four planning columns. |
-| `src/ui.js` | The page: the mode switch, the four panels (one panel controller shared by the two book-building panels, one message table `MSG`), the cards, the sprites, the Rules and Unit order tabs, this computer's memory. |
-| `src/fleet/*` | The analyser: `prints.js` (the prints parsed for the fleet's sake), `fleet.js` (the analysis), `report.js` (the seven questions, rendered once for the screen and once for the workbook), `xlsx.js` (a small plain-grid writer), `ui.js`, `page.html`, `fleet.css`. |
+| `src/ui.js` | The page: the mode switch, the five panels (one panel controller shared by the three book-building panels, the weekend and base panels built from one definition, one message table `MSG`), the cards and the trains drawn on them, the Rules and Unit order tabs, this computer's memory. |
+| `src/fleet/*` | The analyser: `prints.js` (the prints parsed for the fleet's sake), `fleet.js` (the analysis), `report.js` (the questions, worded once and rendered twice — for the screen and for the workbook), `xlsx.js` (a small plain-grid writer), `ui.js`, `page.html`, `fleet.css`. |
 | `src/vendor/fflate.js` | fflate (MIT), the only third-party code: zip/unzip for docx and xlsx, inflate for PDF streams. |
-| `build.mjs` | Assembles `src/` into both files, stamps the versions, then runs the two document generators. |
+| `build.mjs` | Assembles `src/` into the three files (and refuses to write the second if the berth-request tab did not cut out cleanly), stamps the versions, then runs the two document generators. |
 | `test/` | The suite (see below). `test/helpers/` loads a built file into a Node `vm` sandbox and makes the synthetic fixtures; `test/fixtures/legacy.html` is the frozen pre-2.0 build the weekday books are compared against. |
 | `tools/` | `browser.mjs` (finds Chromium for Playwright), the three smokes, screenshot scripts, `order-check.mjs` (the unit-order mark-up sheet), the two document generators, and the two skin lifters (`make-hs-skin.py`, `make-hs-disp-skin.py`) that turn an operator's workbook into a style-record-only dress. |
 
@@ -113,13 +120,13 @@ the actual file inputs, and are part of CI for that reason.
 | `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
 | `berth.test.mjs`, `berth-hs.test.mjs` | The berth-request road against stated behaviour: the plan read section by section, the depot's rules one at a time, the swap search, the road a unit lands on, the plan given back in each workbook's own shape and dress, and the Class 395 disposition sheet's own reading, rules and sheet. |
 | `fleet.test.mjs` | The analyser, against stated behaviour — it has no legacy build. |
-| `build.test.mjs` | Both artifacts: self-contained, under the size ceiling, version-stamped, no placeholder left, dead symbols gone. |
+| `build.test.mjs` | The built files: self-contained, under the size ceiling, version-stamped, no placeholder left, dead symbols gone. |
 
 Every fixture is invented (`test/helpers/synth.mjs` writes fabricated
 Genius PDFs, CSVs and prints documents). **No real planning data is ever
 committed** — `.gitignore` refuses every format it arrives in.
 
-**CI** (`.github/workflows/ci.yml`) builds both files, fails if either
+**CI** (`.github/workflows/ci.yml`) builds the three files, fails if any
 committed build or generated document has drifted from `src/`, runs the
 suite and all three smokes, and uploads the artifacts. It has a fifteen-minute
 timeout, one run per branch at a time, and caches for npm and the browser.
@@ -226,7 +233,7 @@ repeated here. The shape of it:
   A pause on the way home to a depot is not a berthing (the `anyShunt`
   gate: only when the report carries the `#` column at all, settled once
   per date over every fleet). Long platform stands are an option.
-- **Berth requests (experimental).** A fourth tab reads the maintenance
+- **Berth requests (experimental).** The Berth requests tab reads the maintenance
   plan pasted from the Telex workbook against the weekday reports just
   built from, and gives the plan back in its own shape with two columns
   added: what the reports say about each unit today (diagram, where it
@@ -354,9 +361,12 @@ are read off the printed order; and because a print lists only where a
 diagram does something, the North Kent note is read off the places it does
 list and each working's headcode (`viaNorthKent`, right on all 726 workings
 of four days' Detail exports) and the neighbour a train really passes stands in for a far-off
-print stop when an end is worked out. Last night's arrivals come from the day before's Summary
-and Detail dropped with the prints, read by `GENIUS.hsDaysFrom`, which does
-not turn a weekend pair away. Against the depot's Saturday 19/09 tab it
+print stop when an end is worked out. Last night's arrivals come from the
+day before's Summary and Detail — Friday's for a Saturday, Saturday's for a
+Sunday — which the weekend tab takes on a drop zone of its own (and two
+paste boxes), before or after the prints, read by `GENIUS.hsDaysFrom`, which
+does not turn a weekend pair away. The base diagrams need no reports: the
+day before's base diagrams give the arrivals. Against the depot's Saturday 19/09 tab it
 matches every train ID, FP/RP, ENDS PM and PM arrival (28 of 28).
 
 ## The stock requirements form
@@ -372,10 +382,13 @@ nothing the golden suite compares changes shape.
 
 ## Shortages and variations
 
-The third road, and the only one that builds no workbook. It takes the GENIUS
-**Operating Report** and the **Diagram Detail** and writes the controller's
-list: what is short, what is the wrong length, what is the wrong fleet, and
-every service each one goes on to affect.
+One of the two roads that build no workbook, and for the Mainline and Metro
+fleets only. It takes the GENIUS **Operating Report** and the **Diagram
+Detail** and writes the controller's list: what is short, what is the wrong
+length, what is the wrong fleet, and every service each one goes on to
+affect. The Diagram Summary is optional: with it, a 3-car in a train of three
+or more units can be called wrong end or intermediate; without it those go on
+the Review list.
 
 Ported from the depot's own *Shortage and Variations* prototype (v0.4). The
 engine is kept as it was written — it was held against the real 18/09 reports
@@ -405,12 +418,20 @@ other's master, and `test/shortage.test.mjs` guards them apart.
 
 ## Berth requests
 
-The fourth road, and the one still being proved — the tab says so, and
+The other road that builds no workbook, for the Mainline and Metro fleets
+only, and the one still being proved — the tab says so, and
 `Sheets Generator (no berth requests).html` is the same page without it.
 It answers the question the planner spends the evening on: which working
 gets each unit to where its exam, its defect or its scheduled maintenance
-needs it to be. Paste the night's Telex tab, drop the day's reports, and
-every empty Action comes back filled, with the reason beside it.
+needs it to be. Paste the night's Telex tab, drop the day's reports (or
+build the weekday books first, and theirs are used), and every empty Action
+comes back filled, with the reason beside it. Three more boxes take the
+units out of service (ignored), the defects export from Equinox or EMS as it
+comes, and the units MSE is attending (left without a request). A tick says
+the day has not run yet (ticked for you when the reports are for today or
+later): a unit is then first offered today's workings from where it starts
+the day, so the request is made before it goes out, and only then the ones
+from where it ends tonight.
 
 **Three control documents paste here**, and which it is is read from the
 paste or set with the *Workbook* choice:
@@ -467,18 +488,26 @@ on the tab says which rule made each suggestion.
 ## The interface
 
 `src/ui.js` is one file with three parts. **`MSG`** holds every sentence the
-page can say. **`makePanel`** owns what the two book-building panels share —
+page can say. **`makePanel`** owns what the three book-building panels share —
 the status board, the paste box, the drop zone, the cards container, and one
 build queue whose every job is caught, so a fault cannot leave the queue
-rejected. The **weekday** and **weekend** closures add what differs: which
-reports they take, and a registry of the books that come back (`BOOKS`), each
-a small descriptor of what to write, what to preview and which review items
-are its own. Files dropped on the wrong panel are forwarded. Previews open by
-default; a rebuild restores what was open, on which tab, at which scroll, and
-puts focus back where it was. The **shortages** and **berth-request** panels
-build no book, so they have closures of their own: they take their own
-reports, keep their own paste boxes, and write a list rather than a
-workbook.
+rejected. The **weekday** closure and **`printsPanel`** add what differs:
+which reports they take, and a registry of the books that come back
+(`BOOKS`), each a small descriptor of what to write, what to preview and
+which review items are its own. `printsPanel` is set up twice, as the
+**weekend** tab and as the **base diagrams** tab, and the two differ only in
+what they build from the prints (a day, or a week). Files dropped on the
+wrong panel are forwarded — weekday reports to the weekday tab, a day's
+prints to the weekend tab, base diagrams to the base tab (`printsKind`).
+Each book's card draws the trains it actually carries and names them
+(`spritesFor`, `fleetText`), so a card with no 377 diagrams draws no 377.
+Previews open by default; a rebuild restores what was open, on which tab, at
+which scroll, and puts focus back where it was. A paste of a whole report is
+held off the page (`holdPastes`) rather than put in the box, which a
+six-megabyte Diagram Detail once took the browser down with. The
+**shortages** and **berth-request** panels build no book, so they have
+closures of their own: they take their own reports, keep their own paste
+boxes, and write a list rather than a workbook.
 
 This computer's storage (guarded, optional) holds three things under
 versioned keys: `sheetsRules.v1` (order corrections made with Reverse),
@@ -489,16 +518,32 @@ the mode). A corrupt or blocked store is reported on the board, once.
 ## The diagram analyser
 
 `Diagram Analyser.html` reads the same prints through `src/prints-read.js`
-and asks different questions of them: arrivals home by fleet and time of
-day, arrivals home before 20:00, restricted-unit (MO) diagrams that never
-detach, how many days a diagram takes to bring a unit back to a repair
-depot from each place it can be left, mileage per unit by sub-fleet, where
-the morning arrivals berth, and the locations a split diagram cannot be
-contained at. Depots and repair points are the depot's own arrangements and
-are set on the page, remembered on the computer. It has its own version
-number and its own test file; the two meanings of **MO** (a restricted unit
-that must run coupled; *Mondays only* on the prints) are written down at the
-top of `src/fleet/fleet.js`.
+and asks different questions of them. Each fleet in the prints gets a card;
+a row of book tabs (Mon–Thu, Friday, Saturday, Sunday — picking one moves
+every card) sits over a tab per question:
+
+| Tab | What it answers |
+|---|---|
+| Arrivals home | Units whose diagram *ends* at the home depot, before noon, noon to midnight and after; one that calls in and goes out again is not counted. |
+| Home before 8pm | Diagrams that end at home between noon and 20:00, and when each is needed again. |
+| Restricted units | Diagrams coupled on every leg — the only ones a restricted (MO) unit can take — and, night by night, whether a unit on them can stay on that work. |
+| Days back to depot | For every place a unit can be left, how many days the diagrams take to bring it home, and the way back. Days, not diagrams (1.8.0). |
+| Mileage | Miles per unit a day and a year by sub-fleet, divided by the units the depot owns, with the sum shown step by step. Always the whole week. |
+| Attendable stands | Every stand of two hours or more during the day. |
+| Cannot contain | Places a restricted unit cannot be worked from, and where units come apart. |
+| Together AM, apart PM | Units that go out coupled, are put away together and part later. |
+| Place codes | What each nine-character place code in the prints means. |
+| To *home* | Only for a depot off this network (Selhurst): finishers and parked units at the handover point in time for the windows. |
+
+Each tab opens on a headline in words, a *How this is worked out* fold, the
+counts, and the table; *Save this fleet* writes the same answers as a
+workbook (a sheet per table, plus one listing every diagram), *Save every
+fleet* all of them in one. Units owned per sub-fleet, the home depot, where each fleet
+can be repaired and the handover windows are the depot's own arrangements,
+set under *Fleets & depots* on the page and remembered on the computer. It
+has its own version number and its own test file; the two meanings of
+**MO** (a restricted unit that must run coupled; *Mondays only* on the
+prints) are written down at the top of `src/fleet/fleet.js`.
 
 ## Reference data — where the knowledge lives
 
