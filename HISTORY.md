@@ -174,6 +174,46 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.7 — 2 October 2026 — the Cannon Street rounders
+
+**Why the weekend books missed them every time.** The diagram prints list
+only the places a diagram does something. A rounder — a 2T or 2P out of
+Cannon Street and back to Cannon Street — does nothing the print writes
+down on the way round, so it is two `C St` rows one after the other. The
+weekend engine reads consecutive rows at one place as one stop (that is how
+a platform's arrival, shunt and departure rows become one), so the 06.15
+departure and the 07.44 return were one stop, and a stop's departure is its
+last one — the 08.02. The train the unit starts the day on disappeared
+behind the second, every weekend, for every unit that starts on a rounder:
+
+| Diagrams | Should be | Was |
+|---|---|---|
+| SG701 / SG702, Saturday | 2T59 06 15, Cannon Street | 2L15 08 02, Dartford |
+| SG403 / SG404, Saturday | 2P11 06 26, Cannon Street | 2S17 08 20, Orpington |
+| SG401 / SG402, Sunday — rounders all day | 2T67 08 15, Cannon Street | 2E81 23 56, Dartford |
+
+The weekday books never had it: the Genius Detail lists every call a rounder
+makes, so its two Cannon Street rows are never next to each other. The base
+diagrams did, being prints.
+
+Now a row that arrives back at a place after a **passenger** working left it
+starts a stop of its own (`runsBack` in `src/engine.js`), and the walk that
+finds a unit's departure counts that return as having been out of the
+section. An empty move out and straight back — the Faversham and Borough
+Green shunts — is still one stop: that is a run-round, and the walk already
+knew those.
+
+Two things came right with it. The review note *"C St: 38 station dwells of
+116 to 250 min treated as layovers, not berths"* was the mid-day rounders
+merged into stands of two to four hours; it is gone, and the Saturday Metro
+book's review drops from 89 lines to 7. And SG431/432, which finish the
+Sunday at Cannon Street at 23.55, read ENDS **CST PM** — the merged stop had
+taken their 07.55 arrival and called it AM.
+
+Checked on the Week 27 Saturday and Sunday prints, the Week 25 Saturday,
+and the Week 27 pair as base diagrams; nothing else on any sheet changed.
+Pinned in `test/weekend-fixes.test.mjs`, which fails on the old engine.
+
 ## 3.31.6 — 2 October 2026 — the guide catches up, and the Word copy is the Markdown
 
 `HOW TO USE.md` still described a page with two tabs. It is rewritten for

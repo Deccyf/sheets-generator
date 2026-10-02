@@ -801,3 +801,58 @@ test("each book says which classes it carries, so its card draws only those trai
   if (metro && !metro.skipped) assert.deepEqual(Array.from(metro.classes), ["465"]);
   for (const b of res.books.filter(b => b.skipped)) assert.equal(b.classes, undefined, b.road + " has no units");
 });
+
+test("a round trip from Cannon Street back to Cannon Street is the unit's first departure, not lost behind the second", () => {
+  /* The prints list only where a diagram does something, so the 2T and 2P
+     round trips - out of Cannon Street and back with nothing listed between
+     - are two C St rows in a row. Read as one stop, the departure the units
+     start the day on vanished behind the next one: on the Week 27 prints
+     SG701/702 came out as 2L15 08 02 instead of 2T59 06 15, SG403/404 as
+     2S17 08 20 instead of 2P11 06 26, and on the Sunday SG401/402 - round
+     trips all day - as 2E81 23 56, the last train of the night. Shapes and
+     times from those prints. */
+  const D = (num, days, from, until) => ["Diagram:\tSG\t" + num + "\t" + days,
+    "Fleet:\t707/0", "From:\t" + from + "\tUntil:\t" + until,
+    "\t\tC St\t\t06.15\t2T59\t\t28.54\t701(1)\\702(2)",
+    "\t\tC St\t07.44\t08.02\t2L15\t\t46.09\t702(1)\\701(2)",
+    "\t\tDart\t08.52\t09.09\t2A19\t\t63.64\t701(1)\\702(2)",
+    "\t\tC St\t10.06\t10.15\t2T75\t\t92.18\t702(1)\\701(2)",
+    "\t\tC St\t11.44\t\t\t\t\t"];
+  const lines = (days, from, until) => [...D(701, days, from, until), ...D(702, days, from, until)];
+  const cst = res => {
+    const metro = res.books.find(b => b.road === "Metro");
+    return metro.sheets.filter(s => /CANNON STREET/.test(s.name))
+      .map(s => s.layout.cells.map(c => String(c.v)));
+  };
+  for (const [what, res] of [
+    ["a day's prints", run([text(lines("SO", "03/10/2026", "03/10/2026"), "prints.txt")])],
+    ["the base diagrams", N.SheetsEngine.runWeek(
+      [text(lines("SO", "26/09/2026", "12/12/2026"), "base SO.txt")], zip.un, zip.z, {})],
+  ]) {
+    const [cells] = cst(res);
+    assert.ok(cells, what + ": a Cannon Street sheet");
+    assert.ok(cells.includes("2T59") && cells.includes("06 15"),
+      what + ": the 2T59 06 15 is the unit's first departure — " + cells.join(" | "));
+    assert.ok(!cells.includes("2L15"), what + ": not the 08 02 it turns round onto");
+    assert.equal(cells.indexOf("SG701") < cells.indexOf("SG702"), true,
+      what + ": Position read off the 06 15's own formation, 701(1)");
+    // the day ends at Cannon Street at 11 44, before noon
+    assert.ok(cells.includes("CST AM"), what + ": ENDS is the last arrival back, not the first");
+  }
+  /* Only a PASSENGER working away and back splits the stop. An empty move
+     out and straight back - the Faversham and Borough Green shunts on the
+     same prints - is a run-round, and is still one stop: out of a depot it
+     must not become a second departure from the depot. */
+  const shunt = run([text(["Diagram:\tSG\t431\tSu", "Fleet:\t465/9",
+    "From:\t04/10/2026\tUntil:\t04/10/2026",
+    "\t\tS Gn Dep\t\t06+00\t5C11\t\t1.00\t",
+    "\t\tS Gn Dep\t06+09\t06+20\t5C13\t\t2.00\t",
+    "\t\tBarnhst\t06+36\t06.40\t2C13\t\t15.00\t",
+    "\t\tC St\t07.20\t\t\t\t\t"], "shunt.txt")]);
+  const sg = shunt.books.find(b => b.road === "Metro").sheets
+    .flatMap(s => s.layout.cells.map(c => String(c.v)));
+  assert.equal(sg.filter(v => v === "SG431").length, 1, "one departure off the depot, not two: " +
+    sg.filter(v => /^5C/.test(v)).join(", "));
+  const invented = reviewLines(shunt).filter(l => /SG431 runs round/.test(l));
+  assert.equal(invented.length, 0, "and no run-round invented out of the shunt: " + invented.join(" / "));
+});

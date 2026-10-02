@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.6</b> · 2 October 2026</span>
+      <span class="ver">Version <b>3.31.7</b> · 2 October 2026</span>
     </div>
   </header>
 
@@ -1180,7 +1180,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.6
+      works without an internet connection. Version 3.31.7
       &middot; 2 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -6612,9 +6612,34 @@ function fmtParse(fm){
 const dnum = n => String(n).padStart(3,"0");
 const sortkey = t => t < DAY_ROLL ? t + 1440 : t;
 const mod1440 = x => ((x % 1440) + 1440) % 1440;
+/* Consecutive rows at one place are one stop - unless the unit went away
+   and came back. The prints list only where a diagram does something, so a
+   passenger working that leaves a place and returns to it with nothing
+   listed in between - the Cannon Street round trips, 2T59 out of C St at
+   06.15 and back at 07.44 - is two C St rows in a row. Read as one stop,
+   the first departure of the day vanished behind the second: on the Week
+   27 prints SG701/702 came out as 2L15 08 02 and SG403/404 as 2S17 08 20,
+   and the 2T59 06 15 and 2P11 06 26 the units really start the day on were
+   nowhere. So a row that ARRIVES after a passenger departure from the same
+   place starts a stop of its own, marked `returned`. An empty move out and
+   straight back - the Faversham and Borough Green shunts - stays one stop:
+   that is a run-round, and the walk in generate() knows those. */
+function runsBack(rows){
+  const out = [];
+  for (const [i, j1] of runsOf(rows, r => r.loc, r => r.loc === "")){
+    let s = i, away = false;
+    for (let k = i; k <= j1; k++){
+      const r = rows[k];
+      if (k > s && away && r.loc && r.arr){ out.push([s, k - 1, s > i]); s = k; away = false; }
+      if (r.dep && r.hc && "12".indexOf(r.hc[0]) >= 0) away = true;
+    }
+    out.push([s, j1, s > i]);
+  }
+  return out;
+}
 function stopsOf(rows){
   const out = []; let lastHc = null;
-  for (const [i, j1] of runsOf(rows, r => r.loc, r => r.loc === "")){
+  for (const [i, j1, returned] of runsBack(rows)){
     const grp = [];
     for (let k = i; k <= j1; k++) grp.push([k, rows[k]]);
     const loc = rows[i].loc;
@@ -6629,7 +6654,7 @@ function stopsOf(rows){
     let hash = false;
     for (const [,x] of grp) if (x.ev === "#"){ hash = true; break; }
     out.push({loc, i0:i, i1:j1, arr, dep, dep_idx:depIdx,
-              hc_in:lastHc, hc_out:hcOut, hash});
+              hc_in:lastHc, hc_out:hcOut, hash, returned});
     if (hcOut) lastHc = hcOut;
   }
   return out;
@@ -6798,7 +6823,9 @@ function generate(diags, prof, stabling, warn){
         if (s.dep_idx === null) continue;
         const nxt = (k+1 <= b) ? stops[k+1] : null;
         if (nxt === null) break;
-        if (!grp.has(nxt.loc) || k+1 === b){
+        /* a stop the unit came BACK to has been out of the section in
+           between, whatever its name - see runsBack() */
+        if (!grp.has(nxt.loc) || nxt.returned || k+1 === b){
           // A unit that pops out of the section and comes straight back
           // without working anything has been run round, not sent out. The
           // service that follows is the departure.

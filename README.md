@@ -217,7 +217,10 @@ source.
 4. **Generation** (`generate`, once per fleet profile) — the same stops,
    boundaries and stints as the weekday path, to the weekday rulebook,
    plus berths *learned* from `#` markers and auto-sections for places the
-   section list does not know.
+   section list does not know. A print lists only where a diagram does
+   something, so a rounder (out of Cannon Street and back) is two rows at
+   one place; `runsBack` keeps a passenger working's return a stop of its
+   own, or the first departure of the day is lost behind the second.
 5. **Writing.** `layoutBook` lays the sheet out once and hands it to the
    shared writer; the preview renders that same layout.
 
