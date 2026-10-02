@@ -174,6 +174,31 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.31.6 — 2 October 2026 — the guide catches up, and the Word copy is the Markdown
+
+`HOW TO USE.md` still described a page with two tabs. It is rewritten for
+the page as it is: the Base diagrams tab, the High Speed PM arrivals on the
+weekday and weekend tabs (the day before's pair, dropped or pasted),
+Shortages & variations and Berth requests with their Mainline & Metro
+scope, the 395 sheet's current template — REQUIRED AM and PM, the stopped
+units and priority sanding tables, the MG colours at 400 and 700 — the book
+cards as they now read (*Book 1 Mainline*, the trains it carries), held
+pastes, and the Diagram Analyser tab by tab. It also takes in what only the
+printed copy used to have: how to read a sheet, column by column, the times,
+SPLITS, the notes, the double lines.
+
+`HOW TO USE.docx` was a second guide, written out by hand inside
+`tools/make-guide-docx.mjs`, and it had drifted further than the Markdown:
+it still told people to look for "the top panel" and "the bottom panel".
+The script now reads `HOW TO USE.md` and only lays it out — headings
+numbered, steps, bullets, tables with their columns shared out by what they
+hold, callouts that never break across a page, the facsimile of two ruled
+entries where the Markdown marks it — so the two are one text and cannot
+disagree again.
+
+On the page, the how-to's quick start says to pick Weekday, Weekend *or
+Base diagrams*, and its list of what comes back includes the base week.
+
 ## 3.31.5 — 1 October 2026 — berth requests in plain words
 
 The berth requests tab is worded like the others, as four numbered steps.
