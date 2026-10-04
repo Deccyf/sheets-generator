@@ -31,6 +31,14 @@ await page.waitForFunction(() =>
 await page.screenshot({ path: "tools/shot-7-zone.png",
   clip: { x: 0, y: 240, width: 860, height: 330 } });
 console.log("zone guidance:", await page.textContent("#berth .berth-txt strong"));
+/* A file the panel will not take, dropped on half a pair, says so - the
+   "now drop the Detail" line used to write straight over the refusal. */
+await page.setInputFiles("#file", [f("notes.csv", "hello,world\n1,2\n")]);
+await page.waitForFunction(() => /isn't a report this reads/.test(document.querySelector("#status").textContent),
+  null, { timeout: 10000 });
+if (!/Summary loaded/.test(await page.textContent("#status")))
+  throw new Error("the refusal should keep the half-pair line after it: " + await page.textContent("#status"));
+console.log("refused on half a pair ✓");
 await page.setInputFiles("#file", [detPdf]);
 await page.waitForFunction(() =>
   document.querySelector("#status").textContent.includes("Books built"), null, { timeout: 20000 });

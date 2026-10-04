@@ -430,3 +430,10 @@ test("a station the road table has no code for is named by its CRS code, a sidin
   assert.ok(res.reviews.some(r => /DARTFDS \(Dartford Dn Sdg\)/.test(r)),
     "and the Review names it in full: " + res.reviews.join(" / "));
 });
+
+test("a Diagram Detail with no diagrams in it is refused, not built against", () => {
+  /* It used to build: the list came out against nothing, with "could not
+     determine ending working" for every diagram on the report. */
+  assert.throws(() => S().run(txt(OPERATING_LINES), "GENIUS  Diagram Detail Report"),
+    /the Diagram Detail has no diagrams in it/);
+});

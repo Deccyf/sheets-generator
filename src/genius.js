@@ -302,10 +302,30 @@ const GENIUS = (() => {
   /* Itinerary rows -> stops: consecutive rows at one location collapse into
      one {code, name, arr, dep, hcIn, hcOut, act[, ml]}, the headcode it
      arrived under and the one it leaves under carried separately. */
+  /* ...unless the unit went away and came back. A Genius Detail lists every
+     call, so its rows at one code are always one stand; but the weekend
+     prints, read as a Detail by the berth road, list only where a diagram
+     does something, and a Cannon Street rounder - out on a 2P, back to C St
+     - is C St rows one after another. A row that ARRIVES after a passenger
+     working left the same place starts a stop of its own, as the weekend
+     engine's runsBack() does. */
+  function runsBack(raw) {
+    const out = [];
+    for (const [i, j1] of runsOf(raw, s => s.code, null)) {
+      let s = i, away = false;
+      for (let k = i; k <= j1; k++) {
+        const r = raw[k];
+        if (k > s && away && r.arr !== null && r.arr !== undefined) { out.push([s, k - 1]); s = k; away = false; }
+        if (r.dep !== null && r.dep !== undefined && /^[12]/.test(r.hc || "")) away = true;
+      }
+      out.push([s, j1]);
+    }
+    return out;
+  }
   function stopsOf(raw) {
     const out = [];
     let lastHc = null;
-    for (const [i, j1] of runsOf(raw, s => s.code, null)) {
+    for (const [i, j1] of runsBack(raw)) {
       const grp = raw.slice(i, j1 + 1);
       let hcOut = null;
       for (let k = grp.length - 1; k >= 0; k--) if (grp[k].hc) { hcOut = grp[k].hc; break; }

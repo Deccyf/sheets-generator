@@ -137,6 +137,8 @@ const MSG = {
   wePasteReissue: "The reissue box does not read as diagram prints. Leave it empty if there is no reissue.",
   wePasted: re => re ? "Built from the pasted prints and reissue." : "Built from the pasted prints.",
   wePasteFailed: e => (e && e.message) || "That could not be read as diagram prints.",
+  notPrintsSheet: name => "“" + name + "” is a spreadsheet — this tab doesn’t read spreadsheets. " +
+    "Drop the diagram prints Word document (.docx or .doc), or a text or CSV save of it.",
   weReadFailed: name => "Couldn't read " + name + ". Try copying it to the desktop first.",
   weUnreadable: "That file couldn't be read as diagram prints.",
 };
@@ -1253,11 +1255,19 @@ const panels = {};
   function dropFiles(files) {
     dropId++;
     enqueue(async () => {
+      /* A file this panel will not take says so - and keeps saying so: the
+         line that follows ("Summary loaded ✓ - now drop the Detail") used to
+         write straight over it, and a wrong file dropped on half a pair
+         vanished without a word. */
+      const statusEl = $("#status"), refused = [];
       for (const f of files) {
         try { await accept(f); }
         catch (err) { say(MSG.readFailed(f.name, err), "err"); }
+        if (statusEl.classList.contains("err")) refused.push(statusEl.textContent);
       }
       await drained();
+      if (refused.length && !refused.includes(statusEl.textContent))
+        say(refused.join(" ") + " " + statusEl.textContent, "err");
     });
   }
   wireDrop($("#berth"), $("#file"), dropFiles);
@@ -1540,9 +1550,14 @@ function printsPanel(K) {
       })));
       const newDocs = [];
       for (const r of reads) {
-        if (r.status === "fulfilled") newDocs.push(r.value);
-        else say(r.reason.message, "err");
+        if (r.status !== "fulfilled") { say(r.reason.message, "err"); continue; }
+        /* a spreadsheet is never the prints, and the zip inside an .xlsx
+           made the reader say "no document body inside", which explained
+           nothing */
+        if (/\.xlsx?$|\.xlsm$/i.test(r.value.name)) { say(MSG.notPrintsSheet(r.value.name), "err"); continue; }
+        newDocs.push(r.value);
       }
+      if (!newDocs.length) return;
       const weekday = [];
       for (const d of newDocs) {
         if (!/\.(csv|txt)$/i.test(d.name)) continue;

@@ -4,6 +4,18 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## Diagram analyser 1.8.2 — 4 October 2026 — a rounder is not the unit being put away
+
+When a diagram ends in a string of rows at one place — the platform, the
+reception road, the depot — the unit arrived at the first of them, and that
+is the time the arrivals tables give. A Cannon Street rounder is also a
+string of rows at one place, because the prints list nothing it does on the
+way round, so SG431, out on rounders all Sunday and in at 23.55, was timed
+as getting in at 07.55, when it first reached Cannon Street that morning.
+The walk back through those rows now stops at a row the unit left on a
+passenger working. On the Week 27 and Week 25 prints that moves SG431 and
+SG432 and nothing else.
+
 ## Diagram analyser 1.8.1 — 1 October 2026 — the analyser in plain words
 
 The analyser is worded like the berthing sheets' tabs. The page opens on
@@ -173,6 +185,56 @@ place-codes key is the last tab — it is what a reader turns to when a code
 on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
+
+## 3.32.1 — 4 October 2026 — a review: memory, speed, and what the sweep turned up
+
+**Memory and speed.** Every tab profiled in a real Chromium on the real
+reports and prints — the 18/09 pair with its 6 MB Detail, the same pasted,
+three days at once (15 MB of Detail), the Week 27 prints, the base week, the
+19/09 Operating Report — with each operation repeated to catch anything that
+grows: rebuilds, option ticks, the same files dropped again, Start over,
+twelve reads of the maintenance plan. Nothing grows. The page sits at
+200–300 MB in the browser with everything built, every build takes under
+1.3 seconds, and the saved-book memory stays at 31 KB however often a book
+is saved. (A first measurement had Berth requests "keeping" 3,000 nodes a
+read; that was the browser's collector running late, and twelve reads in a
+row settle at the same count.) The Diagram Analyser reads three sets of
+prints in 0.3 seconds and gives back what it took after Start over.
+
+**The same rounder fault, in two more places.** 3.31.7 fixed the weekend
+engine reading a Cannon Street rounder as one long stand. Two other readers
+of the prints walked the same rows the same way:
+
+- *Berth requests*, which reads the weekend prints as a Diagram Detail, took
+  SG431 — out on rounders all Sunday, in at Cannon Street at 23.55 — as
+  ending the day at 07.55. The shared stop step (`stopsOf` in
+  `src/genius.js`) now starts a new stop where a unit comes back after a
+  passenger working, as the weekend engine does. A Genius Detail lists every
+  call, so it never has two such rows together: the real 18/09 and 21/09
+  books are byte for byte what they were.
+- *The Diagram Analyser* (1.8.2) timed the same SG431 as getting in at 07.55
+  — see its own entry.
+
+**What the sweep of awkward files turned up.** Every tab was given an empty
+file, an image, a spreadsheet, a cut-short Word document, the wrong report
+and the right file on the wrong tab. Nothing broke, and three things are
+better for it:
+
+- On the weekday tab, a file it will not take, dropped on half a pair,
+  vanished without a word: "Summary loaded ✓ — now drop the Detail" wrote
+  straight over the refusal. The refusal now stays, with the half-pair line
+  after it.
+- Shortages & variations built a list against a Diagram Detail with no
+  diagrams in it — "67 diagrams on the report, 0 in the detail", and *could
+  not determine ending working* for every one. It now says the Detail is
+  empty and asks for the whole report.
+- A spreadsheet dropped on the Weekend or Base diagrams tab said "no
+  document body inside", which explained nothing; it now says the tab does
+  not read spreadsheets and what to drop instead.
+
+The build's size ceiling moves from 1200 KB to 1300 KB: the file had reached
+1198 KB on features, not waste (see `test/build.test.mjs` for what is in it,
+and what could be squeezed if it ever had to be).
 
 ## 3.32.0 — 4 October 2026 — Deal, the sanding season, and pasting the variations
 

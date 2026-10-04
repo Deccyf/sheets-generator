@@ -1057,7 +1057,16 @@ function detDateOf(text){
    ticked was never going to feel right: the page holds what READ gives it
    and calls BUILD again. */
 function read(opText, detailText, summaryText) {
-  return { op: operatingFrom(opText), detail: detailFrom(detailText),
+  const detail = detailFrom(detailText);
+  /* A Detail with no diagrams in it - a copy of its first line, a report run
+     for a date with nothing on it - used to build: the list came out against
+     nothing, with "could not determine ending working" for every diagram on
+     the report. Nothing can be traced through an empty Detail, so it is
+     refused, the way an unreadable Operating Report is. */
+  if (!detail.size)
+    throw new Error("the Diagram Detail has no diagrams in it — save the whole report " +
+                    "from Genius again, PDF or CSV, and drop that");
+  return { op: operatingFrom(opText), detail,
            posAt: positionsFrom(summaryText),
            opDate: opDateOf(opText), detDate: detDateOf(detailText) };
 }

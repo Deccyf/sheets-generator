@@ -220,7 +220,9 @@ source.
    section list does not know. A print lists only where a diagram does
    something, so a rounder (out of Cannon Street and back) is two rows at
    one place; `runsBack` keeps a passenger working's return a stop of its
-   own, or the first departure of the day is lost behind the second.
+   own, or the first departure of the day is lost behind the second. The
+   same rule is in `GENIUS` `stopsOf`, which the berth road uses on the
+   prints read as a Detail, and in the analyser's `arrivedAt`.
 5. **Writing.** `layoutBook` lays the sheet out once and hands it to the
    shared writer; the preview renders that same layout.
 

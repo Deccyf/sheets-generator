@@ -1386,3 +1386,33 @@ test("the Metro Telex is read by its headings: the depot from the title, the uni
   assert.equal(form({ action: "TON BERTH 06+00 THEN AFK BERTH 15+00", list: [{ name: "06+00", hc: "5T01", dep: 360, road: "TONBDMS" }], then: { via: "AFK", entries: [{ name: "15+00", hc: "5W02", dep: 900, road: "ASHFDNS" }] } }, { at: "", section: "EXAMS" }),
                "TON DM - BERTH 06+00 (5T01) THEN AFK - BERTH 15+00 (5W02)", "a THEN leg in the same form, off the Down Main sidings");
 });
+
+test("a unit on Cannon Street rounders ends the day when it really does, read off the weekend prints", () => {
+  /* The berth road reads the weekend prints as a Diagram Detail, and the
+     prints list only where a diagram does something: a rounder - out of
+     C St on a 2P, back to C St - is C St rows one after another. Merged as
+     one stand, SG431 "ended" at Cannon Street at 07.55, the first time it
+     got there; it is out on rounders all Sunday and in at 23.55. Shapes and
+     times off the Week 27 Sunday prints. */
+  const raw = [
+    { code: "SLADEGD", arr: null, dep: 416, hc: "5C11" },
+    { code: "BRNHRST", arr: 432, dep: 436, hc: "2C11" },
+    { code: "CANONST", arr: 475, dep: null, hc: null },
+    { code: "CANONST", arr: null, dep: 506, hc: "2P19" },
+    { code: "CANONST", arr: 595, dep: 615, hc: "2T75" },
+    { code: "CANONST", arr: 1334, dep: 1346, hc: "2P75" },
+    { code: "CANONST", arr: 1435, dep: null, hc: null },
+  ];
+  const st = N.GENIUS._stopsOf(raw);
+  const last = st[st.length - 1];
+  assert.equal(last.code, "CANONST");
+  assert.equal(last.arr, 1435, "in at 23:55, off the last rounder");
+  assert.equal(st.filter(s => s.code === "CANONST").length, 4,
+    "the arrival and its 2P19 one stand, then a stand per rounder back");
+  // a Detail's own rows at one place, with no passenger working between, stay one stand
+  const shunt = N.GENIUS._stopsOf([
+    { code: "VICTRIE", arr: 1300, dep: null, hc: null },
+    { code: "VICTRIE", arr: null, dep: 1310, hc: "5V01", act: "#" },
+    { code: "VICTGCS", arr: 1315, dep: null, hc: null }]);
+  assert.equal(shunt.length, 2, "a shunt on the spot is not a return");
+});

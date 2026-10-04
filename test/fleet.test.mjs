@@ -736,3 +736,23 @@ test("a unit that gets in during the morning can take an afternoon diagram home"
   assert.equal((far2.path || []).filter(p => !p.key).length, 6,
     "six nights standing about, spelt out on the path");
 });
+
+test("a unit on Cannon Street rounders all day gets in when it finishes, not when it first arrived", () => {
+  /* The prints list only where a diagram does something, so a rounder - out
+     of C St on a 2P, back to C St - is C St rows one after another, and the
+     walk back through the closing run of rows at one place read SG431's
+     rounders all Sunday as the place putting it away from 07.55. It gets in
+     at 23.55. Shape and times off the Week 27 Sunday prints. */
+  const d = F.roll(FP.parsePrints([
+    "Diagram:\tSG\t431\tSu", "Fleet:\t465/9", "From:\t04/10/2026",
+    "\t\tS Gn Dep\t\t06+56\t5C11\t\t2.37\t",
+    "\t\tBarnhst\t07+12\t07.16\t2C11\t\t15.11\t",
+    "\t\tC St\t07.55\t\t\tATTACH\t\t",
+    "\t\tC St\t\t08.26\t2P19\t\t43.65\t432(1)\\431(2)",
+    "\t\tC St\t09.55\t10.15\t2T75\t\t72.19\t431(1)\\432(2)",
+    "\t\tC St\t22.14\t22.26\t2P75\t\t271.97\t432(1)\\431(2)",
+    "\t\tC St\t23.55\t\t\t\t\t",
+    "Total miles:\t271.97",
+  ])[0]);
+  assert.equal(F.arrivedAt(d), 23 * 60 + 55, "in at 23:55, off its last rounder");
+});

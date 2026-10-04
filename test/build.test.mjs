@@ -71,8 +71,16 @@ test("the built file is self-contained and lean", () => {
      Done to Genius and the sanding table - brings its own records (~9 KB of
      skin, less the ~1 KB of theme-font and unused fill markup it no longer
      carries). */
-  assert.ok(html.length < 1200 * 1024,
-    "under 1200 KB; this build is " +
+  /* 1300 KB at 3.32.1: the base diagrams' tab, the weekend's High Speed
+     arrivals, the wording passes, the sanding switch and the variations'
+     paste boxes took the file to 1198 KB - against a ceiling of 1200 that
+     the next change of any size would break. Nothing in it is waste: the
+     largest single parts are the two workbook skins (155 KB) and the how-to's
+     screenshots (81 KB, already JPEG). If the file has to get smaller, the
+     skins can travel deflated and be inflated by the bundled fflate when the
+     page opens - about 100 KB - at the cost of a build step. */
+  assert.ok(html.length < 1300 * 1024,
+    "under 1300 KB; this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");

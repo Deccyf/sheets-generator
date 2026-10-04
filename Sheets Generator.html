@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.32.0</b> · 4 October 2026</span>
+      <span class="ver">Version <b>3.32.1</b> · 4 October 2026</span>
     </div>
   </header>
 
@@ -1851,7 +1851,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.32.0
+      works without an internet connection. Version 3.32.1
       &middot; 4 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -8840,10 +8840,30 @@ const GENIUS = (() => {
   /* Itinerary rows -> stops: consecutive rows at one location collapse into
      one {code, name, arr, dep, hcIn, hcOut, act[, ml]}, the headcode it
      arrived under and the one it leaves under carried separately. */
+  /* ...unless the unit went away and came back. A Genius Detail lists every
+     call, so its rows at one code are always one stand; but the weekend
+     prints, read as a Detail by the berth road, list only where a diagram
+     does something, and a Cannon Street rounder - out on a 2P, back to C St
+     - is C St rows one after another. A row that ARRIVES after a passenger
+     working left the same place starts a stop of its own, as the weekend
+     engine's runsBack() does. */
+  function runsBack(raw) {
+    const out = [];
+    for (const [i, j1] of runsOf(raw, s => s.code, null)) {
+      let s = i, away = false;
+      for (let k = i; k <= j1; k++) {
+        const r = raw[k];
+        if (k > s && away && r.arr !== null && r.arr !== undefined) { out.push([s, k - 1]); s = k; away = false; }
+        if (r.dep !== null && r.dep !== undefined && /^[12]/.test(r.hc || "")) away = true;
+      }
+      out.push([s, j1]);
+    }
+    return out;
+  }
   function stopsOf(raw) {
     const out = [];
     let lastHc = null;
-    for (const [i, j1] of runsOf(raw, s => s.code, null)) {
+    for (const [i, j1] of runsBack(raw)) {
       const grp = raw.slice(i, j1 + 1);
       let hcOut = null;
       for (let k = grp.length - 1; k >= 0; k--) if (grp[k].hc) { hcOut = grp[k].hc; break; }
@@ -11590,7 +11610,16 @@ function detDateOf(text){
    ticked was never going to feel right: the page holds what READ gives it
    and calls BUILD again. */
 function read(opText, detailText, summaryText) {
-  return { op: operatingFrom(opText), detail: detailFrom(detailText),
+  const detail = detailFrom(detailText);
+  /* A Detail with no diagrams in it - a copy of its first line, a report run
+     for a date with nothing on it - used to build: the list came out against
+     nothing, with "could not determine ending working" for every diagram on
+     the report. Nothing can be traced through an empty Detail, so it is
+     refused, the way an unreadable Operating Report is. */
+  if (!detail.size)
+    throw new Error("the Diagram Detail has no diagrams in it — save the whole report " +
+                    "from Genius again, PDF or CSV, and drop that");
+  return { op: operatingFrom(opText), detail,
            posAt: positionsFrom(summaryText),
            opDate: opDateOf(opText), detDate: detDateOf(detailText) };
 }
@@ -16816,6 +16845,8 @@ const MSG = {
   wePasteReissue: "The reissue box does not read as diagram prints. Leave it empty if there is no reissue.",
   wePasted: re => re ? "Built from the pasted prints and reissue." : "Built from the pasted prints.",
   wePasteFailed: e => (e && e.message) || "That could not be read as diagram prints.",
+  notPrintsSheet: name => "“" + name + "” is a spreadsheet — this tab doesn’t read spreadsheets. " +
+    "Drop the diagram prints Word document (.docx or .doc), or a text or CSV save of it.",
   weReadFailed: name => "Couldn't read " + name + ". Try copying it to the desktop first.",
   weUnreadable: "That file couldn't be read as diagram prints.",
 };
@@ -17932,11 +17963,19 @@ const panels = {};
   function dropFiles(files) {
     dropId++;
     enqueue(async () => {
+      /* A file this panel will not take says so - and keeps saying so: the
+         line that follows ("Summary loaded ✓ - now drop the Detail") used to
+         write straight over it, and a wrong file dropped on half a pair
+         vanished without a word. */
+      const statusEl = $("#status"), refused = [];
       for (const f of files) {
         try { await accept(f); }
         catch (err) { say(MSG.readFailed(f.name, err), "err"); }
+        if (statusEl.classList.contains("err")) refused.push(statusEl.textContent);
       }
       await drained();
+      if (refused.length && !refused.includes(statusEl.textContent))
+        say(refused.join(" ") + " " + statusEl.textContent, "err");
     });
   }
   wireDrop($("#berth"), $("#file"), dropFiles);
@@ -18219,9 +18258,14 @@ function printsPanel(K) {
       })));
       const newDocs = [];
       for (const r of reads) {
-        if (r.status === "fulfilled") newDocs.push(r.value);
-        else say(r.reason.message, "err");
+        if (r.status !== "fulfilled") { say(r.reason.message, "err"); continue; }
+        /* a spreadsheet is never the prints, and the zip inside an .xlsx
+           made the reader say "no document body inside", which explained
+           nothing */
+        if (/\.xlsx?$|\.xlsm$/i.test(r.value.name)) { say(MSG.notPrintsSheet(r.value.name), "err"); continue; }
+        newDocs.push(r.value);
       }
+      if (!newDocs.length) return;
       const weekday = [];
       for (const d of newDocs) {
         if (!/\.(csv|txt)$/i.test(d.name)) continue;

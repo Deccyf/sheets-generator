@@ -319,7 +319,13 @@ function arrivedAt(d){
   const rows = d.rows;
   const g = groupOf(rows[rows.length - 1].loc);
   let i = rows.length - 1;
-  while (i > 0 && groupOf(rows[i - 1].loc) === g) i--;
+  /* ...but a row the unit LEFT on a passenger working is not the place
+     putting it away: the prints list only where a diagram does something,
+     so a Cannon Street rounder - out on a 2P, back to C St - is C St rows
+     one after another, and walking back through them timed SG431, out on
+     rounders all Sunday and in at 23.55, as getting in at 07.55. */
+  const away = r => r.dep != null && /^[12]/.test(r.hc || "");
+  while (i > 0 && groupOf(rows[i - 1].loc) === g && !away(rows[i - 1])) i--;
   /* The whole diagram inside one place means there was no arrival - the
      unit was there all along. Let the caller use the final time. */
   if (i === 0) return null;
