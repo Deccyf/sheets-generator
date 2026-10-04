@@ -321,6 +321,14 @@ its own — drop the full weekend prints with it (or first) so there is
 something to update."* A reissue for another date is refused too: *"… that
 reissue belongs to a different day."*
 
+**Cannon Street rounders.** A unit that starts the day on a rounder — a 2T
+or 2P out of Cannon Street and back to Cannon Street — is listed on that
+first departure: SG701 and SG702 on the 2T59 06 15, SG403 and SG404 on the
+2P11 06 26. The prints list nothing a rounder does on the way round, so an
+older copy of the page listed the train the unit turns round onto when it
+gets back (the 2L15 08 02) in its place. If you see that, you have an old
+copy: use this one.
+
 ### Pasting the prints instead
 
 Click **Can't get the prints onto this machine? Paste them instead**:
@@ -366,6 +374,9 @@ books from the base diagram prints, ready before the first day runs.
 
 The 395 base sheets also carry a table of the AZ1 and AZ9 diagrams by where
 they start and end the day, and note every AZ1 diagram *Modded unit only*.
+
+Cannon Street rounders are listed on their first departure here too, the
+same as on the weekend.
 
 Base diagrams dropped on the Weekend tab are sent here, and a day's weekend
 prints dropped here are sent there — *“…” is base diagrams for a timetable —
@@ -778,6 +789,8 @@ on the tab, set out every rule it follows.
 | *"… doesn't look like a Genius report — …"* or *"… couldn't be read as a PDF — …"* | The PDF's text could not be read. Save it again from Genius — not a scan or a photo. |
 | *"That CSV doesn't look like the Integrale Diagram Summary export. It is missing the … column"* | An Integrale export run without a column the page needs. Add the named columns and export again. |
 | *"This panel doesn't read spreadsheets. …"* | An Excel file was dropped. Export the reports as CSV or PDF instead. |
+| *"“…” isn't a report this reads — …"* followed by *"Genius Summary loaded ✓ — now drop the Diagram Detail report."* | The file you just dropped is not one of the two reports, and was left out. The half you had already dropped is kept: drop the other report. |
+| *"“…” is a spreadsheet — this tab doesn’t read spreadsheets. …"* | An Excel file was dropped on the Weekend or Base diagrams tab. Drop the diagram prints Word document, or a text or CSV save of it. |
 | A card says *"No … diagrams in these reports — nothing to build."* | No diagrams for that fleet are in the paperwork. Nothing wrong — but in Genius, check a Control Cycle exists for that fleet. |
 | The High Speed sheet's arrivals side is empty | The day before's Summary and Detail were not dropped. Add them and the books are built again with the arrivals. |
 | *"This Diagram Summary was exported without “Show diagram sections” ticked …"* on the Review tab | The Genius setting was off. The books are built, but afternoon formations may be the wrong way round and this export cannot say which. Re-export with it ticked, or put them right with Reverse. |
@@ -788,6 +801,8 @@ on the tab, set out every rule it follows.
 | *"That isn't the diagram prints. …"* | A text or CSV save whose columns were lost. Save it again, or paste it from Word. |
 | *"That looks like a reissue on its own — …"* | Drop the full weekend prints with it, or first. |
 | *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
+| *"That pair could not be read: the Diagram Detail has no diagrams in it — …"* (Shortages & variations) | The Diagram Detail was saved or copied without its diagrams — often just its first line. Save the whole report from Genius again, or copy it from the very top, and drop or paste that. |
+| `???` on the variations list | A siding, signal or depot road the list has no code for. The Review list under it names the place in full — tell us the code it should be, and it can be added. Plain stations are named by their three-letter code, so Deal is `DEA`. |
 | *"Build failed: … Check the files and drop them again."* | Something in the files could not be read. Books from an earlier drop are cleared, so nothing is saved by mistake. |
 | *"This browser blocks local storage, …"* | The page still builds, but corrections, options and the saved-book memory will not survive closing it. |
 | Nothing happens when you drop a file | Click the zone and browse for the file instead — some setups block drag-and-drop. |
