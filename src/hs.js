@@ -541,7 +541,11 @@ function kRanges(rows) {
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
-function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
+function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles, opts) {
+  /* The sanding table is a season's: rail-head treatment runs from the autumn
+     to about Christmas, and the planner turns it off for the rest of the
+     year - opts.sanding === false. Nothing else on the sheet moves. */
+  const sanding = !(opts && opts.sanding === false);
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
@@ -614,14 +618,16 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const SD = SKIN.sanding, sc = COL(SD.col), sTop = SKIN.firstRow + SD.at;
   const sCols = [0, 1, 2, 3].map(i => String.fromCharCode(64 + sc + i));
   const sFirst = sTop + 2, sLast = sFirst + SANDING.lines - 1;
-  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
-  merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
-  sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
-  for (let sr = sTop + 1; sr <= sLast; sr++) {
-    if (sr > sTop + 1)
-      sCols.forEach((c, i) => put(sr, sc + i,
-        (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
-    merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
+  if (sanding) {
+    sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
+    merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
+    sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
+    for (let sr = sTop + 1; sr <= sLast; sr++) {
+      if (sr > sTop + 1)
+        sCols.forEach((c, i) => put(sr, sc + i,
+          (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
+      merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
+    }
   }
 
   /* the stopped units' table, its title on row top: returns its last row */
@@ -978,7 +984,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   for (const m of SKIN.footerMerges)
     merges.push(m.replace(/(\d+)/g, d => String(+d + base)));
   for (const [fr, h] of Object.entries(SKIN.footerHts)) rowHeights.set(+fr + base, +h);
-  r = Math.max(base + SKIN.footerBottom + 1, sLast + 1);
+  r = Math.max(base + SKIN.footerBottom + 1, sanding ? sLast + 1 : 0);
 
   // relative to the AM cell, so the PM one tests the PM pair
   condFmt.push('<conditionalFormatting sqref="' + O.am + ":" + O.pm + '">' +
@@ -988,7 +994,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   /* the miles: Y and Z both test Y, so the merged pair colours as one, and
      an empty cell - which Excel reads as 0 - stays white */
   const my = "$" + sCols[2] + sFirst;
-  condFmt.push('<conditionalFormatting sqref="' + sCols[2] + sFirst + ":" + sCols[3] + sLast + '">' +
+  if (sanding) condFmt.push('<conditionalFormatting sqref="' + sCols[2] + sFirst + ":" + sCols[3] + sLast + '">' +
     SANDING_BANDS.map(b => '<cfRule type="expression" dxfId="' + b.dxf + '" priority="' + pri++ + '">' +
       '<formula>AND(ISNUMBER(' + my + '),' + b.f(my).replace(/</g, "&lt;").replace(/>/g, "&gt;") +
       ')</formula></cfRule>').join("") +
@@ -999,7 +1005,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
      planner writes a note after a unit ("395001 wheel flats"), and a strict
      list refused it. The sanding table keeps to the list. */
   dvRanges.unit.push(...stoppedRanges);
-  dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  if (sanding) dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
   const LOOSE = new Set(["unit"]);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
                   ["fprp", SKIN.dv.fprp], ["unit", rosterList()], ["sand", rosterList()]]
@@ -1012,17 +1018,21 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";
+  /* Without the sanding table the sheet ends where its last cell does, so
+     the preview is not left with four empty columns down its right side. */
+  const usedTo = sanding ? sc + 3 : cells.reduce((m, x) => Math.max(m, x.c), 1);
   return { cells, merges, rowHeights, maxRow: r, comments, blocks,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
                    // the same records again, as CSS, for the preview
                    xfCss: SKIN.xfCss, previewFont: "calibri",
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
-                   lastCol: sCols[3], noPageSetup: true, widths: PREVIEW_W } };
+                   lastCol: String.fromCharCode(64 + usedTo), noPageSetup: true,
+                   widths: PREVIEW_W.slice(0, usedTo) } };
 }
 
 /* One worksheet per day the reports carry, named the way the real workbook
    names them - "Tue 18 08". */
-function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
+function sheetsFor(hsSecs, labels, dates, hsDays, titles, opts) {
   const days = DAY_ORDER.filter(d => d in labels);
   return days.map((d, i) => {
     const lbl = String(labels[d] || "");
@@ -1035,7 +1045,8 @@ function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
        Wednesday the night before Friday */
     const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays, titles) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null,
+                               hsDays, titles, opts) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -1045,8 +1056,8 @@ function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
 }
 /* The whole allocations workbook as bytes, or null when no day has any
    395 work. */
-function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
-  const sheets = sheetsFor(hsSecs, labels, dates, hsDays);
+function writeHsBook(hsSecs, labels, dates, zipFn, hsDays, opts) {
+  const sheets = sheetsFor(hsSecs, labels, dates, hsDays, undefined, opts);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 

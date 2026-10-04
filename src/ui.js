@@ -363,9 +363,9 @@ function saveJson(key, obj) {
 }
 
 /* the option boxes and the mode, restored on the next visit */
-const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq",
-                 "we_hc_main", "we_hc_metro", "we_hc_hs",
-                 "bs_hc_main", "bs_hc_metro", "bs_hc_hs"];
+const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq", "sanding",
+                 "we_hc_main", "we_hc_metro", "we_hc_hs", "we_sanding",
+                 "bs_hc_main", "bs_hc_metro", "bs_hc_hs", "bs_sanding"];
 const savedOpts = loadJson(OPTS_LS_KEY);
 for (const id of OPT_IDS) {
   const el = document.getElementById(id);
@@ -1035,7 +1035,8 @@ const panels = {};
   const WRITE = {
     berthing: (b, res, opts) => X.writeBooks(b.secs(res), res.labels, b.ram, opts),
     metro: (b, res) => METRO.writeMetroBook(b.secs(res), res.labels, b.order(res), zipFn, res.dates),
-    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn, res.hsDays),
+    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn, res.hsDays,
+                                   { sanding: opt("sanding") }),
   };
 
   async function renderBooks(res) {
@@ -1099,7 +1100,8 @@ const panels = {};
       } else {
         const sheets = b.kind === "metro"
           ? METRO.sheetsFor(secs, res.labels, b.order(res), res.dates)
-          : HS.sheetsFor(secs, res.labels, res.dates, res.hsDays);
+          : HS.sheetsFor(secs, res.labels, res.dates, res.hsDays, undefined,
+                         { sanding: opt("sanding") });
         panes = [[b.kind === "metro" ? "Sheet" : "Allocations",
                   () => metroPane(sheets, b.kind === "metro" ? "Location" : "Day")]];
       }
@@ -1283,6 +1285,7 @@ const panels = {};
   onOpt("hc_main", () => rebuild(MSG.rebuilt("with the new headcode setting")));
   onOpt("milescol", on => rebuild(MSG.rebuilt(on ? "with the mileage column" : "without the mileage column")));
   onOpt("stockreq", on => rebuild(on ? MSG.stockOn : MSG.stockOff));
+  onOpt("sanding", on => rebuild(MSG.rebuilt(on ? "with the priority sanding table" : "without the priority sanding table")));
   onOpt("platstand", on => rebuild(MSG.rebuilt(on ? "with long platform stands counted" : "without platform stands"), true));
 
   /* ---- the same two reports pasted in as text ----
@@ -1502,7 +1505,8 @@ function printsPanel(K) {
     const res = SheetsEngine.runWeek(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true, hsPrev, forDate });
+      { allHeadcodes, splitRamsgate: true, hsPrev, forDate,
+        sanding: !!($(id("sanding")) && $(id("sanding")).checked) });
     built = res;
     render(res);
     if (baseRow) {
@@ -1703,6 +1707,16 @@ function printsPanel(K) {
       catch (e) { say(MSG.weRebuildFailed(e), "err"); }
     }));
   }
+  const sandBox = $(id("sanding"));
+  if (sandBox) sandBox.addEventListener("change", () => enqueue(() => {
+    rememberOpts();
+    if (!loadedDocs.length) return;
+    try {
+      rebuildFromLoaded();
+      say(MSG.rebuilt(sandBox.checked ? "with the priority sanding table"
+                                      : "without the priority sanding table"), "go");
+    } catch (e) { say(MSG.weRebuildFailed(e), "err"); }
+  }));
   $(id("dlupd")).addEventListener("click", () => {
     if (!built || !built.updated) return;
     download(built.updated.name, built.updated.bytes, DOCX_MIME);
@@ -2149,6 +2163,67 @@ function decodeText(u8) {
       "save the report from Genius as PDF or CSV and drop that. " + statusEl.textContent, "err");
   }
   wireDrop(zone, input, take);
+
+  /* ---- the same reports pasted in as text ----
+     For a machine that will not let the files be saved anywhere the page
+     can reach. Each box is read by what is in it, the way a dropped file is,
+     so a pasted report and a dropped one land in the same place and cannot
+     build differently; a report the size of the Diagram Detail is held, not
+     written into its box (holdPastes). */
+  const pToggle = $("#svpastetoggle"), pWrap = $("#svpastebox"), pSayEl = $("#svpaste_say");
+  const pBoxes = ["#svpaste_op", "#svpaste_det", "#svpaste_sum"].map(s => $(s)).filter(Boolean);
+  const pSay = (msg, cls) => {
+    if (!pSayEl) return;
+    pSayEl.textContent = msg || "";
+    pSayEl.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const markFilled = el => el.classList.toggle("filled", !!el.value.trim());
+  if (pToggle && pWrap) pToggle.addEventListener("click", () => {
+    const open = pWrap.hidden;
+    pWrap.hidden = !open;
+    pToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && pBoxes[0]) pBoxes[0].focus();
+  });
+  for (const el of pBoxes) {
+    el.addEventListener("input", () => { markFilled(el); pSay(""); });
+    holdPastes(el);
+    wireBoxDrop(el, (name, err) =>
+      pSay(err ? MSG.boxReadFailed(name) : MSG.readIntoBox(name), err ? "err" : "go"));
+  }
+  /* setBox, not this panel's own `held`: that one is the reports as read */
+  const emptyBoxes = () => { for (const el of pBoxes) { setBox(el, ""); markFilled(el); } };
+  if ($("#svpaste_clear")) $("#svpaste_clear").addEventListener("click", () => {
+    emptyBoxes();
+    pSay("All three boxes cleared.");
+    if (pBoxes[0]) pBoxes[0].focus();
+  });
+  if ($("#svpaste_go")) $("#svpaste_go").addEventListener("click", () => {
+    const got = [];
+    for (const el of pBoxes) {
+      const t = GENIUS.pastedCsv(boxText(el));
+      if (!t) continue;
+      const kind = SHEETS_SHORTAGE.sniff(t);
+      const label = el.closest("label").querySelector("span").firstChild.textContent.trim();
+      if (!kind) {
+        pSay("The " + label + " box doesn’t read as an Operating Report, a Diagram Detail " +
+             "or a Diagram Summary — copy the whole CSV, first line and all, as it comes.", "err");
+        el.focus();
+        return;
+      }
+      got.push([kind, t]);
+    }
+    if (!got.length) { pSay("Paste a report into one of the boxes first.", "err"); if (pBoxes[0]) pBoxes[0].focus(); return; }
+    const kinds = got.map(g => g[0]);
+    if (new Set(kinds).size < kinds.length) {
+      pSay("Two boxes hold the same report — each of the three goes in a box of its own.", "err");
+      return;
+    }
+    source = null;                          // a new report means a fresh read
+    for (const [kind, t] of got) { held[kind] = t; held.names[kind] = "pasted"; }
+    pSay("");
+    render();
+  });
+
   /* The list is pasted into an email, so it goes onto the clipboard twice:
      as plain text, and as Calibri 11 bold, which is the face the depot's
      notes are written in. A browser without ClipboardItem gets the text. */
@@ -2193,6 +2268,7 @@ function decodeText(u8) {
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
+    emptyBoxes(); pSay("");
     out.textContent = ""; out.hidden = true; bar.hidden = true;
     if (optsRow) optsRow.hidden = true;
     revWrap.hidden = true; note.textContent = "";

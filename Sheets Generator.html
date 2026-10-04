@@ -560,7 +560,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.31.7</b> · 2 October 2026</span>
+      <span class="ver">Version <b>3.32.0</b> · 4 October 2026</span>
     </div>
   </header>
 
@@ -822,6 +822,7 @@
       <label><input type="checkbox" id="platstand" autocomplete="off"> Count long platform stands</label>
       <label><input type="checkbox" id="milescol" autocomplete="off"> Mileage column</label>
       <label><input type="checkbox" id="stockreq" autocomplete="off"> Stock requirements form</label>
+      <label><input type="checkbox" id="sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <button type="button" class="linkish" id="optshelp" aria-expanded="false"
         aria-controls="optshint">What each does</button>
       <span class="opts-hint">Every tick rebuilds the books — save them again
@@ -840,7 +841,11 @@
         book. A unit that attaches to another diagram and stays out has no
         second row, so the row it does have carries the rest of its day. Blank
         on a build from PDFs, which carry no mileage.</p>
-      <p><b>Stock requirements form</b> — fills in the Kent Coast form, every
+      <p><b>Priority sanding table (High Speed)</b> — the PRIORITY SANDING
+          table on the 395 sheet. Sanding runs from the autumn to about
+          Christmas: untick it for the rest of the year and the sheet is
+          written without it.</p>
+        <p><b>Stock requirements form</b> — fills in the Kent Coast form, every
         diagram counted at the location it starts the day from, by unit type.
         POSITION and SEAT LOSS stay blank for the planner. Normally only wanted
         for a Monday built on a Sunday night, or the day after a bank holiday.</p>
@@ -948,9 +953,11 @@
       <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="we_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs" autocomplete="off"> High Speed</label>
+      <label><input type="checkbox" id="we_sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Ticking a book puts one on every line of it and
-        rebuilds it — save again afterwards.</span>
+        rebuilds it — save again afterwards. Untick the sanding table once
+        sanding ends for the year, about Christmas.</span>
     </div>
 
 
@@ -1036,9 +1043,11 @@
       <label><input type="checkbox" id="bs_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="bs_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="bs_hc_hs" autocomplete="off"> High Speed</label>
+      <label><input type="checkbox" id="bs_sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Ticking a book puts one on every line of it and
-        rebuilds it — save again afterwards.</span>
+        rebuilds it — save again afterwards. Untick the sanding table once
+        sanding ends for the year, about Christmas.</span>
     </div>
 
     <div class="roads" id="bs_roads"></div>
@@ -1072,6 +1081,43 @@
       </span>
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="svpastetoggle"
+              aria-expanded="false" aria-controls="svpastebox">Can&rsquo;t get the
+        files onto this machine? Paste the reports instead</button>
+    </p>
+
+    <div class="pastebox" id="svpastebox" hidden>
+      <p class="paste-hint">Open each report&rsquo;s CSV in Notepad or Excel,
+        press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into a box. Each
+        box is read by what is in it, so any report can go in any box. PDFs
+        can&rsquo;t be pasted — drop those on the zone above.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Operating Report</span>
+          <textarea id="svpaste_op" rows="4" spellcheck="false" wrap="off"
+            placeholder="Paste the Operating Report here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail <em>the same day</em></span>
+          <textarea id="svpaste_det" rows="4" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Detail here"></textarea>
+        </label>
+      </div>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary <em>optional — places 3-cars in longer trains</em></span>
+          <textarea id="svpaste_sum" rows="3" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Summary here, if you have it"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="svpaste_go">Read the pasted reports</button>
+        <button type="button" class="btn ghost" id="svpaste_clear">Clear the boxes</button>
+      </div>
+      <p class="paste-say" id="svpaste_say" role="status"></p>
+    </div>
 
     <div class="board">
       <p class="status" id="svstatus" role="status"></p>
@@ -1805,8 +1851,8 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.31.7
-      &middot; 2 October 2026. If something looks wrong, check you have the
+      works without an internet connection. Version 3.32.0
+      &middot; 4 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
   </footer>
@@ -6509,7 +6555,11 @@ function kRanges(rows) {
 /* One day's worksheet: the legend, a block per depot with entries, and the
    standing notes, every cell naming the skin's style record. prevKey is
    the day before (its entries fill the arrivals tables) or null. */
-function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
+function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles, opts) {
+  /* The sanding table is a season's: rail-head treatment runs from the autumn
+     to about Christmas, and the planner turns it off for the rest of the
+     year - opts.sanding === false. Nothing else on the sheet moves. */
+  const sanding = !(opts && opts.sanding === false);
   const cells = [], merges = [], rowHeights = new Map(), condFmt = [];
   const comments = [];
   /* the drop-downs: per-kind cell ranges, filled in block by block */
@@ -6582,14 +6632,16 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   const SD = SKIN.sanding, sc = COL(SD.col), sTop = SKIN.firstRow + SD.at;
   const sCols = [0, 1, 2, 3].map(i => String.fromCharCode(64 + sc + i));
   const sFirst = sTop + 2, sLast = sFirst + SANDING.lines - 1;
-  sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
-  merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
-  sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
-  for (let sr = sTop + 1; sr <= sLast; sr++) {
-    if (sr > sTop + 1)
-      sCols.forEach((c, i) => put(sr, sc + i,
-        (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
-    merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
+  if (sanding) {
+    sCols.forEach((c, i) => put(sTop, sc + i, SD.title[c], i === 0 ? SANDING.title : ""));
+    merges.push(sCols[0] + sTop + ":" + sCols[3] + sTop);
+    sCols.forEach((c, i) => put(sTop + 1, sc + i, SD.head[c], i === 0 ? SD.text[1] : i === 2 ? SD.text[2] : ""));
+    for (let sr = sTop + 1; sr <= sLast; sr++) {
+      if (sr > sTop + 1)
+        sCols.forEach((c, i) => put(sr, sc + i,
+          (sr === sFirst ? SD.first : sr === sLast ? SD.last : SD.mid)[c], ""));
+      merges.push(sCols[0] + sr + ":" + sCols[1] + sr, sCols[2] + sr + ":" + sCols[3] + sr);
+    }
   }
 
   /* the stopped units' table, its title on row top: returns its last row */
@@ -6946,7 +6998,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   for (const m of SKIN.footerMerges)
     merges.push(m.replace(/(\d+)/g, d => String(+d + base)));
   for (const [fr, h] of Object.entries(SKIN.footerHts)) rowHeights.set(+fr + base, +h);
-  r = Math.max(base + SKIN.footerBottom + 1, sLast + 1);
+  r = Math.max(base + SKIN.footerBottom + 1, sanding ? sLast + 1 : 0);
 
   // relative to the AM cell, so the PM one tests the PM pair
   condFmt.push('<conditionalFormatting sqref="' + O.am + ":" + O.pm + '">' +
@@ -6956,7 +7008,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
   /* the miles: Y and Z both test Y, so the merged pair colours as one, and
      an empty cell - which Excel reads as 0 - stays white */
   const my = "$" + sCols[2] + sFirst;
-  condFmt.push('<conditionalFormatting sqref="' + sCols[2] + sFirst + ":" + sCols[3] + sLast + '">' +
+  if (sanding) condFmt.push('<conditionalFormatting sqref="' + sCols[2] + sFirst + ":" + sCols[3] + sLast + '">' +
     SANDING_BANDS.map(b => '<cfRule type="expression" dxfId="' + b.dxf + '" priority="' + pri++ + '">' +
       '<formula>AND(ISNUMBER(' + my + '),' + b.f(my).replace(/</g, "&lt;").replace(/>/g, "&gt;") +
       ')</formula></cfRule>').join("") +
@@ -6967,7 +7019,7 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
      planner writes a note after a unit ("395001 wheel flats"), and a strict
      list refused it. The sanding table keeps to the list. */
   dvRanges.unit.push(...stoppedRanges);
-  dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
+  if (sanding) dvRanges.sand.push(sCols[0] + sFirst + ":" + sCols[0] + sLast);
   const LOOSE = new Set(["unit"]);
   const dvDefs = [["cars", SKIN.dv.cars], ["cet", SKIN.dv.cet],
                   ["fprp", SKIN.dv.fprp], ["unit", rosterList()], ["sand", rosterList()]]
@@ -6980,17 +7032,21 @@ function layoutDay(dayKey, dates, hsSecs, prevKey, hsDays, titles) {
         '<formula1>"' + list + '"</formula1></dataValidation>').join("") +
       '</dataValidations>'
     : "";
+  /* Without the sanding table the sheet ends where its last cell does, so
+     the preview is not left with four empty columns down its right side. */
+  const usedTo = sanding ? sc + 3 : cells.reduce((m, x) => Math.max(m, x.c), 1);
   return { cells, merges, rowHeights, maxRow: r, comments, blocks,
            opts: { stylesXml: SKIN.stylesXml, colsXml: SKIN.colsXml,
                    // the same records again, as CSS, for the preview
                    xfCss: SKIN.xfCss, previewFont: "calibri",
                    tabColor: SKIN.tabColor, condFmt, dataValidations,
-                   lastCol: sCols[3], noPageSetup: true, widths: PREVIEW_W } };
+                   lastCol: String.fromCharCode(64 + usedTo), noPageSetup: true,
+                   widths: PREVIEW_W.slice(0, usedTo) } };
 }
 
 /* One worksheet per day the reports carry, named the way the real workbook
    names them - "Tue 18 08". */
-function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
+function sheetsFor(hsSecs, labels, dates, hsDays, titles, opts) {
   const days = DAY_ORDER.filter(d => d in labels);
   return days.map((d, i) => {
     const lbl = String(labels[d] || "");
@@ -7003,7 +7059,8 @@ function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
        Wednesday the night before Friday */
     const prev = DAY_ORDER[DAY_ORDER.indexOf(d) - 1];
     return { name: name.slice(0, 31),
-             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null, hsDays, titles) };
+             layout: layoutDay(d, dates, hsSecs, i > 0 && prev && prev in labels ? prev : null,
+                               hsDays, titles, opts) };
     /* A day with no 395 work gets no tab. Testing for "any filled cell in
        the block rows" looked equivalent and was not: with no blocks to
        anchor it the standing footer is re-anchored right up into that range,
@@ -7013,8 +7070,8 @@ function sheetsFor(hsSecs, labels, dates, hsDays, titles) {
 }
 /* The whole allocations workbook as bytes, or null when no day has any
    395 work. */
-function writeHsBook(hsSecs, labels, dates, zipFn, hsDays) {
-  const sheets = sheetsFor(hsSecs, labels, dates, hsDays);
+function writeHsBook(hsSecs, labels, dates, zipFn, hsDays, opts) {
+  const sheets = sheetsFor(hsSecs, labels, dates, hsDays, undefined, opts);
   return sheets.length ? X.writeWorkbook(sheets, zipFn) : null;
 }
 
@@ -8282,7 +8339,8 @@ function run(input, unzipFn, zipFn, opts){
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles,
+                              { sanding: !(opts && opts.sanding === false) });
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);
@@ -10528,15 +10586,48 @@ const ABBR = {
   /* Both of these only ever turn up on the small-hours workings, so they
      went unnoticed for as long as those were being missed - the list said
      "??? - TON" for RM020 and RM021 on the Saturday 19/09 report. */
-  TUNWELL:"TBW", PKWD:"PDW"
+  TUNWELL:"TBW", PKWD:"PDW",
+  /* Stations, by CRS code. Most stations need no line here - they are named
+     off the station table, see stationCrs() - but these are spelt in Genius
+     too differently from the table for that to find them. */
+  DEAL:"DEA", BLFR:"BFR", BORWGAW:"BRG", STPANCI:"STP"
 };
 const MASTER_GROUPS = [
   ["AFDS","AFES","AFUS"], ["FAV","FAVBRD","FAVUS"], ["DVP","DVPS"],
   ["TON","TONJS","TONDMS"], ["RAM","RE"], ["HGS","HGPS"], ["VICS","VIC"]
 ];
+/* A STATION the table above has no road code for is named by its CRS code,
+   read off the tool's station table by the report's own name for the place
+   - Deal is DEA, Dartford DFD, Sidcup SID - where it used to print "???".
+   Only a station: the name has to be one in the table, or, where Genius has
+   cut it short ("Beckenham Juncti"), the start of exactly one. A siding or a
+   signal named after its station ("Dartford Dn Sdg", "Hastings Signal") is
+   never read as the station - a road needs the depot's own code, and that
+   is the table above. The names come from the Detail as it is read. */
+const PLACE_NAME = new Map();
+const squash = t => String(t || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+let crsByName = null;
+function stationCrs(name) {
+  const k = squash(name);
+  if (!k) return null;
+  if (!crsByName) {
+    crsByName = new Map();
+    const st = (typeof SHEETS_DATA !== "undefined" && SHEETS_DATA.STATIONS) || [];
+    for (const [n, crs] of st) crsByName.set(squash(n), crs);
+  }
+  if (crsByName.has(k)) return crsByName.get(k);
+  if (String(name).trim().length >= 15) {
+    const hits = [...crsByName.keys()].filter(n => n.startsWith(k));
+    if (hits.length === 1) return crsByName.get(hits[0]);
+  }
+  return null;
+}
 function abbr(code, reviews) {
   if (ABBR[code]) return ABBR[code];
-  if (reviews && code && !/^RAM\d+$/.test(code)) reviews.push(`Unknown location abbreviation: ${code}`);
+  const crs = stationCrs(PLACE_NAME.get(code));
+  if (crs) return crs;
+  if (reviews && code && !/^RAM\d+$/.test(code)) reviews.push(`Unknown location abbreviation: ${code}` +
+    (PLACE_NAME.get(code) ? ` (${PLACE_NAME.get(code)})` : ""));
   return "???";
 }
 function masterKey(code) {
@@ -10754,6 +10845,7 @@ function parseDetail(txt) {
       prev=Math.max(prev,v);
       if(k==="arr")arr=v;else dep=v;
     }
+    if (name && !PLACE_NAME.has(t[0])) PLACE_NAME.set(t[0], name);
     cur.push({diag:curDiag,code:t[0],name,arr,dep,hcFull:hc,hc:hc?hc.slice(0,4):null,act});
   }
   return byDiag;
@@ -11391,6 +11483,8 @@ function parseDetailCsv(text) {
     if (!/^[A-Z]{2}\d{3}$/.test(diag)) continue;
     const d = f.slice(mi + 1).map(x => String(x || "").trim());
     if (!legs.has(diag)) legs.set(diag, []);
+    if (d[0] && d[1] && !PLACE_NAME.has(d[0])) PLACE_NAME.set(d[0], d[1]);
+    if (d[8] && d[9] && !PLACE_NAME.has(d[8])) PLACE_NAME.set(d[8], d[9]);
     legs.get(diag).push({ code: d[0], name: d[1], arr: d[2], dep: d[3],
                           act: d[4], hc: d[5], endCode: d[8], endName: d[9],
                           endTime: d[10] });
@@ -16948,9 +17042,9 @@ function saveJson(key, obj) {
 }
 
 /* the option boxes and the mode, restored on the next visit */
-const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq",
-                 "we_hc_main", "we_hc_metro", "we_hc_hs",
-                 "bs_hc_main", "bs_hc_metro", "bs_hc_hs"];
+const OPT_IDS = ["hc_main", "platstand", "milescol", "stockreq", "sanding",
+                 "we_hc_main", "we_hc_metro", "we_hc_hs", "we_sanding",
+                 "bs_hc_main", "bs_hc_metro", "bs_hc_hs", "bs_sanding"];
 const savedOpts = loadJson(OPTS_LS_KEY);
 for (const id of OPT_IDS) {
   const el = document.getElementById(id);
@@ -17620,7 +17714,8 @@ const panels = {};
   const WRITE = {
     berthing: (b, res, opts) => X.writeBooks(b.secs(res), res.labels, b.ram, opts),
     metro: (b, res) => METRO.writeMetroBook(b.secs(res), res.labels, b.order(res), zipFn, res.dates),
-    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn, res.hsDays),
+    hs: (b, res) => HS.writeHsBook(b.secs(res), res.labels, res.dates, zipFn, res.hsDays,
+                                   { sanding: opt("sanding") }),
   };
 
   async function renderBooks(res) {
@@ -17684,7 +17779,8 @@ const panels = {};
       } else {
         const sheets = b.kind === "metro"
           ? METRO.sheetsFor(secs, res.labels, b.order(res), res.dates)
-          : HS.sheetsFor(secs, res.labels, res.dates, res.hsDays);
+          : HS.sheetsFor(secs, res.labels, res.dates, res.hsDays, undefined,
+                         { sanding: opt("sanding") });
         panes = [[b.kind === "metro" ? "Sheet" : "Allocations",
                   () => metroPane(sheets, b.kind === "metro" ? "Location" : "Day")]];
       }
@@ -17868,6 +17964,7 @@ const panels = {};
   onOpt("hc_main", () => rebuild(MSG.rebuilt("with the new headcode setting")));
   onOpt("milescol", on => rebuild(MSG.rebuilt(on ? "with the mileage column" : "without the mileage column")));
   onOpt("stockreq", on => rebuild(on ? MSG.stockOn : MSG.stockOff));
+  onOpt("sanding", on => rebuild(MSG.rebuilt(on ? "with the priority sanding table" : "without the priority sanding table")));
   onOpt("platstand", on => rebuild(MSG.rebuilt(on ? "with long platform stands counted" : "without platform stands"), true));
 
   /* ---- the same two reports pasted in as text ----
@@ -18087,7 +18184,8 @@ function printsPanel(K) {
     const res = SheetsEngine.runWeek(loadedDocs,
       b => fflate.unzipSync(b), zipFn,
       /* Ramsgate as a book of its own, as the weekday panel has it */
-      { allHeadcodes, splitRamsgate: true, hsPrev, forDate });
+      { allHeadcodes, splitRamsgate: true, hsPrev, forDate,
+        sanding: !!($(id("sanding")) && $(id("sanding")).checked) });
     built = res;
     render(res);
     if (baseRow) {
@@ -18288,6 +18386,16 @@ function printsPanel(K) {
       catch (e) { say(MSG.weRebuildFailed(e), "err"); }
     }));
   }
+  const sandBox = $(id("sanding"));
+  if (sandBox) sandBox.addEventListener("change", () => enqueue(() => {
+    rememberOpts();
+    if (!loadedDocs.length) return;
+    try {
+      rebuildFromLoaded();
+      say(MSG.rebuilt(sandBox.checked ? "with the priority sanding table"
+                                      : "without the priority sanding table"), "go");
+    } catch (e) { say(MSG.weRebuildFailed(e), "err"); }
+  }));
   $(id("dlupd")).addEventListener("click", () => {
     if (!built || !built.updated) return;
     download(built.updated.name, built.updated.bytes, DOCX_MIME);
@@ -18734,6 +18842,67 @@ function decodeText(u8) {
       "save the report from Genius as PDF or CSV and drop that. " + statusEl.textContent, "err");
   }
   wireDrop(zone, input, take);
+
+  /* ---- the same reports pasted in as text ----
+     For a machine that will not let the files be saved anywhere the page
+     can reach. Each box is read by what is in it, the way a dropped file is,
+     so a pasted report and a dropped one land in the same place and cannot
+     build differently; a report the size of the Diagram Detail is held, not
+     written into its box (holdPastes). */
+  const pToggle = $("#svpastetoggle"), pWrap = $("#svpastebox"), pSayEl = $("#svpaste_say");
+  const pBoxes = ["#svpaste_op", "#svpaste_det", "#svpaste_sum"].map(s => $(s)).filter(Boolean);
+  const pSay = (msg, cls) => {
+    if (!pSayEl) return;
+    pSayEl.textContent = msg || "";
+    pSayEl.className = "paste-say" + (cls ? " " + cls : "");
+  };
+  const markFilled = el => el.classList.toggle("filled", !!el.value.trim());
+  if (pToggle && pWrap) pToggle.addEventListener("click", () => {
+    const open = pWrap.hidden;
+    pWrap.hidden = !open;
+    pToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open && pBoxes[0]) pBoxes[0].focus();
+  });
+  for (const el of pBoxes) {
+    el.addEventListener("input", () => { markFilled(el); pSay(""); });
+    holdPastes(el);
+    wireBoxDrop(el, (name, err) =>
+      pSay(err ? MSG.boxReadFailed(name) : MSG.readIntoBox(name), err ? "err" : "go"));
+  }
+  /* setBox, not this panel's own `held`: that one is the reports as read */
+  const emptyBoxes = () => { for (const el of pBoxes) { setBox(el, ""); markFilled(el); } };
+  if ($("#svpaste_clear")) $("#svpaste_clear").addEventListener("click", () => {
+    emptyBoxes();
+    pSay("All three boxes cleared.");
+    if (pBoxes[0]) pBoxes[0].focus();
+  });
+  if ($("#svpaste_go")) $("#svpaste_go").addEventListener("click", () => {
+    const got = [];
+    for (const el of pBoxes) {
+      const t = GENIUS.pastedCsv(boxText(el));
+      if (!t) continue;
+      const kind = SHEETS_SHORTAGE.sniff(t);
+      const label = el.closest("label").querySelector("span").firstChild.textContent.trim();
+      if (!kind) {
+        pSay("The " + label + " box doesn’t read as an Operating Report, a Diagram Detail " +
+             "or a Diagram Summary — copy the whole CSV, first line and all, as it comes.", "err");
+        el.focus();
+        return;
+      }
+      got.push([kind, t]);
+    }
+    if (!got.length) { pSay("Paste a report into one of the boxes first.", "err"); if (pBoxes[0]) pBoxes[0].focus(); return; }
+    const kinds = got.map(g => g[0]);
+    if (new Set(kinds).size < kinds.length) {
+      pSay("Two boxes hold the same report — each of the three goes in a box of its own.", "err");
+      return;
+    }
+    source = null;                          // a new report means a fresh read
+    for (const [kind, t] of got) { held[kind] = t; held.names[kind] = "pasted"; }
+    pSay("");
+    render();
+  });
+
   /* The list is pasted into an email, so it goes onto the clipboard twice:
      as plain text, and as Calibri 11 bold, which is the face the depot's
      notes are written in. A browser without ClipboardItem gets the text. */
@@ -18778,6 +18947,7 @@ function decodeText(u8) {
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = ""; source = null;
     held.names.op = held.names.det = held.names.sum = "";
+    emptyBoxes(); pSay("");
     out.textContent = ""; out.hidden = true; bar.hidden = true;
     if (optsRow) optsRow.hidden = true;
     revWrap.hidden = true; note.textContent = "";

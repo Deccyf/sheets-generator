@@ -547,9 +547,16 @@ it starts the day from. Hastings is folded into West Marina, as the form
 itself prints it, and POSITION and SEAT LOSS are left for you. **Save form**
 gives you `STOCK_REQUIREMENTS_….xlsx`, and it rides in the save-all zip too.
 
+**Priority sanding table (High Speed).** The PRIORITY SANDING table on the
+395 sheet. Sanding runs from the autumn to about Christmas: untick this for
+the rest of the year and the sheet is written without the table — nothing
+else on it moves. Tick it again when sanding starts. It is remembered like
+the others.
+
 On the **Weekend** and **Base diagrams** tabs the row is **Headcodes on every
 line**, with a box per book — **Mainline & Ramsgate**, **Metro** and **High
-Speed**. Ticking a book puts a headcode on every line of it and rebuilds it.
+Speed** — and the same **Priority sanding table** box. Ticking a book puts a
+headcode on every line of it and rebuilds it.
 
 ---
 
@@ -667,6 +674,16 @@ only** — not the 395s.
 3. The list appears under the status board. **Copy the list** puts it on the
    clipboard; **Save as text** saves it; **Start over** clears it.
 
+**Pasting instead.** On a machine that will not let you save the files,
+click **Can't get the files onto this machine? Paste the reports instead**
+under the drop zone. Open each report's CSV in Notepad or Excel, press
+**Ctrl+A** then **Ctrl+C**, and paste it into a box — **Operating Report**,
+**Diagram Detail**, and **Diagram Summary** if you have it — then click
+**Read the pasted reports**. Each box is read by what is in it, so a report
+in the wrong box is still read right. A Diagram Detail the size of a whole
+day is held rather than shown, the same as on the weekday tab. PDFs cannot
+be pasted.
+
 What it lists:
 
 * **Shortages** — a *Not allocated* line on the Operating Report, inside the
@@ -691,7 +708,9 @@ The **Options** row changes the list on screen and what you copy or save:
 
 The place codes on this list are the **roads** — `AFDS`, `AFUS`, `DVPS`,
 `GPUS` — not the berthing books' station codes, because a discrepancy is
-worked off a road. *What this list is working from*, at the foot of the
+worked off a road. A plain station is named by its three-letter code — Deal
+is `DEA`, Dartford `DFD`. A siding or signal the list has no code for shows
+as `???`, and the Review list names it in full so the code can be added. *What this list is working from*, at the foot of the
 tab, sets out every rule.
 
 ---

@@ -174,6 +174,36 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.32.0 — 4 October 2026 — Deal, the sanding season, and pasting the variations
+
+**Deal is DEA.** The variations list names places off a table of the depot's
+own road codes, and a plain station that was not on it printed `???` — Deal
+did. A station is now named by its CRS code off the tool's station table,
+from the report's own name for the place: the name must be a station's, or
+the start of exactly one where Genius has cut it short ("Beckenham Juncti").
+On the real 18–21/09 reports that names 36 places (37 codes) that were `???` —
+Dartford, Sidcup, Grove Park, Hither Green, Lewisham, Swanley, Sandwich,
+Gravesend and the rest — all to their right codes. Blackfriars, Borough
+Green and St Pancras are spelt too differently in Genius for that, and are
+in the table by hand with Deal. A siding or a signal named after a station
+("Dartford Dn Sdg", "Hastings Signal") is never read as the station: it
+stays `???`, and the Review now names it in full — *Unknown location
+abbreviation: DARTFDS (Dartford Dn Sdg)* — so its code can be added.
+
+**The sanding table has a season.** PRIORITY SANDING runs from the autumn
+to about Christmas, so the 395 sheet has a **Priority sanding table (High
+Speed)** box on the weekday, weekend and base diagrams tabs: unticked, the
+sheet is written without the table, its colours and its unit list, and ends
+at the last column it uses; every other cell is as it was. Ticked to start
+with, and remembered on the computer like the other options.
+
+**The variations can be pasted.** Shortages & variations took its reports
+only as files; it now has the paste boxes the weekday tab has — Operating
+Report, Diagram Detail and the optional Diagram Summary — each read by what
+is in it, a copy out of Excel included, and a whole day's Detail held rather
+than written into its box. Pasted, the 19/09 reports give the list the
+dropped files give, character for character.
+
 ## 3.31.7 — 2 October 2026 — the Cannon Street rounders
 
 **Why the weekend books missed them every time.** The diagram prints list

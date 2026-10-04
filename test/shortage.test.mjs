@@ -405,3 +405,28 @@ test("when the effect changes during the shortage's life the heading is SHORTAGE
   assert.equal(lines[2], "FOLLOWING 8 V 12: 2R40 14 00 RAM - MAR");
   assert.equal(res.counts.top, 1);
 });
+
+test("a station the road table has no code for is named by its CRS code, a siding never is", () => {
+  /* Deal printed "???": the variations list names places off a table of the
+     depot's own road codes, and a plain station that was not on it had no
+     name at all. A station is now named off the tool's station table by the
+     report's own name for it; a siding or a signal named after a station is
+     not the station, and stays "???" with the Review saying which. */
+  const swap = (op, det, to) => [
+    op.map(l => /^RM903 .*2W14BA/.test(l) ? l.replace("CHRX", to[0]) : l),
+    det.map(l => l === "CHRX  London Charing X  08:54" && det.indexOf(l) === det.findIndex(x => x === l)
+      ? to[0] + "  " + to[1] + "  08:54" : l)];
+  for (const [to, want] of [[["DEAL", "Deal"], "DEA"],
+                            [["SWCH", "Sandwich"], "SDW"],
+                            [["BCKNHMJ", "Beckenham Juncti"], "BKJ"]]) {
+    const [op, det] = swap(OPERATING_LINES, SHORTAGE_DETAIL_LINES, to);
+    const res = S().run(txt(op), txt(det));
+    assert.match(res.text, new RegExp("\\(RM903\\) ENDS 2W14 06 36 RAM - " + want),
+      to[1] + " reads " + want + ": " + res.text);
+  }
+  const [op, det] = swap(OPERATING_LINES, SHORTAGE_DETAIL_LINES, ["DARTFDS", "Dartford Dn Sdg"]);
+  const res = S().run(txt(op), txt(det));
+  assert.match(res.text, /\(RM903\) ENDS 2W14 06 36 RAM - \?\?\?/, "a siding is not Dartford station");
+  assert.ok(res.reviews.some(r => /DARTFDS \(Dartford Dn Sdg\)/.test(r)),
+    "and the Review names it in full: " + res.reviews.join(" / "));
+});

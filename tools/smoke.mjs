@@ -241,7 +241,7 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   /* And the same report SAVED rather than printed: dropped as the .csv
      export it used to read as no rows at all, which looked like a clean
      day. Driven through the panel because that is where it was reported. */
-  const { SHORTAGE_OPERATING_CSV } = await import("../test/helpers/shortage-synth.mjs");
+  const { SHORTAGE_OPERATING_CSV, SHORTAGE_SUMMARY_CSV } = await import("../test/helpers/shortage-synth.mjs");
   await page.setInputFiles("#svfile",
     [f("uoperatd.csv", SHORTAGE_OPERATING_CSV), detPath, sumPath]);
   await page.waitForFunction(() => !document.querySelector("#svout").hidden,
@@ -249,6 +249,22 @@ console.log("sv idle     :", (await page.textContent("#svstatus")).trim());
   const csvList = await page.textContent("#svout");
   if (csvList !== list) throw new Error("the saved report should give the same list:\n" + csvList);
   console.log("sv csv      :", (await page.textContent("#svstatus")).trim());
+
+  /* Pasted instead of dropped, for a machine that will not save the files:
+     the same three reports in the boxes - the Detail in the Summary's box
+     and the other way round, because a box is read by what is in it - give
+     the same list. */
+  await page.locator("#svclear").click();
+  await page.locator("#svpastetoggle").click();
+  await page.fill("#svpaste_op", SHORTAGE_OPERATING_CSV);
+  await page.fill("#svpaste_det", SHORTAGE_SUMMARY_CSV);
+  await page.fill("#svpaste_sum", SHORTAGE_DETAIL_CSV);
+  await page.locator("#svpaste_go").click();
+  await page.waitForFunction(() => !document.querySelector("#svout").hidden,
+    null, { timeout: 20000 });
+  const pastedList = await page.textContent("#svout");
+  if (pastedList !== list) throw new Error("the pasted reports should give the same list:\n" + pastedList);
+  console.log("sv pasted   :", (await page.textContent("#svstatus")).trim());
 
   /* The depot's own lettered hand, off the same build. */
   await page.locator("#svlettered").check();

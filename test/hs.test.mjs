@@ -874,3 +874,30 @@ test("STOPPED UNITS sits under Ashford's block: a red bar over four lines of two
   assert.match(xml, new RegExp('<c r="' + SKIN.service.stopped + '" s="\\d+"><f>' +
     f.replace(/[()]/g, "\\$&") + "</f><v>0</v></c>"), "saved as a formula, with its figure");
 });
+
+test("the sanding table can be left off for the rest of the year, and nothing else moves", async () => {
+  /* Sanding runs from the autumn to about Christmas; the planner turns the
+     table off for the rest of the year. Off, the sheet has no PRIORITY
+     SANDING, no colours for its miles, no list on its units, and ends at
+     the last column it uses - and every other cell is as it was. */
+  const { N, r } = await week("03/08/26");
+  const H = N.SHEETS_HS;
+  const on = H.sheetsFor(r.hsSecs, r.labels, r.dates, r.hsDays).find(s => s.name === "Mon 03 08").layout;
+  const off = H.sheetsFor(r.hsSecs, r.labels, r.dates, r.hsDays, undefined, { sanding: false })
+    .find(s => s.name === "Mon 03 08").layout;
+  assert.ok(on.cells.some(c => c.v === "PRIORITY SANDING"), "on by default");
+  assert.ok(!off.cells.some(c => c.v === "PRIORITY SANDING" || c.c >= 23), "off: nothing from W across");
+  assert.ok(!off.merges.some(m => /^[W-Z]/.test(m)), "and none of its merges");
+  assert.ok(!/sqref="Y12:Z26"/.test(off.opts.condFmt.join("")), "no colours for its miles");
+  assert.ok(!/sqref="W12:W26"/.test(off.opts.dataValidations), "no list on its units");
+  assert.ok(off.opts.lastCol < "W" && off.opts.widths.length < 23, "the sheet ends where it is used: " + off.opts.lastCol);
+  const key = c => c.r + "," + c.c + "," + c.xf + "," + c.v;
+  assert.deepEqual(off.cells.map(key).sort(), on.cells.filter(c => c.c < 23).map(key).sort(),
+    "every other cell exactly as it was");
+  // the saved workbook takes the same setting
+  const zip = f => N.fflate.zipSync(f);
+  const xml = bytes => new TextDecoder().decode(N.fflate.unzipSync(bytes)["xl/worksheets/sheet1.xml"]);
+  assert.match(xml(H.writeHsBook(r.hsSecs, r.labels, r.dates, zip, r.hsDays)), /PRIORITY SANDING/);
+  assert.doesNotMatch(xml(H.writeHsBook(r.hsSecs, r.labels, r.dates, zip, r.hsDays, { sanding: false })),
+    /PRIORITY SANDING/);
+});

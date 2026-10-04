@@ -53,15 +53,48 @@ const ABBR = {
   /* Both of these only ever turn up on the small-hours workings, so they
      went unnoticed for as long as those were being missed - the list said
      "??? - TON" for RM020 and RM021 on the Saturday 19/09 report. */
-  TUNWELL:"TBW", PKWD:"PDW"
+  TUNWELL:"TBW", PKWD:"PDW",
+  /* Stations, by CRS code. Most stations need no line here - they are named
+     off the station table, see stationCrs() - but these are spelt in Genius
+     too differently from the table for that to find them. */
+  DEAL:"DEA", BLFR:"BFR", BORWGAW:"BRG", STPANCI:"STP"
 };
 const MASTER_GROUPS = [
   ["AFDS","AFES","AFUS"], ["FAV","FAVBRD","FAVUS"], ["DVP","DVPS"],
   ["TON","TONJS","TONDMS"], ["RAM","RE"], ["HGS","HGPS"], ["VICS","VIC"]
 ];
+/* A STATION the table above has no road code for is named by its CRS code,
+   read off the tool's station table by the report's own name for the place
+   - Deal is DEA, Dartford DFD, Sidcup SID - where it used to print "???".
+   Only a station: the name has to be one in the table, or, where Genius has
+   cut it short ("Beckenham Juncti"), the start of exactly one. A siding or a
+   signal named after its station ("Dartford Dn Sdg", "Hastings Signal") is
+   never read as the station - a road needs the depot's own code, and that
+   is the table above. The names come from the Detail as it is read. */
+const PLACE_NAME = new Map();
+const squash = t => String(t || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+let crsByName = null;
+function stationCrs(name) {
+  const k = squash(name);
+  if (!k) return null;
+  if (!crsByName) {
+    crsByName = new Map();
+    const st = (typeof SHEETS_DATA !== "undefined" && SHEETS_DATA.STATIONS) || [];
+    for (const [n, crs] of st) crsByName.set(squash(n), crs);
+  }
+  if (crsByName.has(k)) return crsByName.get(k);
+  if (String(name).trim().length >= 15) {
+    const hits = [...crsByName.keys()].filter(n => n.startsWith(k));
+    if (hits.length === 1) return crsByName.get(hits[0]);
+  }
+  return null;
+}
 function abbr(code, reviews) {
   if (ABBR[code]) return ABBR[code];
-  if (reviews && code && !/^RAM\d+$/.test(code)) reviews.push(`Unknown location abbreviation: ${code}`);
+  const crs = stationCrs(PLACE_NAME.get(code));
+  if (crs) return crs;
+  if (reviews && code && !/^RAM\d+$/.test(code)) reviews.push(`Unknown location abbreviation: ${code}` +
+    (PLACE_NAME.get(code) ? ` (${PLACE_NAME.get(code)})` : ""));
   return "???";
 }
 function masterKey(code) {
@@ -279,6 +312,7 @@ function parseDetail(txt) {
       prev=Math.max(prev,v);
       if(k==="arr")arr=v;else dep=v;
     }
+    if (name && !PLACE_NAME.has(t[0])) PLACE_NAME.set(t[0], name);
     cur.push({diag:curDiag,code:t[0],name,arr,dep,hcFull:hc,hc:hc?hc.slice(0,4):null,act});
   }
   return byDiag;
@@ -916,6 +950,8 @@ function parseDetailCsv(text) {
     if (!/^[A-Z]{2}\d{3}$/.test(diag)) continue;
     const d = f.slice(mi + 1).map(x => String(x || "").trim());
     if (!legs.has(diag)) legs.set(diag, []);
+    if (d[0] && d[1] && !PLACE_NAME.has(d[0])) PLACE_NAME.set(d[0], d[1]);
+    if (d[8] && d[9] && !PLACE_NAME.has(d[8])) PLACE_NAME.set(d[8], d[9]);
     legs.get(diag).push({ code: d[0], name: d[1], arr: d[2], dep: d[3],
                           act: d[4], hc: d[5], endCode: d[8], endName: d[9],
                           endTime: d[10] });

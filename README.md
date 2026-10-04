@@ -319,7 +319,8 @@ REQUIRED filled in AM / PM from the day's diagrams that run (out before
 midday / still running after it: `MIDDAY`, `dayEnd`) and OFFERED figures
 that turn red under theirs, Done to Genius, the sent date, time and version -
 a STOPPED UNITS table under Ashford's block (four lines of two halves,
-`STOPPED`) that TOTAL STOPPED counts (a `COUNTA` formula), and its PRIORITY SANDING table (15 lines, `SANDING`: a unit off the fleet list, its miles green to 6,000,
+`STOPPED`) that TOTAL STOPPED counts (a `COUNTA` formula), and its PRIORITY SANDING table
+(seasonal: `opts.sanding === false` leaves it, its rules and its list off, an option on the tabs) (15 lines, `SANDING`: a unit off the fleet list, its miles green to 6,000,
 amber to 6,999, red from 7,000: `SANDING_BANDS`), text in each depot's colour (and where a unit gets to
 in that place's - a recoloured copy of the record, made by the writer's
 `Recolour`), mileage colouring (High / Average / Low at 700 and
@@ -414,7 +415,13 @@ and the Diagram Detail can arrive as the CSV export as well as the PDF.
   — the `FOLLOWING` lines.
 
 Its **place codes are the roads** — `AFDS`, `AFUS`, `DVPS`, `GPUS` — where the
-berthing books name the station (`AFK`, `AFU`, `DVP`, `GPU`). That is a
+berthing books name the station (`AFK`, `AFU`, `DVP`, `GPU`). A plain station
+not in that table is named by its CRS code off `SHEETS_DATA.STATIONS`, by the
+report's own name for it (`stationCrs`: the name must be a station's, or the
+start of exactly one where Genius cut it short), so Deal is `DEA`; a siding or
+signal named after a station never matches, and stays `???` with the Review
+naming it. The reports can be pasted as well as dropped, into boxes read by
+what is in them. That is a
 difference of audience, not an inconsistency: a berthing sheet says where a
 unit is put away, and a discrepancy is worked off a road. Neither table is the
 other's master, and `test/shortage.test.mjs` guards them apart.

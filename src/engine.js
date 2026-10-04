@@ -1254,7 +1254,8 @@ function run(input, unzipFn, zipFn, opts){
       const sheets = isMetro
         ? SHEETS_METRO.sheetsFor(shaped, labels, gen.order, dates,
                                  DAY_WORDS[dayName] || "")
-        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles);
+        : SHEETS_HS.sheetsFor(shaped, labels, dates, hsDays, opts && opts.titles,
+                              { sanding: !(opts && opts.sanding === false) });
       const name = (isMetro ? "METRO_SHEETS_" : "HS_SHEETS_") + stamp + ".xlsx";
       const nSecs = Object.keys(secs).length;
       for (const note of (sheets.notes || [])) warn.push(["merge", note]);

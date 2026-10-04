@@ -291,6 +291,7 @@
       <label><input type="checkbox" id="platstand" autocomplete="off"> Count long platform stands</label>
       <label><input type="checkbox" id="milescol" autocomplete="off"> Mileage column</label>
       <label><input type="checkbox" id="stockreq" autocomplete="off"> Stock requirements form</label>
+      <label><input type="checkbox" id="sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <button type="button" class="linkish" id="optshelp" aria-expanded="false"
         aria-controls="optshint">What each does</button>
       <span class="opts-hint">Every tick rebuilds the books — save them again
@@ -309,7 +310,11 @@
         book. A unit that attaches to another diagram and stays out has no
         second row, so the row it does have carries the rest of its day. Blank
         on a build from PDFs, which carry no mileage.</p>
-      <p><b>Stock requirements form</b> — fills in the Kent Coast form, every
+      <p><b>Priority sanding table (High Speed)</b> — the PRIORITY SANDING
+          table on the 395 sheet. Sanding runs from the autumn to about
+          Christmas: untick it for the rest of the year and the sheet is
+          written without it.</p>
+        <p><b>Stock requirements form</b> — fills in the Kent Coast form, every
         diagram counted at the location it starts the day from, by unit type.
         POSITION and SEAT LOSS stay blank for the planner. Normally only wanted
         for a Monday built on a Sunday night, or the day after a bank holiday.</p>
@@ -417,9 +422,11 @@
       <label><input type="checkbox" id="we_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="we_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="we_hc_hs" autocomplete="off"> High Speed</label>
+      <label><input type="checkbox" id="we_sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Ticking a book puts one on every line of it and
-        rebuilds it — save again afterwards.</span>
+        rebuilds it — save again afterwards. Untick the sanding table once
+        sanding ends for the year, about Christmas.</span>
     </div>
 
 
@@ -505,9 +512,11 @@
       <label><input type="checkbox" id="bs_hc_main" autocomplete="off"> Headcodes on every line: Mainline &amp; Ramsgate</label>
       <label><input type="checkbox" id="bs_hc_metro" autocomplete="off"> Metro</label>
       <label><input type="checkbox" id="bs_hc_hs" autocomplete="off"> High Speed</label>
+      <label><input type="checkbox" id="bs_sanding" autocomplete="off" checked> Priority sanding table (High Speed)</label>
       <span class="opts-hint">Only Gillingham, Victoria and Grove Park carry a
         headcode as standard. Ticking a book puts one on every line of it and
-        rebuilds it — save again afterwards.</span>
+        rebuilds it — save again afterwards. Untick the sanding table once
+        sanding ends for the year, about Christmas.</span>
     </div>
 
     <div class="roads" id="bs_roads"></div>
@@ -541,6 +550,43 @@
       </span>
     </button>
     <input type="file" id="svfile" accept=".pdf,.csv" multiple hidden>
+
+    <p class="orpaste">
+      <button type="button" class="linkish" id="svpastetoggle"
+              aria-expanded="false" aria-controls="svpastebox">Can&rsquo;t get the
+        files onto this machine? Paste the reports instead</button>
+    </p>
+
+    <div class="pastebox" id="svpastebox" hidden>
+      <p class="paste-hint">Open each report&rsquo;s CSV in Notepad or Excel,
+        press <b>Ctrl+A</b> then <b>Ctrl+C</b>, and paste it into a box. Each
+        box is read by what is in it, so any report can go in any box. PDFs
+        can&rsquo;t be pasted — drop those on the zone above.</p>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Operating Report</span>
+          <textarea id="svpaste_op" rows="4" spellcheck="false" wrap="off"
+            placeholder="Paste the Operating Report here"></textarea>
+        </label>
+        <label class="paste-fld">
+          <span>Diagram Detail <em>the same day</em></span>
+          <textarea id="svpaste_det" rows="4" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Detail here"></textarea>
+        </label>
+      </div>
+      <div class="paste-pair">
+        <label class="paste-fld">
+          <span>Diagram Summary <em>optional — places 3-cars in longer trains</em></span>
+          <textarea id="svpaste_sum" rows="3" spellcheck="false" wrap="off"
+            placeholder="Paste the Diagram Summary here, if you have it"></textarea>
+        </label>
+      </div>
+      <div class="paste-acts">
+        <button type="button" class="btn" id="svpaste_go">Read the pasted reports</button>
+        <button type="button" class="btn ghost" id="svpaste_clear">Clear the boxes</button>
+      </div>
+      <p class="paste-say" id="svpaste_say" role="status"></p>
+    </div>
 
     <div class="board">
       <p class="status" id="svstatus" role="status"></p>
