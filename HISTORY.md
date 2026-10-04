@@ -186,6 +186,26 @@ on one of the others is unfamiliar. The unit drawings now live in
 `src/sprites.js` and both builds include them, rather than a second copy
 drifting from the first.
 
+## 3.32.2 — 4 October 2026 — the skins travel packed
+
+The two workbook skins — every style record of the operator's 395
+Allocations Sheet and Disposition Statement, as lifted by the tools in
+`tools/` — were 155 KB of the page, written out as readable JS. They are
+nothing but data, so the build now packs them: it reads each skin's object,
+writes it as JSON, deflates it with the bundled fflate (the copy in
+`src/vendor`, so every machine and CI packs the same bytes) and the page
+unpacks it with the same fflate when it opens. `JSON.parse`, never `eval`.
+The build checks the object that comes out against the one that went in
+and stops if they differ; `test/build.test.mjs` checks the built page
+against `src/`.
+
+The page goes from 1197 KB to 1062 KB, and the copy without berth requests
+from 913 KB to 829 KB. Nothing it writes changes: the 395 workbooks from the
+real 18/09 reports and the Week 27 Saturday prints are byte for byte the
+same as before, two builds give identical files, and the page opens in the
+same 80–120 ms. `src/hs-skin.js` and `src/hs-disp-skin.js` stay readable,
+and the lifters write them as before.
+
 ## 3.32.1 — 4 October 2026 — a review: memory, speed, and what the sweep turned up
 
 **Memory and speed.** Every tab profiled in a real Chromium on the real

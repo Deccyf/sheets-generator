@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const read = p => readFileSync(new URL(p, import.meta.url), "utf8");
 const pkg = JSON.parse(read("./package.json"));
@@ -28,9 +29,57 @@ const { version, released } = stampOf(pkg, "the berthing sheets");
    sandbox, which cuts the page up on the same tag, would load half of it -
    so it is refused here, where the file name is known, rather than found
    as a dead page. */
+/* The two workbook skins are nothing but data - every style record and
+   column of the operator's own workbooks, as one object - and between them
+   they were 155 KB of the page. They travel deflated: the build reads the
+   object, writes it as JSON, packs it with the bundled fflate (the copy in
+   src/vendor, not Node's zlib, so every machine and CI packs the same bytes)
+   and the page unpacks it with the same fflate when it opens, a few
+   milliseconds. JSON.parse, not eval: nothing runs that was not written as
+   code. The object that comes out is checked against the one that went in
+   before the page is written, so a skin that could not survive the round
+   trip stops the build rather than shipping. src/ keeps the readable file. */
+const PACKED = new Set(["src/hs-skin.js", "src/hs-disp-skin.js"]);
+const fflateLib = (() => {
+  const mod = { exports: {} };
+  new Function("module", "exports", read("./src/vendor/fflate.js"))(mod, mod.exports);
+  return mod.exports;
+})();
+function packed(m, src) {
+  const name = (/^const (\w+) = \{/m.exec(src) || [])[1];
+  if (!name) throw new Error(`${m}: expected "const NAME = {" to pack`);
+  const mod = { exports: {} };
+  const obj = new Function("module", "globalThis", src + "\nreturn " + name + ";")(mod, undefined);
+  const json = JSON.stringify(obj);
+  if (!isDeepStrictEqual(JSON.parse(json), obj))
+    throw new Error(`${m}: the skin does not survive JSON, so it cannot be packed`);
+  const z = fflateLib.deflateSync(fflateLib.strToU8(json), { level: 9 });
+  if (!isDeepStrictEqual(JSON.parse(fflateLib.strFromU8(fflateLib.inflateSync(z))), obj))
+    throw new Error(`${m}: the packed skin does not unpack to the same object`);
+  const head = (/^\/\*[\s\S]*?\*\//.exec(src) || [""])[0];
+  const b64 = Buffer.from(z).toString("base64");
+  return head + "\n" +
+    `/* Packed by build.mjs from ${m}: ${Math.round(json.length / 1024)} KB of JSON, ` +
+    `${Math.round(b64.length / 1024)} KB as it travels. */\n` +
+    `"use strict";\n` +
+    `const ${name} = JSON.parse(fflate.strFromU8(fflate.inflateSync((function (s) {\n` +
+    `  var A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", T = {};\n` +
+    `  for (var i = 0; i < 64; i++) T[A.charAt(i)] = i;\n` +
+    `  var n = s.length; while (s.charAt(n - 1) === "=") n--;\n` +
+    `  var out = new Uint8Array((n * 3) >> 2), j = 0, acc = 0, bits = 0;\n` +
+    `  for (var k = 0; k < n; k++) {\n` +
+    `    acc = (acc << 6) | T[s.charAt(k)]; bits += 6;\n` +
+    `    if (bits >= 8) { bits -= 8; out[j++] = (acc >> bits) & 255; }\n` +
+    `  }\n` +
+    `  return out;\n` +
+    `})("${b64}"))));\n` +
+    `if (typeof module !== "undefined" && module.exports) module.exports = ${name};\n` +
+    `if (typeof globalThis !== "undefined") globalThis.${name} = ${name};`;
+}
 function scriptBlocks(mods) {
   return mods.map(m => {
-    const src = read("./" + m).trimEnd();
+    const raw = read("./" + m).trimEnd();
+    const src = PACKED.has(m) ? packed(m, raw) : raw;
     if (/<\/script/i.test(src))
       throw new Error(`${m} contains "</script", which would end the page's ` +
                       `script block early - split the string ("<\\/script")`);

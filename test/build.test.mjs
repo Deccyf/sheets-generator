@@ -79,8 +79,11 @@ test("the built file is self-contained and lean", () => {
      screenshots (81 KB, already JPEG). If the file has to get smaller, the
      skins can travel deflated and be inflated by the bundled fflate when the
      page opens - about 100 KB - at the cost of a build step. */
-  assert.ok(html.length < 1300 * 1024,
-    "under 1300 KB; this build is " +
+  /* 1150 KB at 3.32.2: the skins now travel packed (see the test below and
+     PACKED in build.mjs), which took the file from 1197 KB to 1062, so the
+     ceiling comes back down to sit just above it again. */
+  assert.ok(html.length < 1150 * 1024,
+    "under 1150 KB; this build is " +
     Math.round(html.length / 1024) + " KB");
   assert.ok(!/src="https?:|href="https?:|fetch\(|XMLHttpRequest/.test(html),
     "no external references");
@@ -153,5 +156,26 @@ test("core keeps only what the live pipelines use", () => {
   for (const dead of ["parseWorkbookGrid", "buildDaySections", "workbookToGrid",
                       "isFridayGrid", "docHealth", "_consumersOrphan"]) {
     assert.ok(!html.includes(dead), "dead symbol removed: " + dead);
+  }
+});
+
+test("the two workbook skins travel packed, and unpack to exactly what src/ holds", () => {
+  /* 155 KB of the page was the two skins' style records; the build packs
+     them as deflated JSON and the page unpacks them with the bundled
+     fflate. What comes out has to be what the lifters wrote, record for
+     record - every 395 sheet and disposition statement is drawn from it. */
+  const html = readFileSync(BUILT, "utf8");
+  assert.ok(!html.includes('"stylesXml": "<?xml'), "no skin left unpacked in the page");
+  assert.ok(!/\beval\(/.test(html), "unpacked with JSON.parse, never eval");
+  /* the readable file, run as the script it is (the package is "type":
+     "module", so require() would read it as an ES module and see nothing) */
+  const fromSrc = (file, name) => new Function("module", "globalThis",
+    readFileSync(new URL(file, import.meta.url), "utf8") + "\nreturn " + name + ";")({ exports: {} });
+  const N = built();
+  for (const [file, name] of [["../src/hs-skin.js", "SHEETS_HS_SKIN"],
+                              ["../src/hs-disp-skin.js", "SHEETS_HS_DISP_SKIN"]]) {
+    const src = fromSrc(file, name);
+    assert.deepEqual(JSON.parse(JSON.stringify(N[name])), JSON.parse(JSON.stringify(src)),
+      name + " unpacks to the source's object");
   }
 });
