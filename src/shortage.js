@@ -1113,6 +1113,13 @@ function afterLabel(text, label) {
   return m ? m[1] : null;
 }
 function opDateOf(text){ return afterLabel(text, "Operating Report for:"); }
+/* The depot it was pulled for, off the same line - "Depot RM, Owning Ctrl
+   NE" in the print, the same in the export's cell. RM is the Mainline
+   fleet's, SG the Metro's. */
+function opDepotOf(text){
+  const m = /Operating Report for:\W*Depot\s+([A-Z0-9]{1,4})\b/i.exec(String(text||""));
+  return m ? m[1].toUpperCase() : null;
+}
 function detDateOf(text){
   const m = afterLabel(text, "Diagram Details? for:");
   if (m) return m;
@@ -1137,19 +1144,30 @@ function read(opText, detailText, summaryText) {
                     "from Genius again, PDF or CSV, and drop that");
   return { op: operatingFrom(opText), detail,
            posAt: positionsFrom(summaryText),
-           opDate: opDateOf(opText), detDate: detDateOf(detailText) };
+           opDate: opDateOf(opText), detDate: detDateOf(detailText),
+           opDepot: opDepotOf(opText) };
 }
 function build(src, opts) {
   const out = buildDiscrepancies(src.op, src.detail, src.posAt, opts);
   /* Two reports from different days read perfectly well and answer nothing:
      every working is matched against a plan that was not in force. Said, not
      refused - the depot knows what it dropped. */
-  const reviews = (src.opDate && src.detDate && src.opDate !== src.detDate)
-    ? [`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
-       `for ${src.detDate}. The list below matches each working against the ` +
-       `other day's plan, so it cannot be trusted — drop the pair for one date.`]
-      .concat(out.reviews)
-    : out.reviews;
+  const first = [];
+  if (src.opDate && src.detDate && src.opDate !== src.detDate)
+    first.push(`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
+      `for ${src.detDate}. The list below matches each working against the ` +
+      `other day's plan, so it cannot be trusted — drop the pair for one date.`);
+  /* The two settings the report has to be pulled with. Pulled for another
+     depot it is another fleet's list; pulled without Unallocated legs it
+     has no Not allocated lines, and a list with no shortages on it looks
+     just like a morning with none. */
+  if (src.opDepot && !/^(?:RM|SG)$/.test(src.opDepot))
+    first.push(`The Operating Report was pulled for depot ${src.opDepot}. Pull it ` +
+      `again for depot RM for the Mainline fleet, or SG for the Metro fleet.`);
+  if (src.op.rows.length && !src.op.rows.some(r => /Not allocated/i.test(r.discrepancy || "")))
+    first.push("The Operating Report has no Not allocated lines, so no shortages " +
+      "could be raised. If you expected some, pull it again with Unallocated legs ticked.");
+  const reviews = first.concat(out.reviews);
   return { ...out, reviews, positions: !!src.posAt,
            reportTime: src.op.reportTime, rows: src.op.rows.length,
            diagrams: new Set(src.op.rows.map(r => r.diag)).size,

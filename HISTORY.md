@@ -4,6 +4,24 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.33.1 — 5 October 2026 — pulling the Operating Report, and the paste boxes
+
+- **How to pull the Operating Report.** Shortages & variations now says, in
+  its how-to, the guide and the README, that the report is pulled with
+  **Unallocated legs** ticked and for depot **RM** (Mainline) or **SG**
+  (Metro). It also checks: a report pulled for another depot, or with no
+  *Not allocated* lines at all (what it looks like without Unallocated legs),
+  says so on the Review list.
+- **The held-report note fits its box.** A pasted report too big to show is
+  held and the box says so in one note — which ran off the box's edge behind
+  a scroll bar, because the paste boxes don't wrap (a report's lines must
+  stay one to a line). The note now wraps, in the page's own type, and the
+  box goes back to not wrapping when it is emptied.
+- **The paste boxes are one size.** On every tab they are two equal columns
+  (one on a phone), all the same height, and each box's note sits beside its
+  name, so boxes side by side start level. The Shortages Diagram Summary box
+  is no longer the full width and shorter than the two above it.
+
 ## 3.33.0 — 5 October 2026 — the morning list is this morning's
 
 On the 05/10 Operating Report, printed at 03:31, the morning's only

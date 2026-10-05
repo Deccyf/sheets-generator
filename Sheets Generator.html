@@ -212,24 +212,35 @@
   .pastebox{margin:12px 0 0; padding:14px; border:1px solid var(--apron-dk); background:var(--paper)}
   .paste-hint{margin:0 0 12px; font-size:12.5px; line-height:1.45; color:var(--chalk)}
   .paste-hint b{color:var(--steel)}
-  .paste-pair{display:flex; gap:14px; flex-wrap:wrap}
-  .paste-fld{flex:1 1 260px; display:flex; flex-direction:column; gap:5px}
+  /* every paste box the same size: two equal columns, one on a phone, and
+     each box's name on a row of its own (subgrid), so the boxes in a row
+     start level and are the same height whatever their names say */
+  .paste-pair{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px}
+  .paste-pair + .paste-pair, .paste-pair + .paste-hint{margin-top:14px}
+  @media (max-width:640px){ .paste-pair{grid-template-columns:minmax(0, 1fr)} }
+  .paste-fld{display:grid; grid-row:span 2; grid-template-rows:auto auto;
+    grid-template-rows:subgrid; row-gap:5px; min-width:0}
+  .paste-fld > span{align-self:end}
   .paste-fld > span{
     font-family:var(--mono); font-size:11px; letter-spacing:.08em;
     text-transform:uppercase; color:var(--steel); font-weight:700;
   }
+  /* the note sits beside its box's name, so two boxes side by side start
+     level whether or not each has one */
   .paste-fld em{
-    display:block; font-family:var(--sans); font-size:11.5px; font-style:normal;
-    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400; margin-top:2px;
+    font-family:var(--sans); font-size:11.5px; font-style:normal; margin-left:6px;
+    letter-spacing:0; text-transform:none; color:var(--chalk); font-weight:400;
   }
   .paste-fld textarea{
-    flex:1 1 auto; font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
+    font-family:var(--mono); font-size:11px; line-height:1.4; padding:8px;
     border:1px solid var(--apron-dk); background:#fff; color:var(--steel);
-    resize:vertical; min-height:96px; width:100%;
+    resize:vertical; height:112px; min-height:72px; width:100%;
   }
   .paste-fld textarea:focus-visible{outline-offset:-1px}
   .paste-fld textarea.dragover{border:2px dashed var(--signal); background:#FFFDF5}
   .paste-fld textarea.filled{border-color:var(--signal); box-shadow:inset 3px 0 0 var(--signal)}
+  .paste-fld textarea.held{font-family:var(--sans); font-size:12.5px; line-height:1.4;
+    white-space:pre-wrap; overflow-x:hidden; color:var(--signal-ink)}
   .paste-acts{margin:12px 0 0; display:flex; gap:10px; flex-wrap:wrap}
   .paste-say{margin:10px 0 0; font-family:var(--mono); font-size:12px;
     letter-spacing:.04em; color:var(--chalk); min-height:18px}
@@ -561,7 +572,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.33.0</b> · 5 October 2026</span>
+      <span class="ver">Version <b>3.33.1</b> · 5 October 2026</span>
     </div>
   </header>
 
@@ -792,12 +803,12 @@
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary <em>the day before — optional</em></span>
-          <textarea id="paste_sum2" rows="4" spellcheck="false" wrap="off"
+          <textarea id="paste_sum2" rows="6" spellcheck="false" wrap="off"
             placeholder="The day before's Diagram Summary"></textarea>
         </label>
         <label class="paste-fld">
           <span>Diagram Detail <em>the day before — optional</em></span>
-          <textarea id="paste_det2" rows="4" spellcheck="false" wrap="off"
+          <textarea id="paste_det2" rows="6" spellcheck="false" wrap="off"
             placeholder="The day before's Diagram Detail"></textarea>
         </label>
       </div>
@@ -923,12 +934,12 @@
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary <em>the day before — optional</em></span>
-          <textarea id="we_paste_sum" rows="4" spellcheck="false" wrap="off"
+          <textarea id="we_paste_sum" rows="6" spellcheck="false" wrap="off"
             placeholder="The day before's Diagram Summary"></textarea>
         </label>
         <label class="paste-fld">
           <span>Diagram Detail <em>the day before — optional</em></span>
-          <textarea id="we_paste_det" rows="4" spellcheck="false" wrap="off"
+          <textarea id="we_paste_det" rows="6" spellcheck="false" wrap="off"
             placeholder="The day before's Diagram Detail"></textarea>
         </label>
       </div>
@@ -1059,6 +1070,10 @@
     <ul class="whatfor needs">
       <li><b>What to drop</b> The Operating Report and the Diagram Detail for
         the same day, as PDF or CSV.</li>
+      <li><b>Pulling the Operating Report</b> In Genius, tick
+        <b>Unallocated legs</b> &mdash; without it the report has no
+        <i>Not allocated</i> lines, and no shortages can be found &mdash; and
+        set the depot to <b>RM</b> for Mainline or <b>SG</b> for Metro.</li>
       <li><b>What you get</b> Not a berthing book: the controller&rsquo;s list
         of trains that are short, the wrong length or the wrong fleet, with
         every later service each one affects — ready to copy or save.</li>
@@ -1097,19 +1112,19 @@
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Operating Report</span>
-          <textarea id="svpaste_op" rows="4" spellcheck="false" wrap="off"
+          <textarea id="svpaste_op" rows="6" spellcheck="false" wrap="off"
             placeholder="Paste the Operating Report here"></textarea>
         </label>
         <label class="paste-fld">
           <span>Diagram Detail <em>the same day</em></span>
-          <textarea id="svpaste_det" rows="4" spellcheck="false" wrap="off"
+          <textarea id="svpaste_det" rows="6" spellcheck="false" wrap="off"
             placeholder="Paste the Diagram Detail here"></textarea>
         </label>
       </div>
       <div class="paste-pair">
         <label class="paste-fld">
           <span>Diagram Summary <em>optional — places 3-cars in longer trains</em></span>
-          <textarea id="svpaste_sum" rows="3" spellcheck="false" wrap="off"
+          <textarea id="svpaste_sum" rows="6" spellcheck="false" wrap="off"
             placeholder="Paste the Diagram Summary here, if you have it"></textarea>
         </label>
       </div>
@@ -1877,7 +1892,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.33.0
+      works without an internet connection. Version 3.33.1
       &middot; 5 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11444,6 +11459,13 @@ function afterLabel(text, label) {
   return m ? m[1] : null;
 }
 function opDateOf(text){ return afterLabel(text, "Operating Report for:"); }
+/* The depot it was pulled for, off the same line - "Depot RM, Owning Ctrl
+   NE" in the print, the same in the export's cell. RM is the Mainline
+   fleet's, SG the Metro's. */
+function opDepotOf(text){
+  const m = /Operating Report for:\W*Depot\s+([A-Z0-9]{1,4})\b/i.exec(String(text||""));
+  return m ? m[1].toUpperCase() : null;
+}
 function detDateOf(text){
   const m = afterLabel(text, "Diagram Details? for:");
   if (m) return m;
@@ -11468,19 +11490,30 @@ function read(opText, detailText, summaryText) {
                     "from Genius again, PDF or CSV, and drop that");
   return { op: operatingFrom(opText), detail,
            posAt: positionsFrom(summaryText),
-           opDate: opDateOf(opText), detDate: detDateOf(detailText) };
+           opDate: opDateOf(opText), detDate: detDateOf(detailText),
+           opDepot: opDepotOf(opText) };
 }
 function build(src, opts) {
   const out = buildDiscrepancies(src.op, src.detail, src.posAt, opts);
   /* Two reports from different days read perfectly well and answer nothing:
      every working is matched against a plan that was not in force. Said, not
      refused - the depot knows what it dropped. */
-  const reviews = (src.opDate && src.detDate && src.opDate !== src.detDate)
-    ? [`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
-       `for ${src.detDate}. The list below matches each working against the ` +
-       `other day's plan, so it cannot be trusted — drop the pair for one date.`]
-      .concat(out.reviews)
-    : out.reviews;
+  const first = [];
+  if (src.opDate && src.detDate && src.opDate !== src.detDate)
+    first.push(`The Operating Report is for ${src.opDate} and the Diagram Detail ` +
+      `for ${src.detDate}. The list below matches each working against the ` +
+      `other day's plan, so it cannot be trusted — drop the pair for one date.`);
+  /* The two settings the report has to be pulled with. Pulled for another
+     depot it is another fleet's list; pulled without Unallocated legs it
+     has no Not allocated lines, and a list with no shortages on it looks
+     just like a morning with none. */
+  if (src.opDepot && !/^(?:RM|SG)$/.test(src.opDepot))
+    first.push(`The Operating Report was pulled for depot ${src.opDepot}. Pull it ` +
+      `again for depot RM for the Mainline fleet, or SG for the Metro fleet.`);
+  if (src.op.rows.length && !src.op.rows.some(r => /Not allocated/i.test(r.discrepancy || "")))
+    first.push("The Operating Report has no Not allocated lines, so no shortages " +
+      "could be raised. If you expected some, pull it again with Unallocated legs ticked.");
+  const reviews = first.concat(out.reviews);
   return { ...out, reviews, positions: !!src.posAt,
            reportTime: src.op.reportTime, rows: src.op.rows.length,
            diagrams: new Set(src.op.rows.map(r => r.diag)).size,
@@ -14852,9 +14885,19 @@ const isTextBox = t => !!t && (t.tagName === "TEXTAREA" ||
 const HOLD_FROM = 100000;                 // characters: a report, not a typed line
 const held = new WeakMap();               // box -> the report it stands for
 const boxText = el => (el ? (held.has(el) ? held.get(el) : el.value) : "");
+/* The paste boxes do not wrap, so a report's lines stay one to a line; the
+   note standing in for a held report is a sentence, and wraps to the box
+   like one rather than running off its edge behind a scroll bar. */
+function showHeld(el, on) {
+  if (!("wrapAs" in el.dataset)) el.dataset.wrapAs = el.getAttribute("wrap") || "";
+  if (on) el.setAttribute("wrap", "soft");
+  else if (el.dataset.wrapAs) el.setAttribute("wrap", el.dataset.wrapAs);
+  else el.removeAttribute("wrap");
+  el.classList.toggle("held", on);
+}
 function setBox(el, text) {
   text = String(text || "");
-  if (text.length < HOLD_FROM) { held.delete(el); el.value = text; }
+  if (text.length < HOLD_FROM) { held.delete(el); showHeld(el, false); el.value = text; }
   else {
     held.set(el, text);
     let lines = 1;
@@ -14862,9 +14905,10 @@ function setBox(el, text) {
     const head = text.slice(0, 4000);
     const what = /Diagram Detail Report/i.test(head) ? "Diagram Detail"
       : /DIAGRAM SUMMARY REPORT|Diagram Summary for:/i.test(head) ? "Diagram Summary" : "Report";
+    showHeld(el, true);
     el.value = what + " pasted — " + lines.toLocaleString("en-GB") + " lines, " +
-      (text.length / 1048576).toFixed(1) + " MB — held ready to build, not shown here " +
-      "to keep the page light.\nPaste again to replace it; type in the box to empty it.";
+      (text.length / 1048576).toFixed(1) + " MB. Held ready to build; not shown here, " +
+      "to keep the page light.\nPaste again to replace it, or type in the box to empty it.";
   }
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }

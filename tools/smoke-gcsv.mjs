@@ -158,6 +158,12 @@ const detBox = await page.$eval("#paste_det", e => e.value);
 console.log("big paste held           :", detBox.split("\n")[0].slice(0, 70));
 if (!heldSum || !heldDet || !/^Diagram Detail pasted — /.test(detBox) || detBox.length > 400)
   throw new Error("a report-sized paste should be held, with one line in the box");
+/* the note standing in for it is a sentence: wrapped to the box, not run
+   off its edge behind a scroll bar */
+const fits = await page.$eval("#paste_det", e =>
+  e.getAttribute("wrap") === "soft" && e.scrollWidth <= e.clientWidth);
+console.log("held note wraps to box   :", fits);
+if (!fits) throw new Error("the held-report note should wrap inside its box");
 if (await pasteEv("#paste_sum2", "a short note"))
   throw new Error("a short paste is the browser's own");
 await page.locator("#paste_go").click();
@@ -168,6 +174,8 @@ await page.locator("#paste_det").focus();
 await page.keyboard.type("x");
 if (await page.$eval("#paste_det", e => e.value) !== "")
   throw new Error("typing in a box that holds a report should empty it");
+if (await page.$eval("#paste_det", e => e.getAttribute("wrap")) !== "off")
+  throw new Error("an emptied box should go back to keeping a report's lines whole");
 console.log("typing in a held box     : empties it");
 
 /* ---- the printed book's memory: save, rebuild a changed plan, be told ----

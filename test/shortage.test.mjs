@@ -474,6 +474,24 @@ test("Morning or Afternoon can be picked whatever time the report was printed", 
   assert.match(am.text, /^4\.375 V 8\.375 \(RM920\)/m, am.text);
 });
 
+test("a report pulled for the wrong depot, or without Unallocated legs, says so", () => {
+  const pulledRight = S().run(txt(AM_OP), txt(AM_DET));
+  assert.ok(!pulledRight.reviews.some(r => /pulled for depot|Unallocated legs/.test(r)),
+    "RM with Not allocated lines is as it should be: " + pulledRight.reviews.join(" | "));
+  const metro = AM_OP.map(l => l.replace("Depot RM,", "Depot SG,"));
+  assert.ok(!S().run(txt(metro), txt(AM_DET)).reviews.some(r => /pulled for depot/.test(r)),
+    "SG is the Metro fleet's depot");
+  const other = AM_OP.map(l => l.replace("Depot RM,", "Depot GI,"));
+  assert.ok(S().run(txt(other), txt(AM_DET)).reviews
+    .some(r => /pulled for depot GI\. .*RM for the Mainline fleet, or SG for the Metro fleet/.test(r)));
+  // no Not allocated lines at all: the box was not ticked, or the morning is clean
+  const noLegs = AM_OP.filter(l => !/Not allocated/.test(l));
+  const res = S().run(txt(noLegs), txt(AM_DET));
+  assert.equal(res.counts.top, 0);
+  assert.ok(res.reviews.some(r => /no Not allocated lines.*Unallocated legs ticked/.test(r)),
+    res.reviews.join(" | "));
+});
+
 test("a station the road table has no code for is named by its CRS code, a siding never is", () => {
   /* Deal printed "???": the variations list names places off a table of the
      depot's own road codes, and a plain station that was not on it had no

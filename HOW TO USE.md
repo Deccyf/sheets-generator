@@ -676,13 +676,17 @@ The controller's list of what is wrong with today's trains, ready to paste
 into the Excel text box it goes in. It builds no book. **Mainline and Metro
 only** — not the 395s.
 
-1. Pick **Shortages & variations** and drop the **Operating Report** and the
+1. Pull the **Operating Report** from Genius with **Unallocated legs**
+   ticked, and the depot set to **RM** for Mainline or **SG** for Metro.
+   Without Unallocated legs the report has no *Not allocated* lines, so no
+   shortages can be found.
+2. Pick **Shortages & variations** and drop the **Operating Report** and the
    **Diagram Detail** for the same day, PDF or CSV.
-2. Add the **Diagram Summary** if you have it. It is optional: with it, a
+3. Add the **Diagram Summary** if you have it. It is optional: with it, a
    3-car in a train of three or more units can be called *wrong end* or
    *intermediate*; without it, those are left on the Review list for you to
    check.
-3. The list appears under the status board. **Copy the list** puts it on the
+4. The list appears under the status board. **Copy the list** puts it on the
    clipboard; **Save as text** saves it; **Start over** clears it.
 
 **Pasting instead.** On a machine that will not let you save the files,
@@ -813,6 +817,8 @@ on the tab, set out every rule it follows.
 | *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
 | *"That pair could not be read: the Diagram Detail has no diagrams in it — …"* (Shortages & variations) | The Diagram Detail was saved or copied without its diagrams — often just its first line. Save the whole report from Genius again, or copy it from the very top, and drop or paste that. |
 | *"No shortages raised … pick morning or afternoon under Shortage list"* (Shortages & variations) | The Operating Report was printed after 18:00, or its print time could not be read, so the tool cannot tell which list you want. Pick **morning** or **afternoon** under **Shortage list** in Options. |
+| *"The Operating Report has no Not allocated lines …"* (Shortages & variations) | The report was pulled without **Unallocated legs** ticked, so it cannot show what is short. Pull it again from Genius with the box ticked. On a morning with nothing short at all, ignore it. |
+| *"The Operating Report was pulled for depot …"* (Shortages & variations) | Pull it again for depot **RM** (Mainline) or **SG** (Metro). |
 | Shortages you know are fine, or afternoon units on a morning list (Shortages & variations) | Check the status line says the list you meant — *Morning list* or *Afternoon list*. A report printed early in the morning has nothing allocated for the afternoon yet, so its afternoon list is long. |
 | `???` on the variations list | A siding, signal or depot road the list has no code for. The Review list under it names the place in full — tell us the code it should be, and it can be added. Plain stations are named by their three-letter code, so Deal is `DEA`. |
 | *"Build failed: … Check the files and drop them again."* | Something in the files could not be read. Books from an earlier drop are cleared, so nothing is saved by mistake. |

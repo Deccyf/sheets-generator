@@ -218,9 +218,19 @@ const isTextBox = t => !!t && (t.tagName === "TEXTAREA" ||
 const HOLD_FROM = 100000;                 // characters: a report, not a typed line
 const held = new WeakMap();               // box -> the report it stands for
 const boxText = el => (el ? (held.has(el) ? held.get(el) : el.value) : "");
+/* The paste boxes do not wrap, so a report's lines stay one to a line; the
+   note standing in for a held report is a sentence, and wraps to the box
+   like one rather than running off its edge behind a scroll bar. */
+function showHeld(el, on) {
+  if (!("wrapAs" in el.dataset)) el.dataset.wrapAs = el.getAttribute("wrap") || "";
+  if (on) el.setAttribute("wrap", "soft");
+  else if (el.dataset.wrapAs) el.setAttribute("wrap", el.dataset.wrapAs);
+  else el.removeAttribute("wrap");
+  el.classList.toggle("held", on);
+}
 function setBox(el, text) {
   text = String(text || "");
-  if (text.length < HOLD_FROM) { held.delete(el); el.value = text; }
+  if (text.length < HOLD_FROM) { held.delete(el); showHeld(el, false); el.value = text; }
   else {
     held.set(el, text);
     let lines = 1;
@@ -228,9 +238,10 @@ function setBox(el, text) {
     const head = text.slice(0, 4000);
     const what = /Diagram Detail Report/i.test(head) ? "Diagram Detail"
       : /DIAGRAM SUMMARY REPORT|Diagram Summary for:/i.test(head) ? "Diagram Summary" : "Report";
+    showHeld(el, true);
     el.value = what + " pasted — " + lines.toLocaleString("en-GB") + " lines, " +
-      (text.length / 1048576).toFixed(1) + " MB — held ready to build, not shown here " +
-      "to keep the page light.\nPaste again to replace it; type in the box to empty it.";
+      (text.length / 1048576).toFixed(1) + " MB. Held ready to build; not shown here, " +
+      "to keep the page light.\nPaste again to replace it, or type in the box to empty it.";
   }
   el.dispatchEvent(new Event("input", { bubbles: true }));
 }

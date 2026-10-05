@@ -403,6 +403,10 @@ changed: it carried its own copy of the PDF extractor and its own fflate, both
 of which were already here, so it now reads what the rest of the tool reads,
 and the Diagram Detail can arrive as the CSV export as well as the PDF.
 
+- **The Operating Report** has to be pulled with *Unallocated legs* ticked
+  (without it there are no *Not allocated* lines) and for depot RM
+  (Mainline) or SG (Metro). `build` checks both off the report and says so
+  on the Review list.
 - **Shortages** come from a *Not allocated* line, inside the window the
   report's own print time puts it in: printed 01 00–08 00 is the morning list
   (departures before 09 00), 08 00–18 00 the afternoon list (12 00–18 00).
