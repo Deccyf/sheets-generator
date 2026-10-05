@@ -406,6 +406,74 @@ test("when the effect changes during the shortage's life the heading is SHORTAGE
   assert.equal(res.counts.top, 1);
 });
 
+/* ---- which shortages a list is for: the 05/10 report, in small ----
+   Printed at 03:31, so it is the morning list. RM029 and RM920 are this
+   morning's shortages. RM910 comes out of the Grove Park sidings RM029 went
+   into, and RM060 out of the ones RM920 went into - both simply not
+   allocated YET. RM033 is going to bed at 00 27 tonight. */
+const dg = d => "Diagram " + d.slice(0, 2) + " " + d.slice(2).split("").join(" ") + " On 05/10/26";
+const AM_OP = [
+  "GENIUS  Control  :SouthEastern Trains  OPERATING REPORT",
+  "Controller:NA  Signon:X  Name:Y  Time:  03:31",
+  "Operating Report for:Depot RM, Owning Ctrl NE, 05/10/26 to 06/10/26. ",
+  "DIAGRAM  DATE  FROM  DEP.  ARR.  TO  TRAINID  DEPOT  PLANNED  ALLOCATED  RESOURCE  OWNING   DISCREPANCY",
+  "RM029  05/10/26  CANONST  07:18  08:05  TONBDG  3R95BA  RM  375/6  NE  Not allocated.",
+  "RM029  05/10/26  TONBDG  08:24  09:08  CANONST  2W95BA  RM  375/6  NE  Not allocated.",
+  "RM029  05/10/26  CANONST  09:30  09:52  GRVPKDS  5J95BA  RM  375/6  NE  Not allocated.",
+  "RM030  05/10/26  CANONST  07:18  08:05  TONBDG  3R95BA  RM  375/6  375/6  375601  NE  ok",
+  "RM030  05/10/26  TONBDG  08:24  09:08  CANONST  2W95BA  RM  375/6  375/6  375601  NE  ok",
+  "RM030  05/10/26  CANONST  09:30  09:52  GRVPKDS  5J95BA  RM  375/6  375/6  375601  NE  ok",
+  "RM920  05/10/26  CANONST  08:28  08:52  GRVPKDS  5J91BA  RM  375/9  NE  Not allocated.",
+  "RM921  05/10/26  CANONST  08:28  08:52  GRVPKDS  5J91BA  RM  375/9  375/9  375901  NE  ok",
+  "RM060  05/10/26  GRVPKDS  09:07  09:50  TONBDG  5Y60BA  RM  375/6  NE  Not allocated.",
+  "RM910  05/10/26  GRVPKDS  12:36  13:20  VICTRIE  5U32BA  RM  375/9  NE  Not allocated.",
+  "RM033  05/10/26  DOVERP  00:20  00:45  DOVERPS  5R94BA  RM  375/6  NE  Not allocated.",
+];
+const AM_DET = [
+  "GENIUS  Diagram Detail Report",
+  ...["RM029", "RM030"].flatMap(d => [dg(d),
+    "CANONST  London Cannon St  07:18  3R95BA",
+    "TONBDG  Tonbridge  08:05  08:24  2W95BA",
+    "CANONST  London Cannon St  09:08  09:30  5J95BA",
+    "GRVPKDS  Grove Park Dn Sdgs  09:52"]),
+  ...["RM920", "RM921"].flatMap(d => [dg(d),
+    "CANONST  London Cannon St  08:28  5J91BA", "GRVPKDS  Grove Park Dn Sdgs  08:52"]),
+  dg("RM060"), "GRVPKDS  Grove Park Dn Sdgs  09:07  5Y60BA", "TONBDG  Tonbridge  09:50",
+  dg("RM910"), "GRVPKDS  Grove Park Dn Sdgs  12:36  5U32BA", "VICTRIE  London Victoria  13:20",
+  dg("RM033"), "ASHFKY  Ashford Kent  22:40  2R90BA",
+    "DOVERP  Dover Priory  23:50  00:20  5R94BA", "DOVERPS  Dover Priory Sdgs  00:45",
+];
+test("a morning list is this morning's shortages, each ending where it is put away", () => {
+  // as the depot writes it: arrival times on Ramsgate only
+  const res = S().run(txt(AM_OP), txt(AM_DET), undefined, { arr: "ram" });
+  assert.equal(res.window, "am");
+  const heads = res.text.split("\n").filter(l => /^\S/.test(l));
+  assert.deepEqual(heads, ["4.375 V 8.375 (RM029) ENDS 5J95 09+30 CST - GPD",
+                           "4.375 V 8.375 (RM920) ENDS 5J91 08+28 CST - GPD"], res.text);
+  assert.match(res.text, /FOLLOWING 4 V 8: 3R95 07 18 CST - TON, 2W95 08 24 TON - CST, 5J95 09\+30 CST - GPD$/m);
+  /* the 00 27 is tonight, read off the Diagram Detail's own day; and past
+     09 00 a shortage only runs on along its own diagram, so neither sidings
+     carries it into the next diagram out of them */
+  assert.ok(!/RM033|RM910|RM060/.test(res.text), res.text);
+});
+test("Morning or Afternoon can be picked whatever time the report was printed", () => {
+  const pm = S().run(txt(AM_OP), txt(AM_DET), undefined, { window: "pm" });
+  assert.equal(pm.window, "pm");
+  assert.match(pm.text, /RM910/, "the afternoon list has the 12 36: " + pm.text);
+  assert.ok(!/RM033/.test(pm.text), "and tonight's 00 27 is on neither list");
+  // printed at 20:25: no list is assumed, and the Review says why
+  const late = AM_OP.map(l => l.replace("Time:  03:31", "Time:  20:25"));
+  const none = S().run(txt(late), txt(AM_DET));
+  assert.equal(none.window, null);
+  assert.equal(none.counts.top, 0);
+  assert.ok(none.reviews.some(r => /morning or afternoon under Shortage list/.test(r)), none.reviews.join(" | "));
+  // picked Morning on a print at 08:10: RM920 is done by 08 52, and that is the morning's shortage
+  const am = S().run(txt(AM_OP.map(l => l.replace("Time:  03:31", "Time:  08:10"))), txt(AM_DET),
+                     undefined, { window: "am" });
+  assert.equal(am.window, "am");
+  assert.match(am.text, /^4\.375 V 8\.375 \(RM920\)/m, am.text);
+});
+
 test("a station the road table has no code for is named by its CRS code, a siding never is", () => {
   /* Deal printed "???": the variations list names places off a table of the
      depot's own road codes, and a plain station that was not on it had no

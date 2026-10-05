@@ -2068,7 +2068,7 @@ function decodeText(u8) {
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
   const lettered = $("#svlettered"), byFamily = $("#svbyfamily"),
-        ramArr = $("#svramarr");
+        ramArr = $("#svramarr"), svWindow = $("#svwindow");
   const svHelp = $("#svoptshelp"), svHint = $("#svoptshint");
   if (svHelp && svHint) svHelp.addEventListener("click", () => {
     const open = svHint.hidden;
@@ -2093,6 +2093,7 @@ function decodeText(u8) {
   const layout = () => ({
     fleetOrder: byFamily && byFamily.checked ? "family" : "place",
     arr: ramArr && ramArr.checked ? "ram" : "all",
+    window: svWindow && svWindow.value || undefined,   // unset: by the print time
     measure: measure || undefined, width: measure ? BOX_PX : undefined,
   });
   /* The Diagram Summary is optional, and only one thing is read off it: the
@@ -2147,7 +2148,14 @@ function decodeText(u8) {
       res.detailDiagrams + " in the detail" +
       (res.positions ? ", positions from the Summary"
                      : " · no Diagram Summary, so a formation of three cannot be placed — drop the Diagram Summary too");
-    say(n("top", "shortage or length case", "shortage and length cases") +
+    /* which list it is, said first: the same report gives a different list
+       for the morning and for the afternoon */
+    const at = res.reportTime == null ? "" : " (printed " + String(Math.floor(res.reportTime / 60)).padStart(2, "0") +
+      ":" + String(res.reportTime % 60).padStart(2, "0") + ")";
+    const which = res.window === "am" ? "Morning list, workings before 09:00" + at + " · "
+      : res.window === "pm" ? "Afternoon list, workings 12:00 to 18:00" + at + " · "
+      : "No shortages raised" + at + " — pick morning or afternoon under Shortage list, in Options · ";
+    say(which + n("top", "shortage or length case", "shortage and length cases") +
         " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
         ". Look them over, then copy or save.", "go");
   }
@@ -2278,7 +2286,7 @@ function decodeText(u8) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  for (const box of [lettered, byFamily, ramArr]) if (box)
+  for (const box of [svWindow, lettered, byFamily, ramArr]) if (box)
     box.addEventListener("change", () => { if (held.op && held.det) render(); });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = ""; source = null;

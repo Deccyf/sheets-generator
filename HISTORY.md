@@ -4,6 +4,41 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.33.0 — 5 October 2026 — the morning list is this morning's
+
+On the 05/10 Operating Report, printed at 03:31, the morning's only
+shortages were RM029 and RM920. Shortages & variations listed 23: those two,
+each run on into the evening, and 21 units that are simply going to bed
+tonight. Two faults, and a choice that was missing:
+
+- **The day runs past midnight.** A row was timed by the clock printed on the
+  Operating Report, so RM033's 5H88 00+27 — tonight's —
+  was "before 09 00" and on the morning list. Each row is now timed by the
+  Diagram Detail, whose day runs on past midnight (`dayClock`): 00 27 is
+  24 27, and on neither list.
+- **A morning shortage ends where the unit is put away.** RM029 is not
+  allocated all day. Its morning ends on the 5J95 09+30 into Grove Park; two
+  and three-quarter hours later RM910 comes out of the same sidings, also
+  not allocated yet, and the shortage was chained on through RM910, RM039
+  and RM067 to 23+18. RM920 was chained from its 5J91 08+28 into Grove Park
+  into RM060's 5Y60 09+07 out of it. On the morning list a shortage now runs
+  past 09 00 only along its own diagram, and a stand of three hours or more
+  ends it (`chainsOn`). Before 09 00 it changes diagram as before, and the
+  afternoon list follows a shortage for the whole of its life, as it always
+  has.
+- **Morning or afternoon, picked.** A new **Shortage list** option, first in
+  the Options row: *by the print time* (as before), *morning, before 09:00*,
+  or *afternoon, 12:00 to 18:00*, whatever time the report was printed. The
+  status line says which list is on screen and when the report was printed.
+  Only the afternoon list leaves off a diagram that is done by 16 00, so
+  RM920, done by 08 52, stays on a morning list picked on an 08:10 print.
+
+On the 05/10 reports the list is now the two the depot raised, ending where
+the depot ends them — `4.375 V 8.375 (RM029) ENDS 5J95 09+30 CST - GPD` and
+`8.375 V 12.375 (RM920) ENDS 5J91 08+28 CST - GPD` — and the fleet variations
+the false shortages had been hiding (RM904, RM910, RM917 and others) are back
+on it. `test/shortage.test.mjs` holds the case in small.
+
 ## Diagram analyser 1.8.2 — 4 October 2026 — a rounder is not the unit being put away
 
 When a diagram ends in a string of rows at one place — the platform, the

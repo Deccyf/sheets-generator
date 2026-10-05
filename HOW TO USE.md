@@ -697,9 +697,15 @@ be pasted.
 
 What it lists:
 
-* **Shortages** — a *Not allocated* line on the Operating Report, inside the
-  window the report's print time puts it in. A shortage that moves from one
-  diagram to another is one item, followed through every service it touches.
+* **Shortages** — a *Not allocated* line on the Operating Report. A report
+  printed between 01:00 and 08:00 gives the **morning list**: the units not
+  allocated for workings that leave before 09:00, each followed as far as the
+  sidings it goes back to. One printed between 08:00 and 18:00 gives the
+  **afternoon list**: workings that leave between 12:00 and 18:00, each
+  followed for the rest of its day. A unit going to bed after midnight is
+  tonight's, not this morning's, and is on neither list. A shortage that
+  moves from one diagram to another is one item, followed through every
+  service it touches.
 * **Variations** — a unit of the wrong length, the wrong fleet family or the
   wrong class against what the diagram planned: `4.375 V 8.375`,
   `3 CAR WRONG END`, a 375/9 on a 375 diagram.
@@ -708,6 +714,10 @@ What it lists:
 
 The **Options** row changes the list on screen and what you copy or save:
 
+* **Shortage list** — *by the print time* (the usual), *morning, before
+  09:00* or *afternoon, 12:00 to 18:00*. Pick one when the report was printed
+  at another time, or you want the other list. The status line says which
+  list you are looking at.
 * **Lettered, for the Excel text box** — each item gets its own letter, in
   time order, laid out for the text box it is pasted into, and no service
   is split across two lines.
@@ -802,6 +812,8 @@ on the tab, set out every rule it follows.
 | *"That looks like a reissue on its own — …"* | Drop the full weekend prints with it, or first. |
 | *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
 | *"That pair could not be read: the Diagram Detail has no diagrams in it — …"* (Shortages & variations) | The Diagram Detail was saved or copied without its diagrams — often just its first line. Save the whole report from Genius again, or copy it from the very top, and drop or paste that. |
+| *"No shortages raised … pick morning or afternoon under Shortage list"* (Shortages & variations) | The Operating Report was printed after 18:00, or its print time could not be read, so the tool cannot tell which list you want. Pick **morning** or **afternoon** under **Shortage list** in Options. |
+| Shortages you know are fine, or afternoon units on a morning list (Shortages & variations) | Check the status line says the list you meant — *Morning list* or *Afternoon list*. A report printed early in the morning has nothing allocated for the afternoon yet, so its afternoon list is long. |
 | `???` on the variations list | A siding, signal or depot road the list has no code for. The Review list under it names the place in full — tell us the code it should be, and it can be added. Plain stations are named by their three-letter code, so Deal is `DEA`. |
 | *"Build failed: … Check the files and drop them again."* | Something in the files could not be read. Books from an earlier drop are cleared, so nothing is saved by mistake. |
 | *"This browser blocks local storage, …"* | The page still builds, but corrections, options and the saved-book memory will not survive closing it. |

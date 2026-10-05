@@ -117,7 +117,7 @@ the actual file inputs, and are part of CI for that reason.
 | `engine.test.mjs`, `metro.test.mjs`, `hs.test.mjs`, `stockreq.test.mjs` | The weekend pipeline (with the legacy build as the oracle for what it does not deliberately change), and the three documents that are not berthing sheets, against stated behaviour. |
 | `weekday-fixes.test.mjs`, `weekend-fixes.test.mjs` | One regression test per bug fixed in 3.0.0, each built from the input that reproduced it. |
 | `rules.test.mjs`, `prints-read.test.mjs` | The local-corrections schema (round trip, corrupt input, wrong version) and the prints readers' error paths. |
-| `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
+| `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the morning and afternoon lists and the day past midnight, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
 | `berth.test.mjs`, `berth-hs.test.mjs` | The berth-request road against stated behaviour: the plan read section by section, the depot's rules one at a time, the swap search, the road a unit lands on, the plan given back in each workbook's own shape and dress, and the Class 395 disposition sheet's own reading, rules and sheet. |
 | `fleet.test.mjs` | The analyser, against stated behaviour — it has no legacy build. |
 | `build.test.mjs` | The built files: self-contained, under the size ceiling, version-stamped, no placeholder left, dead symbols gone. |
@@ -404,9 +404,16 @@ of which were already here, so it now reads what the rest of the tool reads,
 and the Diagram Detail can arrive as the CSV export as well as the PDF.
 
 - **Shortages** come from a *Not allocated* line, inside the window the
-  report's own print time puts it in. There is no window yet for a report run
-  after 18 00, and one run then says so on the Review list rather than
-  guessing.
+  report's own print time puts it in: printed 01 00–08 00 is the morning list
+  (departures before 09 00), 08 00–18 00 the afternoon list (12 00–18 00).
+  The **Shortage list** option picks either whatever the print time; left to
+  the print time, a report run after 18 00 says so on the Review list rather
+  than guessing. Each row is timed by the Diagram Detail's day, which runs
+  past midnight (`dayClock`), so a unit going to bed at 00 27 is tonight's
+  and not this morning's. On the morning list a shortage stops where the unit
+  is put away: past 09 00 it runs on only along its own diagram, and a stand
+  of three hours ends it (`chainsOn`); the afternoon list follows a shortage
+  for the whole of its life.
 - **Variations** are a unit of the wrong length, family or class against the
   plan. A 3-car and a 4-car swapped between two diagrams on one working read
   as `3 CAR WRONG END`; reciprocal 375 / 375-9 swaps cancel; a 377 on an RM

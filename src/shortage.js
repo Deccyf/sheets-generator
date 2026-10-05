@@ -246,13 +246,55 @@ function operatingFrom(text) {
   }
   return parseOperating(text);
 }
-function rowQualifiesUnallocated(row, reportTime) {
+/* Which Not Allocated rows are shortages. A morning report - one run
+   between one and eight - asks about the morning's departures, before
+   09 00; one run between eight and six about the afternoon's, 12 00 to
+   18 00. Everything else on it is not allocated YET, because the
+   allocation is done through the day, and is not a shortage. The planner
+   can say which half outright (opts.window "am" or "pm"); left to itself
+   ("auto") the print time decides, and after 18 00 nothing does.
+
+   The time is the departure's time IN ITS DIAGRAM'S DAY. A diagram for
+   the 5th starts on the morning of the 5th and runs into the small hours
+   of the 6th, and its last moves - 5H88 00+27 St Leonards to Hastings,
+   5W01 01+35 into Ramsgate depot - are tonight's, not this morning's. Read
+   off the printed clock, 00 27 is "before 09 00", and on the 05/10 report
+   twenty-one of them - every unit going to bed tonight that had not been
+   allocated yet - were raised as shortages beside the two real ones,
+   RM029 and RM920. dayClock() reads each row's time off the Diagram
+   Detail, which carries the day past midnight. */
+function windowFor(reportTime, mode) {
+  if (mode === "am" || mode === "pm") return mode;
+  if (reportTime == null) return null;
+  if (reportTime >= 1 && reportTime < 8*60) return "am";
+  if (reportTime >= 8*60 && reportTime < 18*60) return "pm";
+  return null;
+}
+function dayClock(rows, detail) {
+  for (const r of rows) {
+    const calls = detail.get(r.diag) || [];
+    let i0 = -1;
+    for (let i = 0; i < calls.length; i++)
+      if (calls[i].code === r.from && calls[i].dep != null && r.depMin != null &&
+          calls[i].dep % 1440 === r.depMin) { i0 = i; break; }
+    r.dayDep = i0 >= 0 ? calls[i0].dep : null;
+    r.dayArr = null;
+    if (i0 >= 0 && r.arrMin != null)
+      for (let i = i0 + 1; i < calls.length; i++)
+        if (calls[i].code === r.to && calls[i].arr != null && calls[i].arr % 1440 === r.arrMin) {
+          r.dayArr = calls[i].arr; break;
+        }
+  }
+  return rows;
+}
+const dayDep = r => r.dayDep != null ? r.dayDep : r.depSort;
+const dayArr = r => r.dayArr != null ? r.dayArr : r.arrSort;
+function rowQualifiesUnallocated(row, win) {
   if (!/Not allocated/i.test(row.discrepancy||"")) return false;
   if (isIgnoredShuntCodes(row.from,row.to)) return false;
-  const d=row.depMin;
-  if (reportTime==null) return false;
-  if (reportTime >= 1 && reportTime < 8*60) return d < 9*60;
-  if (reportTime >= 8*60 && reportTime < 18*60) return d >= 12*60 && d <= 18*60;
+  const d = row.dayDep != null ? row.dayDep : row.depMin;
+  if (win === "am") return d < AM_END;
+  if (win === "pm") return d >= 12*60 && d <= 18*60;
   return false;
 }
 function rowsByDiag(opRows) {
@@ -400,7 +442,7 @@ function activeOpRow(diag,t,byOp) {
   return rs[0];
 }
 
-function formationForLeg(leg, legsAll, byOp, reportTime, missing) {
+function formationForLeg(leg, legsAll, byOp, win, missing) {
   const participants=unique(legsAll.filter(x=>x.key===leg.key).map(x=>x.diag));
   let expected=0,actual=0;
   for(const d of participants){
@@ -413,7 +455,7 @@ function formationForLeg(leg, legsAll, byOp, reportTime, missing) {
        the day: the window decides whether the shortage is RAISED, and then
        the whole of its life is shown */
     if(active && missing && missing.has(active)){ actual+=0; continue; }
-    if(active && /Not allocated/i.test(active.discrepancy||"") && rowQualifiesUnallocated(active,reportTime)){
+    if(active && /Not allocated/i.test(active.discrepancy||"") && rowQualifiesUnallocated(active,win)){
       actual+=0; continue;
     }
     // Outside the report-time alert window, a Not Allocated line is deliberately ignored.
@@ -446,11 +488,11 @@ function statusOrder(a,b){
   if(a==="CANCELLED")return -1;if(b==="CANCELLED")return 1;
   const aa=parseInt(a,10)||999, bb=parseInt(b,10)||999; return aa-bb;
 }
-function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStruct, byOp, reportTime, reviews, missing) {
+function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStruct, byOp, win, reviews, missing) {
   const legs=(legsStruct.by.get(diag)||[]).filter(l=>l.rowIndex>=startIndex && l.nextIndex<=endIndex);
   const raw=[];
   for(const leg of legs){
-    const f=formationForLeg(leg,legsStruct.all,byOp,reportTime,missing);
+    const f=formationForLeg(leg,legsStruct.all,byOp,win,missing);
     const status=f.actual===0?"CANCELLED":`${f.actual} V ${f.expected}`;
     if(f.actual===f.expected) continue;
     // Always ignore the local depot shunts the rules say are not useful on the sheet.
@@ -485,14 +527,35 @@ function formationDetails(diag, startIndex, endIndex, detail, legsStruct, occStr
    when one of its rows is in the window, as the row was before, and then
    the whole of its life is shown under it. */
 const CHAIN_GAP=6*60;
+/* A morning list is about the morning's allocation, and that ends where the
+   unit is put away. On the 05/10 report RM029 is not allocated all day:
+   its morning - 5H85 05+10 to 5J95 09+30 into Grove Park - and then, two
+   and three-quarter hours later, RM910's 5U32 12+36 out of the same
+   sidings and on through three more diagrams into the night, all simply
+   not allocated YET at half past three in the morning. RM920 likewise ran
+   on from its 5J91 08+28 into Grove Park into RM060's 5Y60 09+07 out of
+   it. So on a morning list, once the shortage is past 09 00 it only runs
+   on along its own diagram - the unit's way back to the sidings - and a
+   stand of three hours or more ends it. Before 09 00 it changes diagram
+   as before. The afternoon list keeps the whole of a shortage's life, as
+   it always has. */
+const AM_END=9*60, AM_STAND=3*60;
+function chainsOn(last, r, win) {
+  const gap=dayDep(r)-dayArr(last);
+  if(gap<0) return false;
+  if(win!=="am") return gap<=CHAIN_GAP;
+  return gap<=AM_STAND && (dayDep(r)<AM_END || r.diag===last.diag);
+}
 function sameSpot(a,b){
   if(a===b)return true;
   const x=ABBR[a]||a, y=ABBR[b]||b;
   return masterKey(x)===masterKey(y);
 }
-function shortageChains(opRows, reportTime, isFinished) {
+function shortageChains(opRows, win, isFinished) {
+  /* in each diagram's own day, so a unit going to bed at 00 27 tonight is
+     not chained BEFORE this morning's 05 10 (see dayClock) */
   const cand=opRows.filter(r=>/Not allocated/i.test(r.discrepancy||"") && !isIgnoredShuntCodes(r.from,r.to) && !isFinished(r.diag))
-    .sort((a,b)=>a.depSort-b.depSort || a.arrSort-b.arrSort);
+    .sort((a,b)=>dayDep(a)-dayDep(b) || dayArr(a)-dayArr(b));
   const chains=[];
   for(const r of cand){
     const cls=plannedClass(r.diag,r.planned);
@@ -500,13 +563,13 @@ function shortageChains(opRows, reportTime, isFinished) {
     for(const c of chains){
       const last=c.rows[c.rows.length-1];
       if(c.expectedLength!==r.expectedLength || c.cls!==cls) continue;
-      if(!sameSpot(last.to,r.from) || r.depSort<last.arrSort || r.depSort-last.arrSort>CHAIN_GAP) continue;
-      if(!best || last.arrSort>best.rows[best.rows.length-1].arrSort) best=c;
+      if(!sameSpot(last.to,r.from) || !chainsOn(last,r,win)) continue;
+      if(!best || dayArr(last)>dayArr(best.rows[best.rows.length-1])) best=c;
     }
     if(best) best.rows.push(r);
     else chains.push({rows:[r], expectedLength:r.expectedLength, cls});
   }
-  return chains.filter(c=>c.rows.some(r=>rowQualifiesUnallocated(r,reportTime)));
+  return chains.filter(c=>c.rows.some(r=>rowQualifiesUnallocated(r,win)));
 }
 
 function endingDescriptor(diag, op, detail, legsStruct, occStruct, reviews) {
@@ -719,17 +782,23 @@ function buildDiscrepancies(op, detail, posAt, opts) {
   if(!op.rows.length)reviews.push("No rows could be read from the Operating Report — " +
     "the list below is empty because of that, not because the day was clean. " +
     "Check the right report was dropped, and that it is the .pdf print or the .csv export.");
-  if(op.reportTime==null)reviews.push("Could not read the Operating Report print time; Not Allocated rules were not applied.");
-  else if(op.reportTime>=18*60 || op.reportTime<1)reviews.push("No Not Allocated selection rule has yet been supplied for reports produced at/after 18:00 (or exactly 00:00).");
+  dayClock(op.rows, detail);
+  const win = windowFor(op.reportTime, opts.window);
+  if(!win && op.reportTime==null)reviews.push("Could not read the time the Operating Report was printed, so no shortages were raised — " +
+    "pick morning or afternoon under Shortage list, in Options.");
+  else if(!win)reviews.push("The Operating Report was printed at " + hhmm(op.reportTime, false) + ". A morning list is printed " +
+    "between 01:00 and 08:00 and an afternoon one between 08:00 and 18:00, so no shortages were raised — pick morning or afternoon under Shortage list, in Options.");
 
-  const isFinished=d=>omitFinishedBy1600(d,op.reportTime,detail);
+  /* only the afternoon list leaves off a diagram that is done by 16 00:
+     RM920's whole morning is over by 08 52, and it is the morning's shortage */
+  const isFinished=d=>win==="pm" && omitFinishedBy1600(d,op.reportTime,detail);
 
   /* 1) qualifying Not Allocated rows -> shortage cases, one per CONTINUOUS
      shortage, however many diagrams it passes through. The heading is the
      direct formation - 4.375 V 8.375 - where the effect is the same on
      every service, and N.375 SHORTAGE where it changes during its life:
      some 4 V 8, some 8 V 12, a cancellation. */
-  for(const c of shortageChains(op.rows,op.reportTime,isFinished)){
+  for(const c of shortageChains(op.rows,win,isFinished)){
     const missing=new Set(c.rows);
     const groups=new Map();
     for(const r of c.rows){
@@ -737,7 +806,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
       const rows=detail.get(r.diag)||[];
       if(!rows.length){reviews.push(`${r.diag}: no Diagram Detail itinerary found for shortage.`);continue;}
       const startIndex=findDetailIndexForOp(rows,r,"start"), endIndex=findDetailIndexForOp(rows,r,"end");
-      for(const g of formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews,missing)){
+      for(const g of formationDetails(r.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,win,reviews,missing)){
         if(!groups.has(g.status))groups.set(g.status,[]);
         for(const sv of g.services) if(!groups.get(g.status).some(x=>x.text===sv.text)) groups.get(g.status).push(sv);
       }
@@ -853,7 +922,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     const startIndex=findDetailIndexForOp(rows,c.row,"start"),endIndex=findDetailIndexForOp(rows,c.row,"end");
     const end=c.end||endingDescriptor(c.diag,c.row,detail,legsStruct,occStruct,reviews);
     const label=`${c.row.actual.length}.375 V ${c.row.expectedLength}.375`;
-    const groups=formationDetails(c.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,op.reportTime,reviews);
+    const groups=formationDetails(c.diag,startIndex,endIndex,detail,legsStruct,occStruct,byOp,win,reviews);
     topCases.push({sort:c.row.depSort,lines:[headingWithEnd(label,c.diag,end,opts),...formatFollowing(groups)]});
   }
 
@@ -932,7 +1001,7 @@ function buildDiscrepancies(op, detail, posAt, opts) {
   const blocks=topCases.map(c=>c.lines);
   if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
   return {text,lettered:letterList(blocks,opts.measure,opts.width),letteredHtml:letterHtml(blocks,opts.measure,opts.width),
-          reviews:unique(reviews),counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
+          reviews:unique(reviews),window:win,counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
 }
 
 /* ---------- the Diagram Detail as the CSV export ----------

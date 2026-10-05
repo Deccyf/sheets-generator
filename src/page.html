@@ -600,6 +600,12 @@
 
     <div class="opts-row" id="svoptsrow" hidden>
       <span class="opts-label">Options</span>
+      <label>Shortage list
+        <select id="svwindow" autocomplete="off">
+          <option value="">by the print time</option>
+          <option value="am">morning, before 09:00</option>
+          <option value="pm">afternoon, 12:00 to 18:00</option>
+        </select></label>
       <label><input type="checkbox" id="svlettered" autocomplete="off">
         Lettered, for the Excel text box</label>
       <label><input type="checkbox" id="svbyfamily" autocomplete="off">
@@ -612,6 +618,14 @@
         what you copy or save.</span>
     </div>
     <div class="opts-hints" id="svoptshint" hidden>
+      <p><b>Shortage list</b> — which units count as short. A report printed
+        between 01:00 and 08:00 gives the morning list: the units not
+        allocated for workings that leave before 09:00, each followed as far
+        as the sidings it goes back to. One printed between 08:00 and 18:00
+        gives the afternoon list: workings that leave between 12:00 and 18:00.
+        Pick one here when the report was printed at another time, or you
+        want the other list. A unit going to bed after midnight is
+        tonight&rsquo;s, not this morning&rsquo;s.</p>
       <p><b>Lettered, for the Excel text box</b> — lays the list out for the
         Excel text box it is pasted into (20.19 cm wide, Calibri 11 bold).
         Each shortage, swap or length case gets its own letter, in time order,
@@ -639,10 +653,17 @@
       <div class="svrules-body">
         <p><b>Shortages.</b> A <i>Not allocated</i> line on the Operating
           Report, inside the window the print time puts it in: a report run
-          between one and eight in the morning takes departures before 09 00;
-          one run between eight and six takes departures between 12 00 and
-          18 00. There is no window yet for a report run after 18 00, and one
-          run then says so on the Review list rather than guessing.</p>
+          between one and eight in the morning is the morning list, and takes
+          departures before 09 00; one run between eight and six is the
+          afternoon list, and takes departures between 12 00 and 18 00.
+          <b>Shortage list</b> under Options picks either one whatever time
+          the report was run; left on <i>by the print time</i>, a report run
+          after 18 00 says so on the Review list rather than guessing.</p>
+        <p><b>The day runs past midnight.</b> A departure is timed by the
+          Diagram Detail, whose day runs on past midnight, not by the clock
+          printed on the Operating Report. A unit going to bed at 00 27 is
+          tonight&rsquo;s, not this morning&rsquo;s, and is on neither
+          list.</p>
         <p><b>A shortage that moves between diagrams is one shortage.</b> The
           missing portion of the 1H13 on RM023 is the same missing portion of
           the 1R32 on RM056 &mdash; the booked portion changed diagram at
@@ -650,8 +671,12 @@
           item, <code>(RM023/RM056)</code>, the diagrams in the order it
           passed through them, ending on its final affected working, with
           every service under it in time order. The window above still
-          decides whether it is raised, on the same rows as before; once
-          raised, the whole of its life is shown. Where the effect is the
+          decides whether it is raised, on the same rows as before. On the
+          afternoon list, once raised, the whole of its life is shown. On the
+          morning list it ends where the unit is put away: once past 09 00 it
+          runs on only along its own diagram, and a stand of three hours or
+          more ends it &mdash; RM029 ends on its 5J95 09+30 into Grove Park,
+          not on the next diagram out of those sidings that afternoon. Where the effect is the
           same on every service the heading is the formation itself,
           <code>4.375 V 8.375 (RM023/RM056)</code>; where it changes during
           the shortage&rsquo;s life &mdash; some 4 V 8, some 8 V 12, a
