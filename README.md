@@ -16,8 +16,8 @@ Two single-file, offline browser tools for a Southeastern depot:
   everything the rules had to decide for themselves — and, on request, the
   Kent Coast stock requirements form. The last two tabs read the reports and
   write no book, and both are for the Mainline and Metro fleets only:
-  **Shortages & variations**, the controller's list of what is short or the
-  wrong length, and **Berth requests**, which suggests the night's Telex
+  **Shortages & variations**, the controller's morning or afternoon list of
+  what is short or the wrong length, and **Berth requests**, which suggests the night's Telex
   requests against the day's diagrams.
 - **`Sheets Generator (no berth requests).html`** — the same page with the
   experimental *Berth requests* tab left out: its tab, its panel and its
@@ -101,7 +101,8 @@ node build.mjs     # src/ -> "Sheets Generator.html", the same without the berth
 npm test           # build, then node --test "test/**/*.test.mjs"
 node tools/smoke.mjs        # Chromium: weekday PDFs, weekend prints, pasting, the stock form,
                             # the shortages list and the berth-request tab
-node tools/smoke-gcsv.mjs   # Chromium: the Genius CSV exports, dropped and pasted, the saved-book memory
+node tools/smoke-gcsv.mjs   # Chromium: the Genius CSV exports, dropped and pasted, a held
+                            # report's note wrapping to its box, the saved-book memory
 node tools/smoke-fleet.mjs  # Chromium: the analyser
 ```
 
@@ -117,7 +118,7 @@ the actual file inputs, and are part of CI for that reason.
 | `engine.test.mjs`, `metro.test.mjs`, `hs.test.mjs`, `stockreq.test.mjs` | The weekend pipeline (with the legacy build as the oracle for what it does not deliberately change), and the three documents that are not berthing sheets, against stated behaviour. |
 | `weekday-fixes.test.mjs`, `weekend-fixes.test.mjs` | One regression test per bug fixed in 3.0.0, each built from the input that reproduced it. |
 | `rules.test.mjs`, `prints-read.test.mjs` | The local-corrections schema (round trip, corrupt input, wrong version) and the prints readers' error paths. |
-| `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the morning and afternoon lists and the day past midnight, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
+| `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the morning and afternoon lists and the day past midnight, the depot and *Unallocated legs* checks, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
 | `berth.test.mjs`, `berth-hs.test.mjs` | The berth-request road against stated behaviour: the plan read section by section, the depot's rules one at a time, the swap search, the road a unit lands on, the plan given back in each workbook's own shape and dress, and the Class 395 disposition sheet's own reading, rules and sheet. |
 | `fleet.test.mjs` | The analyser, against stated behaviour — it has no legacy build. |
 | `build.test.mjs` | The built files: self-contained, under the size ceiling, version-stamped, no placeholder left, dead symbols gone. |
@@ -405,8 +406,10 @@ and the Diagram Detail can arrive as the CSV export as well as the PDF.
 
 - **The Operating Report** has to be pulled with *Unallocated legs* ticked
   (without it there are no *Not allocated* lines) and for depot RM
-  (Mainline) or SG (Metro). `build` checks both off the report and says so
-  on the Review list.
+  (Mainline) or SG (Metro). `build` checks both off the report — the depot
+  off its *Operating Report for:* line (`opDepotOf`), the legs by whether it
+  has a single *Not allocated* line — and says so at the top of the Review
+  list, after a pair for two different days.
 - **Shortages** come from a *Not allocated* line, inside the window the
   report's own print time puts it in: printed 01 00–08 00 is the morning list
   (departures before 09 00), 08 00–18 00 the afternoon list (12 00–18 00).
@@ -527,7 +530,13 @@ Each book's card draws the trains it actually carries and names them
 Previews open by default; a rebuild restores what was open, on which tab, at
 which scroll, and puts focus back where it was. A paste of a whole report is
 held off the page (`holdPastes`) rather than put in the box, which a
-six-megabyte Diagram Detail once took the browser down with. The
+six-megabyte Diagram Detail once took the browser down with; the box shows a
+note saying what it holds instead (`setBox`), which wraps to the box
+(`showHeld`) although the paste boxes themselves do not wrap, so a report's
+lines stay one to a line. Every paste box on every tab is laid out the same
+way (`.paste-pair`, `.paste-fld` in `styles.css`): two equal columns, one on
+a phone, every box the same height, and each box's name on a row of its own
+(a CSS subgrid) so boxes side by side start level. The
 **shortages** and **berth-request** panels build no book, so they have
 closures of their own: they take their own reports, keep their own paste
 boxes, and write a list rather than a workbook.

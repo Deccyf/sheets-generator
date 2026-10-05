@@ -40,7 +40,7 @@ has five tabs:
 | **Weekday · Mon – Fri** | The *Diagram Summary* and *Diagram Detail* for the date — from Genius as PDFs or CSVs, or Integrale's two CSVs | A book for each fleet for that day |
 | **Weekend · Sat & Sun** | The weekend *diagram prints* Word document, plus any reissues | A book for each fleet for that day |
 | **Base diagrams** | The base diagram prints for a timetable change — FX, FO, SO and SUN | A book for each fleet covering a whole week |
-| **Shortages & variations** | The *Operating Report* and the *Diagram Detail* | The controller's list of what is short or the wrong length — not a book |
+| **Shortages & variations** | The *Operating Report* (Unallocated legs ticked, depot RM or SG) and the *Diagram Detail* | The controller's morning or afternoon list of what is short or the wrong length — not a book |
 | **Berth requests** | The *Maintenance Plan* tab and the day's reports | A suggested berth request on each line of the plan — not a book, and experimental |
 
 The last two are for the **Mainline and Metro fleets only**, not the High
@@ -203,8 +203,9 @@ text and CSV saves all work. No Genius reports are needed.
 ### For the two list tabs
 
 * **Shortages & variations** — the GENIUS *Operating Report* and the
-  *Diagram Detail* for the same day, PDF or CSV. The *Diagram Summary* as
-  well, if you have it.
+  *Diagram Detail* for the same day, PDF or CSV. Pull the Operating Report
+  with **Unallocated legs** ticked, for depot **RM** (Mainline) or **SG**
+  (Metro). The *Diagram Summary* as well, if you have it.
 * **Berth requests** — tonight's *Allocation Summary* and tomorrow's
   *Diagram Summary* and *Diagram Detail*, PDF or CSV; the *Maintenance Plan*
   tab out of the Mainline Stock Control Document or the Metro Stock Telex;
@@ -273,10 +274,11 @@ books. Worth knowing:
   refused: *"Still needs the Diagram Detail — paste it into the other box, or
   drop the file on the panel above. Either way round works."*
 * **A very big paste** — a whole week's Detail — is held ready to build
-  rather than shown in the box, so the browser stays quick. The box says
-  what it is holding — *"Diagram Detail pasted — 41,210 lines, 5.9 MB —
-  held ready to build, not shown here to keep the page light."* Paste again
-  to replace it, or type in the box to empty it.
+  rather than shown in the box, so the browser stays quick. The box turns
+  green and says what it is holding — *"Diagram Detail pasted — 41,210
+  lines, 5.9 MB. Held ready to build; not shown here, to keep the page
+  light."* Paste again to replace it, or type in the box to empty it. This
+  works the same in every paste box, on every tab.
 * **Can't paste at all?** Drag the selected rows out of Excel or Notepad
   straight into the box, or drag the CSV file itself into the box — it is
   read in without being opened.
@@ -696,8 +698,8 @@ under the drop zone. Open each report's CSV in Notepad or Excel, press
 **Diagram Detail**, and **Diagram Summary** if you have it — then click
 **Read the pasted reports**. Each box is read by what is in it, so a report
 in the wrong box is still read right. A Diagram Detail the size of a whole
-day is held rather than shown, the same as on the weekday tab. PDFs cannot
-be pasted.
+day is held rather than shown — the box turns green and says what it holds,
+the same as on the weekday tab. PDFs cannot be pasted.
 
 What it lists:
 
@@ -735,8 +737,22 @@ The place codes on this list are the **roads** — `AFDS`, `AFUS`, `DVPS`,
 `GPUS` — not the berthing books' station codes, because a discrepancy is
 worked off a road. A plain station is named by its three-letter code — Deal
 is `DEA`, Dartford `DFD`. A siding or signal the list has no code for shows
-as `???`, and the Review list names it in full so the code can be added. *What this list is working from*, at the foot of the
-tab, sets out every rule.
+as `???`, and the Review list names it in full so the code can be added.
+
+**The Review list** under the list says when something about the reports
+means the list cannot be trusted as it stands:
+
+* the Operating Report and the Diagram Detail are for **different days**;
+* the Operating Report was pulled for a depot other than **RM** or **SG**;
+* the Operating Report has **no Not allocated lines** — pulled without
+  **Unallocated legs** ticked, or a day with nothing short at all;
+* the report was printed **after 18:00**, or its print time could not be
+  read, so no shortages were raised until you pick **morning** or
+  **afternoon** under **Shortage list**;
+* a place the list has no code for, shown as `???`.
+
+*What this list is working from*, at the foot of the tab, sets out every
+rule.
 
 ---
 
