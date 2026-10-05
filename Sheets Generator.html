@@ -572,7 +572,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.33.1</b> · 5 October 2026</span>
+      <span class="ver">Version <b>3.34.0</b> · 5 October 2026</span>
     </div>
   </header>
 
@@ -1159,6 +1159,8 @@
         Variations grouped by which way round</label>
       <label><input type="checkbox" id="svramarr" autocomplete="off">
         Arrival times on Ramsgate only</label>
+      <label><input type="checkbox" id="svhideswaps" autocomplete="off">
+        Leave off swaps that cancel out</label>
       <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
         aria-controls="svoptshint">What each does</button>
       <span class="opts-hint">Each option changes the list on screen, and
@@ -1186,6 +1188,12 @@
         other, gets its own block between them.</p>
       <p><b>Arrival times on Ramsgate only</b> — shows <code>(ARR …)</code>
         only for workings that end at Ramsgate, station or depot.</p>
+      <p><b>Leave off swaps that cancel out</b> — leaves off a 375/9 on a
+        375 diagram and a 375 on a 375/9 diagram when both end on the same
+        working: one train, with the two diagrams&rsquo; units the other way
+        round, like RM047 and RM913 on the 1G87 17 11. Two 375/9s and one
+        375 on a working leave one 375/9 listed. The status line says how
+        many pairs were left off.</p>
     </div>
 
     <pre class="svout" id="svout" hidden></pre>
@@ -1234,7 +1242,9 @@
           and a 4-car that have simply swapped between two diagrams on one
           working read as <code>3 CAR WRONG END</code>; a reciprocal
           375 / 375-9 swap on one working is listed as <b>both</b> halves,
-          because the swap still has to be undone; a 377 on an RM diagram or
+          because the swap still has to be undone &mdash; unless <b>Leave off
+          swaps that cancel out</b> is ticked, which leaves the pair off and
+          counts it on the status line; a 377 on an RM diagram or
           a 375 on a GT one is paired when the diagrams start together.</p>
         <p><b>A 3-car in the wrong place is not a length difference.</b> Where
           the cars are all there and only their order is wrong, it reads
@@ -1892,7 +1902,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.33.1
+      works without an internet connection. Version 3.34.0
       &middot; 5 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -11088,13 +11098,18 @@ function byPlace(normal) {
   }
   return out;
 }
-function byWhichWayRound(normal) {
+/* the working a variation ends on: two that end on the same one end on one train */
+function byEndingWorking(normal) {
   const byWorking=new Map();
   for(const n of normal){
     const k=(n.end.hcFull||"")+"|"+n.end.dep;
     if(!byWorking.has(k))byWorking.set(k,[]);
     byWorking.get(k).push(n);
   }
+  return byWorking;
+}
+function byWhichWayRound(normal) {
+  const byWorking=byEndingWorking(normal);
   const bothWays=new Set();
   for(const xs of byWorking.values())
     if(new Set(xs.map(x=>x.label)).size>1) for(const x of xs) bothWays.add(x);
@@ -11334,8 +11349,27 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end,opts)});
   }
 
+  /* ...but a pair that cancels can be left off when it is asked for. A
+     375/9 on a 375 diagram and a 375 on a 375/9 diagram that end on the
+     same working are one train with the two diagrams' units the other way
+     round - RM047 and RM913 on the 1G87 17 11 CST - RAM - and to a reader
+     who only wants what is short of a 375/9 tonight, they cancel. Paired
+     off one for one, in diagram order, so two 9s and one plain 375 on a
+     working leave one 9 listed. Counted, so the page can say how many were
+     left off. */
+  let swapsLeftOff=0, shown=normal;
+  if(opts.hideSwaps){
+    const gone=new Set(), diag=(a,b)=>a.diag.localeCompare(b.diag);
+    for(const xs of byEndingWorking(normal).values()){
+      const nines=xs.filter(x=>x.label==="375/9 V 375").sort(diag);
+      const plain=xs.filter(x=>x.label==="375 V 375/9").sort(diag);
+      for(let i=0;i<Math.min(nines.length,plain.length);i++){ gone.add(nines[i]); gone.add(plain[i]); swapsLeftOff++; }
+    }
+    shown=normal.filter(n=>!gone.has(n));
+  }
+
   const normalBlocks = opts.fleetOrder==="family"
-    ? byWhichWayRound(normal) : byPlace(normal);
+    ? byWhichWayRound(shown) : byPlace(shown);
 
   topCases.sort((a,b)=>a.sort-b.sort);
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
@@ -11347,7 +11381,8 @@ function buildDiscrepancies(op, detail, posAt, opts) {
   const blocks=topCases.map(c=>c.lines);
   if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
   return {text,lettered:letterList(blocks,opts.measure,opts.width),letteredHtml:letterHtml(blocks,opts.measure,opts.width),
-          reviews:unique(reviews),window:win,counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
+          reviews:unique(reviews),window:win,swapsLeftOff,
+          counts:{top:topCases.length,fleet:shown.length,total:topCases.length+shown.length}};
 }
 
 /* ---------- the Diagram Detail as the CSV export ----------
@@ -16746,7 +16781,8 @@ function decodeText(u8) {
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
   const lettered = $("#svlettered"), byFamily = $("#svbyfamily"),
-        ramArr = $("#svramarr"), svWindow = $("#svwindow");
+        ramArr = $("#svramarr"), svWindow = $("#svwindow"),
+        hideSwaps = $("#svhideswaps");
   const svHelp = $("#svoptshelp"), svHint = $("#svoptshint");
   if (svHelp && svHint) svHelp.addEventListener("click", () => {
     const open = svHint.hidden;
@@ -16772,6 +16808,7 @@ function decodeText(u8) {
     fleetOrder: byFamily && byFamily.checked ? "family" : "place",
     arr: ramArr && ramArr.checked ? "ram" : "all",
     window: svWindow && svWindow.value || undefined,   // unset: by the print time
+    hideSwaps: !!(hideSwaps && hideSwaps.checked),
     measure: measure || undefined, width: measure ? BOX_PX : undefined,
   });
   /* The Diagram Summary is optional, and only one thing is read off it: the
@@ -16835,6 +16872,8 @@ function decodeText(u8) {
       : "No shortages raised" + at + " — pick morning or afternoon under Shortage list, in Options · ";
     say(which + n("top", "shortage or length case", "shortage and length cases") +
         " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
+        (res.swapsLeftOff ? " (" + res.swapsLeftOff + (res.swapsLeftOff === 1
+          ? " swap that cancels out left off)" : " swaps that cancel out left off)") : "") +
         ". Look them over, then copy or save.", "go");
   }
   async function take(files) {
@@ -16964,7 +17003,7 @@ function decodeText(u8) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  for (const box of [svWindow, lettered, byFamily, ramArr]) if (box)
+  for (const box of [svWindow, lettered, byFamily, ramArr, hideSwaps]) if (box)
     box.addEventListener("change", () => { if (held.op && held.det) render(); });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = ""; source = null;

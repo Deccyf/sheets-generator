@@ -296,6 +296,28 @@ test("a reciprocal 375 / 375-9 swap on one working is listed, both halves", () =
     "the one carrying the 9: " + res.text);
   assert.match(res.text, /^375 V 375\/9 \(RM904\) ENDS 2T10 08 10 TON - CHX/m,
     "and the one missing it");
+  assert.equal(res.swapsLeftOff, 0);
+});
+
+test("swaps that cancel out can be left off, and are counted", () => {
+  /* the other reading - RM047 and RM913 on the 1G87, as a reader who wants
+     only what is short of a 375/9 sees them: one train, both units there */
+  const opts = { hideSwaps: true };
+  const res = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES), undefined, opts);
+  assert.ok(!/RM004|RM904/.test(res.text), "the pair is left off: " + res.text);
+  assert.match(res.text, /^375\/9 V 375 \(RM002\)/m, "a variation with no partner stays");
+  assert.equal(res.swapsLeftOff, 1);
+  const all = S().run(txt(OPERATING_LINES), txt(SHORTAGE_DETAIL_LINES));
+  assert.equal(res.counts.fleet, all.counts.fleet - 2, "the fleet count is what is shown");
+  // paired one for one: a second 375/9 on the 2T10 has no partner, and stays
+  const third = OPERATING_LINES.concat(
+    "RM005  18/09/26  TONBDG  08:10  09:30  CHRX  2T10BA  RM  375/6  375/9  375920  NE  Fleet mismatch.");
+  const det = SHORTAGE_DETAIL_LINES.concat("Diagram RM 0 0 5 On 18/09/26",
+    "TONBDG  Tonbridge  08:10  2T10BA", "CHRX  London Charing X  09:30");
+  const odd = S().run(txt(third), txt(det), undefined, opts);
+  assert.equal(odd.swapsLeftOff, 1);
+  assert.match(odd.text, /^375\/9 V 375 \(RM005\) ENDS 2T10/m, odd.text);
+  assert.ok(!/RM004|RM904/.test(odd.text), "the first pair, in diagram order, still goes");
 });
 
 test("a diagram that runs past midnight ends where it really ends", () => {

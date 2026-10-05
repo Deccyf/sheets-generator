@@ -4,6 +4,23 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.34.0 — 5 October 2026 — swaps that cancel out, left off on request
+
+A 375/9 on a 375 diagram and a 375 on a 375/9 diagram that end on the same
+working are one train with its two diagrams' units the other way round —
+RM047 and RM913 on the 1G87 17 11 CST - RAM. Since the list was first held
+against the depot's sheets it has shown both halves, because the swap still
+has to be undone, and it still does by default. But to a reader who only
+wants what is short, the two cancel, and listing them is noise.
+
+A new option, **Leave off swaps that cancel out**, leaves such pairs off.
+They are paired one for one on each ending working, in diagram order, so two
+375/9s and one 375 on a working leave one 375/9 listed. The status line says
+how many pairs went (*"31 fleet mismatches (4 swaps that cancel out left
+off)"* on the 05/10 report), and the fleet count is what is on screen. The
+README had said reciprocal swaps "cancel" ever since they stopped doing so;
+it now says what happens.
+
 ## 3.33.1 — 5 October 2026 — pulling the Operating Report, and the paste boxes
 
 - **How to pull the Operating Report.** Shortages & variations now says, in

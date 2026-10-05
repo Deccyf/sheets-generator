@@ -423,7 +423,10 @@ and the Diagram Detail can arrive as the CSV export as well as the PDF.
   for the whole of its life.
 - **Variations** are a unit of the wrong length, family or class against the
   plan. A 3-car and a 4-car swapped between two diagrams on one working read
-  as `3 CAR WRONG END`; reciprocal 375 / 375-9 swaps cancel; a 377 on an RM
+  as `3 CAR WRONG END`; a reciprocal 375 / 375-9 swap ending on one working
+  lists both halves, together, unless *Leave off swaps that cancel out* is
+  ticked (`opts.hideSwaps`: paired one for one, in diagram order, and
+  counted as `swapsLeftOff`); a 377 on an RM
   diagram is paired with its mate when the diagrams start together.
 - **The trace** is the part no other road has: legs shared between diagrams
   are stitched into one working with a union-find, so a variation is followed

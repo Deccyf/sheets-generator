@@ -742,13 +742,18 @@ function byPlace(normal) {
   }
   return out;
 }
-function byWhichWayRound(normal) {
+/* the working a variation ends on: two that end on the same one end on one train */
+function byEndingWorking(normal) {
   const byWorking=new Map();
   for(const n of normal){
     const k=(n.end.hcFull||"")+"|"+n.end.dep;
     if(!byWorking.has(k))byWorking.set(k,[]);
     byWorking.get(k).push(n);
   }
+  return byWorking;
+}
+function byWhichWayRound(normal) {
+  const byWorking=byEndingWorking(normal);
   const bothWays=new Set();
   for(const xs of byWorking.values())
     if(new Set(xs.map(x=>x.label)).size>1) for(const x of xs) bothWays.add(x);
@@ -988,8 +993,27 @@ function buildDiscrepancies(op, detail, posAt, opts) {
     normal.push({diag:f.diag,end,label,line:headingWithEnd(label,f.diag,end,opts)});
   }
 
+  /* ...but a pair that cancels can be left off when it is asked for. A
+     375/9 on a 375 diagram and a 375 on a 375/9 diagram that end on the
+     same working are one train with the two diagrams' units the other way
+     round - RM047 and RM913 on the 1G87 17 11 CST - RAM - and to a reader
+     who only wants what is short of a 375/9 tonight, they cancel. Paired
+     off one for one, in diagram order, so two 9s and one plain 375 on a
+     working leave one 9 listed. Counted, so the page can say how many were
+     left off. */
+  let swapsLeftOff=0, shown=normal;
+  if(opts.hideSwaps){
+    const gone=new Set(), diag=(a,b)=>a.diag.localeCompare(b.diag);
+    for(const xs of byEndingWorking(normal).values()){
+      const nines=xs.filter(x=>x.label==="375/9 V 375").sort(diag);
+      const plain=xs.filter(x=>x.label==="375 V 375/9").sort(diag);
+      for(let i=0;i<Math.min(nines.length,plain.length);i++){ gone.add(nines[i]); gone.add(plain[i]); swapsLeftOff++; }
+    }
+    shown=normal.filter(n=>!gone.has(n));
+  }
+
   const normalBlocks = opts.fleetOrder==="family"
-    ? byWhichWayRound(normal) : byPlace(normal);
+    ? byWhichWayRound(shown) : byPlace(shown);
 
   topCases.sort((a,b)=>a.sort-b.sort);
   const topText=topCases.map(c=>c.lines.join("\n")).join("\n\n");
@@ -1001,7 +1025,8 @@ function buildDiscrepancies(op, detail, posAt, opts) {
   const blocks=topCases.map(c=>c.lines);
   if(normalBlocks.length)blocks.push(normalBlocks.join("\n\n").split("\n"));
   return {text,lettered:letterList(blocks,opts.measure,opts.width),letteredHtml:letterHtml(blocks,opts.measure,opts.width),
-          reviews:unique(reviews),window:win,counts:{top:topCases.length,fleet:normal.length,total:topCases.length+normal.length}};
+          reviews:unique(reviews),window:win,swapsLeftOff,
+          counts:{top:topCases.length,fleet:shown.length,total:topCases.length+shown.length}};
 }
 
 /* ---------- the Diagram Detail as the CSV export ----------

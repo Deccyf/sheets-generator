@@ -616,6 +616,8 @@
         Variations grouped by which way round</label>
       <label><input type="checkbox" id="svramarr" autocomplete="off">
         Arrival times on Ramsgate only</label>
+      <label><input type="checkbox" id="svhideswaps" autocomplete="off">
+        Leave off swaps that cancel out</label>
       <button type="button" class="linkish" id="svoptshelp" aria-expanded="false"
         aria-controls="svoptshint">What each does</button>
       <span class="opts-hint">Each option changes the list on screen, and
@@ -643,6 +645,12 @@
         other, gets its own block between them.</p>
       <p><b>Arrival times on Ramsgate only</b> — shows <code>(ARR …)</code>
         only for workings that end at Ramsgate, station or depot.</p>
+      <p><b>Leave off swaps that cancel out</b> — leaves off a 375/9 on a
+        375 diagram and a 375 on a 375/9 diagram when both end on the same
+        working: one train, with the two diagrams&rsquo; units the other way
+        round, like RM047 and RM913 on the 1G87 17 11. Two 375/9s and one
+        375 on a working leave one 375/9 listed. The status line says how
+        many pairs were left off.</p>
     </div>
 
     <pre class="svout" id="svout" hidden></pre>
@@ -691,7 +699,9 @@
           and a 4-car that have simply swapped between two diagrams on one
           working read as <code>3 CAR WRONG END</code>; a reciprocal
           375 / 375-9 swap on one working is listed as <b>both</b> halves,
-          because the swap still has to be undone; a 377 on an RM diagram or
+          because the swap still has to be undone &mdash; unless <b>Leave off
+          swaps that cancel out</b> is ticked, which leaves the pair off and
+          counts it on the status line; a 377 on an RM diagram or
           a 375 on a GT one is paired when the diagrams start together.</p>
         <p><b>A 3-car in the wrong place is not a length difference.</b> Where
           the cars are all there and only their order is wrong, it reads

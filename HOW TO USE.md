@@ -732,6 +732,12 @@ The **Options** row changes the list on screen and what you copy or save:
   unit ends up.
 * **Arrival times on Ramsgate only** — shows `(ARR …)` only for workings that
   end at Ramsgate.
+* **Leave off swaps that cancel out** — leaves off a 375/9 on a 375 diagram
+  and a 375 on a 375/9 diagram when both end on the same working, such as
+  RM047 and RM913 on the 1G87 17 11 CST - RAM. It is one train with the two
+  diagrams' units the other way round, so nothing is short. Leave it
+  unticked when the swap still needs undoing. The status line says how many
+  pairs were left off.
 
 The place codes on this list are the **roads** — `AFDS`, `AFUS`, `DVPS`,
 `GPUS` — not the berthing books' station codes, because a discrepancy is

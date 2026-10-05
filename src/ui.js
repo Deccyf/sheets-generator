@@ -2079,7 +2079,8 @@ function decodeText(u8) {
   const bar = $("#svbar"), out = $("#svout"), note = $("#svnote");
   const revWrap = $("#svreviewwrap"), rev = $("#svreview");
   const lettered = $("#svlettered"), byFamily = $("#svbyfamily"),
-        ramArr = $("#svramarr"), svWindow = $("#svwindow");
+        ramArr = $("#svramarr"), svWindow = $("#svwindow"),
+        hideSwaps = $("#svhideswaps");
   const svHelp = $("#svoptshelp"), svHint = $("#svoptshint");
   if (svHelp && svHint) svHelp.addEventListener("click", () => {
     const open = svHint.hidden;
@@ -2105,6 +2106,7 @@ function decodeText(u8) {
     fleetOrder: byFamily && byFamily.checked ? "family" : "place",
     arr: ramArr && ramArr.checked ? "ram" : "all",
     window: svWindow && svWindow.value || undefined,   // unset: by the print time
+    hideSwaps: !!(hideSwaps && hideSwaps.checked),
     measure: measure || undefined, width: measure ? BOX_PX : undefined,
   });
   /* The Diagram Summary is optional, and only one thing is read off it: the
@@ -2168,6 +2170,8 @@ function decodeText(u8) {
       : "No shortages raised" + at + " — pick morning or afternoon under Shortage list, in Options · ";
     say(which + n("top", "shortage or length case", "shortage and length cases") +
         " · " + n("fleet", "fleet mismatch", "fleet mismatches") +
+        (res.swapsLeftOff ? " (" + res.swapsLeftOff + (res.swapsLeftOff === 1
+          ? " swap that cancels out left off)" : " swaps that cancel out left off)") : "") +
         ". Look them over, then copy or save.", "go");
   }
   async function take(files) {
@@ -2297,7 +2301,7 @@ function decodeText(u8) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   });
-  for (const box of [svWindow, lettered, byFamily, ramArr]) if (box)
+  for (const box of [svWindow, lettered, byFamily, ramArr, hideSwaps]) if (box)
     box.addEventListener("change", () => { if (held.op && held.det) render(); });
   if ($("#svclear")) $("#svclear").addEventListener("click", () => {
     held.op = held.det = held.sum = null; text = ""; source = null;
