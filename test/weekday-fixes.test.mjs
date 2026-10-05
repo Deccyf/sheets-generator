@@ -496,3 +496,28 @@ test("12. a unit that attaches and stays out carries the rest of the day's miles
   assert.equal(g117.length, 1, "117 prints its one departure: " + shown);
   assert.equal(g117[0].mg, 84, "117 runs its own day: " + shown);
 });
+
+test("a unit put away at Grove Park depot reads GP in column D, though its shunt across does not print", async () => {
+  /* RM021/022 on the 05/10 reports: out of Faversham at 06 13, into
+     Grove Park CSD at 10 21, shunted across to the Up sidings at 14 10 -
+     inside the depot fence, so that move is left off - and out on the 5F34
+     at 15 18. Column D on the Faversham row was blank; the depot's sheet
+     says GP, where the unit is put away. The miles still run to the row
+     that prints. */
+  const { geniusPairCsv } = await import("./helpers/synth.mjs");
+  const st = (code, arr, dep, hc, ev) => ({ code, arr, dep, hc, ev });
+  const day = ["RM021", "RM022"].map((code, i) => ({ code, units: "37560" + (i + 1) + ".", pos: i + 1,
+    stops: [st("FAVRUPS", "", "06:02", "5G65"), st("FAVRSHM", "06:04", "06:13", "1G65"),
+            st("CANONST", "09:36", "09:59", "5J73"), st("GRVPCSD", "10:21", "14:10", "5J01", "#"),
+            st("GRVPKUS", "14:34", "15:18", "5F34", "#"), st("CHRX", "15:48", "15:59", "1U38"),
+            st("ASHFEBS", "17:30", "", "")] }));
+  const p = geniusPairCsv(day);
+  const r = await built().GENIUS.build([p.summary, p.detail]);
+  const secs = r.secsByDay[Object.keys(r.labels)[0]];
+  const fav = (secs.get("FAVERSHAM") || [])[0];
+  assert.ok(fav, "the Faversham departure prints: " + [...secs.keys()].join(", "));
+  assert.equal(fav.units.map(u => u.am).join(","), "GP,GP", "column D says where it is put away");
+  const gp = (secs.get("GROVE PARK") || []).map(e => e.headcode);
+  assert.ok(gp.some(h => h && h.startsWith("5F34")), "the 15 18 prints: " + gp.join(", "));
+  assert.ok(!gp.some(h => h && h.startsWith("5J01")), "the shunt across the depot does not: " + gp.join(", "));
+});

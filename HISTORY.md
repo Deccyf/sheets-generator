@@ -4,6 +4,24 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.34.1 — 5 October 2026 — GP in column D at Faversham
+
+RM021/022 leave Faversham at 06 13, go into Grove Park CSD at 10 21, are
+shunted across to the Up sidings at 14 10 and go out on the 5F34 at 15 18.
+The 14 10 never leaves the depot fence, so it is rightly not a line on the
+book. But column D only names a berth whose own departure prints, and with
+that move left off it was blanked — so the Faversham row said nothing where
+the depot's sheet says GP. A stint whose only move is a shunt inside the
+Grove Park depot now still counts as the place the unit is put away, for
+column D only: the miles (MG) still run to the next line that prints.
+
+On the 05/10, 18/09 and 21/09 reports that fills Faversham's D for 021/022
+and, on 18/09, West Marina's for 058 — which now reads GP like 057, on the
+same train — and changes nothing else. The weekend and base-diagram books
+carry the same rule under the prints' names for the depot roads; the Week
+25 and Week 27 prints have no such shape and are unchanged.
+`test/weekday-fixes.test.mjs` holds the case.
+
 ## 3.34.0 — 5 October 2026 — swaps that cancel out, left off on request
 
 A 375/9 on a 375 diagram and a 375 on a 375/9 diagram that end on the same

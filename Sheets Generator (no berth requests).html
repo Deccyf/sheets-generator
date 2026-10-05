@@ -572,7 +572,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.34.0</b> · 5 October 2026</span>
+      <span class="ver">Version <b>3.34.1</b> · 5 October 2026</span>
     </div>
   </header>
 
@@ -1277,7 +1277,7 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.34.0
+      works without an internet connection. Version 3.34.1
       &middot; 5 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
@@ -2716,7 +2716,9 @@ const SHEETS_RULES = (() => {
         "A run out to a carriage washer and straight back to the road it " +
         "came from is not a berthing.",
         inBook("GROVE PARK")
-          ? "A move that never leaves the Grove Park depot fence is not a line."
+          ? "A move that never leaves the Grove Park depot fence is not a line " +
+            "— but the unit is still put away there, so the line that takes " +
+            "it in reads GP in its AM column (RM021/022 off Faversham)."
           : null,
         "A unit standing in a platform for an hour or more has arguably " +
         "berthed there. It gets a line where the report shunts it on the " +
@@ -6379,6 +6381,10 @@ const SHORT_BERTH = 20;   // a stop shorter than this at an unmarked,
                           // as a berth, but goes on the report to be checked
 const GAP_WARN = 60;
 const ATT = ["ATTACH","ATTTT"], DET = ["DETACH","DETTT"];
+/* The roads inside the Grove Park depot fence, as the prints name them -
+   GP_DEPOT in genius.js under its tiplocs. Grove Par, the station, is not one. */
+const GP_DEPOT_PRINT = new Set(["G Pk Dep", "G Pk DnSd", "G Pk UpSd",
+                                "Gvpuphs", "GrPkDCtEE"]);
 /* The prints reader lives in src/prints-read.js: the berthing sheets and
    the fleet analysis both open the same files, so they share one reader. */
 const {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
@@ -6913,9 +6919,18 @@ function generate(diags, prof, stabling, warn){
   const live = new Set();
   for (const e of entries.values()) if (!e.suppress)
     for (const x of e.blocks) live.add(x.dk + "|" + x.si);
+  /* ...or at a berth the unit really is put away on, whose only move is a
+     shunt left off inside the Grove Park depot fence - the weekday book's
+     rule (genius.js), for the same RM021/022 shape: into the depot, across
+     to the Up sidings, out on the 5F34. D says GP, where it is put away. */
+  const putAway = new Set(live);
+  for (const e of entries.values())
+    if (e.suppress && GP_DEPOT_PRINT.has(e.dest_loc) &&
+        Array.from(e.origins).every(o => GP_DEPOT_PRINT.has(o)))
+      for (const x of e.blocks) putAway.add(x.dk + "|" + x.si);
   for (const e of entries.values()){
     for (const x of e.blocks)
-      if (x.D && x.later && !live.has(x.dk + "|" + (x.si+1))) x.D = "";
+      if (x.D && x.later && !putAway.has(x.dk + "|" + (x.si+1))) x.D = "";
     const pairs = new Set(e.blocks.map(x => x.D + "\u0000" + x.E));
     e.splits_pm = (!e.splits && e.blocks.length > 1 && pairs.size > 1);
     if (e.suppress)
@@ -8948,6 +8963,15 @@ const GENIUS = (() => {
     const live = new Set();
     for (const e of entries.values()) if (!e.suppress)
       for (const x of e.blocks) live.add(x.diag + "|" + x.si);
+    /* ...or at a berth the unit really is put away on, whose only move is
+       left off as a shunt inside the Grove Park depot fence. RM021/022 leave
+       Faversham at 06 13 and go into Grove Park CSD at 10 22; the 14 10
+       across to the Up sidings never leaves the depot, so it does not print,
+       and D was blanked with it - where the depot's sheet says GP, because
+       that is where the unit is put away. */
+    const putAway = new Set(live);
+    for (const e of entries.values()) if (e.gpShunt)
+      for (const x of e.blocks) putAway.add(x.diag + "|" + x.si);
     /* MG runs to wherever the unit next berths ON THE SHEET, which is not
        always the end of its own stint. GT116 leaves Ashford at 05+31, is
        back on the East sidings at 06 59 and goes out again at 07 46 - but
@@ -8982,7 +9006,7 @@ const GENIUS = (() => {
     }
     for (const e of entries.values()) {
       for (const x of e.blocks)
-        if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";
+        if (x.D && x.later && !putAway.has(x.diag + "|" + (x.si + 1))) x.D = "";
       if (e.suppress)
         warn.push({ sec: e.sec,
                   msg: "Left off — " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +

@@ -116,6 +116,10 @@ const SHORT_BERTH = 20;   // a stop shorter than this at an unmarked,
                           // as a berth, but goes on the report to be checked
 const GAP_WARN = 60;
 const ATT = ["ATTACH","ATTTT"], DET = ["DETACH","DETTT"];
+/* The roads inside the Grove Park depot fence, as the prints name them -
+   GP_DEPOT in genius.js under its tiplocs. Grove Par, the station, is not one. */
+const GP_DEPOT_PRINT = new Set(["G Pk Dep", "G Pk DnSd", "G Pk UpSd",
+                                "Gvpuphs", "GrPkDCtEE"]);
 /* The prints reader lives in src/prints-read.js: the berthing sheets and
    the fleet analysis both open the same files, so they share one reader. */
 const {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
@@ -650,9 +654,18 @@ function generate(diags, prof, stabling, warn){
   const live = new Set();
   for (const e of entries.values()) if (!e.suppress)
     for (const x of e.blocks) live.add(x.dk + "|" + x.si);
+  /* ...or at a berth the unit really is put away on, whose only move is a
+     shunt left off inside the Grove Park depot fence - the weekday book's
+     rule (genius.js), for the same RM021/022 shape: into the depot, across
+     to the Up sidings, out on the 5F34. D says GP, where it is put away. */
+  const putAway = new Set(live);
+  for (const e of entries.values())
+    if (e.suppress && GP_DEPOT_PRINT.has(e.dest_loc) &&
+        Array.from(e.origins).every(o => GP_DEPOT_PRINT.has(o)))
+      for (const x of e.blocks) putAway.add(x.dk + "|" + x.si);
   for (const e of entries.values()){
     for (const x of e.blocks)
-      if (x.D && x.later && !live.has(x.dk + "|" + (x.si+1))) x.D = "";
+      if (x.D && x.later && !putAway.has(x.dk + "|" + (x.si+1))) x.D = "";
     const pairs = new Set(e.blocks.map(x => x.D + "\u0000" + x.E));
     e.splits_pm = (!e.splits && e.blocks.length > 1 && pairs.size > 1);
     if (e.suppress)

@@ -1232,6 +1232,15 @@ const GENIUS = (() => {
     const live = new Set();
     for (const e of entries.values()) if (!e.suppress)
       for (const x of e.blocks) live.add(x.diag + "|" + x.si);
+    /* ...or at a berth the unit really is put away on, whose only move is
+       left off as a shunt inside the Grove Park depot fence. RM021/022 leave
+       Faversham at 06 13 and go into Grove Park CSD at 10 22; the 14 10
+       across to the Up sidings never leaves the depot, so it does not print,
+       and D was blanked with it - where the depot's sheet says GP, because
+       that is where the unit is put away. */
+    const putAway = new Set(live);
+    for (const e of entries.values()) if (e.gpShunt)
+      for (const x of e.blocks) putAway.add(x.diag + "|" + x.si);
     /* MG runs to wherever the unit next berths ON THE SHEET, which is not
        always the end of its own stint. GT116 leaves Ashford at 05+31, is
        back on the East sidings at 06 59 and goes out again at 07 46 - but
@@ -1266,7 +1275,7 @@ const GENIUS = (() => {
     }
     for (const e of entries.values()) {
       for (const x of e.blocks)
-        if (x.D && x.later && !live.has(x.diag + "|" + (x.si + 1))) x.D = "";
+        if (x.D && x.later && !putAway.has(x.diag + "|" + (x.si + 1))) x.D = "";
       if (e.suppress)
         warn.push({ sec: e.sec,
                   msg: "Left off — " + e.sec + " " + fmtT(e.tmin, e.hc) + " (" +

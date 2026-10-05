@@ -434,7 +434,9 @@ const SHEETS_RULES = (() => {
         "A run out to a carriage washer and straight back to the road it " +
         "came from is not a berthing.",
         inBook("GROVE PARK")
-          ? "A move that never leaves the Grove Park depot fence is not a line."
+          ? "A move that never leaves the Grove Park depot fence is not a line " +
+            "— but the unit is still put away there, so the line that takes " +
+            "it in reads GP in its AM column (RM021/022 off Faversham)."
           : null,
         "A unit standing in a platform for an hour or more has arguably " +
         "berthed there. It gets a line where the report shunts it on the " +
