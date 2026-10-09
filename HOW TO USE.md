@@ -115,6 +115,12 @@ diagram prints — sent to the Weekend panel.*
 
 ## Getting the paperwork
 
+**Save everything on the work PC.** A file saved from Outlook, or any other
+work app, on a phone is locked by the organisation's app protection, and only
+that phone can open it. Drop one on the page and it says *"“…” is locked by
+your organisation's app protection …"*. Save the same attachment from Outlook
+on the PC and drop that copy instead.
+
 ### From Genius
 
 > **Check this one setting first**
@@ -331,6 +337,18 @@ older copy of the page listed the train the unit turns round onto when it
 gets back (the 2L15 08 02) in its place. If you see that, you have an old
 copy: use this one.
 
+**A unit put away in a platform.** The prints mark a unit being put away
+with a `#`. That is usually in a siding, but on an engineering-works weekend
+a unit can be stabled in a platform — at Victoria or Hastings, say. That
+unit's departure out of the platform gets a line of its own. Every other
+train calling there is still a turnround, and is not listed. The Review tab
+names each one under *Notes*: *"Vic (E): shunted (#) on 2 diagrams (…), but
+trains leave it in passenger service, so only those stops are treated as a
+berth there — not every call at it."* An older copy of the page treated the
+whole station as a siding for the day, so every departure from it was listed
+and nearly every unit read VIC in both columns — the 10/11 October sheets. If
+you see that, you have an old copy: use this one.
+
 ### Pasting the prints instead
 
 Click **Can't get the prints onto this machine? Paste them instead**:
@@ -377,8 +395,9 @@ books from the base diagram prints, ready before the first day runs.
 The 395 base sheets also carry a table of the AZ1 and AZ9 diagrams by where
 they start and end the day, and note every AZ1 diagram *Modded unit only*.
 
-Cannon Street rounders are listed on their first departure here too, the
-same as on the weekend.
+Cannon Street rounders are listed on their first departure here too, and a
+unit put away in a platform gets a line of its own without the rest of the
+station following it, the same as on the weekend.
 
 Base diagrams dropped on the Weekend tab are sent here, and a day's weekend
 prints dropped here are sent there — *“…” is base diagrams for a timetable —
@@ -610,7 +629,8 @@ only its own items, grouped by kind:
   its own heading, in alphabetical order) or a name the page had to read as
   something else.
 * **Notes** — everything else: a diagram in one report but not the other, a
-  Summary exported without the Genius setting, a date left out.
+  Summary exported without the Genius setting, a date left out, a unit put
+  away (`#`) in a station platform in the weekend prints.
 
 A clean list is normal on a straightforward day. A long one is not a fault —
 it is the page showing its working.
@@ -835,8 +855,8 @@ on the tab, set out every rule it follows.
 | A train seems to be missing | Read *Left off the sheet* first. If it is not there, note the diagram number and report it. |
 | *"That file is damaged or isn't a Word document. Try re-saving the prints from Word as .docx."* | Open the prints in Word, save as .docx, drop the new file. |
 | *"That isn't the diagram prints. …"* | A text or CSV save whose columns were lost. Save it again, or paste it from Word. |
-| *"… is locked by your organisation's app protection …"* (any tab) | The file was saved from Outlook or another work app on a phone, and is encrypted so only that phone can open it. Save it from Outlook on the work PC and drop that copy instead. |
-| Weekend sheets listing every departure from a station, with nearly every unit ending there | Fixed in 3.34.2. A single `#` (unit put away) on a platform in the prints made that station a siding for every diagram. The Review tab now says *"… shunted (#) on … diagrams … only those stops are treated as a berth there"* when it meets one. |
+| *"… is locked by your organisation's app protection …"* (any tab, and the Diagram Analyser) | The file was saved from Outlook or another work app on a phone, and is encrypted so only that phone can open it. Save it from Outlook on the work PC and drop that copy instead. |
+| Weekend sheets listing every departure from a station, with nearly every unit ending there | An old copy of the page, before 3.34.2. A single `#` (unit put away) in a platform in the prints made that station a siding for every diagram. Use this copy: the unit put away there gets its own line, and the Review tab says *"… shunted (#) on … diagrams … only those stops are treated as a berth there"*. |
 | *"That looks like a reissue on its own — …"* | Drop the full weekend prints with it, or first. |
 | *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
 | *"That pair could not be read: the Diagram Detail has no diagrams in it — …"* (Shortages & variations) | The Diagram Detail was saved or copied without its diagrams — often just its first line. Save the whole report from Genius again, or copy it from the very top, and drop or paste that. |
