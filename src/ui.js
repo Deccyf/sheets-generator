@@ -1195,6 +1195,11 @@ const panels = {};
   }
   async function accept(file) {
     const nm = file.name.toLowerCase();
+    // a copy saved under a phone's app protection opens nowhere but that phone
+    if (SHEETS_PRINTS.isAppProtected(new Uint8Array(await file.slice(0, 16).arrayBuffer()))) {
+      say(SHEETS_PRINTS.appProtectedMsg(file.name), "err");
+      return;
+    }
     if (nm.endsWith(".docx") || nm.endsWith(".doc")) {
       /* the weekend's paperwork, on the weekday zone: sent where it goes */
       say(MSG.sentToWeekend(file.name));
@@ -1562,6 +1567,8 @@ function printsPanel(K) {
       const newDocs = [];
       for (const r of reads) {
         if (r.status !== "fulfilled") { say(r.reason.message, "err"); continue; }
+        // a copy saved under a phone's app protection opens nowhere but that phone
+        if (SHEETS_PRINTS.isAppProtected(r.value.bytes)) { say(SHEETS_PRINTS.appProtectedMsg(r.value.name), "err"); continue; }
         /* a spreadsheet is never the prints, and the zip inside an .xlsx
            made the reader say "no document body inside", which explained
            nothing */
@@ -1946,6 +1953,7 @@ function decodeText(u8) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
       catch (e) { say(MSG.readFailed(f.name, e), "err"); continue; }
+      if (SHEETS_PRINTS.isAppProtected(u8)) { say(SHEETS_PRINTS.appProtectedMsg(f.name), "err"); continue; }
       let txt, data;
       if (/\.pdf$/i.test(f.name)) {
         try { txt = GENIUS.pdfText(u8); } catch (e) { say(MSG.pdfUnreadable(f.name), "err"); continue; }
@@ -2183,6 +2191,7 @@ function decodeText(u8) {
       let u8;
       try { u8 = new Uint8Array(await f.arrayBuffer()); }
       catch (e) { say(MSG.readFailed(f.name, e), "err"); return; }
+      if (SHEETS_PRINTS.isAppProtected(u8)) { say(SHEETS_PRINTS.appProtectedMsg(f.name), "err"); return; }
       let txt;
       if (/\.pdf$/i.test(f.name)) {
         try { txt = GENIUS.pdfText(u8); }

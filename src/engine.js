@@ -1214,12 +1214,37 @@ function run(input, unzipFn, zipFn, opts){
                       " — the books above still use the merged data"]);
     }
   }
-  const learned = new Set();
+  /* A place a unit is shunted at ('#') is learned as somewhere units are
+     put away - but not where trains leave in passenger service. One '#' on
+     a platform used to make the station a siding for the WHOLE day: every
+     call there on every diagram became a berthing, the books listed every
+     departure from it, and nearly every unit "ended" there. That is the
+     shape of the 10/11 October prints - every departure from Hastings and
+     Victoria, everything ending VIC AM and PM - and the Week 27 Saturday
+     prints with one Vic (E) row marked '#' do the same: 82 Mainline lines
+     become 152, and 223 cells read VIC. The '#' still makes its own stop a
+     berthing (berthBoundaries reads it off the stop); it no longer speaks
+     for every other diagram that calls there. */
+  const paxFrom = new Set();
+  for (const v of diags.values())
+    for (const r of v.rows)
+      if (r.loc && r.dep && /^[12]/.test(r.hc || "")) paxFrom.add(r.loc);
+  const learned = new Set(), notLearned = new Map();
   for (const v of diags.values()){
     for (let i = 0; i < v.rows.length; i++)
-      if (v.rows[i].ev === "#")
-        learned.add(v.rows[i].loc || (i > 0 ? v.rows[i-1].loc : ""));
+      if (v.rows[i].ev === "#"){
+        const at = v.rows[i].loc || (i > 0 ? v.rows[i-1].loc : "");
+        if (!at) continue;
+        if (!paxFrom.has(at)){ learned.add(at); continue; }
+        if (!notLearned.has(at)) notLearned.set(at, new Set());
+        notLearned.get(at).add(v.code + v.num);
+      }
   }
+  for (const [at, ds] of notLearned)
+    mergeLines.push(["merge", at + ": shunted (#) on " + plural(ds.size, "diagram") +
+      " (" + Array.from(ds).sort().join(", ") + "), but trains leave it in " +
+      "passenger service, so only " + (ds.size === 1 ? "that stop is" : "those stops are") +
+      " treated as a berth there — not every call at it"]);
   const stabling = new Set(BASE_STABLING);
   for (const x of learned) stabling.add(x);
   for (const x of TRANSIT) stabling.delete(x);

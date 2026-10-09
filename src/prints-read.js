@@ -274,8 +274,25 @@
   /* The prints as a list of lines, from any of the four shapes they arrive
      in. The extension is only a hint; what matters is the first few bytes.
      Throws a message meant for the person at the drop zone. */
+  /* A file saved out of Outlook (or another work app) on a phone under the
+     organisation's app protection is encrypted for that device: it starts
+     "\0MSMAMARPCRYPT" and an AES header where a Word or Excel file starts
+     "PK". Nothing here can open it, and "that isn't the diagram prints"
+     sent the 10/11 October prints round twice before anyone knew why. */
+  const APP_PROTECTED = "MSMAMARPCRYPT";
+  function isAppProtected(b){
+    if (!b || b.length < 1 + APP_PROTECTED.length || b[0] !== 0) return false;
+    for (let i = 0; i < APP_PROTECTED.length; i++)
+      if (b[1 + i] !== APP_PROTECTED.charCodeAt(i)) return false;
+    return true;
+  }
+  const appProtectedMsg = name => (name ? "“" + name + "” is" : "That copy is") +
+    " locked by your organisation's app protection — it was saved from Outlook" +
+    " or another work app on a phone, and only that phone can open it. Save it" +
+    " from Outlook on the work PC and use that copy.";
   function readPrints(bytes, unzip){
     const b = bytes;
+    if (isAppProtected(b)) throw new Error(appProtectedMsg());
     if (isDocxBytes(b)) return readDocx(bytes, unzip);
     if (b[0] === 0xD0 && b[1] === 0xCF && b[2] === 0x11 && b[3] === 0xE0 &&
         b[4] === 0xA1 && b[5] === 0xB1 && b[6] === 0x1A && b[7] === 0xE1)
@@ -391,6 +408,6 @@
     return out;
   }
 
-root.SHEETS_PRINTS = {readPrints, docxParagraphs, docParaSpans, isDocxBytes,
+root.SHEETS_PRINTS = {readPrints, isAppProtected, appProtectedMsg, docxParagraphs, docParaSpans, isDocxBytes,
                       looksLikePrints, printsFromCsv, csvParse, daysOf};
 })(typeof globalThis !== "undefined" ? globalThis : this);

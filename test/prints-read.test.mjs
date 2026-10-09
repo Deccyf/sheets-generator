@@ -77,3 +77,21 @@ test("the prints pasted or saved as text come back as their lines", () => {
                           .join("\r\n");
   assert.deepEqual(arr(read(utf8(csv))), PRINTS_LINES.map(l => l.replace(/\t+$/, "")));
 });
+
+test("a copy locked by a phone's app protection is named as that, not as 'not the prints'", () => {
+  /* The 10/11 October prints reached us saved out of Outlook on a phone:
+     "\0MSMAMARPCRYPT" and an AES header where the Word file's "PK" should
+     be. Nothing can open it but that phone, and the reader said "That isn't
+     the diagram prints", which sent it round twice. (The bytes after the
+     header are made up - the shape is what is read.) */
+  const locked = new Uint8Array(64);
+  locked.set(utf8("MSMAMARPCRYPT"), 1);
+  locked.set(utf8("AES/CBC/NoPadding"), 37);
+  assert.equal(P.isAppProtected(locked), true);
+  refusedAs(locked, /app protection .* Save it from Outlook on the work PC/,
+            "the reader says what it is and what to do");
+  assert.match(P.appProtectedMsg("Prints.docx"), /^“Prints\.docx” is locked by your organisation's app protection/);
+  // a real Word document, and a text save that happens to start with a NUL, are not it
+  assert.equal(P.isAppProtected(makeDocx(PRINTS_LINES, fflate)), false);
+  assert.equal(P.isAppProtected(new Uint8Array([0, 77, 83, 0])), false);
+});

@@ -835,6 +835,8 @@ on the tab, set out every rule it follows.
 | A train seems to be missing | Read *Left off the sheet* first. If it is not there, note the diagram number and report it. |
 | *"That file is damaged or isn't a Word document. Try re-saving the prints from Word as .docx."* | Open the prints in Word, save as .docx, drop the new file. |
 | *"That isn't the diagram prints. …"* | A text or CSV save whose columns were lost. Save it again, or paste it from Word. |
+| *"… is locked by your organisation's app protection …"* (any tab) | The file was saved from Outlook or another work app on a phone, and is encrypted so only that phone can open it. Save it from Outlook on the work PC and drop that copy instead. |
+| Weekend sheets listing every departure from a station, with nearly every unit ending there | Fixed in 3.34.2. A single `#` (unit put away) on a platform in the prints made that station a siding for every diagram. The Review tab now says *"… shunted (#) on … diagrams … only those stops are treated as a berth there"* when it meets one. |
 | *"That looks like a reissue on its own — …"* | Drop the full weekend prints with it, or first. |
 | *"… that reissue belongs to a different day."* | The reissue's date does not match the prints. |
 | *"That pair could not be read: the Diagram Detail has no diagrams in it — …"* (Shortages & variations) | The Diagram Detail was saved or copied without its diagrams — often just its first line. Save the whole report from Genius again, or copy it from the very top, and drop or paste that. |

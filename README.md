@@ -178,7 +178,11 @@ source.
    reduced to paragraph text the way python-docx does it); a CFB signature is
    a Word 97–2003 `.doc` (a small OLE reader walks the `WordDocument` stream
    and the piece table); anything else is text — UTF-8, UTF-16 with a BOM,
-   or a CSV save whose commas are the columns.
+   or a CSV save whose commas are the columns. A copy saved out of Outlook
+   on a phone under the organisation's app protection starts
+   `\0MSMAMARPCRYPT` and is encrypted for that phone; `isAppProtected`
+   spots it and every panel says so by name (`appProtectedMsg`), rather than
+   "that isn't the diagram prints".
 2. **Parsing diagrams** (`parseDiagrams`). `Diagram:\t<CODE>\t<NUM>\t<DAYS>`
    headers, `Fleet:` and `From:`/`Until:`, and the tab-indented itinerary
    rows. `#` flags a berthing; `STABLD` marks the road a diagram starts in.
@@ -218,7 +222,11 @@ source.
 4. **Generation** (`generate`, once per fleet profile) — the same stops,
    boundaries and stints as the weekday path, to the weekday rulebook,
    plus berths *learned* from `#` markers and auto-sections for places the
-   section list does not know. A print lists only where a diagram does
+   section list does not know. A `#` makes its own stop a berthing; a place
+   is only learned for every diagram if no train leaves it in passenger
+   service — one `#` on a Victoria platform otherwise made every call there,
+   on every diagram, a berthing (the 10/11 October prints), and the Review
+   tab names any such `#` it did not learn from. A print lists only where a diagram does
    something, so a rounder (out of Cannon Street and back) is two rows at
    one place; `runsBack` keeps a passenger working's return a stop of its
    own, or the first departure of the day is lost behind the second. The

@@ -4,6 +4,41 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.34.2 — 9 October 2026 — one shunt on a platform no longer turns the station into a siding
+
+Paul's weekend sheets for 10/11 October listed every departure from Hastings
+and Victoria all day, and nearly every diagram "ended" VIC AM and PM. The
+weekend engine learns where units are put away from the prints' `#` marks,
+and a learned place was a berthing for the WHOLE day: every call there, on
+every diagram, where the headcode changed. One unit put away in a platform —
+the shape engineering works bring — made the station a siding for everyone.
+The Week 27 Saturday prints with a single `Vic (E)` row marked `#` show it:
+82 Mainline lines became 152, the Metro book went from 49 to 121, and 223
+cells read VIC instead of 7.
+
+A `#` still makes its own stop a berthing, because that unit really was put
+away there. But a place is only learned for every diagram if no train leaves
+it in passenger service; sidings never do and platforms always do. The Review
+tab says when it meets a `#` it did not learn from, naming the place and the
+diagrams. On the Week 25 and Week 27 prints every `#` is at a siding or depot
+already on the list, and the books are unchanged.
+
+The 10/11 October prints themselves never reached us readable: they had
+been saved out of Outlook on a phone, and the organisation's app protection
+encrypts such a copy for that phone (`\0MSMAMARPCRYPT` and an AES header
+where the Word file's `PK` should be). The tool said "That isn't the diagram
+prints", which explained nothing. Every panel — weekday, weekend, base
+diagrams, Shortages & variations, Berth requests and the analyser — now
+says the file is locked by app protection and to save it from the work PC.
+
+## Diagram analyser 1.8.3 — 9 October 2026 — a locked copy says so
+
+Prints saved out of Outlook on a phone under the organisation's app
+protection are encrypted for that phone, and the analyser said only that
+nothing in them looked like diagram prints. It shares the berthing sheets'
+reader, which now recognises such a copy, so the analyser names the file as
+locked by app protection and says to save it from the work PC.
+
 ## 3.34.1 — 5 October 2026 — GP in column D at Faversham
 
 RM021/022 leave Faversham at 06 13, go into Grove Park CSD at 10 21, are

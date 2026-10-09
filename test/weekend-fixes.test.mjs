@@ -856,3 +856,31 @@ test("a round trip from Cannon Street back to Cannon Street is the unit's first 
   const invented = reviewLines(shunt).filter(l => /SG431 runs round/.test(l));
   assert.equal(invented.length, 0, "and no run-round invented out of the shunt: " + invented.join(" / "));
 });
+
+test("one '#' on a platform does not make the station a siding for every diagram", () => {
+  /* The 10/11 October prints: every departure from Hastings and Victoria on
+     the books, and nearly every unit "ending" VIC AM and PM. A place a unit
+     is shunted at ('#') was learned as a berthing place for the whole day,
+     so one unit shunted in a Victoria platform turned every call there, on
+     every diagram, into a berthing. Three units here turn round in Vic (E)
+     in passenger service; the third is also shunted there once. */
+  const diag = (n, ev) => [
+    "Diagram:\tRM\t" + n + "\tSat", "Fleet:\t375/6", "From:\t10/10/2026",
+    "\t\tRam Depot\t\t05.0" + (n % 10) + "\t5R0" + (n % 10) + "\t\t\t",
+    "\t\tRam\t05.1" + (n % 10) + "\t05.2" + (n % 10) + "\t1R0" + (n % 10) + "\t\t\t",
+    "\t\tVic (E)\t07.0" + (n % 10) + "\t07.4" + (n % 10) + "\t1R1" + (n % 10) + "\t" + ev + "\t\t",
+    "\t\tRam\t09.2" + (n % 10) + "\t09.3" + (n % 10) + "\t1R2" + (n % 10) + "\t\t\t",
+    "\t\tVic (E)\t11.1" + (n % 10) + "\t11.5" + (n % 10) + "\t1R3" + (n % 10) + "\t\t\t",
+    "\t\tRam\t13.3" + (n % 10) + "\t13.4" + (n % 10) + "\t5R4" + (n % 10) + "\t\t\t",
+    "\t\tRam Depot\t13.5" + (n % 10) + "\t\t\t\t\t"];
+  const prints = ev => [...diag(1, ""), ...diag(2, ""), ...diag(3, ev)];
+  const book = res => res.books.find(b => b.road === "Mainline");
+  const clean = run([text(prints(""), "P.txt")]), shunted = run([text(prints("#"), "P.txt")]);
+  const vic = res => col1(book(res)).filter(v => /^\d\d[ +]\d\d/.test(v)).length;
+  assert.ok(book(clean).entries > 0, "the clean prints build");
+  assert.ok(book(shunted).entries <= book(clean).entries + 1,
+    "at most the shunted unit's own stop is added: " + book(clean).entries + " -> " + book(shunted).entries);
+  assert.ok(vic(shunted) <= vic(clean) + 1, "the other units' Victoria calls stay turnrounds");
+  assert.ok(reviewLines(shunted).some(l => /Vic \(E\): shunted \(#\) on 1 diagram \(RM3\)/.test(l)),
+    "and the Review list says what it did: " + reviewLines(shunted).join(" | "));
+});
