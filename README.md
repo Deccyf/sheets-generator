@@ -74,7 +74,7 @@ them, in a fixed order, into the two HTML files.
 | `src/rules.js` — `SHEETS_RULES` | Local unit-order corrections (key grammar, merge, storage round-trip) and `explain()` / `explainHtml()`, which turn a build's rules into plain English for the Rules tab and the printed handout. |
 | `src/prints-read.js` — `SHEETS_PRINTS` | Opening a set of diagram prints whatever they arrive as: `.docx`, legacy `.doc` (OLE compound file and Word piece table, by hand), plain text, UTF-16 text, or a CSV save. Also owns `csvParse`. Both tools read the prints through this one module. |
 | `src/core.js` — `SHEETS_CORE` | Shared helpers: name normalisation, destination codes, time formatting, the berth AM/PM rule. |
-| `src/rulebook.js` — `SHEETS_RULEBOOK` | The day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`, `AM_CUTOFF`) and the stop-collapsing walk both engines share. |
+| `src/rulebook.js` — `SHEETS_RULEBOOK` | The day-shape constants (`DAY_ROLL`, `PM_BREAK`, `RUN_ROUND`, `AM_CUTOFF`, and `BERTH_STAY`, the stand a turnround siding needs before a call there is a berthing) and the stop-collapsing walk both engines share. |
 | `src/xlsx.js` — `SHEETS_XLSX` | The one xlsx writer (hand-built SpreadsheetML, multi-sheet, zipped with fflate), the weekday book layout, the print planner, and the one preview renderer. |
 | `src/stockreq.js` — `SHEETS_STOCKREQ` | The Kent Coast stock requirements form: the depot's blank workbook, its styleSheet carried verbatim, filled from the day's plan. |
 | `src/metro.js` — `SHEETS_METRO` | The Metro book in the depot's own format: a worksheet per location, landscape, fourteen columns. |
@@ -116,7 +116,7 @@ the actual file inputs, and are part of CI for that reason.
 |---|---|
 | `genius.test.mjs`, `data.test.mjs`, `xlsx.test.mjs` | Golden equivalence against the frozen legacy build: the weekday pipeline's sections, the reference tables, and the workbooks cell for cell (the legacy bundle's ExcelJS is the test-only reader). Deliberate divergences are carved out one by one with the reason beside them. |
 | `engine.test.mjs`, `metro.test.mjs`, `hs.test.mjs`, `stockreq.test.mjs` | The weekend pipeline (with the legacy build as the oracle for what it does not deliberately change), and the three documents that are not berthing sheets, against stated behaviour. |
-| `weekday-fixes.test.mjs`, `weekend-fixes.test.mjs` | One regression test per bug fixed in 3.0.0, each built from the input that reproduced it. |
+| `weekday-fixes.test.mjs`, `weekend-fixes.test.mjs` | One regression test per bug fixed since 3.0.0, each built from the input that reproduced it, in small — the Grove Park depot shunt in column D, the Plumstead turnround, two units on one Position, a `#` in a platform on the prints. |
 | `rules.test.mjs`, `prints-read.test.mjs` | The local-corrections schema (round trip, corrupt input, wrong version) and the prints readers' error paths. |
 | `shortage.test.mjs` | The shortages and variations road: the window a report's print time puts it in, the morning and afternoon lists and the day past midnight, the depot and *Unallocated legs* checks, the wrong-end and reciprocal-swap readings, the working trace, and the two place-code tables held apart. |
 | `berth.test.mjs`, `berth-hs.test.mjs` | The berth-request road against stated behaviour: the plan read section by section, the depot's rules one at a time, the swap search, the road a unit lands on, the plan given back in each workbook's own shape and dress, and the Class 395 disposition sheet's own reading, rules and sheet. |
@@ -246,7 +246,15 @@ repeated here. The shape of it:
   passenger work after it is not a line, and is named on the Review tab.
   A pause on the way home to a depot is not a berthing (the `anyShunt`
   gate: only when the report carries the `#` column at all, settled once
-  per date over every fleet). Long platform stands are an option.
+  per date over every fleet). Long platform stands are an option. At the
+  turnround sidings (`MINOR_SPUR`, with `MINOR_SPUR_NAMES` for the Rules
+  tab: Plumstead, Bellingham, Gillingham Up, Hastings Park, St Leonards CET
+  and Sevenoaks; `MINOR_SPUR_PRINTS` on the prints, which adds Sidcup) a
+  call is a berthing only after `BERTH_STAY`, 65 minutes — SG829's ten
+  minutes in the Plumstead sidings between two 5Z moves is a turnround, not
+  a line (3.34.3). A move that never leaves the Grove Park depot fence is
+  not a line either. On the weekend prints a `#` makes only its own stop a
+  berthing where trains leave in passenger service (3.34.2).
 - **Berth requests (experimental).** The Berth requests tab reads the maintenance
   plan pasted from the Telex workbook against the weekday reports just
   built from, and gives the plan back in its own shape with two columns
@@ -282,6 +290,10 @@ repeated here. The shape of it:
   carries it, and both engines read that one figure. The weekday engine
   carried a second, unnamed cutoff of its own until 3.1.2, which put the
   same moment in different columns in a weekday book and a weekend one.
+  The AM column only names a berth whose own departure prints, with one
+  exception (`putAway`): a berth left by nothing but a shunt inside the
+  Grove Park depot fence is still where the unit was put away, so RM021/022
+  off Faversham read GP (3.34.1).
 - **The lines across the page.** The first break of `BREAK_GAP` (three
   hours) or more in a location's work, and any later one leading into work
   after `PM_BREAK`. Grove Park is never ruled.
@@ -606,7 +618,7 @@ the tables to the legacy build and to each other.
 | `DEST_TLC` | Destination name → three-letter code for column A. |
 | `NON_BERTH_VISIT`, `SIDING_CLASS_RE` | Which locations never count as berths; what a siding looks like by name. |
 | `MAIN_ORDER` / `METRO_ORDER` / `HS_ORDER`, `HEADCODE_SECTIONS`, `SIDING_NOTES`, `END_STYLE`, `GP_ROAD`, `DAY_SHEET` | Section order per book, which sections quote headcodes, the siding notes, the end-marker styles, Grove Park road labels, the day-tab names. |
-| `CODE2NAME`, `STABLE_CODES`, `MINOR_SPUR`, `NAME_CODE`, `FIX_CODE`, `PROFILES_G`, `END_MARKERS_GENIUS`, `GROUP_EXTRA`, `ORDER_FIX`, `PLATFORM_TURN`, `ROUTE_BY_HC` | Genius location codes → names, which codes are stabling, the shunt spurs needing a long stay, hand-learned code corrections, the fleet profiles, the end-lead rules, section members that are not berths, the hand-marked unit orders, the platform-turn sections, the route-by-headcode rules. |
+| `CODE2NAME`, `STABLE_CODES`, `MINOR_SPUR`, `MINOR_SPUR_NAMES`, `NAME_CODE`, `FIX_CODE`, `PROFILES_G`, `END_MARKERS_GENIUS`, `GROUP_EXTRA`, `ORDER_FIX`, `PLATFORM_TURN`, `ROUTE_BY_HC` | Genius location codes → names, which codes are stabling, the turnround sidings needing a long stay (Plumstead among them) and their names for the Rules tab, hand-learned code corrections, the fleet profiles, the end-lead rules, section members that are not berths, the hand-marked unit orders, the platform-turn sections, the route-by-headcode rules. |
 | `DEST_CODE`, `BERTH_CODE`, `NOTE_FROM_BERTH`, `BASE_STABLING`, `TRANSIT`, `MANUAL_LOC`, `STATION_TABLE`, `END_MARKERS_PRINTS`, `PROFILES` | The weekend engine's curated code tables, siding notes, stabling set, transit-only places, manual locations, the station-name → CRS resolver table, the prints' end-marker rules, and the fleet profiles (derived from `PROFILES_G`). |
 | `PLACE_NAMES`, `NON_BERTH_PRINTS` | The prints' place abbreviations spelt out, and the shunt points that are not berths — used by the analyser. |
 
