@@ -449,6 +449,14 @@ const SHEETS_RULES = (() => {
         "the depot it is going to, not to the place it paused.",
         "A unit that hops out and is back within " + (env.runRound || 60) +
         " minutes has been run round, not berthed twice — one line, not two.",
+        has(env.turnSpurs)
+          ? "At the sidings where units mostly only turn round — " +
+            list(env.turnSpurs) + " — a call counts as a berthing only if the " +
+            "unit stands there " + (env.berthStay || 65) + " minutes or more. " +
+            "A shorter call is a turnround in the middle of a run of moves " +
+            "(SG829 reversing in the Plumstead sidings on its 5Z82), not " +
+            "somewhere it was put away."
+          : null,
       ] },
     ];
     /* Only the ones this book has. The Ramsgate book is one page and was
@@ -509,6 +517,14 @@ const SHEETS_RULES = (() => {
         "order the numbers give. Anything calling at the platform off a " +
         "road we have not been told the direction of is left alone and put " +
         "on the review list." });
+    ord.push({ p: "Now and then the reports give two units in one train the " +
+      "same position number. That happens when one was put away at the berth " +
+      "and given a fresh number as it left, while the unit beside it was not, " +
+      "and still carries the number it had earlier in the day (RM308 and RM917 " +
+      "out of the Victoria sidings). The fresh number is trusted and the other " +
+      "unit takes the place left over, and the Review tab says so each time. " +
+      "If that still leaves it unclear, the order is printed as the numbers " +
+      "give it and named on the Review tab." });
     ord.push({ p: "Where a formation still comes out the wrong way round, we " +
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +

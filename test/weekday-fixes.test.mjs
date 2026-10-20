@@ -521,3 +521,69 @@ test("a unit put away at Grove Park depot reads GP in column D, though its shunt
   assert.ok(gp.some(h => h && h.startsWith("5F34")), "the 15 18 prints: " + gp.join(", "));
   assert.ok(!gp.some(h => h && h.startsWith("5J01")), "the shunt across the depot does not: " + gp.join(", "));
 });
+
+test("a turnround in the Plumstead sidings is not a berthing; a stand there still is", async () => {
+  /* SG829 on 21/10: a 376 on a run of 5Z empty moves, in off the 5Z81 at
+     09 52 and straight back out on the 5Z82 at 10 02. The mainline book
+     carried a Plumstead line for it. SG470 stands in the same sidings from
+     10 49 to 17 14 and keeps its line. */
+  const { geniusPairCsv } = await import("./helpers/synth.mjs");
+  const st = (code, arr, dep, hc, ev) => ({ code, arr, dep, hc, ev });
+  const day = [
+    { code: "SG829", fleet: "376/0", units: "376001.", pos: 1, stops: [
+      st("SLADGUS", "", "06:01", "5B09"), st("CANONST", "08:45", "09:13", "5Z81"),
+      st("PLMSTCS", "09:52", "10:02", "5Z82"), st("BRNHRST", "10:21", "10:31", "5Z83"),
+      st("SLADGUS", "10:55", "", "")] },
+    { code: "SG470", fleet: "465/9", units: "465901.", pos: 1, stops: [
+      st("CANONST", "", "10:13", "5E19"), st("PLMSTCS", "10:48", "10:49", "", "#"),
+      st("PLMSTCS", "10:49", "17:14", "5B95"), st("CANONST", "17:48", "", "")] },
+  ];
+  const p = geniusPairCsv(day);
+  const r = await built().GENIUS.build([p.summary, p.detail]);
+  const k = Object.keys(r.labels)[0];
+  const at = (secs, name) => [...(secs[k] || new Map())].filter(([s]) => /PLUMSTEAD/.test(s))
+    .flatMap(([, l]) => l.map(e => e.headcode || ""));
+  assert.equal(at(r.secsByDay, "PLUMSTEAD").length, 0,
+    "no Plumstead line for the 10-minute turnround: " + at(r.secsByDay).join(", "));
+  assert.ok(at(r.metroSecs).some(h => h.startsWith("5B95")),
+    "the day-long stand still has its departure: " + at(r.metroSecs).join(", "));
+});
+
+test("two units on one Position: the number given at this berth stands, the old one takes the other place", async () => {
+  /* RM308 and RM917 on 21/10 go into Victoria Grosvenor sidings together
+     and come out together. RM308 is put away ('#') and Genius gives it
+     Position 1 of a new section as it leaves; RM917's section runs on from
+     Ramsgate, still saying Position 1. The order fell to the diagram number
+     (308 first); one train of two has one Position 1, so 917 is 2, and
+     Victoria reads highest first: 917, then 308. */
+  const { geniusPairCsv } = await import("./helpers/synth.mjs");
+  const st = (code, arr, dep, hc, ev) => ({ code, arr, dep, hc, ev });
+  const run = hash => [
+    st("RAMSGTD", "", "08:18", "5W24"), st("VICTRIE", "11:21", "11:29", "5P24"),
+    ...(hash ? [st("VICTGCS", "11:35", "11:36", "", "#"), st("VICTGCS", "11:36", "12:32", "5N36")]
+             : [st("VICTGCS", "11:35", "12:32", "5N36")]),
+    st("VICTRIE", "12:38", "12:55", "2N36"), st("ASHFKY", "14:32", "", "")];
+  const day = [
+    { code: "RM917", fleet: "375/9", stops: run(false),
+      rows: [{ units: "375917.", pos: 1, start: "08:18", from: "RAMSGTD", to: "ASHFKY", end: "14:32" }] },
+    { code: "RM308", fleet: "375/3", stops: run(true),
+      rows: [{ units: "375308.", pos: 2, start: "08:18", from: "RAMSGTD", to: "VICTGCS", end: "11:35" },
+             { units: "375308.", pos: 1, start: "12:32", from: "VICTGCS", to: "ASHFKY", end: "14:32" }] },
+  ];
+  const p = geniusPairCsv(day);
+  const r = await built().GENIUS.build([p.summary, p.detail]);
+  const secs = r.secsByDay[Object.keys(r.labels)[0]];
+  const vic = (secs.get("VICTORIA") || []).find(e => e.units.length === 2);
+  assert.ok(vic, "the Victoria departure prints: " + [...secs.keys()].join(", "));
+  assert.equal(vic.units.map(u => u.diag).join(","), "917,308", "917 leads out of Victoria");
+  const notes = [];
+  const seen = new Set();
+  const walk = (o, d) => { if (!o || typeof o !== "object" || seen.has(o) || d > 6) return; seen.add(o);
+    if (typeof o.msg === "string") notes.push(o.msg);
+    for (const v of (o instanceof Map ? o.values() : Object.values(o))) walk(v, d + 1); };
+  walk(r, 0);
+  assert.ok(notes.some(m => /917 is taken as Position 2/.test(m)),
+    "and the Review list says how it was settled: " + notes.filter(m => /VICTORIA/.test(m)).join(" | "));
+  assert.ok(!notes.some(m => /VICTORIA .*same place in the formation/.test(m)),
+    "rather than calling it a guess");
+});

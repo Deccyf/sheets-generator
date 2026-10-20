@@ -572,7 +572,7 @@
     </div>
     <div class="lineup" id="lineup" aria-hidden="true"></div>
     <div class="mast-meta">
-      <span class="ver">Version <b>3.34.2</b> · 9 October 2026</span>
+      <span class="ver">Version <b>3.34.3</b> · 20 October 2026</span>
     </div>
   </header>
 
@@ -1277,8 +1277,8 @@
       for themselves is named there, nothing is quietly guessed at.</p>
     <p class="smallprint">Everything runs inside this one file, in the
       browser, on this computer: no report, print or sheet leaves it, and it
-      works without an internet connection. Version 3.34.2
-      &middot; 9 October 2026. If something looks wrong, check you have the
+      works without an internet connection. Version 3.34.3
+      &middot; 20 October 2026. If something looks wrong, check you have the
       newest copy before reporting it — an old copy keeps working, and keeps
       its old mistakes.</p>
   </footer>
@@ -1887,8 +1887,21 @@ const SIDING_CLASS_RE = new RegExp(
      one line, and it took the column D of RM043's Grove Park 09+58 entry
      with it: the unit's next real berth is back at the Grove Park down
      sidings at 16+19, which is GPD, and the depot asked for GPD. */
+  /* PLMSTCS, the Plumstead sidings, is a real berthing siding as well -
+     465s stand there all day (SG470/471, 10 49 to 17 14 on 21/10) and start
+     out of it (SG459/460 at 06 15) - but the stay is what tells the two
+     apart, as at Sidcup. SG829, a 376 on a run of 5Z empty moves, came in
+     off the 5Z81 at 09 52 and went straight back out on the 5Z82 at 10 02
+     to reverse again at Barnehurst: counted a berthing, the mainline book
+     carried a Plumstead line for it that the depot does not want. Starts
+     of day and long stands are untouched; a turnround is not a berthing. */
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS",
-                              "SVNOCHS"]);
+                              "SVNOCHS", "PLMSTCS"]);
+  // the same spurs as the Rules tab names them - one for every code above
+  const MINOR_SPUR_NAMES = { HASTPSD: "Hastings Park Sidings",
+    BELNGMS: "Bellingham Siding", STLNCET: "St Leonards CET",
+    GLNGMUS: "Gillingham Up Sidings", SVNOCHS: "Sevenoaks Siding",
+    PLMSTCS: "Plumstead Sidings" };
   /* The same spurs under the names the weekend PRINTS use for them, so the
      weekend books read a brief call at one the same way the weekday books
      do. Three are the ones above (LOC_LONG below spells each one out, and
@@ -1912,7 +1925,10 @@ const SIDING_CLASS_RE = new RegExp(
      so far calls at it, so nothing says what those documents spell it, and
      a guessed spelling would sit in a lookup table reading like a fact. Add
      it the day a print shows it. */
-  const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd"]);
+  /* Plum Sdg is the Plumstead sidings above, under the prints' own spelling
+     (seen in the Week 27 prints, where every call at it is a start of day). */
+  const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd",
+                                     "Plum Sdg"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
      but only while it stays in the area: a unit shut in the St Leonards shed
@@ -2267,7 +2283,7 @@ return {
   PRINT_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, MINOR_SPUR_PRINTS, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  PROFILES_G, MINOR_SPUR, MINOR_SPUR_NAMES, MINOR_SPUR_PRINTS, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,
@@ -2731,6 +2747,14 @@ const SHEETS_RULES = (() => {
         "the depot it is going to, not to the place it paused.",
         "A unit that hops out and is back within " + (env.runRound || 60) +
         " minutes has been run round, not berthed twice — one line, not two.",
+        has(env.turnSpurs)
+          ? "At the sidings where units mostly only turn round — " +
+            list(env.turnSpurs) + " — a call counts as a berthing only if the " +
+            "unit stands there " + (env.berthStay || 65) + " minutes or more. " +
+            "A shorter call is a turnround in the middle of a run of moves " +
+            "(SG829 reversing in the Plumstead sidings on its 5Z82), not " +
+            "somewhere it was put away."
+          : null,
       ] },
     ];
     /* Only the ones this book has. The Ramsgate book is one page and was
@@ -2791,6 +2815,14 @@ const SHEETS_RULES = (() => {
         "order the numbers give. Anything calling at the platform off a " +
         "road we have not been told the direction of is left alone and put " +
         "on the review list." });
+    ord.push({ p: "Now and then the reports give two units in one train the " +
+      "same position number. That happens when one was put away at the berth " +
+      "and given a fresh number as it left, while the unit beside it was not, " +
+      "and still carries the number it had earlier in the day (RM308 and RM917 " +
+      "out of the Victoria sidings). The fresh number is trusted and the other " +
+      "unit takes the place left over, and the Review tab says so each time. " +
+      "If that still leaves it unclear, the order is printed as the numbers " +
+      "give it and named on the Review tab." });
     ord.push({ p: "Where a formation still comes out the wrong way round, we " +
       "hold the right answer in a list instead of guessing at it. Those are " +
       "corrections colleagues have given us and we have checked against the " +
@@ -8231,14 +8263,17 @@ const GENIUS = (() => {
     // Position for a working that departs at t: the row covering it, else the
     // last one to have started. (An Integrale export has a single row per
     // diagram, so this always lands on it.)
-    const posAt = (rows, t) => {
+    /* the Summary row (diagram section) a departure falls in - its Position,
+       and when that section started */
+    const posRowAt = (rows, t) => {
       const k = sortkey(t);
       for (const r of rows)
-        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r.pos;
+        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r;
       let best = rows[0];
       for (const r of rows) if (sortkey(r.start) <= k) best = r;
-      return best.pos;
+      return best;
     };
+    const posAt = (rows, t) => posRowAt(rows, t).pos;
     /* The allocated unit, taken the same way round as the Position: off the
        working being printed, not off the diagram's first row - a diagram
        whose morning is cancelled keeps its summary row with the allocation
@@ -8470,6 +8505,10 @@ const GENIUS = (() => {
       const last = short[short.length - 1];
       return last.arr !== null ? last.arr : last.dep;
     }
+    /* When each block's Position was given: the start of the Summary
+       section it comes from. Kept beside the block, not on it (an entry
+       keeps the exact shape the golden test pins). */
+    const posFrom = new WeakMap();
     // per-unit derivations
     for (const e of entries.values()) {
       const blocks = [];
@@ -8638,6 +8677,7 @@ const GENIUS = (() => {
         // exact shape the golden test pins when it does not
         const unit = unitAt(sums, e.tmin);
         if (unit) blk.unit = unit;
+        posFrom.set(blk, posRowAt(sums, e.tmin).start);
         blocks.push(blk);
       }
       // Which unit leads. The direction is the section's (posAsc, see the
@@ -8658,10 +8698,49 @@ const GENIUS = (() => {
       const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
       // the diagram tiebreak mirrors the position order, and equal diagrams compare equal
       const byDiag = (a, b) => a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0;
+      /* Two units on one Position, where one of the numbers is out of date.
+         Genius starts a new section for a unit put away at a berth ('#') and
+         gives it a fresh Position as it leaves, while a unit standing beside
+         it unmarked keeps the Position its section began with, hours before.
+         RM308 and RM917 go into Victoria Grosvenor sidings together at 11 35
+         and come out together at 12 32: 308, marked, leaves on Position 1 of
+         a new section; 917 still carries the Position 1 it left Ramsgate
+         with at 08 18. One train of two has one Position 1, so the fresh
+         number stands and the old one takes the place left over - 917 is 2,
+         and Victoria, reading highest first, prints 917 then 308. The tie
+         used to fall to the diagram number, which means nothing. Settled
+         only when the fresh numbers agree among themselves and leave exactly
+         as many places as there are old ones; anything else is left as it
+         was and named for review. */
+      const effPos = new Map(blocks.map(x => [x, x.pos]));
+      let settled = null;
+      {
+        const ps = blocks.map(x => x.pos), n = blocks.length;
+        if (n > 1 && ps.every(p => p != null) && new Set(ps).size !== n) {
+          const freshHere = x => {
+            const m = meta.get(x.diag), st = m && m.stops[x.sa], from = posFrom.get(x);
+            const t = st ? (st.arr !== null ? st.arr : st.dep) : null;
+            return from != null && t !== null && sortkey(from) >= sortkey(t);
+          };
+          const fresh = blocks.filter(freshHere), old = blocks.filter(x => !freshHere(x));
+          const fp = fresh.map(x => x.pos);
+          if (fresh.length && old.length && new Set(fp).size === fp.length &&
+              fp.every(p => p >= 1 && p <= n)) {
+            const free = [];
+            for (let p = 1; p <= n; p++) if (fp.indexOf(p) < 0) free.push(p);
+            if (free.length === old.length) {
+              old.slice().sort((a, b) => (a.pos - b.pos) || byDiag(a, b))
+                .forEach((x, i) => effPos.set(x, free[i]));
+              settled = { fresh, old };
+            }
+          }
+        }
+      }
+      const pe = x => effPos.get(x);
       if (turned ? !asc : asc)
-        blocks.sort((x, y) => (x.pos - y.pos) || byDiag(y, x));
+        blocks.sort((x, y) => (pe(x) - pe(y)) || byDiag(y, x));
       else
-        blocks.sort((x, y) => (y.pos - x.pos) || byDiag(x, y));
+        blocks.sort((x, y) => (pe(y) - pe(x)) || byDiag(x, y));
       /* Called at the platform but a side is not in the table: the order is
          left exactly as it was, and said out loud rather than guessed. */
       if (blocks.length > 1 && blocks.some(x => x.turn === null))
@@ -8811,9 +8890,22 @@ const GENIUS = (() => {
       /* A pinned entry is not a guess: somebody read the order off the real
          book and wrote it down, which is exactly what this note asks for. */
       if (e.blocks.length > 1 && !pinned) {
-        const ps = e.blocks.map(x => x.pos);
+        const ps = e.blocks.map(x => effPos.has(x) ? effPos.get(x) : x.pos);
         const seq = ps.every(p => p != null) &&
           ps.slice().sort((a, b) => a - b).every((p, i) => p === i + 1);
+        /* a tie settled above is said, so the rule can be checked against the
+           real book until it has earned trust */
+        if (seq && settled && settled.old.every(x => e.blocks.indexOf(x) >= 0)) {
+          const nm = xs => xs.map(x => x.diag.slice(2)).join(" and ");
+          warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+            e.blocks.map(x => x.diag.slice(2)).join("+") + "): the reports give " +
+            nm(settled.old) + " the Position " + (settled.old.length === 1 ? "its" : "their") +
+            " section started with at " + settled.old.map(x => fmtT(posFrom.get(x), null)).join(" and ") +
+            ", and " + nm(settled.fresh) + " a new one as " +
+            (settled.fresh.length === 1 ? "it leaves" : "they leave") + " here — so " +
+            settled.old.map(x => x.diag.slice(2) + " is taken as Position " + effPos.get(x)).join(", ") +
+            ". Check the order against the real book" });
+        }
         if (!seq) {
           const tie = new Set(ps).size !== ps.length;
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
@@ -11630,6 +11722,8 @@ function rulesEnv(b, res, secNames) {
     endStyle: SHEETS_DATA.END_STYLE,
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    berthStay: RB.BERTH_STAY,
+    turnSpurs: [...SHEETS_DATA.MINOR_SPUR].map(c => SHEETS_DATA.MINOR_SPUR_NAMES[c] || c).sort(),
     metroSplit: METRO.AM_SHEET_END,       // the Metro AM/PM split, which is not the berthing books' break
     breakGap: SHEETS_XLSX.BREAK_GAP,
     hsDepots: [...HS.DEPOTS],

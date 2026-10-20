@@ -579,8 +579,21 @@ const SIDING_CLASS_RE = new RegExp(
      one line, and it took the column D of RM043's Grove Park 09+58 entry
      with it: the unit's next real berth is back at the Grove Park down
      sidings at 16+19, which is GPD, and the depot asked for GPD. */
+  /* PLMSTCS, the Plumstead sidings, is a real berthing siding as well -
+     465s stand there all day (SG470/471, 10 49 to 17 14 on 21/10) and start
+     out of it (SG459/460 at 06 15) - but the stay is what tells the two
+     apart, as at Sidcup. SG829, a 376 on a run of 5Z empty moves, came in
+     off the 5Z81 at 09 52 and went straight back out on the 5Z82 at 10 02
+     to reverse again at Barnehurst: counted a berthing, the mainline book
+     carried a Plumstead line for it that the depot does not want. Starts
+     of day and long stands are untouched; a turnround is not a berthing. */
   const MINOR_SPUR = new Set(["HASTPSD", "BELNGMS", "STLNCET", "GLNGMUS",
-                              "SVNOCHS"]);
+                              "SVNOCHS", "PLMSTCS"]);
+  // the same spurs as the Rules tab names them - one for every code above
+  const MINOR_SPUR_NAMES = { HASTPSD: "Hastings Park Sidings",
+    BELNGMS: "Bellingham Siding", STLNCET: "St Leonards CET",
+    GLNGMUS: "Gillingham Up Sidings", SVNOCHS: "Sevenoaks Siding",
+    PLMSTCS: "Plumstead Sidings" };
   /* The same spurs under the names the weekend PRINTS use for them, so the
      weekend books read a brief call at one the same way the weekday books
      do. Three are the ones above (LOC_LONG below spells each one out, and
@@ -604,7 +617,10 @@ const SIDING_CLASS_RE = new RegExp(
      so far calls at it, so nothing says what those documents spell it, and
      a guessed spelling would sit in a lookup table reading like a fact. Add
      it the day a print shows it. */
-  const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd"]);
+  /* Plum Sdg is the Plumstead sidings above, under the prints' own spelling
+     (seen in the Week 27 prints, where every call at it is a start of day). */
+  const MINOR_SPUR_PRINTS = new Set(["Gill US", "Hast Pk S", "Bell Sd", "Sidcup Sd",
+                                     "Plum Sdg"]);
   /* Sections that share one berthing area. A unit still on a berth at 20 00
      has ended its day there whatever a late working does with it afterwards -
      but only while it stays in the area: a unit shut in the St Leonards shed
@@ -959,7 +975,7 @@ return {
   PRINT_ROAD,
   SIDING_NOTES, END_STYLE, DAY_SHEET,
   CODE2NAME, GROUP_EXTRA, STABLE_CODES, NAME_CODE, FIX_CODE,
-  PROFILES_G, MINOR_SPUR, MINOR_SPUR_PRINTS, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
+  PROFILES_G, MINOR_SPUR, MINOR_SPUR_NAMES, MINOR_SPUR_PRINTS, BERTH_AREAS, END_MARKERS_GENIUS, ORDER_FIX,
   PLATFORM_TURN,
   ROUTE_BY_HC, routeRule,
   DEST_CODE, BERTH_CODE, NOTE_FROM_BERTH, PLATFORM, BASE_STABLING,

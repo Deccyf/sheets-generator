@@ -267,7 +267,13 @@ repeated here. The shape of it:
   (`posAsc`, with `roadPosAsc` for a road that faces the other way); a
   formation that turned round in the platform prints the other way up; the
   hand-marked corrections (`ORDER_FIX`) override the position numbers where
-  the depot has said so. What the reports cannot say — which way a train is
+  the depot has said so. Two units on one Position are settled when one of
+  the numbers is stale: Genius gives a unit put away at a berth (`#`) a new
+  section and a fresh Position as it leaves, while the unit beside it keeps
+  its section's old one (RM308/RM917 out of Victoria Grosvenor sidings). The
+  fresh number stands and the stale units take the places left over
+  (`posFrom`, the start of the section each Position came from); the Review
+  tab says so. What the reports cannot say — which way a train is
   physically facing — is measured in [HISTORY.md](HISTORY.md) and is why
   the corrections list exists.
 - **The AM and PM columns.** Where the unit is put away next, and where it

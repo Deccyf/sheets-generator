@@ -525,8 +525,19 @@ headcode in the sections that quote it.
 **Which unit comes first** is taken from the diagram's **Position** in the
 Summary, read from the end each section is read from; a few sections and
 sidings run the other way, and known formations are pinned outright. Where
-two units share a Position the reports genuinely cannot say which way round
-they go, and the entry is named on the Review tab for you to check.
+two units share a Position, it is usually because one was put away at the
+berth and given a fresh number as it left, while the other still carries the
+number it had earlier in the day — RM308 and RM917 out of the Victoria
+sidings. The fresh number is trusted, the other unit takes the place left
+over, and the Review tab says so. Where even that cannot settle it, the
+entry is named on the Review tab for you to check.
+
+**A turnround is not a berthing.** At the sidings where units mostly only
+turn round — Plumstead, Bellingham, Gillingham Up, Hastings Park,
+St Leonards CET and Sevenoaks — a call only gets a line if the unit stands
+there for 65 minutes or more. A unit on a run of empty moves that reverses
+in the Plumstead sidings for ten minutes, like SG829 on its 5Z82, is not
+listed there. Starts of day and real stands are listed as always.
 
 **The double lines** rule off the breaks in the day's work: the **first**
 break of **three hours or more**, and any later one where the work picks up
@@ -622,9 +633,11 @@ only its own items, grouped by kind:
   not, counted as a berthing.
 * **Reissue** — what a reissue replaced and added (weekends and base weeks).
 * **Order to check** — formations the reports cannot settle: two units on
-  one Position, a formation pinned somewhere but not here, an end marker with
-  no rule to fit, and the Folkestone East Train Roads arrivals worked out
-  from tonight's arrivals — always check those against the ACWN.
+  one Position (and how one was settled, when one of the numbers was left
+  over from earlier in the day), a formation pinned somewhere but not here,
+  an end marker with no rule to fit, and the Folkestone East Train Roads
+  arrivals worked out from tonight's arrivals — always check those against
+  the ACWN.
 * **Locations and codes** — a place the section list does not know (it gets
   its own heading, in alphabetical order) or a name the page had to read as
   something else.

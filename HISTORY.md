@@ -4,6 +4,43 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.34.3 — 20 October 2026 — RM917/RM308 the right way round, and no Plumstead line for a turnround
+
+Two things off the 21/10 reports.
+
+**RM917 and RM308 at Victoria.** They run as one train all day, and go into
+Victoria Grosvenor sidings together at 11 35. RM308 is put away there (`#`),
+so Genius starts it a new section as it leaves at 12 32 and gives it
+Position 1. RM917 is not marked, so its section runs on from Ramsgate at
+08 18 and still says Position 1. With both on 1, the order fell to the
+diagram number, which means nothing, and the Victoria 12 55 printed 308
+first. One train of two has one Position 1: the fresh number now stands, and
+a unit whose Position comes from a section that began before it reached the
+berth takes the place left over. RM917 is 2, and Victoria, reading highest
+first, prints 917 then 308. It is only settled when the fresh numbers agree
+among themselves and leave exactly as many places as there are stale ones;
+otherwise the entry is left alone and named for review, as before. The
+Review tab says how each one was settled.
+
+The same shape turned up once more on 21/10: SG405 and SG406 into the same
+sidings, SG405 marked. The Metro book's Victoria 16+47 now prints 406 then
+405 — the Metro book has not been checked against a real one, so the Review
+note asks for that.
+
+**SG829 at Plumstead.** A 376 on a run of 5Z empty moves, in to the Plumstead
+sidings off the 5Z81 at 09 52 and straight back out on the 5Z82 at 10 02.
+Plumstead is a real berthing siding — 465s stand there all day and start out
+of it — so every call there was a berthing, and the mainline book carried a
+Plumstead line for a ten-minute turnround. It joins Sidcup, Bellingham,
+Gillingham Up, Hastings Park, St Leonards CET and Sevenoaks as a siding where
+a call is a berthing only after a stay of 65 minutes or more (and `Plum Sdg`
+does the same on the weekend prints). SG829's Slade Green row now reads GPD
+in its AM column, its next real berth, instead of PLU.
+
+On the 21/10 reports those four rows change and nothing else does. The Rules
+tab now says both rules out loud: which sidings are turnrounds, and how two
+units on one Position are settled.
+
 ## 3.34.2 — 9 October 2026 — one shunt on a platform no longer turns the station into a siding
 
 Paul's weekend sheets for 10/11 October listed every departure from Hastings

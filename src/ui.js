@@ -499,6 +499,8 @@ function rulesEnv(b, res, secNames) {
     endStyle: SHEETS_DATA.END_STYLE,
     routeByHc: SHEETS_DATA.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    berthStay: RB.BERTH_STAY,
+    turnSpurs: [...SHEETS_DATA.MINOR_SPUR].map(c => SHEETS_DATA.MINOR_SPUR_NAMES[c] || c).sort(),
     metroSplit: METRO.AM_SHEET_END,       // the Metro AM/PM split, which is not the berthing books' break
     breakGap: SHEETS_XLSX.BREAK_GAP,
     hsDepots: [...HS.DEPOTS],

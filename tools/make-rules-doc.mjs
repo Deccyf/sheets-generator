@@ -80,6 +80,8 @@ function envFor(book) {
     endStyle: D.END_STYLE,
     routeByHc: D.ROUTE_BY_HC,
     dayRoll: RB.DAY_ROLL, pmBreak: RB.PM_BREAK, runRound: RB.RUN_ROUND,
+    berthStay: RB.BERTH_STAY,
+    turnSpurs: [...D.MINOR_SPUR].map(c => D.MINOR_SPUR_NAMES[c] || c).sort(),
     breakGap: X.BREAK_GAP,
     hsDepots: [...ctx.SHEETS_HS.DEPOTS],
     gpSplit: book.profile === 0,

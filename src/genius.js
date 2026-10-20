@@ -458,14 +458,17 @@ const GENIUS = (() => {
     // Position for a working that departs at t: the row covering it, else the
     // last one to have started. (An Integrale export has a single row per
     // diagram, so this always lands on it.)
-    const posAt = (rows, t) => {
+    /* the Summary row (diagram section) a departure falls in - its Position,
+       and when that section started */
+    const posRowAt = (rows, t) => {
       const k = sortkey(t);
       for (const r of rows)
-        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r.pos;
+        if (sortkey(r.start) <= k && k <= sortkey(r.end)) return r;
       let best = rows[0];
       for (const r of rows) if (sortkey(r.start) <= k) best = r;
-      return best.pos;
+      return best;
     };
+    const posAt = (rows, t) => posRowAt(rows, t).pos;
     /* The allocated unit, taken the same way round as the Position: off the
        working being printed, not off the diagram's first row - a diagram
        whose morning is cancelled keeps its summary row with the allocation
@@ -697,6 +700,10 @@ const GENIUS = (() => {
       const last = short[short.length - 1];
       return last.arr !== null ? last.arr : last.dep;
     }
+    /* When each block's Position was given: the start of the Summary
+       section it comes from. Kept beside the block, not on it (an entry
+       keeps the exact shape the golden test pins). */
+    const posFrom = new WeakMap();
     // per-unit derivations
     for (const e of entries.values()) {
       const blocks = [];
@@ -865,6 +872,7 @@ const GENIUS = (() => {
         // exact shape the golden test pins when it does not
         const unit = unitAt(sums, e.tmin);
         if (unit) blk.unit = unit;
+        posFrom.set(blk, posRowAt(sums, e.tmin).start);
         blocks.push(blk);
       }
       // Which unit leads. The direction is the section's (posAsc, see the
@@ -885,10 +893,49 @@ const GENIUS = (() => {
       const turned = blocks.length > 1 && blocks.every(x => x.turn === true);
       // the diagram tiebreak mirrors the position order, and equal diagrams compare equal
       const byDiag = (a, b) => a.diag < b.diag ? -1 : a.diag > b.diag ? 1 : 0;
+      /* Two units on one Position, where one of the numbers is out of date.
+         Genius starts a new section for a unit put away at a berth ('#') and
+         gives it a fresh Position as it leaves, while a unit standing beside
+         it unmarked keeps the Position its section began with, hours before.
+         RM308 and RM917 go into Victoria Grosvenor sidings together at 11 35
+         and come out together at 12 32: 308, marked, leaves on Position 1 of
+         a new section; 917 still carries the Position 1 it left Ramsgate
+         with at 08 18. One train of two has one Position 1, so the fresh
+         number stands and the old one takes the place left over - 917 is 2,
+         and Victoria, reading highest first, prints 917 then 308. The tie
+         used to fall to the diagram number, which means nothing. Settled
+         only when the fresh numbers agree among themselves and leave exactly
+         as many places as there are old ones; anything else is left as it
+         was and named for review. */
+      const effPos = new Map(blocks.map(x => [x, x.pos]));
+      let settled = null;
+      {
+        const ps = blocks.map(x => x.pos), n = blocks.length;
+        if (n > 1 && ps.every(p => p != null) && new Set(ps).size !== n) {
+          const freshHere = x => {
+            const m = meta.get(x.diag), st = m && m.stops[x.sa], from = posFrom.get(x);
+            const t = st ? (st.arr !== null ? st.arr : st.dep) : null;
+            return from != null && t !== null && sortkey(from) >= sortkey(t);
+          };
+          const fresh = blocks.filter(freshHere), old = blocks.filter(x => !freshHere(x));
+          const fp = fresh.map(x => x.pos);
+          if (fresh.length && old.length && new Set(fp).size === fp.length &&
+              fp.every(p => p >= 1 && p <= n)) {
+            const free = [];
+            for (let p = 1; p <= n; p++) if (fp.indexOf(p) < 0) free.push(p);
+            if (free.length === old.length) {
+              old.slice().sort((a, b) => (a.pos - b.pos) || byDiag(a, b))
+                .forEach((x, i) => effPos.set(x, free[i]));
+              settled = { fresh, old };
+            }
+          }
+        }
+      }
+      const pe = x => effPos.get(x);
       if (turned ? !asc : asc)
-        blocks.sort((x, y) => (x.pos - y.pos) || byDiag(y, x));
+        blocks.sort((x, y) => (pe(x) - pe(y)) || byDiag(y, x));
       else
-        blocks.sort((x, y) => (y.pos - x.pos) || byDiag(x, y));
+        blocks.sort((x, y) => (pe(y) - pe(x)) || byDiag(x, y));
       /* Called at the platform but a side is not in the table: the order is
          left exactly as it was, and said out loud rather than guessed. */
       if (blocks.length > 1 && blocks.some(x => x.turn === null))
@@ -1038,9 +1085,22 @@ const GENIUS = (() => {
       /* A pinned entry is not a guess: somebody read the order off the real
          book and wrote it down, which is exactly what this note asks for. */
       if (e.blocks.length > 1 && !pinned) {
-        const ps = e.blocks.map(x => x.pos);
+        const ps = e.blocks.map(x => effPos.has(x) ? effPos.get(x) : x.pos);
         const seq = ps.every(p => p != null) &&
           ps.slice().sort((a, b) => a - b).every((p, i) => p === i + 1);
+        /* a tie settled above is said, so the rule can be checked against the
+           real book until it has earned trust */
+        if (seq && settled && settled.old.every(x => e.blocks.indexOf(x) >= 0)) {
+          const nm = xs => xs.map(x => x.diag.slice(2)).join(" and ");
+          warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
+            e.blocks.map(x => x.diag.slice(2)).join("+") + "): the reports give " +
+            nm(settled.old) + " the Position " + (settled.old.length === 1 ? "its" : "their") +
+            " section started with at " + settled.old.map(x => fmtT(posFrom.get(x), null)).join(" and ") +
+            ", and " + nm(settled.fresh) + " a new one as " +
+            (settled.fresh.length === 1 ? "it leaves" : "they leave") + " here — so " +
+            settled.old.map(x => x.diag.slice(2) + " is taken as Position " + effPos.get(x)).join(", ") +
+            ". Check the order against the real book" });
+        }
         if (!seq) {
           const tie = new Set(ps).size !== ps.length;
           warn.push({ sec: e.sec, msg: e.sec + " " + fmtT(e.tmin, e.hc) + " (" +
