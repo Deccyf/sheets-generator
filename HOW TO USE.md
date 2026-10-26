@@ -501,7 +501,7 @@ departure and one row per unit.
 | **B** | What the unit is — cars and class | `4 375` |
 | **C** | The three-digit diagram number | `117` |
 | **D** | **AM** — the unit's next berth during the day | `DFU` |
-| **E** | **PM** — where it finishes the day | `SG` |
+| **E** | **PM** — where it finishes the day, including a berth it only reaches in the evening | `SG` |
 | **F** | Unit number, where the report names one — otherwise ruled and empty for you to write in | `375612` |
 | **G** | Flag | `SPLITS` |
 | **H** | Notes — sidings, attachments, end markers, headcodes | `EAST SIDINGS` |
@@ -511,6 +511,13 @@ empty stock — `05+32`. The usual house convention. Mainline and Ramsgate are
 timed off the departure — the moment the unit leaves the area — except at
 Grove Park and Slade Green, where it is the moment the unit first moves off
 the berth.
+
+**AM or PM.** Column D is only for somewhere the unit stands during the
+day. Somewhere it is put away in the evening is the PM column's, even when
+it goes out again late and comes back to the same place. RM013 is put away
+at Ramsgate depot at 22 17, runs to Herne Bay and back after midnight and
+finishes there at 03 05: its rows read RE in E, not D. A day's work that runs
+on past 03:00 the next morning still ends in the night, so it reads PM.
 
 **SPLITS** means the units on this departure part company during the day.
 **SPLITS PM** means they only part in the evening — the AM and PM columns

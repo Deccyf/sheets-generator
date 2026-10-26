@@ -293,7 +293,12 @@ repeated here. The shape of it:
   The AM column only names a berth whose own departure prints, with one
   exception (`putAway`): a berth left by nothing but a shunt inside the
   Grove Park depot fence is still where the unit was put away, so RM021/022
-  off Faversham read GP (3.34.1).
+  off Faversham read GP (3.34.1). A berth the unit stands on into the night
+  (`lateBerth`: it leaves after `PM_BREAK`) empties the AM column of the line
+  before it whether or not the unit ends the day somewhere else — RM013 goes
+  out from Ramsgate depot to Herne Bay and back (3.34.4). And the AM/PM tests
+  read a time as the reader rolled it (`dayT`), so a day's work that ends at
+  27:05 ends in the night, not at 03:05 of a morning.
 - **The lines across the page.** The first break of `BREAK_GAP` (three
   hours) or more in a location's work, and any later one leading into work
   after `PM_BREAK`. Grove Park is never ruled.

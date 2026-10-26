@@ -587,3 +587,32 @@ test("two units on one Position: the number given at this berth stands, the old 
   assert.ok(!notes.some(m => /VICTORIA .*same place in the formation/.test(m)),
     "rather than calling it a guess");
 });
+
+test("a berth reached in the evening is the PM column's, even when the unit goes out and comes back to it", async () => {
+  /* RM013 on 26/10: out of Dover Priory sidings at 06 17 and working all
+     day, put away in Ramsgate depot at 22 17 (its first '#'), out again at
+     01 08 to Herne Bay and back, finishing in the same depot at 03 05. The
+     Dover 06 45 row read RE in the AM column, and the 01+08 row read RE in
+     the AM column too: 03 05 is five minutes past the 03 00 start of day,
+     and read off the clock face it looked like a morning. Both are the
+     night's: RE in the PM column. */
+  const { geniusPairCsv } = await import("./helpers/synth.mjs");
+  const st = (code, arr, dep, hc, ev) => ({ code, arr, dep, hc, ev });
+  const day = [{ code: "RM013", units: "375613.", pos: 1, stops: [
+    st("DOVERPS", "", "06:17", "5P14"), st("DOVERP", "06:26", "06:45", "1P14"),
+    st("VICTRIE", "08:56", "09:10", "1S14"), st("DOVERP", "11:17", "12:11", "1P36"),
+    st("VICTRIE", "14:21", "14:40", "1S36"), st("RAMSGTE", "16:41", "16:46", "2W77"),
+    st("CHRX", "19:24", "19:34", "2R62"), st("RAMSGTE", "21:47", "21:54", "5R62"),
+    st("RAMSGTD", "22:16", "22:17", "", "#"), st("RAMSGTD", "22:17", "01:08", "5U72"),
+    st("HRNEBAY", "01:43", "02:10", "2S72"), st("RAMSGTE", "02:38", "02:43", "5S72"),
+    st("RAMSGTD", "03:05", "", "")] }];
+  const p = geniusPairCsv(day);
+  const r = await built().GENIUS.build([p.summary, p.detail]);
+  const secs = r.secsByDay[Object.keys(r.labels)[0]];
+  const row = (sec, hc) => (secs.get(sec) || []).find(e => (e.headcode || "").startsWith(hc));
+  const dover = row("DOVER PRIORY", "1P14"), late = row("RAMSGATE", "5U72");
+  assert.ok(dover && late, "both rows print: " + [...secs.keys()].join(", "));
+  const cols = e => e.units.map(u => (u.am || "-") + "/" + (u.pm || "-") + "/" + u.ends).join(",");
+  assert.equal(cols(dover), "-/RE/RE PM", "the morning row: no AM berth, RE at night");
+  assert.equal(cols(late), "-/RE/RE PM", "and the 01+08 back to the depot ends the night, not a morning");
+});

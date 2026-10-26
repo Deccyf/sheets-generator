@@ -124,6 +124,13 @@ const GENIUS = (() => {
     return (h < 24 && mi < 60) ? h * 60 + mi : null;
   };
   const sortkey = t => (t % 1440) < DAY_ROLL ? (t % 1440) + 1440 : (t % 1440);
+  /* The time in the diagram's own day, for the AM and PM columns. The
+     readers roll a diagram's clock on past midnight - 25:08, 27:05 - and a
+     time they rolled stays in the night it belongs to. sortkey folds every
+     time back onto one clock face so departures sort, which read RM013's
+     27:05 finish in Ramsgate depot on 26/10 as 03:05, five minutes into a
+     new day - a morning - and put RE in the AM column of its last row. */
+  const dayT = t => t >= 1440 ? t : sortkey(t);
   /* The Summary PDF's text -> one row per working: {date, diag, fleet, pos,
      start, from, to, end}, times in minutes. Rows are anchored on the two
      clock cells, so which optional columns the report carries does not
@@ -741,9 +748,15 @@ const GENIUS = (() => {
            for such a stint is a PM entry whatever happens next. lateMove
            asks the narrower question above: is that berth the PM END POINT,
            or was it only a staging post on the way home? */
+        /* "Moved on at all" includes coming back. RM013 on 26/10 is put
+           away at Ramsgate depot at 22 17, goes out at 01+08 to Herne Bay
+           and back, and finishes in the same depot at 03 05. Asked as "did
+           it finish somewhere else?", that read as no late berth, and its
+           Dover Priory 06 45 row carried RE in the AM column for a berth it
+           does not reach until the evening. The rest of the rule is
+           unchanged: the PM column was already RE either way. */
         const lateBerth = !!stints.length &&
-          core.norm(locName(lb)) !== core.norm(locName(lastStop)) &&
-          lb.dep !== null && sortkey(lb.dep) >= PM_BREAK;
+          lb.dep !== null && dayT(lb.dep) >= PM_BREAK;
         const lateMove = lateBerth &&
           (worksAfter || sameArea(areaOf(lb), areaOf(lastStop)) ||
            !isStabling(lastStop));
@@ -769,7 +782,7 @@ const GENIUS = (() => {
              weekday book and PM in a weekend one. One rule, one figure:
              core.js owns it and the rulebook carries it. */
           const t = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
-          if (t !== null && sortkey(t) < AM_CUTOFF) { D = fc; E = ""; }
+          if (t !== null && dayT(t) < AM_CUTOFF) { D = fc; E = ""; }
           else { D = ""; E = fc; }
         } else {
           D = secOf(later[0], false) !== null ? bcode(locName(later[0]), warn, u.diag) : "";
@@ -778,7 +791,7 @@ const GENIUS = (() => {
           // it ends up afterwards, so the AM column stays empty for it.
           if (lateBerth && u.si + 1 === stints.length - 1 &&
               (prof.firstDepAll || lb.arr === null ||
-               sortkey(lb.arr) >= AM_CUTOFF)) D = "";
+               dayT(lb.arr) >= AM_CUTOFF)) D = "";
         }
         let paxAfter = false;
         for (let i = u.exitIdx + 1; i < stops.length; i++) {
@@ -801,7 +814,7 @@ const GENIUS = (() => {
         const endT = lastStop.arr !== null ? lastStop.arr : lastStop.dep;
         const endCode = bcode(locName(lastStop), warn, u.diag);
         const dayEnd = endCode
-          ? endCode + (endT !== null && sortkey(endT) < AM_CUTOFF ? " AM" : " PM")
+          ? endCode + (endT !== null && dayT(endT) < AM_CUTOFF ? " AM" : " PM")
           : "";
         /* The allocation sheet's MG is per WORKING, not per day: AZ623 is
            143 miles on its 09+54 row and 182 on its 16+26 one. The stint's

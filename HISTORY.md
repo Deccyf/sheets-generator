@@ -4,6 +4,37 @@ What changed, release by release, and why. The README describes the tool as
 it is now; this file keeps the story of how it got there, so the README does
 not have to.
 
+## 3.34.4 — 26 October 2026 — a berth reached in the evening is the PM column's
+
+RM013 on the 26/10 reports works passenger trains all day from Dover
+Priory, is put away in Ramsgate depot at 22 17 — its first `#` of the day —
+goes out at 01+08 to Herne Bay and back, and finishes in the same depot at
+03 05. Its Dover Priory 06 45 row read RE in the AM column, and the depot
+said so: a berth it does not reach until the evening is not its AM one.
+
+The rule was already written down. The berth a unit stands on into the night
+empties the AM column of the line before it, "wherever it ends up
+afterwards" — but the code asked whether the unit *ended the day somewhere
+else*, and RM013 comes back to where it was. It now asks whether the unit
+moves on at all.
+
+The same diagram's 01+08 row read RE in the AM column as well. 03 05 is five
+minutes past the 03 00 start of day, and every AM/PM test read times off the
+clock face, so a day's work ending at 27:05 looked like a morning. The
+readers already roll a diagram's clock on past midnight; the AM/PM tests now
+use that rolled time (`dayT`), so the 01+08 reads RE in the PM column, and
+anything saying where RM013 ends reads RE PM. Confirmed with the depot.
+
+On 26/10 that also moves GT129, which ends at Ashford down sidings at 03 05
+after a night run: its Victoria 16 25 row reads AFK in the PM column, not
+the AM — which is the row the depot confirmed in 3.1.2, when GT129 finished
+at 02 22. On 21/10, SG403/404 are put away in Victoria Grosvenor sidings at
+20 59 and finish back there at 01 07, so their Slade Green 15+33 row loses
+VIC from the AM column. Nothing else changes on either day. RM302's RE in
+the AM column on 26/10 — a stand in Ramsgate depot from 10 23 to 14 08 with
+no `#` — is right, and stays. The Rules tab's A.M. and P.M. entries say all
+of this.
+
 ## 3.34.3 — 20 October 2026 — RM917/RM308 the right way round, and no Plumstead line for a turnround
 
 Two things off the 21/10 reports.

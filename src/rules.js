@@ -386,12 +386,17 @@ const SHEETS_RULES = (() => {
                .map(v => v.replace(/\//g, "-"))) + "."
            : "")],
         ["Diagram", "The day's work the unit is booked to."],
-        ["A.M.", "Where this unit goes to stand next during the day."],
+        ["A.M.", "Where this unit goes to stand next during the day. A berth " +
+                 "it only reaches in the evening and stands on into the night " +
+                 "is the P.M. column's, even when it goes out again later and " +
+                 "comes back to it (RM013, put away at Ramsgate depot at 22 17)."],
         ["P.M.", "Where this unit is standing at the end of its day's work. " +
                  "A diagram that goes out a third time has two of those, and " +
                  "the column means a different one on each line: the lines " +
                  "before its last journey read the berth it is sitting on, " +
-                 "and the line for that journey reads where it finishes."],
+                 "and the line for that journey reads where it finishes. A " +
+                 "day's work that runs on past " + hhmm(env.dayRoll || 180) +
+                 " the next morning still ends in the night, so it is P.M."],
         ["Unit", "The unit number where the report names one. Where it does " +
                  "not, the cell is left ruled and empty for the depot to " +
                  "write in — and you can type into it in Excel."],
